@@ -16,7 +16,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
     : "Foco em ENEM e grandes vestibulares. Relacione com atualidades, use linguagem didática e interdisciplinar.";
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()}
     Gere um DOSSIÊ COMPLETO de estudo sobre "${topic}". Especialmente, gere exatamente ${numQuestions} questões no quiz.
     ${profileContext} 
@@ -43,7 +43,6 @@ export const generateStudyContent = async (topic: string, technique: string, num
       "flashcards": [{"question": "string", "answer": "string"}]
     }`,
     config: {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -119,13 +118,12 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
   const bancaInstruction = banca ? ` A banca examinadora solicitada é a "${banca}". Siga rigorosamente o padrão de cobrança, a linguagem e os temas recorrentes dessa banca específica.` : "";
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()} 
     Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E). 
     Não use emojis. Não use formatação de texto com asteriscos.
     Inclua obrigatoriamente um "commentary" detalhado explicando por que a alternativa correta é a certa e por que as outras estão erradas.`,
     config: {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -159,7 +157,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
     : "O usuário está estudando para vestibulares/ENEM. Use referências a universidade e futuro acadêmico quando apropriado.";
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: [
       ...history,
       { role: 'user', parts: [{ text: message }] }
@@ -176,7 +174,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
 
 export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VESTIBULAR') => {
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()}
     Analise o seguinte texto de evocação ativa de um estudante (TDAH):
     "${text}"
@@ -189,7 +187,6 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
     
     Não use emojis. Use linguagem clara e direta.`,
     config: {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -208,7 +205,7 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
 
 export const generateQuestionsFromAnalysis = async (analysis: any, profile: StudyProfile = 'VESTIBULAR') => {
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()}
     Com base nesta análise de evocação de um estudante (TDAH):
     Pontos que lembrou: ${analysis.pointsIdentified.join(', ')}
@@ -224,7 +221,6 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
     
     Retorne no formato JSON rigoroso.`,
     config: {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -247,7 +243,7 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
 
 export const extractTopicsFromEdital = async (subjectName: string, rawContent: string) => {
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()}
     Extraia os tópicos e subtópicos estudáveis do seguinte conteúdo programático da disciplina "${subjectName}":
     
@@ -259,7 +255,6 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
     
     Retorne no formato JSON rigoroso.`,
     config: {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -279,7 +274,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
     : "Foco em conceitos fundamentais do ENEM/Vestibular.";
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()}
     Gere uma VALIDAÇÃO DE MICRO-TEMA sobre "${topic}". 
     ${profileStyle}
@@ -292,7 +287,6 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
     
     Retorne em JSON:`,
     config: {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -320,7 +314,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
 
 export const explainStuckTopic = async (topic: string, profile: StudyProfile = 'VESTIBULAR') => {
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()}
     O estudante está travado no tópico "${topic}" (errou 3 vezes). 
     Perfil: ${profile}.
@@ -334,7 +328,6 @@ export const explainStuckTopic = async (topic: string, profile: StudyProfile = '
     
     Retorne em JSON:`,
     config: {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -357,7 +350,7 @@ export const optimizeStudyPlan = async (
 ) => {
   const subjectsPrompt = edital.subjects.map(s => `- ${s.name} (ID: ${s.id}, Peso atual: ${currentSubjects.find(cs => cs.editalSubjectId === s.id)?.weight || 1})`).join('\n');
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()}
     Você é um estrategista de estudos para ${profile}.
     
@@ -438,7 +431,7 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
   }));
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()}
     O estudante está com dificuldade severa no tópico "${topic}". 
     Abaixo estão as questões que ele errou recentemente:
@@ -454,7 +447,6 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
     
     Retorne em JSON rigoroso.`,
     config: {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -502,7 +494,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
   };
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()}
     Você é o Mentor Peixe, o guia TDAH do estudante.
     Seja breve, encorajador e estratégico.
@@ -544,7 +536,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
   };
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'models/gemini-2.0-flash',
     contents: `${getTimeContext()}
     Você é um Engenheiro de Aprendizagem Especialista em Ciclos de Estudo para TDAH.
     Sua tarefa é criar um CICLO DE ESTUDO OTIMIZADO baseado nos dados do edital abaixo.

@@ -9,9 +9,10 @@ interface HeaderProps {
   onLogoClick: () => void;
   onRevisionClick: () => void;
   onSocialClick: () => void;
+  isAIEnabled: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ stats, onProfileClick, onLogoClick, onRevisionClick, onSocialClick }) => {
+const Header: React.FC<HeaderProps> = ({ stats, onProfileClick, onLogoClick, onRevisionClick, onSocialClick, isAIEnabled }) => {
   const progressPercent = (stats.xp % 1000) / 10;
   const rank = getFishRank(stats.totalDaysStudied);
 
@@ -78,9 +79,11 @@ const Header: React.FC<HeaderProps> = ({ stats, onProfileClick, onLogoClick, onR
           <FishLogo iconOnly primaryColor="white" className="scale-50" days={stats.totalDaysStudied} />
         </button>
         
-        <div className="hidden md:flex items-center gap-2 bg-blue-500/5 px-3 py-1.5 rounded-full border border-blue-500/10">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
-          <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest leading-none">IA: ATIVA</span>
+        <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border ${isAIEnabled ? 'bg-blue-500/5 border-blue-500/10' : 'bg-gray-100 border-gray-200 opacity-50'}`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${isAIEnabled ? 'bg-blue-500 animate-pulse' : 'bg-gray-400'}`}></div>
+          <span className={`text-[9px] font-black uppercase tracking-widest leading-none ${isAIEnabled ? 'text-blue-600' : 'text-gray-400'}`}>
+            IA: {isAIEnabled ? 'ATIVA' : 'DESATIVADA'}
+          </span>
         </div>
       </div>
     </header>

@@ -140,6 +140,11 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [isAIEnabled, setIsAIEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('focus_ai_enabled');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
   const [strategicMode, setStrategicMode] = useState(false);
 
   const [prefillAI, setPrefillAI] = useState<{topic: string, autoStart: boolean} | null>(null);
@@ -203,6 +208,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('focus_studycycle', JSON.stringify(studyCycle));
   }, [studyCycle]);
+
+  useEffect(() => {
+    localStorage.setItem('focus_ai_enabled', JSON.stringify(isAIEnabled));
+  }, [isAIEnabled]);
 
   // Due flashcards count
   const dueFlashcardsCount = useMemo(() => {
@@ -508,6 +517,7 @@ const App: React.FC = () => {
         onLogoClick={() => setCurrentView('HUB')} 
         onRevisionClick={() => setCurrentView('SMART_REVISION')}
         onSocialClick={() => setCurrentView('SOCIAL_MODULE')}
+        isAIEnabled={isAIEnabled}
       />
 
       {showGlobalBar && (
@@ -563,6 +573,7 @@ const App: React.FC = () => {
             editalConfig={editalConfig}
             setStrategicMode={setStrategicMode}
             smartRevisionItems={smartSystem.queue}
+            isAIEnabled={isAIEnabled}
           />
         )}
         
@@ -774,7 +785,16 @@ const App: React.FC = () => {
           />
         )}
 
-        {currentView === 'PROFILE' && <ProfileView stats={stats} onUpdate={setStats} onBack={() => setCurrentView('HUB')} myId={socialState.myId} />}
+        {currentView === 'PROFILE' && (
+          <ProfileView 
+            stats={stats} 
+            onUpdate={setStats} 
+            onBack={() => setCurrentView('HUB')} 
+            myId={socialState.myId} 
+            isAIEnabled={isAIEnabled}
+            setIsAIEnabled={setIsAIEnabled}
+          />
+        )}
         {currentView === 'COMMUNITY' && <CommunityView activities={activities} onBack={() => setCurrentView('HUB')} onPostManual={handleManualPost} />}
       </main>
 

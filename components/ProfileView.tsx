@@ -8,6 +8,8 @@ interface ProfileViewProps {
   onUpdate: (stats: UserStats) => void;
   onBack: () => void;
   myId?: string;
+  isAIEnabled: boolean;
+  setIsAIEnabled: (val: boolean) => void;
 }
 
 const AVATAR_OPTIONS = [
@@ -18,7 +20,7 @@ const AVATAR_OPTIONS = [
   { color: '#0A0F1E', name: 'Peixe Dark' },
 ];
 
-const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, myId }) => {
+  const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, myId, isAIEnabled, setIsAIEnabled }) => {
   const [name, setName] = useState(stats.name);
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
@@ -103,6 +105,27 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, myId
                     <FishLogo iconOnly primaryColor="white" className="scale-50" days={stats.totalDaysStudied} />
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Mentoria por IA</label>
+              <div className="bg-blue-50/50 p-6 rounded-[30px] border border-blue-100 flex items-center justify-between group hover:bg-blue-50 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isAIEnabled ? 'bg-blue-500 text-white shadow-lg' : 'bg-gray-200 text-gray-400'}`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-black text-sm uppercase italic tracking-tight">Cérebro Artificial</h4>
+                    <p className="text-[10px] font-bold text-gray-400 leading-none">Insights dinâmicos e geração de conteúdo</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsAIEnabled(!isAIEnabled)}
+                  className={`w-14 h-8 rounded-full relative transition-all duration-300 ${isAIEnabled ? 'bg-blue-500' : 'bg-gray-300'}`}
+                >
+                  <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all duration-300 ${isAIEnabled ? 'left-7' : 'left-1'}`} />
+                </button>
               </div>
             </div>
 
