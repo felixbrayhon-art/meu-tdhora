@@ -12,12 +12,17 @@ interface EditalViewProps {
   onBack: () => void;
   onDisable: () => void;
   onSmartRevision: () => void;
+  onTopicComplete?: (topic: string, subject: string, isCompleted: boolean) => void;
 }
 
-const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic, onBack, onDisable, onSmartRevision }) => {
+const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic, onBack, onDisable, onSmartRevision, onTopicComplete }) => {
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<{subject: string, topic: string} | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingTopic, setEditingTopic] = useState<{ subjectId: string, oldTopic: string, newTopic: string } | null>(null);
+  const [showAddTopic, setShowAddTopic] = useState<{ subjectId: string } | null>(null);
+  const [newTopicName, setNewTopicName] = useState('');
 
   const activeSubject = config.subjects.find(s => s.id === activeSubjectId);
 
@@ -51,9 +56,51 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
       const newCompleted = isCompleted 
         ? currentCompleted.filter(t => t !== topic)
         : [...currentCompleted, topic];
+      
+      if (onTopicComplete) {
+        onTopicComplete(topic, sub.name, !isCompleted);
+      }
+
       return { ...sub, completedTopics: newCompleted };
     });
     onUpdate({ ...config, subjects: updatedSubjects });
+  };
+
+  const addManualTopic = (subjectId: string) => {
+    if (!newTopicName.trim()) return;
+    const updatedSubjects = config.subjects.map(s => {
+      if (s.id !== subjectId) return s;
+      return { ...s, topics: [...s.topics, newTopicName.trim()] };
+    });
+    onUpdate({ ...config, subjects: updatedSubjects });
+    setNewTopicName('');
+    setShowAddTopic(null);
+  };
+
+  const removeTopic = (subjectId: string, topic: string) => {
+    const updatedSubjects = config.subjects.map(s => {
+      if (s.id !== subjectId) return s;
+      return { 
+        ...s, 
+        topics: s.topics.filter(t => t !== topic),
+        completedTopics: s.completedTopics?.filter(t => t !== topic)
+      };
+    });
+    onUpdate({ ...config, subjects: updatedSubjects });
+  };
+
+  const saveEditedTopic = () => {
+    if (!editingTopic || !editingTopic.newTopic.trim()) return;
+    const updatedSubjects = config.subjects.map(s => {
+      if (s.id !== editingTopic.subjectId) return s;
+      return {
+        ...s,
+        topics: s.topics.map(t => t === editingTopic.oldTopic ? editingTopic.newTopic.trim() : t),
+        completedTopics: s.completedTopics?.map(t => t === editingTopic.oldTopic ? editingTopic.newTopic.trim() : t)
+      };
+    });
+    onUpdate({ ...config, subjects: updatedSubjects });
+    setEditingTopic(null);
   };
 
   const calculateDaysLeft = () => {
@@ -162,11 +209,44 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
             {activeSubject ? (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex justify-between items-start border-b border-gray-100 pb-8 text-left">
-                  <div>
+                  <div className="flex-1">
                     <h2 className="text-3xl font-black uppercase italic tracking-tighter text-blue-600">{activeSubject.name}</h2>
-                    <p className="text-gray-400 font-bold text-xs mt-2 uppercase tracking-widest">Selecione um tópico para estudar</p>
+                    <p className="text-gray-400 font-bold text-xs mt-2 uppercase tracking-widest">Selecione um tópico para estudar ou gerencie sua lista</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setIsEditing(!isEditing)}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isEditing ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-black'}`}
+                    >
+                      {isEditing ? 'Finalizar Edição' : 'Editar Lista'}
+                    </button>
+                    <button 
+                      onClick={() => setShowAddTopic({ subjectId: activeSubject.id })}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-blue-200"
+                    >
+                      + Novo Tópico
+                    </button>
                   </div>
                 </div>
+
+                {showAddTopic && (
+                  <div className="bg-blue-50/50 p-6 rounded-[30px] border-2 border-blue-100 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-4 text-left">Novo Tópico em {activeSubject.name}</h4>
+                    <div className="flex gap-4">
+                      <input 
+                        autoFocus
+                        value={newTopicName}
+                        onChange={(e) => setNewTopicName(e.target.value)}
+                        placeholder="Ex: Teoria da Relatividade Geral"
+                        className="flex-1 bg-white border border-blue-200 rounded-2xl px-6 py-4 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => setShowAddTopic(null)} className="px-6 py-4 bg-white text-gray-400 font-black rounded-2xl uppercase text-[10px] tracking-widest hover:bg-gray-100 italic transition-all">Cancelar</button>
+                        <button onClick={() => addManualTopic(activeSubject.id)} className="px-8 py-4 bg-blue-600 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 italic transition-all">Adicionar</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {activeSubject.topics.map((topic, i) => {
@@ -187,14 +267,45 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
                           >
                             {isCompleted ? <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> : i + 1}
                           </button>
+                          
                           <div 
                             className="flex-1 cursor-pointer"
-                            onClick={() => setSelectedTopic({ subject: activeSubject.name, topic })}
+                            onClick={() => !isEditing && setSelectedTopic({ subject: activeSubject.name, topic })}
                           >
-                            <p className={`font-bold leading-tight ${isCompleted ? 'text-green-800 line-through opacity-70' : 'text-gray-700 group-hover:text-blue-600'}`}>
-                              {topic}
-                            </p>
+                            {editingTopic?.oldTopic === topic && editingTopic.subjectId === activeSubject.id ? (
+                              <div className="flex gap-2 w-full" onClick={(e) => e.stopPropagation()}>
+                                <input 
+                                  autoFocus
+                                  value={editingTopic.newTopic}
+                                  onChange={(e) => setEditingTopic({ ...editingTopic, newTopic: e.target.value })}
+                                  className="flex-1 bg-white border-2 border-blue-400 rounded-xl px-4 py-1 font-bold text-sm"
+                                />
+                                <button onClick={saveEditedTopic} className="text-green-500 hover:scale-110 px-1"><svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></button>
+                                <button onClick={() => setEditingTopic(null)} className="text-red-500 hover:scale-110 px-1"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                              </div>
+                            ) : (
+                              <p className={`font-bold leading-tight ${isCompleted ? 'text-green-800 line-through opacity-70' : 'text-gray-700 group-hover:text-blue-600'}`}>
+                                {topic}
+                              </p>
+                            )}
                           </div>
+
+                          {isEditing && (
+                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                              <button 
+                                onClick={() => setEditingTopic({ subjectId: activeSubject.id, oldTopic: topic, newTopic: topic })}
+                                className="text-blue-400 hover:text-blue-600 p-1"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                              </button>
+                              <button 
+                                onClick={() => removeTopic(activeSubject.id, topic)}
+                                className="text-red-300 hover:text-red-500 p-1"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );

@@ -14,7 +14,7 @@ interface TDHQuestoesProps {
   onConsumedPrefill?: () => void;
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
-  onBatchComplete?: (topic: string, subject: string, total: number, correct: number) => void;
+  onBatchComplete?: (topic: string, subject: string, total: number, correct: number, questions?: QuizQuestion[]) => void;
 }
 
 const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ 
@@ -29,6 +29,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   onBatchComplete
 }) => {
   const [topic, setTopic] = useState(prefill || '');
+  const [banca, setBanca] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -60,7 +61,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     if (!targetTopic) setTopic(finalTopic);
     
     try {
-      const result = await generateExamQuestions(finalTopic, numQuestions, studyProfile);
+      const result = await generateExamQuestions(finalTopic, numQuestions, studyProfile, banca);
       const formatted = result.questions.map((q: any) => ({
         ...q,
         id: Math.random().toString(36).substr(2, 9)
@@ -86,7 +87,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const handleFinish = () => {
     const total = questions.length;
     const correct = questions.filter((q, i) => userAnswers[i] === q.correctAnswer).length;
-    onBatchComplete?.(topic, selectedSubject, total, correct);
+    onBatchComplete?.(topic, selectedSubject, total, correct, questions.map((q, i) => ({ ...q, userAnswer: userAnswers[i] })));
     onBack();
   };
 
@@ -171,17 +172,28 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                   />
                 )}
 
-                <div className="bg-gray-50/50 p-6 rounded-3xl">
-                  <div className="flex justify-between mb-4">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Quantidade de Questões</label>
-                     <span className="text-orange-600 font-black">{numQuestions}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50/50 p-6 rounded-3xl text-left border-2 border-transparent focus-within:border-orange-200 transition-all">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Banca Examinadora (Opcional)</label>
+                    <input 
+                      value={banca}
+                      onChange={(e) => setBanca(e.target.value)}
+                      placeholder="Ex: FCC, FGV, CESPE, VUNESP..."
+                      className="w-full bg-transparent border-none text-lg focus:outline-none font-bold placeholder:text-gray-300"
+                    />
                   </div>
-                  <input 
-                    type="range" min="1" max="50" 
-                    value={numQuestions}
-                    onChange={(e) => setNumQuestions(Number(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-full accent-orange-500 cursor-pointer"
-                  />
+                  <div className="bg-gray-50/50 p-6 rounded-3xl">
+                    <div className="flex justify-between mb-4">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Quantidade de Questões</label>
+                      <span className="text-orange-600 font-black">{numQuestions}</span>
+                    </div>
+                    <input 
+                      type="range" min="1" max="50" 
+                      value={numQuestions}
+                      onChange={(e) => setNumQuestions(Number(e.target.value))}
+                      className="w-full h-2 bg-gray-200 rounded-full accent-orange-500 cursor-pointer"
+                    />
+                  </div>
                 </div>
 
                 <button 

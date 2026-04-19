@@ -1,5 +1,5 @@
 
-export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT';
+export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE';
 export type StudyProfile = 'VESTIBULAR' | 'CONCURSO';
 export type HubCategory = 'ESTUDO' | 'ORGANIZACAO' | 'RELAXE' | 'EDITAL' | 'REVISAO';
 
@@ -191,9 +191,59 @@ export interface ErrorVaultItem {
   lastErrorDate: number;
   isStuck: boolean; // True if errorCount >= 3
   resolved: boolean;
+  missedQuestions?: QuizQuestion[];
 }
 
 export interface SmartRevisionSystem {
   queue: SmartRevisionItem[];
   vault: ErrorVaultItem[];
+}
+
+export interface DirectMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: number;
+}
+
+export interface FriendSession {
+  subjectName: string;
+  minutesStudied: number;
+  lastActive: number;
+}
+
+export interface FriendProfile {
+  id: string;
+  name: string;
+  avatarColor: string;
+  level: number;
+  xp: number;
+  status: 'ONLINE' | 'STUDYING' | 'OFFLINE';
+  lastEditalProgress: { [subjectName: string]: number }; // Heat map from edital
+  currentSession?: FriendSession;
+  lastRevAt?: number; // Last revision done
+}
+
+export interface SocialState {
+  myFriends: FriendProfile[];
+  pendingRequests: string[];
+  chats: { [friendId: string]: DirectMessage[] };
+  myId: string;
+}
+
+export interface StudyCycleStep {
+  id: string;
+  subjectId: string;
+  subjectName: string;
+  durationMinutes: number;
+  completed: boolean;
+}
+
+export interface StudyCycle {
+  id: string;
+  name: string;
+  steps: StudyCycleStep[];
+  currentStepIndex: number;
+  createdAt: number;
 }

@@ -14,6 +14,7 @@ interface FlashcardViewProps {
   studyProfile: StudyProfile;
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
+  onReviewBatchComplete?: (folderName: string, count: number) => void;
 }
 
 type ManagedView = 'FOLDERS' | 'FOLDER_DETAIL' | 'REVIEW';
@@ -26,7 +27,8 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
   onBack, 
   studyProfile,
   strategicMode,
-  editalConfig
+  editalConfig,
+  onReviewBatchComplete
 }) => {
   const [viewMode, setViewMode] = useState<ManagedView>('FOLDERS');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -193,6 +195,9 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
       setCurrentReviewIndex(prev => prev + 1);
     } else {
       setIsReviewDone(true);
+      if (onReviewBatchComplete) {
+        onReviewBatchComplete(activeFolder?.name || 'Geral', reviewQueue.length);
+      }
     }
   };
 

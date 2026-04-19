@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppView, TimerMode, UserStats, HubCategory, EditalConfig, SmartRevisionItem } from '../types';
+import { AppView, TimerMode, UserStats, HubCategory, EditalConfig, SmartRevisionItem, StudyProfile } from '../types';
 import MemoryHeatmap from './MemoryHeatmap';
+import { getProactiveAdvice } from '../services/geminiService';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface HubProps {
   setView: (view: AppView) => void;
@@ -32,6 +34,23 @@ const Hub: React.FC<HubProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<HubCategory>('ESTUDO');
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [aiInsight, setAiInsight] = useState<{ greeting: string; insight: string; task: string; taskView: string } | null>(null);
+  const [loadingAI, setLoadingAI] = useState(false);
+
+  useEffect(() => {
+    const fetchAdvice = async () => {
+      setLoadingAI(true);
+      try {
+        const advice = await getProactiveAdvice(stats, editalConfig, stats.studyProfile!);
+        setAiInsight(advice);
+      } catch (e) {
+        console.error("Erro ao ativar IA:", e);
+      } finally {
+        setLoadingAI(false);
+      }
+    };
+    fetchAdvice();
+  }, [stats.studyProfile]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -61,6 +80,56 @@ const Hub: React.FC<HubProps> = ({
           CARDUME SOCIAL
         </button>
       </div>
+      
+      {/* MODO IA ATIVO */}
+      <AnimatePresence>
+        {(aiInsight || loadingAI) && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-[#0A0F1E] border border-blue-500/30 rounded-[35px] p-6 text-white shadow-2xl relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <svg className="w-24 h-24 text-blue-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </div>
+            
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 animate-bounce">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+              </div>
+              
+              <div className="flex-1 space-y-1">
+                {loadingAI ? (
+                  <div className="animate-pulse space-y-2">
+                    <div className="h-4 bg-white/10 rounded w-1/4"></div>
+                    <div className="h-6 bg-white/10 rounded w-3/4"></div>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="text-blue-400 font-bold text-[10px] uppercase tracking-widest leading-none mb-2 italic">IA Ativa • Mergulho do Mentor Peixe</h3>
+                    <h4 className="text-xl font-black italic uppercase leading-tight">"{aiInsight?.greeting} {stats.name}!"</h4>
+                    <p className="text-gray-400 text-sm font-medium">{aiInsight?.insight}</p>
+                  </>
+                )}
+              </div>
+              
+              {!loadingAI && aiInsight && (
+                <button 
+                  onClick={() => setView(aiInsight.taskView as any)}
+                  className="bg-white text-black px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-3 active:scale-95 shadow-xl"
+                >
+                  {aiInsight.task}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                </button>
+              )}
+            </div>
+            
+            {/* Visual indicator of "Active AI" */}
+            <div className="absolute bottom-0 left-0 h-1 bg-blue-500 w-full opacity-30"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex p-2 bg-white rounded-[30px] shadow-sm border border-gray-100 max-w-4xl overflow-x-auto">
         <button onClick={() => setActiveTab('ESTUDO')} className={`flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'ESTUDO' ? 'bg-blue-500 text-white shadow-xl shadow-blue-100' : 'text-gray-400 hover:bg-gray-50'}`}>
@@ -143,6 +212,53 @@ const Hub: React.FC<HubProps> = ({
 
             {(activeTab === 'ESTUDO' || (activeTab === 'EDITAL' && editalConfig.isActive)) && (
               <>
+                {activeTab === 'EDITAL' && editalConfig.isActive && (
+                  <div className="lg:col-span-3">
+                    <button 
+                      onClick={() => setView('EDITAL_VIEW')}
+                      className="w-full bg-[#0A0F1E] text-white p-8 rounded-[40px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-blue-900/10 border-2 border-blue-600/30"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-2xl font-black italic uppercase tracking-tighter">MEU EDITAL - VISUALIZAR E EDITAR</h3>
+                          <p className="text-blue-400 font-bold text-[10px] uppercase tracking-widest mt-1">Gerencie seu conteúdo programático e progresso verticalizado</p>
+                        </div>
+                      </div>
+                      <div className="bg-blue-600 text-white p-4 rounded-2xl group-hover:bg-white group-hover:text-blue-600 transition-all">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                      </div>
+                    </button>
+                  </div>
+                )}
+                
+                {editalConfig.isActive && (
+                  <div className="lg:col-span-3">
+                    <button 
+                      onClick={() => setView('STUDY_CYCLE')}
+                      className="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white p-8 rounded-[40px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-blue-200"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform backdrop-blur-md">
+                          <svg className="w-8 h-8 font-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        </div>
+                        <div className="text-left">
+                          <div className="flex items-center gap-2">
+                             <h3 className="text-2xl font-black italic uppercase tracking-tighter">MEU CICLO DE ESTUDO</h3>
+                             <span className="bg-white/20 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border border-white/10">INTERLIGADO</span>
+                          </div>
+                          <p className="text-blue-100 font-bold text-[10px] uppercase tracking-widest mt-1">Intercale matérias automaticamente com base nos pesos do seu edital</p>
+                        </div>
+                      </div>
+                      <div className="bg-white text-blue-600 p-4 rounded-2xl group-hover:bg-blue-800 group-hover:text-white transition-all shadow-lg">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
                 <button 
                   onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('FLASHCARDS'); }} 
                   className={`p-8 rounded-[40px] text-left transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-none' : 'bg-white border border-gray-100'}`}
@@ -168,19 +284,6 @@ const Hub: React.FC<HubProps> = ({
                        {activeTab === 'EDITAL' ? 'ABRIR PELO MAPA' : 'ENTRAR NA REVISÃO'}
                      </span>
                   </div>
-                </button>
-
-                <button 
-                  onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('FLASHCARDS'); }} 
-                  className={`p-8 rounded-[40px] text-left border border-dashed transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75 ${activeTab === 'EDITAL' ? 'bg-[#1E293B]/30 border-blue-900/50 text-white' : 'bg-blue-50/30 border-blue-100'}`}
-                >
-                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 ${activeTab === 'EDITAL' ? 'bg-blue-600/50 text-white' : 'bg-blue-100 text-blue-600'}`}>
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
-                   </div>
-                   <h2 className="text-2xl font-black mb-2 uppercase italic">CRIAR <span className="text-blue-500">card</span></h2>
-                   <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
-                     {activeTab === 'EDITAL' ? 'Lincar Assunto' : 'Manual / Autoral'}
-                   </p>
                 </button>
 
                 <button 

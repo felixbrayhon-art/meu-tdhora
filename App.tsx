@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { AppView, TimerMode, Flashcard, FlashcardFolder, UserStats, QuizFolder, Notebook, QuizAttempt, StudyPlan, DailyHistory, StudySubject, StudySession, Activity, QuizQuestion, StudyProfile, FocusSettings, EditalConfig, SmartRevisionSystem, SmartRevisionItem, ErrorVaultItem } from './types';
+import { AppView, TimerMode, Flashcard, FlashcardFolder, UserStats, QuizFolder, Notebook, QuizAttempt, StudyPlan, DailyHistory, StudySubject, StudySession, Activity, QuizQuestion, StudyProfile, FocusSettings, EditalConfig, SmartRevisionSystem, SmartRevisionItem, ErrorVaultItem, SocialState, StudyCycle, StudyCycleStep } from './types';
 import Header from './components/Header';
 import Hub from './components/Hub';
 import TimerView from './components/TimerView';
@@ -20,6 +20,8 @@ import DynamicTimer from './components/DynamicTimer';
 import EditalSetup from './components/EditalSetup';
 import EditalView from './components/EditalView';
 import SmartRevisionView from './components/SmartRevisionView';
+import SocialModule from './components/SocialModule';
+import StudyCycleView from './components/StudyCycleView';
 
 const LOFI_RELAX_URL = "https://stream.zeno.fm/0r0xa792kwzuv"; 
 const MPB_LOFI_URL = "https://stream.zeno.fm/f978v6v6h0huv";
@@ -123,6 +125,21 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : { queue: [], vault: [] };
   });
 
+  const [socialState, setSocialState] = useState<SocialState>(() => {
+    const saved = localStorage.getItem('focus_social_state');
+    return saved ? JSON.parse(saved) : {
+      myFriends: [],
+      pendingRequests: [],
+      chats: {},
+      myId: Math.random().toString(36).substr(2, 6).toUpperCase()
+    };
+  });
+
+  const [studyCycle, setStudyCycle] = useState<StudyCycle | null>(() => {
+    const saved = localStorage.getItem('focus_studycycle');
+    return saved ? JSON.parse(saved) : null;
+  });
+
   const [strategicMode, setStrategicMode] = useState(false);
 
   const [prefillAI, setPrefillAI] = useState<{topic: string, autoStart: boolean} | null>(null);
@@ -179,6 +196,14 @@ const App: React.FC = () => {
     localStorage.setItem('focus_smart_system', JSON.stringify(smartSystem));
   }, [smartSystem]);
 
+  useEffect(() => {
+    localStorage.setItem('focus_social_state', JSON.stringify(socialState));
+  }, [socialState]);
+
+  useEffect(() => {
+    localStorage.setItem('focus_studycycle', JSON.stringify(studyCycle));
+  }, [studyCycle]);
+
   // Due flashcards count
   const dueFlashcardsCount = useMemo(() => {
     const now = Date.now();
@@ -228,14 +253,41 @@ const App: React.FC = () => {
     setStats(prev => {
       const newXP = prev.xp + amount;
       const newLevel = Math.floor(newXP / 1000) + 1;
+      
+      if (newLevel > prev.level) {
+        handleManualPost(`Subiu para o nível ${newLevel}! O cardume está orgulhoso.`);
+      }
+      
       return { ...prev, xp: newXP, level: newLevel };
     });
+  };
+
+  const getSubjectForTopic = (topic: string): string | null => {
+    if (!editalConfig.isActive) return null;
+    const lowerTopic = topic.toLowerCase();
+    
+    // Check direct match
+    const subject = editalConfig.subjects.find(s => 
+      s.name.toLowerCase().includes(lowerTopic) || 
+      s.topics.some(t => t.toLowerCase().includes(lowerTopic) || lowerTopic.includes(t.toLowerCase()))
+    );
+    
+    return subject ? subject.name : null;
   };
 
   const logStudyMinutes = (minutes: number) => {
     const today = new Date().toISOString().split('T')[0];
     setHistory(prev => ({ ...prev, [today]: (prev[today] || 0) + minutes }));
     addXP(minutes * 2);
+
+    // Update Edital Heat if applicable
+    if (activeSubjectId) {
+      const subj = studyPlan.subjects.find(s => s.id === activeSubjectId);
+      if (subj) updateHeat(subj.name, minutes / 2); // 1 heat per 2 mins
+    } else if (prefillAI?.topic) {
+       const mappedSubject = getSubjectForTopic(prefillAI.topic);
+       if (mappedSubject) updateHeat(mappedSubject, minutes / 2);
+    }
     
     const newActivity: Activity = {
       id: Math.random().toString(36).substr(2, 9),
@@ -344,7 +396,7 @@ const App: React.FC = () => {
     });
   };
 
-  const logErrorToVault = (topic: string, subjectName: string) => {
+  const logErrorToVault = (topic: string, subjectName: string, missedQuestions?: QuizQuestion[]) => {
     setSmartSystem(prev => {
       const existing = prev.vault.find(v => v.topic === topic && !v.resolved);
       if (existing) {
@@ -354,7 +406,8 @@ const App: React.FC = () => {
             ...v, 
             errorCount: v.errorCount + 1, 
             lastErrorDate: Date.now(),
-            isStuck: v.errorCount + 1 >= 3 
+            isStuck: v.errorCount + 1 >= 3,
+            missedQuestions: missedQuestions || v.missedQuestions
           } : v)
         };
       } else {
@@ -365,7 +418,8 @@ const App: React.FC = () => {
           errorCount: 1,
           lastErrorDate: Date.now(),
           isStuck: false,
-          resolved: false
+          resolved: false,
+          missedQuestions
         };
         return { ...prev, vault: [...prev.vault, newItem] };
       }
@@ -374,11 +428,29 @@ const App: React.FC = () => {
     updateHeat(subjectName, -15);
   };
 
-  const resolveVault = (vaultId: string) => {
+  const resolveVault = (vaultId: string, recoveryFlashcards?: any[]) => {
     setSmartSystem(prev => ({
       ...prev,
       vault: prev.vault.map(v => v.id === vaultId ? { ...v, resolved: true } : v)
     }));
+    
+    // If recovery cards provided, add them to a "Resgate" folder or general
+    if (recoveryFlashcards && recoveryFlashcards.length > 0) {
+      const v = smartSystem.vault.find(v => v.id === vaultId);
+      const newFlashcards: Flashcard[] = recoveryFlashcards.map(rf => ({
+        id: Math.random().toString(36).substr(2, 9),
+        question: rf.question,
+        answer: rf.answer,
+        topic: v?.topic || 'Recuperação',
+        interval: 1,
+        easeFactor: 2.5,
+        reviewsCount: 0,
+        nextReview: Date.now() + 86400000 // Review tomorrow
+      }));
+      setFlashcards(prev => [...prev, ...newFlashcards]);
+      handleManualPost(`IA programou ${recoveryFlashcards.length} cards de resgate para "${v?.topic}"!`);
+    }
+
     // When resolved, add back to queue at Day 1
     const v = smartSystem.vault.find(v => v.id === vaultId);
     if (v) scheduleRevision(v.topic, v.subjectName);
@@ -435,6 +507,7 @@ const App: React.FC = () => {
         onProfileClick={() => setCurrentView('PROFILE')} 
         onLogoClick={() => setCurrentView('HUB')} 
         onRevisionClick={() => setCurrentView('SMART_REVISION')}
+        onSocialClick={() => setCurrentView('SOCIAL_MODULE')}
       />
 
       {showGlobalBar && (
@@ -512,7 +585,9 @@ const App: React.FC = () => {
             onSaveToNotebook={handleSaveToNotebook} 
             studyProfile={stats.studyProfile!} 
             onNewContent={(c) => {
-              setFlashcards(prev => [...prev, ...c.flashcards.map((f:any) => ({id: Math.random().toString(36).substr(2,9), ...f, nextReview: Date.now(), interval: 0, easeFactor: 2.5, reviewsCount: 0}))]);
+              const cards = c.flashcards.map((f:any) => ({id: Math.random().toString(36).substr(2,9), ...f, nextReview: Date.now(), interval: 0, easeFactor: 2.5, reviewsCount: 0}));
+              setFlashcards(prev => [...prev, ...cards]);
+              if (cards.length > 0) handleManualPost(`Gerou ${cards.length} flashcards sobre "${c.topic || 'seu tema'}"!`);
               if (strategicMode && c.topic) {
                 const [subject, theme] = c.topic.includes(':') ? c.topic.split(':').map((s:string) => s.trim()) : ['', c.topic];
                 scheduleRevision(theme, subject);
@@ -534,6 +609,12 @@ const App: React.FC = () => {
             studyProfile={stats.studyProfile!}
             strategicMode={strategicMode}
             editalConfig={editalConfig}
+            onReviewBatchComplete={(folderName, count) => {
+              addXP(count * 5);
+              handleManualPost(`Revisou ${count} flashcards de "${folderName}"!`);
+              const mappedSubject = getSubjectForTopic(folderName);
+              if (mappedSubject) updateHeat(mappedSubject, count);
+            }}
           />
         )}
         {currentView === 'TDH_QUESTOES' && (
@@ -546,8 +627,11 @@ const App: React.FC = () => {
             onConsumedPrefill={() => setPrefillQuiz(null)}
             strategicMode={strategicMode}
             editalConfig={editalConfig}
-            onBatchComplete={(topic, subject, total, correct) => {
-               if (correct < total) logErrorToVault(topic, subject);
+            onBatchComplete={(topic, subject, total, correct, questions) => {
+               if (correct < total) {
+                 const missed = questions?.filter(q => q.userAnswer !== q.correctAnswer);
+                 logErrorToVault(topic, subject, missed);
+               }
                if (strategicMode) scheduleRevision(topic, subject);
             }}
           />
@@ -564,7 +648,22 @@ const App: React.FC = () => {
             editalConfig={editalConfig}
           />
         )}
-        {currentView === 'QUIZ_PLAYER' && activeNotebookInfo && <QuizPlayer folder={folders.find(f => f.id === activeNotebookInfo.folderId)!} notebook={folders.find(f => f.id === activeNotebookInfo.folderId)!.notebooks.find(n => n.id === activeNotebookInfo.notebookId)!} onBack={() => setCurrentView('MATERIALS')} onComplete={(score, total) => { setAttempts(prev => [...prev, { folderId: activeNotebookInfo.folderId, notebookId: activeNotebookInfo.notebookId, date: Date.now(), score, total }]); addXP(score * 50); setCurrentView('MATERIALS'); }} />}
+        {currentView === 'QUIZ_PLAYER' && activeNotebookInfo && (
+           <QuizPlayer 
+             folder={folders.find(f => f.id === activeNotebookInfo.folderId)!} 
+             notebook={folders.find(f => f.id === activeNotebookInfo.folderId)!.notebooks.find(n => n.id === activeNotebookInfo.notebookId)!} 
+             onBack={() => setCurrentView('MATERIALS')} 
+             onComplete={(score, total) => { 
+                setAttempts(prev => [...prev, { folderId: activeNotebookInfo.folderId, notebookId: activeNotebookInfo.notebookId, date: Date.now(), score, total }]); 
+                addXP(score * 50); 
+                const notebookName = folders.find(f => f.id === activeNotebookInfo.folderId)!.notebooks.find(n => n.id === activeNotebookInfo.notebookId)!.name;
+                handleManualPost(`Acertou ${score}/${total} no quiz "${notebookName}"!`);
+                const mappedSubject = getSubjectForTopic(notebookName);
+                if (mappedSubject) updateHeat(mappedSubject, score * 5);
+                setCurrentView('MATERIALS'); 
+             }} 
+           />
+        )}
         {currentView === 'STUDY_PLAN' && (
           <StudyPlanView 
             onBack={() => setCurrentView('HUB')} 
@@ -580,6 +679,12 @@ const App: React.FC = () => {
             }} 
             editalConfig={editalConfig}
             studyProfile={stats.studyProfile!}
+            onTopicComplete={(topic, subject, isCompleted) => {
+              if (isCompleted) {
+                scheduleRevision(topic, subject);
+                handleManualPost(`Concluiu o tópico "${topic}" de ${subject} pelo Plano de Estudos!`);
+              }
+            }}
           />
         )}
         {currentView === 'FOCUS_MODE' && <FocusModeView settings={focusSettings} onUpdate={setFocusSettings} onBack={() => setCurrentView('HUB')} />}
@@ -606,6 +711,12 @@ const App: React.FC = () => {
             onUpdate={setEditalConfig} 
             onBack={() => setCurrentView('HUB')}
             onDisable={() => { setEditalConfig({ ...editalConfig, isActive: false }); setCurrentView('HUB'); }}
+            onTopicComplete={(topic, subject, isCompleted) => {
+              if (isCompleted) {
+                scheduleRevision(topic, subject);
+                handleManualPost(`Concluiu o tópico "${topic}" de ${subject}!`);
+              }
+            }}
             onSelectTopic={(subject, topic, type) => {
               const fullTopic = `${subject}: ${topic}`;
               if (type === 'LESSON') {
@@ -635,7 +746,35 @@ const App: React.FC = () => {
           />
         )}
 
-        {currentView === 'PROFILE' && <ProfileView stats={stats} onUpdate={setStats} onBack={() => setCurrentView('HUB')} />}
+        {currentView === 'STUDY_CYCLE' && (
+          <StudyCycleView 
+            onBack={() => setCurrentView('HUB')}
+            edital={editalConfig}
+            currentCycle={studyCycle}
+            onUpdateCycle={setStudyCycle}
+            onStartSession={(step) => {
+              setActiveSubjectId(step.subjectId);
+              setTimerMode(TimerMode.POMODORO);
+              setGlobalTimerSeconds(1500);
+              setGlobalTimerActive(true);
+              setShowGlobalBar(true);
+              setCurrentView('TIMER');
+            }}
+          />
+        )}
+
+        {currentView === 'SOCIAL_MODULE' && (
+          <SocialModule 
+            socialState={socialState}
+            onUpdateSocial={setSocialState}
+            myStats={stats}
+            editalConfig={editalConfig}
+            isStudyMode={globalTimerActive}
+            onBack={() => setCurrentView('HUB')}
+          />
+        )}
+
+        {currentView === 'PROFILE' && <ProfileView stats={stats} onUpdate={setStats} onBack={() => setCurrentView('HUB')} myId={socialState.myId} />}
         {currentView === 'COMMUNITY' && <CommunityView activities={activities} onBack={() => setCurrentView('HUB')} onPostManual={handleManualPost} />}
       </main>
 

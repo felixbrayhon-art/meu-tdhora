@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SmartRevisionItem, ErrorVaultItem, StudyProfile, StudyPlan } from '../types';
-import { generateMicroThemeValidation, explainStuckTopic } from '../services/geminiService';
+import { generateMicroThemeValidation, explainStuckTopic, identifyAndProgramRecovery } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
+import ForgettingCurve from './ForgettingCurve';
 
 interface SmartRevisionViewProps {
   items: SmartRevisionItem[];
@@ -11,7 +12,7 @@ interface SmartRevisionViewProps {
   profile: StudyProfile;
   plan: StudyPlan;
   onComplete: (itemId: string, success: boolean) => void;
-  onResolveVault: (vaultId: string) => void;
+  onResolveVault: (vaultId: string, recoveryFlashcards?: any[]) => void;
   onBack: () => void;
 }
 
@@ -32,7 +33,10 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [explanation, setExplanation] = useState<any>(null);
+  const [recoveryPlan, setRecoveryPlan] = useState<any>(null);
+  const [currentRecoveryFlashcards, setCurrentRecoveryFlashcards] = useState<any[]>([]);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<'LIST' | 'CALENDAR' | 'STRATEGY'>('LIST');
   const [viewDate, setViewDate] = useState(new Date());
 
   const startValidation = async (item: SmartRevisionItem) => {
@@ -56,9 +60,14 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
     setLoading(true);
     setActiveVault(vItem);
     try {
-      if (vItem.isStuck) {
-        const data = await explainStuckTopic(vItem.topic, profile);
-        setExplanation(data);
+      if (vItem.isStuck || (vItem.missedQuestions && vItem.missedQuestions.length > 0)) {
+        if (vItem.missedQuestions && vItem.missedQuestions.length > 0) {
+          const data = await identifyAndProgramRecovery(vItem.topic, vItem.missedQuestions, profile);
+          setRecoveryPlan(data);
+        } else {
+          const data = await explainStuckTopic(vItem.topic, profile);
+          setExplanation(data);
+        }
       } else {
         const data = await generateMicroThemeValidation(vItem.topic, profile);
         setQuestions(data.questions);
@@ -97,13 +106,15 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
     if (activeVault) {
       const success = score === questions.length;
       if (success) {
-        onResolveVault(activeVault.id);
+        onResolveVault(activeVault.id, currentRecoveryFlashcards);
       }
     }
     setActiveVault(null);
     setQuestions([]);
     setShowResult(false);
     setExplanation(null);
+    setRecoveryPlan(null);
+    setCurrentRecoveryFlashcards([]);
   };
 
   // Calendar Helpers
@@ -143,6 +154,88 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
   if (loading) return <LoadingFish message="A IA está preparando sua micro-validação de elite..." />;
 
   if (activeItem || activeVault) {
+    if (recoveryPlan) {
+      return (
+        <div className="max-w-4xl mx-auto py-10 px-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#0A0F1E] rounded-[40px] p-10 text-white shadow-2xl relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+               <svg className="w-32 h-32 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            
+            <div className="relative z-10">
+              <span className="bg-red-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest mb-6 inline-block italic">Dificuldade Identificada pela IA</span>
+              <h1 className="text-4xl font-black mb-2 uppercase italic leading-none">{activeVault?.topic}</h1>
+              <p className="text-gray-400 text-lg mb-10 font-medium tracking-tight">O sistema analisou seus erros e detectou um padrão.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div className="bg-white/5 border border-white/10 p-8 rounded-[35px]">
+                    <h3 className="text-red-400 font-bold uppercase text-[10px] tracking-widest mb-4">Diagnóstico de Falha</h3>
+                    <p className="text-xl font-medium leading-relaxed italic">"{recoveryPlan.diagnosis}"</p>
+                  </div>
+
+                  <div className="bg-blue-500/10 border border-blue-500/20 p-8 rounded-[35px]">
+                    <h3 className="text-blue-400 font-bold uppercase text-[10px] tracking-widest mb-4">Plano de Recuperação</h3>
+                    <ul className="space-y-3">
+                      {recoveryPlan.recoverySteps.map((step: string, i: number) => (
+                        <li key={i} className="flex gap-3 text-sm font-medium text-blue-100">
+                          <span className="text-blue-500 font-black">{i + 1}.</span>
+                          {step}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                   <div className="bg-[#1E293B] p-8 rounded-[35px] border border-white/5">
+                      <h3 className="text-yellow-400 font-bold uppercase text-[10px] tracking-widest mb-6">Programação de Contragolpe</h3>
+                      <div className="space-y-4">
+                         <div className="p-4 bg-white/5 rounded-2xl flex items-center justify-between">
+                            <span className="text-xs font-bold">Questões de Recuperação</span>
+                            <span className="bg-yellow-400 text-black text-[10px] font-black px-2 py-1 rounded-md">{recoveryPlan.recoveryQuestions.length}</span>
+                         </div>
+                         <div className="p-4 bg-white/5 rounded-2xl flex items-center justify-between">
+                            <span className="text-xs font-bold">Flashcards de Resgate</span>
+                            <span className="bg-blue-400 text-white text-[10px] font-black px-2 py-1 rounded-md">{recoveryPlan.recoveryFlashcards.length}</span>
+                         </div>
+                      </div>
+                   </div>
+                   
+                   <div className="flex flex-col gap-3">
+                      <button 
+                        onClick={() => {
+                          setQuestions(recoveryPlan.recoveryQuestions);
+                          setCurrentRecoveryFlashcards(recoveryPlan.recoveryFlashcards);
+                          setCurrentQIdx(0);
+                          setScore(0);
+                          setShowResult(false);
+                          setRecoveryPlan(null);
+                        }}
+                        className="w-full bg-red-500 text-white py-6 rounded-2xl font-black hover:bg-red-600 transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl shadow-red-500/20"
+                      >
+                         INICIAR SESSÃO DE RESGATE
+                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                      </button>
+                      <button 
+                         onClick={() => { setRecoveryPlan(null); setActiveVault(null); }}
+                         className="w-full bg-white/5 text-gray-400 py-4 rounded-2xl font-bold text-xs hover:bg-white/10 transition-colors"
+                      >
+                         REVISAR DEPOIS
+                      </button>
+                   </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      );
+    }
+
     if (explanation) {
       return (
         <div className="max-w-4xl mx-auto py-10 px-6">
@@ -286,22 +379,28 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
                 
                 <div className="flex bg-gray-100 p-1.5 rounded-[22px] shadow-inner">
                    <button 
-                     onClick={() => setShowCalendar(false)} 
-                     className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${!showCalendar ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                     onClick={() => setActiveSubTab('LIST')} 
+                     className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'LIST' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                    >
                      Lista
                    </button>
                    <button 
-                     onClick={() => setShowCalendar(true)} 
-                     className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${showCalendar ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                     onClick={() => setActiveSubTab('CALENDAR')} 
+                     className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'CALENDAR' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                    >
                      Calendário
+                   </button>
+                   <button 
+                     onClick={() => setActiveSubTab('STRATEGY')} 
+                     className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'STRATEGY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                   >
+                     Estratégia
                    </button>
                 </div>
              </header>
 
              <AnimatePresence mode="wait">
-               {!showCalendar ? (
+               {activeSubTab === 'LIST' ? (
                  <motion.section 
                     key="list"
                     initial={{ opacity: 0, y: 10 }}
@@ -341,7 +440,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
                       </div>
                     )}
                  </motion.section>
-               ) : (
+               ) : activeSubTab === 'CALENDAR' ? (
                  <motion.section 
                     key="calendar"
                     initial={{ opacity: 0, y: 10 }}
@@ -398,6 +497,10 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
                        ))}
                     </div>
                  </motion.section>
+               ) : (
+                 <motion.div key="strategy">
+                   <ForgettingCurve />
+                 </motion.div>
                )}
              </AnimatePresence>
           </div>

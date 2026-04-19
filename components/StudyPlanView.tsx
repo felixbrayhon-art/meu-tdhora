@@ -13,6 +13,7 @@ interface StudyPlanViewProps {
   onStartTimer: (subject: StudySubject) => void;
   editalConfig: EditalConfig;
   studyProfile: StudyProfile;
+  onTopicComplete?: (topic: string, subject: string, isCompleted: boolean) => void;
 }
 
 const StudyPlanView: React.FC<StudyPlanViewProps> = ({ 
@@ -22,7 +23,8 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({
   onUpdatePlan, 
   onStartTimer,
   editalConfig,
-  studyProfile
+  studyProfile,
+  onTopicComplete
 }) => {
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SETUP' | 'CRONOGRAMA'>('DASHBOARD');
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
@@ -155,6 +157,10 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({
     const newCompleted = completed.includes(topic)
       ? completed.filter(t => t !== topic)
       : [...completed, topic];
+    
+    if (onTopicComplete) {
+      onTopicComplete(topic, sub.name, !completed.includes(topic));
+    }
     
     onUpdatePlan({
       ...plan,

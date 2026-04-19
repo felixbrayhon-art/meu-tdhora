@@ -1,8 +1,14 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
-import { StudyProfile, EditalConfig, StudySubject, DaySchedule } from "../types";
+import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
+import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+// Utility to get current date/time context for AI
+const getTimeContext = () => {
+  const now = new Date();
+  return `Contexto Temporal Atual: hoje é ${now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. Horário: ${now.toLocaleTimeString('pt-BR')}.`;
+};
 
 export const generateStudyContent = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR') => {
   const profileContext = profile === 'CONCURSO' 
@@ -11,7 +17,8 @@ export const generateStudyContent = async (topic: string, technique: string, num
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Gere um DOSSIÊ COMPLETO de estudo sobre "${topic}". 
+    contents: `${getTimeContext()}
+    Gere um DOSSIÊ COMPLETO de estudo sobre "${topic}". Especialmente, gere exatamente ${numQuestions} questões no quiz.
     ${profileContext} 
     
     REQUISITOS DE CONTEÚDO:
@@ -36,7 +43,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
       "flashcards": [{"question": "string", "answer": "string"}]
     }`,
     config: {
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -74,6 +81,8 @@ export const generateStudyContent = async (topic: string, technique: string, num
           },
           quiz: {
             type: Type.ARRAY,
+            minItems: numQuestions,
+            maxItems: numQuestions,
             items: {
               type: Type.OBJECT,
               properties: {
@@ -102,24 +111,29 @@ export const generateStudyContent = async (topic: string, technique: string, num
   return JSON.parse(response.text);
 };
 
-export const generateExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR') => {
+export const generateExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string) => {
   const profileStyle = profile === 'CONCURSO'
     ? "estilo Concursos Públicos de alto nível (FCC/CESPE/FGV), complexas, baseadas em doutrina, jurisprudência e lei seca."
     : "estilo ENEM/FUVEST, baseadas em interpretação, contextualização e conceitos fundamentais.";
 
+  const bancaInstruction = banca ? ` A banca examinadora solicitada é a "${banca}". Siga rigorosamente o padrão de cobrança, a linguagem e os temas recorrentes dessa banca específica.` : "";
+
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Gere um simulado de questões ${profileStyle} sobre "${topic}". As questões devem ser de múltipla escolha (A a E). 
+    contents: `${getTimeContext()} 
+    Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E). 
     Não use emojis. Não use formatação de texto com asteriscos.
     Inclua obrigatoriamente um "commentary" detalhado explicando por que a alternativa correta é a certa e por que as outras estão erradas.`,
     config: {
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
           questions: {
             type: Type.ARRAY,
+            minItems: numQuestions,
+            maxItems: numQuestions,
             items: {
               type: Type.OBJECT,
               properties: {
@@ -151,7 +165,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
       { role: 'user', parts: [{ text: message }] }
     ],
     config: {
-      systemInstruction: `Você é o 'Peixe de Estudo' do app TDAH ORA. Sua missão é ser um companheiro de estudos amigável, incentivador e direto para estudantes com TDAH. ${profileTone} Regras: 1. Explique conceitos complexos de forma visual e simples (usando analogias). 2. Seja conciso; evite blocos gigantes de texto. 3. NÃO use emojis em hipótese alguma. 4. NÃO use asteriscos (*** ou **) para formatar o texto. 5. Se o usuário disser que esqueceu algo, explique em 3 pontos rápidos. 6. Ajude com revisões relâmpago. 7. Mantenha o tom de 'estamos juntos nessa'.`,
+      systemInstruction: `${getTimeContext()} Você é o 'Peixe de Estudo' do app TDAH ORA. Sua missão é ser um companheiro de estudos amigável, incentivador e direto para estudantes com TDAH. ${profileTone} Regras: 1. Explique conceitos complexos de forma visual e simples (usando analogias). 2. Seja conciso; evite blocos gigantes de texto. 3. NÃO use emojis em hipótese alguma. 4. NÃO use asteriscos (*** ou **) para formatar o texto. 5. Se o usuário disser que esqueceu algo, explique em 3 pontos rápidos. 6. Ajude com revisões relâmpago. 7. Mantenha o tom de 'estamos juntos nessa'.`,
       temperature: 0.7,
       topP: 0.95,
       topK: 64,
@@ -163,7 +177,8 @@ export const chatWithFish = async (message: string, history: { role: string, par
 export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VESTIBULAR') => {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Analise o seguinte texto de evocação ativa de um estudante (TDAH):
+    contents: `${getTimeContext()}
+    Analise o seguinte texto de evocação ativa de um estudante (TDAH):
     "${text}"
     
     TAREFAS:
@@ -174,7 +189,7 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
     
     Não use emojis. Use linguagem clara e direta.`,
     config: {
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -194,7 +209,8 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
 export const generateQuestionsFromAnalysis = async (analysis: any, profile: StudyProfile = 'VESTIBULAR') => {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Com base nesta análise de evocação de um estudante (TDAH):
+    contents: `${getTimeContext()}
+    Com base nesta análise de evocação de um estudante (TDAH):
     Pontos que lembrou: ${analysis.pointsIdentified.join(', ')}
     Erros cometidos: ${analysis.errorsFound.join(', ')}
     Pontos esquecidos: ${analysis.missedPoints.join(', ')}
@@ -208,7 +224,7 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
     
     Retorne no formato JSON rigoroso.`,
     config: {
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -232,7 +248,8 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
 export const extractTopicsFromEdital = async (subjectName: string, rawContent: string) => {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Extraia os tópicos e subtópicos estudáveis do seguinte conteúdo programático da disciplina "${subjectName}":
+    contents: `${getTimeContext()}
+    Extraia os tópicos e subtópicos estudáveis do seguinte conteúdo programático da disciplina "${subjectName}":
     
     "${rawContent}"
     
@@ -242,7 +259,7 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
     
     Retorne no formato JSON rigoroso.`,
     config: {
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -263,18 +280,19 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Gere uma VALIDAÇÃO DE MICRO-TEMA sobre "${topic}". 
+    contents: `${getTimeContext()}
+    Gere uma VALIDAÇÃO DE MICRO-TEMA sobre "${topic}". 
     ${profileStyle}
     
     REQUISITOS:
     - 3 Questões breves e inéditas.
-    - Foco na essência do conceito (micro-tema).
+    - Foco na essência do concept (micro-tema).
     - Múltipla escolha (A a D).
     - Linguagem direta para cérebro TDAH.
     
     Retorne em JSON:`,
     config: {
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -303,7 +321,8 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
 export const explainStuckTopic = async (topic: string, profile: StudyProfile = 'VESTIBULAR') => {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `O estudante está travado no tópico "${topic}" (errou 3 vezes). 
+    contents: `${getTimeContext()}
+    O estudante está travado no tópico "${topic}" (errou 3 vezes). 
     Perfil: ${profile}.
     
     TAREFA:
@@ -315,7 +334,7 @@ export const explainStuckTopic = async (topic: string, profile: StudyProfile = '
     
     Retorne em JSON:`,
     config: {
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -339,7 +358,8 @@ export const optimizeStudyPlan = async (
   const subjectsPrompt = edital.subjects.map(s => `- ${s.name} (ID: ${s.id}, Peso atual: ${currentSubjects.find(cs => cs.editalSubjectId === s.id)?.weight || 1})`).join('\n');
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Você é um estrategista de estudos para ${profile}.
+    contents: `${getTimeContext()}
+    Você é um estrategista de estudos para ${profile}.
     
     ENTRADA:
     - Data da Prova: ${edital.examDate}
@@ -403,6 +423,166 @@ export const optimizeStudyPlan = async (
           advice: { type: Type.STRING }
         },
         required: ["subjects", "proposedSchedule", "advice"]
+      }
+    }
+  });
+  return JSON.parse(response.text);
+};
+
+export const identifyAndProgramRecovery = async (topic: string, missedQuestions: QuizQuestion[], profile: StudyProfile = 'VESTIBULAR') => {
+  const questionsData = missedQuestions.map(q => ({
+    question: q.question,
+    userAnswer: q.options[q.userAnswer ?? -1] || 'Não respondida',
+    correctAnswer: q.options[q.correctAnswer],
+    commentary: q.commentary
+  }));
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `${getTimeContext()}
+    O estudante está com dificuldade severa no tópico "${topic}". 
+    Abaixo estão as questões que ele errou recentemente:
+    ${JSON.stringify(questionsData)}
+    
+    Perfil: ${profile}.
+    
+    TAREFA:
+    1. DIAGNÓSTICO: Identifique o padrão de erro (ex: confusão conceitual, falta de base, erro de interpretação).
+    2. PLANO DE RECUPERAÇÃO: Sugira 3 passos imediatos.
+    3. QUESTÕES DE CONTRAGOLPE: Gere 3 novas questões focadas EXATAMENTE nos pontos de falha identificados.
+    4. FLASHCARDS DE RESGATE: Gere 3 flashcards para memorizar o ponto exato do erro.
+    
+    Retorne em JSON rigoroso.`,
+    config: {
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          diagnosis: { type: Type.STRING },
+          recoverySteps: { type: Type.ARRAY, items: { type: Type.STRING } },
+          recoveryQuestions: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                question: { type: Type.STRING },
+                options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                correctAnswer: { type: Type.INTEGER },
+                commentary: { type: Type.STRING }
+              },
+              required: ["question", "options", "correctAnswer", "commentary"]
+            }
+          },
+          recoveryFlashcards: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                question: { type: Type.STRING },
+                answer: { type: Type.STRING }
+              },
+              required: ["question", "answer"]
+            }
+          }
+        },
+        required: ["diagnosis", "recoverySteps", "recoveryQuestions", "recoveryFlashcards"]
+      }
+    }
+  });
+  return JSON.parse(response.text);
+};
+
+export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profile: StudyProfile = 'VESTIBULAR') => {
+  const context = {
+    stats,
+    editalHeat: edital.subjects.map(s => ({ name: s.name, heat: s.heat || 0 })),
+    activeProfile: profile,
+    timestamp: new Date().toISOString()
+  };
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `${getTimeContext()}
+    Você é o Mentor Peixe, o guia TDAH do estudante.
+    Seja breve, encorajador e estratégico.
+    Dados do estudante: ${JSON.stringify(context)}
+    
+    TAREFA:
+    1. GREETING: Uma saudação curta baseada no horário atual.
+    2. INSIGHT: Um comentário sobre o progresso (ex: "Sua barra de matemática está esfriando!" ou "Você está voando hoje!").
+    3. TASK: Uma sugestão de 1 tarefa imediata.
+    
+    Retorne em JSON: { "greeting": string, "insight": string, "task": string, "taskView": string }
+    Opções de taskView: HUB, TIMER, FLASHCARDS, MATERIALS, TDH_QUESTOES, AI_DIRECT, SMART_REVISION.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          greeting: { type: Type.STRING },
+          insight: { type: Type.STRING },
+          task: { type: Type.STRING },
+          taskView: { type: Type.STRING }
+        },
+        required: ["greeting", "insight", "task", "taskView"]
+      }
+    }
+  });
+  return JSON.parse(response.text);
+};
+
+export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: number) => {
+  const context = {
+    subjects: edital.subjects.map(s => ({ 
+      id: s.id, 
+      name: s.name, 
+      heat: s.heat, 
+      topicsCount: s.topics.length 
+    })),
+    totalCycleHours
+  };
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `${getTimeContext()}
+    Você é um Engenheiro de Aprendizagem Especialista em Ciclos de Estudo para TDAH.
+    Sua tarefa é criar um CICLO DE ESTUDO OTIMIZADO baseado nos dados do edital abaixo.
+    
+    DADOS:
+    ${JSON.stringify(context)}
+    
+    DIRETRIZES TDAH:
+    1. Intercale matérias de naturezas diferentes (ex: Exatas -> Humanas).
+    2. Sessões devem ter entre 45 e 120 minutos.
+    3. Dê mais tempo para matérias com "heat" baixo (esfriando) ou muitos tópicos.
+    4. O ciclo deve ser uma lista sequencial de passos que o aluno seguirá repetidamente.
+    
+    Retorne em JSON:
+    {
+      "steps": [
+        { "subjectId": "string", "subjectName": "string", "durationMinutes": number }
+      ]
+    }`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          steps: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                subjectId: { type: Type.STRING },
+                subjectName: { type: Type.STRING },
+                durationMinutes: { type: Type.NUMBER }
+              },
+              required: ["subjectId", "subjectName", "durationMinutes"]
+            }
+          }
+        },
+        required: ["steps"]
       }
     }
   });

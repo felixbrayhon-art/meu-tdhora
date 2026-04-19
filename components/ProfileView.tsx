@@ -7,6 +7,7 @@ interface ProfileViewProps {
   stats: UserStats;
   onUpdate: (stats: UserStats) => void;
   onBack: () => void;
+  myId?: string;
 }
 
 const AVATAR_OPTIONS = [
@@ -17,7 +18,7 @@ const AVATAR_OPTIONS = [
   { color: '#0A0F1E', name: 'Peixe Dark' },
 ];
 
-const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, myId }) => {
   const [name, setName] = useState(stats.name);
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
@@ -47,7 +48,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack }) =>
               <FishLogo iconOnly primaryColor="white" className="scale-150" days={stats.totalDaysStudied} />
             </div>
             <h2 className="text-3xl font-black italic tracking-tighter uppercase">MEU PERFIL</h2>
-            <p className="text-blue-500 font-black text-sm uppercase mt-1">{currentRank.label}</p>
+            <div className="flex flex-col items-center gap-1 mt-1">
+              <p className="text-blue-500 font-black text-sm uppercase">{currentRank.label}</p>
+              {myId && (
+                <div className="bg-gray-100 px-4 py-1.5 rounded-full flex items-center gap-2 mt-2">
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Seu ID:</span>
+                  <span className="text-xs font-black text-[#0A0F1E] font-mono tracking-wider select-all">{myId}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="space-y-10">
