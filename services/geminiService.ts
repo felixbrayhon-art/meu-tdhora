@@ -2,7 +2,11 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ 
+  // Fallback para suportar tanto o ambiente de desenvolvimento "injecao" do AI Studio 
+  // quanto a variável customizada da Vercel
+  apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY 
+});
 
 // Utility to get current date/time context for AI
 const getTimeContext = () => {
