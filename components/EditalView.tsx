@@ -43,6 +43,7 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
       onUpdate({ ...config, subjects: updatedSubjects });
     } catch (error) {
       console.error("Erro ao extrair tópicos:", error);
+      alert("Houve um erro ao extrair os tópicos do edital usando IA. Verifique sua conexão e chave de API. Você também pode adicionar os tópicos manualmente no card da matéria.");
     } finally {
       setIsExtracting(false);
     }

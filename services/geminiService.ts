@@ -2,11 +2,23 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion } from "../types";
 
+const getApiKey = () => {
+  // @ts-ignore - process might not exist in browser, Vite handles this
+  const key = import.meta.env.VITE_GEMINI_API_KEY || 
+              import.meta.env.GEMINI_API_KEY || 
+              (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined);
+              
+  if (!key || key === 'undefined') {
+    console.warn("Gemini API Key não encontrada. Certifique-se de configurar VITE_GEMINI_API_KEY no seu ambiente (Vercel/Local).");
+  }
+  return key || '';
+};
+
 const ai = new GoogleGenAI({ 
-  // Fallback para suportar tanto o ambiente de desenvolvimento "injecao" do AI Studio 
-  // quanto a variável customizada da Vercel
-  apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY 
+  apiKey: getApiKey()
 });
+
+const DEFAULT_MODEL = 'gemini-3.1-flash-lite-preview';
 
 // Utility to get current date/time context for AI
 const getTimeContext = () => {
@@ -20,7 +32,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
     : "Foco em ENEM e grandes vestibulares. Relacione com atualidades, use linguagem didática e interdisciplinar.";
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()}
     Gere um DOSSIÊ COMPLETO de estudo sobre "${topic}". Especialmente, gere exatamente ${numQuestions} questões no quiz.
     ${profileContext} 
@@ -122,7 +134,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
   const bancaInstruction = banca ? ` A banca examinadora solicitada é a "${banca}". Siga rigorosamente o padrão de cobrança, a linguagem e os temas recorrentes dessa banca específica.` : "";
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()} 
     Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E). 
     Não use emojis. Não use formatação de texto com asteriscos.
@@ -161,7 +173,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
     : "O usuário está estudando para vestibulares/ENEM. Use referências a universidade e futuro acadêmico quando apropriado.";
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-2.0-flash', // Using 2.0 specifically for chat as it's better at it
     contents: [
       ...history,
       { role: 'user', parts: [{ text: message }] }
@@ -178,7 +190,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
 
 export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VESTIBULAR') => {
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()}
     Analise o seguinte texto de evocação ativa de um estudante (TDAH):
     "${text}"
@@ -209,7 +221,7 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
 
 export const generateQuestionsFromAnalysis = async (analysis: any, profile: StudyProfile = 'VESTIBULAR') => {
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()}
     Com base nesta análise de evocação de um estudante (TDAH):
     Pontos que lembrou: ${analysis.pointsIdentified.join(', ')}
@@ -247,15 +259,19 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
 
 export const extractTopicsFromEdital = async (subjectName: string, rawContent: string) => {
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()}
-    Extraia os tópicos e subtópicos estudáveis do seguinte conteúdo programático da disciplina "${subjectName}":
+    Sua missão é atuar como um Extrator de Conteúdo Programático Inteligente. 
+    Analise o texto bruto do edital para a disciplina "${subjectName}" abaixo e extraia apenas os tópicos que o aluno realmente precisa estudar.
     
+    TEXTO DO EDITAL:
     "${rawContent}"
     
-    TAREFA:
-    Organize em uma lista de strings curta e direta (máximo 15 tópicos).
-    Remova formalidades e burocracias do edital. Mantenha apenas os temas de estudo.
+    DIRETRIZES:
+    1. Ignore datas, locais, nomes de fiscais, regras de inscrição ou burocracias. 
+    2. Liste apenas temas didáticos (ex: 'Equações de 2º Grau', 'Direito Administrativo', etc).
+    3. Seja conciso: máximo 15 tópicos.
+    4. Se o texto for confuso, tente identificar os nomes das matérias principais.
     
     Retorne no formato JSON rigoroso.`,
     config: {
@@ -278,7 +294,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
     : "Foco em conceitos fundamentais do ENEM/Vestibular.";
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()}
     Gere uma VALIDAÇÃO DE MICRO-TEMA sobre "${topic}". 
     ${profileStyle}
@@ -318,7 +334,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
 
 export const explainStuckTopic = async (topic: string, profile: StudyProfile = 'VESTIBULAR') => {
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()}
     O estudante está travado no tópico "${topic}" (errou 3 vezes). 
     Perfil: ${profile}.
@@ -354,7 +370,7 @@ export const optimizeStudyPlan = async (
 ) => {
   const subjectsPrompt = edital.subjects.map(s => `- ${s.name} (ID: ${s.id}, Peso atual: ${currentSubjects.find(cs => cs.editalSubjectId === s.id)?.weight || 1})`).join('\n');
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()}
     Você é um estrategista de estudos para ${profile}.
     
@@ -435,7 +451,7 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
   }));
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()}
     O estudante está com dificuldade severa no tópico "${topic}". 
     Abaixo estão as questões que ele errou recentemente:
@@ -498,7 +514,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
   };
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()}
     Você é o Mentor Peixe, o guia TDAH do estudante.
     Seja breve, encorajador e estratégico.
@@ -540,7 +556,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
   };
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: DEFAULT_MODEL,
     contents: `${getTimeContext()}
     Você é um Engenheiro de Aprendizagem Especialista em Ciclos de Estudo para TDAH.
     Sua tarefa é criar um CICLO DE ESTUDO OTIMIZADO baseado nos dados do edital abaixo.
