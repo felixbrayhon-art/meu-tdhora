@@ -9,11 +9,13 @@ interface MaterialsManagerProps {
   onPlayQuiz: (folderId: string, notebookId: string) => void;
   onCreateFolder: (name: string) => void;
   onCreateNotebook: (folderId: string, name: string) => void;
+  onDeleteFolder?: (folderId: string) => void;
+  onDeleteNotebook?: (folderId: string, notebookId: string) => void;
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
 }
 
-const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, onBack, onPlayQuiz, onCreateFolder, onCreateNotebook, strategicMode, editalConfig }) => {
+const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, onBack, onPlayQuiz, onCreateFolder, onCreateNotebook, onDeleteFolder, onDeleteNotebook, strategicMode, editalConfig }) => {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState<'FOLDER' | 'NOTEBOOK' | null>(null);
@@ -186,7 +188,21 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                     <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                  </div>
                  
-                 <div className="flex justify-between items-start mb-8">
+                 {onDeleteNotebook && (
+                   <button 
+                     onClick={(e) => { 
+                       e.stopPropagation(); 
+                       e.preventDefault();
+                       onDeleteNotebook(selectedFolderId, notebook.id); 
+                     }}
+                     className="absolute top-6 right-6 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
+                     title="Excluir Caderno"
+                   >
+                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                   </button>
+                 )}
+                 
+                 <div className="flex justify-between items-start mb-8 z-10 relative">
                    <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                    </div>
@@ -241,7 +257,21 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                    <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                 </div>
                 
-                <div className="flex justify-between items-start mb-8">
+                {onDeleteFolder && (
+                   <button 
+                     onClick={(e) => { 
+                       e.stopPropagation(); 
+                       e.preventDefault();
+                       onDeleteFolder(folder.id); 
+                     }}
+                     className="absolute top-6 right-6 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
+                     title="Excluir Pasta"
+                   >
+                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                   </button>
+                )}
+                
+                <div className="flex justify-between items-start mb-8 z-10 relative">
                   <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                   </div>

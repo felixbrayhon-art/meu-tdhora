@@ -90,6 +90,7 @@ export interface QuizQuestion {
   correctAnswer: number;
   userAnswer?: number;
   commentary?: string;
+  memoryHint?: string;
 }
 
 export interface Notebook {

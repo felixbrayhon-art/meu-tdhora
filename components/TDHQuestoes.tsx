@@ -1,9 +1,11 @@
 
 import React, { useState } from 'react';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText } from 'lucide-react';
 import { generateExamQuestions } from '../services/geminiService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig } from '../types';
 import LoadingFish from './LoadingFish';
 import SaveToFolderModal from './SaveToFolderModal';
+import ReactMarkdown from 'react-markdown';
 
 interface TDHQuestoesProps {
   onBack: () => void;
@@ -41,6 +43,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const [numQuestions, setNumQuestions] = useState(10);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
+  const [crossedOut, setCrossedOut] = useState<number[]>([]);
 
   React.useEffect(() => {
     if (prefill) {
@@ -67,9 +70,12 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
         id: Math.random().toString(36).substr(2, 9)
       }));
       setQuestions(formatted);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Erro ao gerar simulado. Tente novamente.");
+      const errorMessage = error.message?.includes('status')
+        ? "Erro ao ativar IA: Quota excedida ou erro de conexão."
+        : "Erro ao gerar simulado. Tente novamente ou mude o tema.";
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -78,10 +84,30 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const handleAnswerSelection = (idx: number) => {
     setSelectedOpt(idx);
     setUserAnswers(prev => ({ ...prev, [currentIdx]: idx }));
-    
-    // If it's the last question, we can potentially trigger onBatchComplete
-    // but usually users wait until they see all answers. 
-    // Let's trigger it when they return or finish.
+  };
+
+  const handleDoubleClick = (idx: number) => {
+    if (selectedOpt !== null) return;
+    setCrossedOut(prev => 
+      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+    );
+  };
+
+  const handleDeleteQuestion = () => {
+    if (confirm("Tem certeza que deseja excluir esta questão? Ela será removida apenas desta sessão.")) {
+      const newQuestions = questions.filter((_, idx) => idx !== currentIdx);
+      if (newQuestions.length === 0) {
+        setQuestions([]);
+        return;
+      }
+      setQuestions(newQuestions);
+      if (currentIdx >= newQuestions.length) {
+        setCurrentIdx(newQuestions.length - 1);
+      }
+      setSelectedOpt(null);
+      setShowCommentary(false);
+      setCrossedOut([]);
+    }
   };
 
   const handleFinish = () => {
@@ -109,7 +135,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   }
 
   return (
-    <div className="animate-in fade-in duration-500 max-w-5xl mx-auto">
+    <div className="animate-in fade-in duration-500 w-full max-w-6xl mx-auto">
       {!questions.length ? (
         <div className="py-20">
           <button onClick={onBack} className="mb-10 text-gray-400 font-bold uppercase text-xs tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors">
@@ -230,38 +256,111 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
           </div>
 
           <div className="bg-white rounded-[45px] p-10 md:p-14 shadow-xl border border-gray-100">
-            <div className="mb-10 text-xl font-bold text-[#1E293B] leading-relaxed">
-              {currentQ.question}
+            <div className="flex justify-between items-start mb-10">
+              <h3 className="text-2xl font-black text-[#1E293B] leading-relaxed flex-1">
+                {currentQ.question}
+              </h3>
+              <button 
+                onClick={handleDeleteQuestion}
+                className="ml-4 p-2 text-gray-300 hover:text-red-500 transition-colors"
+                title="Excluir questão"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 mb-10">
-              {currentQ.options.map((opt, idx) => {
-                const isCorrect = idx === currentQ.correctAnswer;
-                const isSelected = selectedOpt === idx;
-                
-                let btnClass = "border-2 border-gray-50 bg-gray-50/30 hover:bg-white hover:border-orange-200 text-gray-700";
-                
-                if (selectedOpt !== null) {
-                  if (isCorrect) btnClass = "border-green-500 bg-green-50 text-green-700 ring-4 ring-green-100";
-                  else if (isSelected) btnClass = "border-red-500 bg-red-50 text-red-700 ring-4 ring-red-100";
-                  else btnClass = "opacity-40 border-gray-100 text-gray-400";
-                }
+            {selectedOpt === null ? (
+              <div className="grid grid-cols-1 gap-4 mb-10">
+                {currentQ.options.map((opt, idx) => {
+                  const isCorrect = idx === currentQ.correctAnswer;
+                  const isSelected = selectedOpt === idx;
+                  const isCrossedOut = crossedOut.includes(idx);
+                  
+                  let btnClass = "border-2 border-gray-50 bg-gray-50/30 hover:bg-white hover:border-orange-200 text-gray-700";
+                  
+                  if (isCrossedOut && selectedOpt === null) {
+                    btnClass = "border-2 border-gray-100 text-gray-300 bg-gray-50/20 line-through opacity-50";
+                  }
 
-                return (
-                  <button 
-                    key={idx}
-                    onClick={() => handleAnswerSelection(idx)}
-                    disabled={selectedOpt !== null}
-                    className={`w-full text-left p-6 rounded-[25px] font-bold text-base transition-all flex items-center gap-4 ${btnClass}`}
-                  >
-                    <span className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-black flex-shrink-0 ${selectedOpt !== null && isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-gray-200'}`}>
-                      {String.fromCharCode(65 + idx)}
-                    </span>
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
+                  if (selectedOpt !== null) {
+                    if (isCorrect) btnClass = "border-green-500 bg-green-50 text-green-700 ring-4 ring-green-100";
+                    else if (isSelected) btnClass = "border-red-500 bg-red-50 text-red-700 ring-4 ring-red-100";
+                    else btnClass = "opacity-40 border-gray-100 text-gray-400";
+                  }
+
+                  return (
+                    <div 
+                      key={idx}
+                      onClick={() => handleAnswerSelection(idx)}
+                      onDoubleClick={() => handleDoubleClick(idx)}
+                      className={`w-full text-left p-8 rounded-[30px] font-bold text-lg transition-all flex items-center gap-4 select-none cursor-pointer ${btnClass}`}
+                      role="button"
+                      aria-disabled={selectedOpt !== null}
+                      tabIndex={0}
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        <span className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-black flex-shrink-0 ${selectedOpt !== null && isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-gray-200'}`}>
+                          {String.fromCharCode(65 + idx)}
+                        </span>
+                        {opt}
+                      </div>
+
+                      {selectedOpt === null && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDoubleClick(idx);
+                          }}
+                          className={`p-2 rounded-full transition-colors ${isCrossedOut ? 'bg-orange-100 text-orange-600' : 'hover:bg-gray-200 text-gray-400'}`}
+                          title="Recortar alternativa"
+                        >
+                          <Scissors className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="animate-in fade-in zoom-in-95 duration-500 mb-10">
+                <div className={`p-6 rounded-[30px] mb-6 ${selectedOpt === currentQ.correctAnswer ? 'bg-green-50 border-2 border-green-100' : 'bg-red-50 border-2 border-red-100'}`}>
+                  <p className={`text-sm font-black uppercase tracking-widest mb-1 ${selectedOpt === currentQ.correctAnswer ? 'text-green-600' : 'text-red-600'}`}>
+                    {selectedOpt === currentQ.correctAnswer ? '✓ Resposta Correta' : '✗ Quase lá!'}
+                  </p>
+                  <p className="text-gray-600 font-bold">
+                    Gabarito: <span className="text-gray-900">{currentQ.options[currentQ.correctAnswer]}</span>
+                  </p>
+                </div>
+
+                <div className="bg-orange-50/30 rounded-[35px] p-8 border-2 border-orange-100/50 leading-relaxed transition-all hover:shadow-lg hover:shadow-orange-100/20">
+                  <div className="flex items-center gap-2 mb-4 text-orange-600">
+                    <HelpCircle className="w-5 h-5" />
+                    <span className="font-black text-sm uppercase tracking-tighter">Comentário Didático</span>
+                  </div>
+                  <div className="text-gray-700 text-lg md:text-xl font-medium space-y-4 mb-6 markdown-body prose prose-slate prose-lg max-w-none">
+                    <ReactMarkdown>{currentQ.commentary}</ReactMarkdown>
+                  </div>
+
+                  {currentQ.memoryHint && (
+                    <div className="bg-white p-6 rounded-3xl border-2 border-orange-200/50 shadow-sm animate-in slide-in-from-top-2">
+                       <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                         <span className="text-sm">🧠</span> DICA DE MEMORIZAÇÃO
+                       </p>
+                       <div className="text-base md:text-lg font-bold text-gray-800 italic markdown-body prose prose-orange prose-lg max-w-none">
+                         <ReactMarkdown>{currentQ.memoryHint}</ReactMarkdown>
+                       </div>
+                    </div>
+                  )}
+                </div>
+
+                <button 
+                  onClick={() => setSelectedOpt(null)}
+                  className="mt-6 text-gray-400 hover:text-orange-600 font-black text-xs uppercase tracking-widest transition-colors flex items-center gap-2"
+                >
+                  ← REVER ALTERNATIVAS
+                </button>
+              </div>
+            )}
 
             {selectedOpt !== null && (
               <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-4">
@@ -274,12 +373,12 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                 </button>
 
                 {showCommentary && (
-                  <div className="bg-[#F8FAFC] border border-blue-100 rounded-[30px] p-8 text-sm leading-relaxed text-gray-600 animate-in zoom-in-95 duration-300">
+                  <div className="bg-[#F8FAFC] border border-blue-100 rounded-[30px] p-8 md:p-12 text-base md:text-lg leading-relaxed text-gray-600 animate-in zoom-in-95 duration-300 markdown-body prose prose-blue prose-lg max-w-none">
                     <div className="flex items-center gap-2 text-blue-600 font-black mb-4 uppercase tracking-widest text-[10px]">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm-1-11V7h2v4h-2zm0 6v-4h2v4h-2z" /></svg>
                       EXPLICAÇÃO DA IA
                     </div>
-                    {currentQ.commentary}
+                    <ReactMarkdown>{currentQ.commentary}</ReactMarkdown>
                   </div>
                 )}
               </div>
@@ -288,7 +387,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
 
           <div className="flex justify-between items-center">
             <button 
-              onClick={() => { if(currentIdx > 0) { setCurrentIdx(currentIdx - 1); setSelectedOpt(null); setShowCommentary(false); } }}
+              onClick={() => { if(currentIdx > 0) { setCurrentIdx(currentIdx - 1); setSelectedOpt(userAnswers[currentIdx - 1] ?? null); setShowCommentary(false); setCrossedOut([]); } }}
               disabled={currentIdx === 0}
               className="px-8 py-4 bg-white border border-gray-100 rounded-2xl font-bold text-gray-400 hover:text-[#0A0F1E] disabled:opacity-30 transition-all flex items-center gap-2"
             >
@@ -296,7 +395,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
               ANTERIOR
             </button>
             <button 
-              onClick={() => { if(currentIdx < questions.length - 1) { setCurrentIdx(currentIdx + 1); setSelectedOpt(null); setShowCommentary(false); } }}
+              onClick={() => { if(currentIdx < questions.length - 1) { setCurrentIdx(currentIdx + 1); setSelectedOpt(userAnswers[currentIdx + 1] ?? null); setShowCommentary(false); setCrossedOut([]); } }}
               disabled={currentIdx === questions.length - 1}
               className="px-8 py-4 bg-white border border-gray-100 rounded-2xl font-bold text-gray-400 hover:text-[#0A0F1E] disabled:opacity-30 transition-all flex items-center gap-2"
             >

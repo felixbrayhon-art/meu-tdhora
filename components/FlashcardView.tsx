@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Flashcard, FlashcardFolder, StudyProfile, EditalConfig } from '../types';
 import { generateStudyContent } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
+import ReactMarkdown from 'react-markdown';
 
 interface FlashcardViewProps {
   flashcards: Flashcard[];
@@ -118,9 +119,12 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
       setShowAIModal(false);
       setAiTopic('');
       alert(`${newFlashcards.length} flashcards gerados com sucesso!`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Erro ao gerar cards com IA.");
+      const errorMessage = error.message?.includes('status') 
+        ? "Erro ao ativar IA: Limite de cota excedido ou problema no servidor." 
+        : "Erro ao gerar cards com IA. Verifique sua conexão ou tente um tema diferente.";
+      alert(errorMessage);
     } finally {
       setIsGeneratingAI(false);
     }
@@ -248,8 +252,21 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                  <button 
                   key={folder.id}
                   onClick={() => { setSelectedFolderId(folder.id); setViewMode('FOLDER_DETAIL'); }}
-                  className="bg-white p-8 rounded-[40px] text-left border border-gray-100 hover:shadow-xl transition-all hover:scale-[1.02] relative group"
+                  className="bg-white p-8 rounded-[40px] text-left border border-gray-100 hover:shadow-xl transition-all hover:scale-[1.02] relative group z-0"
                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setFolders(prev => prev.filter(f => f.id !== folder.id));
+                        setFlashcards(prev => prev.filter(c => c.folderId !== folder.id));
+                      }}
+                      className="absolute top-6 right-6 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
+                      title="Excluir Pasta"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                    
                     <div className="w-12 h-12 rounded-2xl mb-6 flex items-center justify-center shadow-sm" style={{ backgroundColor: folder.color + '15', color: folder.color }}>
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                     </div>
@@ -259,8 +276,8 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                     </p>
                     
                     {getFolderDueCount(folder.id) > 0 && (
-                      <div className="absolute top-8 right-8 bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full animate-bounce">
-                        {getFolderDueCount(folder.id)}
+                      <div className="absolute top-8 right-16 bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full animate-pulse z-10">
+                        {getFolderDueCount(folder.id)} REVISAR
                       </div>
                     )}
                  </button>
@@ -414,9 +431,11 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                     </div>
 
                     <p className="text-xs font-black text-blue-400/50 uppercase tracking-widest mb-4">{flashcards.find(f => f.id === reviewQueue[currentReviewIndex])?.topic}</p>
-                    <h2 className="text-3xl font-bold leading-tight px-4 break-words w-full">
-                      {showAnswer ? flashcards.find(f => f.id === reviewQueue[currentReviewIndex])?.answer : flashcards.find(f => f.id === reviewQueue[currentReviewIndex])?.question}
-                    </h2>
+                    <div className="text-3xl font-bold leading-tight px-4 break-words w-full markdown-body prose prose-slate">
+                      <ReactMarkdown>
+                        {showAnswer ? flashcards.find(f => f.id === reviewQueue[currentReviewIndex])?.answer || '' : flashcards.find(f => f.id === reviewQueue[currentReviewIndex])?.question || ''}
+                      </ReactMarkdown>
+                    </div>
                     
                     <div className="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-30">
                       <p className="text-[10px] uppercase font-black tracking-widest">Tocar para virar</p>

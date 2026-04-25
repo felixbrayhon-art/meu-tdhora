@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { generateStudyContent } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
 import SaveToFolderModal from './SaveToFolderModal';
@@ -228,10 +229,10 @@ const AIView: React.FC<AIViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="prose prose-slate max-w-none">
-                  <p className="text-[#1E293B] text-2xl leading-relaxed font-medium mb-12 whitespace-pre-wrap">
-                    {result.executiveSummary}
-                  </p>
+                <div className="prose prose-slate prose-xl max-w-none markdown-body">
+                  <div className="text-[#1E293B] text-2xl leading-relaxed font-medium mb-12">
+                    <ReactMarkdown>{result.executiveSummary}</ReactMarkdown>
+                  </div>
                 </div>
 
                 <div className="mt-16 p-10 bg-gray-50 rounded-[40px] border border-gray-100">
@@ -239,9 +240,9 @@ const AIView: React.FC<AIViewProps> = ({
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     Mergulho Profundo: O Ponto de Elite
                   </h4>
-                  <p className="text-gray-600 text-lg leading-relaxed font-medium">
-                    {result.deepDive}
-                  </p>
+                  <div className="text-gray-600 text-lg md:text-xl leading-relaxed font-medium markdown-body prose prose-blue prose-lg max-w-none">
+                    <ReactMarkdown>{result.deepDive}</ReactMarkdown>
+                  </div>
                 </div>
               </div>
 
@@ -253,9 +254,11 @@ const AIView: React.FC<AIViewProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-16 relative">
                     <div className="space-y-6 text-center md:text-left">
                       <h4 className="text-2xl font-black text-[#EA580C] uppercase italic tracking-tighter">{result.comparison.leftConcept}</h4>
-                      <p className="text-base text-gray-700 font-medium">{result.comparison.leftData?.desc}</p>
+                      <div className="text-base md:text-lg text-gray-700 font-medium markdown-body prose prose-lg max-w-none">
+                        <ReactMarkdown>{result.comparison.leftData?.desc || ''}</ReactMarkdown>
+                      </div>
                       {result.comparison.leftData?.example && (
-                        <div className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl text-xs italic text-gray-400 border border-yellow-50 shadow-sm">
+                        <div className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl text-sm italic text-gray-400 border border-yellow-50 shadow-sm">
                           <span className="font-black text-orange-500 block mb-1 uppercase">EXEMPLO PRÁTICO:</span>
                           {result.comparison.leftData.example}
                         </div>
@@ -263,9 +266,11 @@ const AIView: React.FC<AIViewProps> = ({
                     </div>
                     <div className="space-y-6 text-center md:text-right">
                       <h4 className="text-2xl font-black text-black uppercase italic tracking-tighter">{result.comparison.rightConcept}</h4>
-                      <p className="text-base text-gray-700 font-medium">{result.comparison.rightData?.desc}</p>
+                      <div className="text-base md:text-lg text-gray-700 font-medium markdown-body prose prose-lg max-w-none">
+                        <ReactMarkdown>{result.comparison.rightData?.desc || ''}</ReactMarkdown>
+                      </div>
                       {result.comparison.rightData?.example && (
-                        <div className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl text-xs italic text-gray-400 border border-yellow-50 shadow-sm">
+                        <div className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl text-sm italic text-gray-400 border border-yellow-50 shadow-sm">
                           <span className="font-black text-black block mb-1 uppercase">EXEMPLO PRÁTICO:</span>
                           {result.comparison.rightData.example}
                         </div>

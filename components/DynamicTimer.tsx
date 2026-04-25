@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Scissors } from 'lucide-react';
 import { analyzeEvocation, generateQuestionsFromAnalysis } from '../services/geminiService';
 import { StudyProfile, QuizQuestion, EditalConfig } from '../types';
 import LoadingFish from './LoadingFish';
@@ -42,6 +43,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [crossedOut, setCrossedOut] = useState<number[]>([]);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -333,100 +335,163 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
                   {practiceQuestions.length > 0 && currentQuestionIndex < practiceQuestions.length ? (
-                    <div className="bg-white rounded-[40px] p-10 shadow-xl border border-blue-50 relative overflow-hidden">
-                       <div className="absolute top-0 left-0 w-full h-1 bg-gray-100">
+                    <div className="bg-white rounded-[40px] p-10 shadow-xl border border-blue-50 relative overflow-hidden text-left">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gray-100">
                           <div 
                             className="h-full bg-blue-500 transition-all duration-500" 
                             style={{ width: `${((currentQuestionIndex + 1) / practiceQuestions.length) * 100}%` }}
                           />
-                       </div>
-                       
-                       <div className="mb-8 flex justify-between items-center text-left">
+                        </div>
+                        
+                        <div className="mb-8 flex justify-between items-center">
                           <span className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full font-black text-[10px] tracking-widest uppercase">
                             Questão {currentQuestionIndex + 1} de {practiceQuestions.length}
                           </span>
-                       </div>
+                        </div>
 
-                       <h3 className="text-xl font-bold text-gray-800 leading-relaxed mb-10 text-left">
+                        <h3 className="text-xl font-bold text-gray-800 leading-relaxed mb-10">
                           {practiceQuestions[currentQuestionIndex].question}
-                       </h3>
+                        </h3>
 
-                       <div className="space-y-3">
-                          {practiceQuestions[currentQuestionIndex].options.map((option, idx) => (
-                            <button
-                              key={idx}
-                              disabled={isAnswerRevealed}
-                              onClick={() => setSelectedOption(idx)}
-                              className={`w-full text-left p-5 rounded-2xl font-bold transition-all border-2 flex items-center gap-4 ${
-                                selectedOption === idx 
-                                  ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                                  : 'border-gray-50 bg-gray-50/50 hover:border-blue-200'
-                              } ${
-                                isAnswerRevealed && idx === practiceQuestions[currentQuestionIndex].correctAnswer 
-                                  ? 'border-green-500 bg-green-50 text-green-700' 
-                                  : ''
-                              } ${
-                                isAnswerRevealed && selectedOption === idx && idx !== practiceQuestions[currentQuestionIndex].correctAnswer 
-                                  ? 'border-red-500 bg-red-50 text-red-700' 
-                                  : ''
-                              }`}
-                            >
-                              <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black ${
-                                selectedOption === idx ? 'bg-blue-500 text-white' : 'bg-white text-gray-400'
-                              }`}>
-                                {String.fromCharCode(65 + idx)}
-                              </span>
-                              {option}
-                            </button>
-                          ))}
-                       </div>
+                        {!isAnswerRevealed ? (
+                          <div className="space-y-3">
+                            {practiceQuestions[currentQuestionIndex].options.map((option, idx) => (
+                              <div
+                                key={idx}
+                                onClick={() => {
+                                  if (!isAnswerRevealed) {
+                                    setSelectedOption(idx);
+                                  }
+                                }}
+                                onDoubleClick={() => {
+                                  if (!isAnswerRevealed) {
+                                                                      setCrossedOut(prev => 
+                                                                        prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+                                                                      );
+                                                                    }
+                                }}
+                                className={`w-full text-left p-5 rounded-2xl font-bold transition-all border-2 flex items-center gap-4 select-none cursor-pointer ${
+                                  selectedOption === idx 
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                                    : crossedOut.includes(idx) && !isAnswerRevealed
+                                      ? 'border-gray-100 bg-gray-50/20 text-gray-300 line-through opacity-50'
+                                      : 'border-gray-50 bg-gray-50/50 hover:border-blue-200'
+                                } ${
+                                  isAnswerRevealed && idx === practiceQuestions[currentQuestionIndex].correctAnswer 
+                                    ? 'border-green-500 bg-green-50 text-green-700' 
+                                    : ''
+                                } ${
+                                  isAnswerRevealed && selectedOption === idx && idx !== practiceQuestions[currentQuestionIndex].correctAnswer 
+                                    ? 'border-red-500 bg-red-50 text-red-700' 
+                                    : ''
+                                }`}
+                                role="button"
+                                tabIndex={0}
+                              >
+                                <div className="flex items-center gap-4 flex-1">
+                                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black ${
+                                    selectedOption === idx ? 'bg-blue-500 text-white' : 'bg-white text-gray-400'
+                                  }`}>
+                                    {String.fromCharCode(65 + idx)}
+                                  </span>
+                                  {option}
+                                </div>
 
-                       <AnimatePresence>
-                          {isAnswerRevealed && (
-                            <motion.div 
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              className="mt-8 p-6 bg-gray-50 rounded-3xl border border-gray-100 text-left"
-                            >
-                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Explicação do Peixe</p>
-                              <p className="text-sm font-bold text-gray-600 leading-relaxed italic">{practiceQuestions[currentQuestionIndex].commentary}</p>
-                            </motion.div>
-                          )}
-                       </AnimatePresence>
+                                {selectedOption === null && !isAnswerRevealed && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const idxNum = idx;
+                                      setCrossedOut(prev => 
+                                        prev.includes(idxNum) ? prev.filter(i => i !== idxNum) : [...prev, idxNum]
+                                      );
+                                    }}
+                                    className={`p-2 rounded-full transition-colors ${crossedOut.includes(idx) ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-200 text-gray-400'}`}
+                                    title="Recortar alternativa"
+                                  >
+                                    <Scissors className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="animate-in fade-in slide-in-from-right-10 duration-500">
+                             <div className={`p-5 rounded-2xl mb-6 flex items-center gap-4 ${selectedOption === practiceQuestions[currentQuestionIndex].correctAnswer ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-black ${selectedOption === practiceQuestions[currentQuestionIndex].correctAnswer ? 'bg-green-500' : 'bg-red-500'}`}>
+                                 {selectedOption === practiceQuestions[currentQuestionIndex].correctAnswer ? '✓' : '✗'}
+                               </div>
+                               <div>
+                                 <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">
+                                    {selectedOption === practiceQuestions[currentQuestionIndex].correctAnswer ? 'Correto' : 'Incorreto'}
+                                 </p>
+                                 <p className="text-sm font-bold">
+                                    Gabarito: {practiceQuestions[currentQuestionIndex].options[practiceQuestions[currentQuestionIndex].correctAnswer]}
+                                 </p>
+                               </div>
+                             </div>
 
-                       <div className="mt-10 flex justify-end">
-                          {!isAnswerRevealed ? (
-                            <button
-                              disabled={selectedOption === null}
-                              onClick={() => {
-                                setIsAnswerRevealed(true);
-                                if (selectedOption !== practiceQuestions[currentQuestionIndex].correctAnswer) {
-                                  setErrorsCount(prev => prev + 1);
-                                }
-                              }}
-                              className={`px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all ${
-                                selectedOption !== null ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-gray-300'
-                              }`}
-                            >
-                              Responder
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                if (currentQuestionIndex < practiceQuestions.length - 1) {
-                                  setCurrentQuestionIndex(prev => prev + 1);
-                                  setSelectedOption(null);
-                                  setIsAnswerRevealed(false);
-                                } else {
-                                  setCurrentQuestionIndex(practiceQuestions.length);
-                                }
-                              }}
-                              className="bg-black text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all"
-                            >
-                              {currentQuestionIndex < practiceQuestions.length - 1 ? 'Próxima Questão' : 'Concluir Prática'}
-                            </button>
-                          )}
-                       </div>
+                             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm leading-relaxed text-left">
+                               <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-4">Por que essa é a resposta?</p>
+                               <p className="text-sm font-medium text-gray-600 italic mb-6">
+                                 {practiceQuestions[currentQuestionIndex].commentary}
+                               </p>
+
+                               {practiceQuestions[currentQuestionIndex].memoryHint && (
+                                 <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mt-4">
+                                   <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                     <span className="text-sm">🧠</span> DICA DE MEMORIZAÇÃO
+                                   </p>
+                                   <p className="text-sm font-bold text-blue-800 italic">
+                                     {practiceQuestions[currentQuestionIndex].memoryHint}
+                                   </p>
+                                 </div>
+                               )}
+                             </div>
+
+                             <button 
+                               onClick={() => setIsAnswerRevealed(false)}
+                               className="mt-6 text-gray-400 hover:text-blue-500 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 mx-auto"
+                             >
+                               ← VER ALTERNATIVAS
+                             </button>
+                          </div>
+                        )}
+
+                        <div className="mt-10 flex justify-end">
+                           {!isAnswerRevealed ? (
+                             <button
+                               disabled={selectedOption === null}
+                               onClick={() => {
+                                 setIsAnswerRevealed(true);
+                                 if (selectedOption !== practiceQuestions[currentQuestionIndex].correctAnswer) {
+                                   setErrorsCount(prev => prev + 1);
+                                 }
+                               }}
+                               className={`px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all ${
+                                 selectedOption !== null ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-gray-300'
+                               }`}
+                             >
+                               Responder
+                             </button>
+                           ) : (
+                             <button
+                               onClick={() => {
+                                 if (currentQuestionIndex < practiceQuestions.length - 1) {
+                                   setCurrentQuestionIndex(prev => prev + 1);
+                                   setSelectedOption(null);
+                                   setIsAnswerRevealed(false);
+                                   setCrossedOut([]);
+                                 } else {
+                                   setCurrentQuestionIndex(practiceQuestions.length);
+                                 }
+                               }}
+                               className="bg-black text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all"
+                             >
+                               {currentQuestionIndex < practiceQuestions.length - 1 ? 'Próxima Questão' : 'Concluir Prática'}
+                             </button>
+                           )}
+                        </div>
                     </div>
                   ) : (
                     <div className="bg-white/50 backdrop-blur-sm p-12 rounded-[40px] border border-dashed border-blue-200 text-center">
@@ -452,10 +517,10 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
                         <span className="text-5xl font-black text-red-600 tabular-nums">{errorsCount}</span>
                         <div className="flex gap-2">
                            <button onClick={() => setErrorsCount(Math.max(0, errorsCount - 1))} className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-gray-400 hover:bg-red-100 hover:text-red-600 transition-all font-bold group shadow-sm">
-                              -
+                               -
                            </button>
                            <button onClick={() => setErrorsCount(errorsCount + 1)} className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-all font-bold group shadow-sm">
-                              +
+                               +
                            </button>
                         </div>
                      </div>

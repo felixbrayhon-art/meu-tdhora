@@ -653,6 +653,8 @@ const App: React.FC = () => {
             attempts={attempts} 
             onCreateFolder={name => setFolders(prev => [...prev, { id: Math.random().toString(36).substr(2,9), name, topic: name, notebooks: [], createdAt: Date.now() }])} 
             onCreateNotebook={(fid, name) => setFolders(prev => prev.map(f => f.id === fid ? { ...f, notebooks: [...f.notebooks, { id: Math.random().toString(36).substr(2,9), name, questions: [], createdAt: Date.now() }] } : f))} 
+            onDeleteFolder={fid => setFolders(prev => prev.filter(f => f.id !== fid))}
+            onDeleteNotebook={(fid, nid) => setFolders(prev => prev.map(f => f.id === fid ? { ...f, notebooks: f.notebooks.filter(n => n.id !== nid) } : f))}
             onBack={() => { setCurrentView('HUB'); setStrategicMode(false); }} 
             onPlayQuiz={(fid, nid) => { setActiveNotebookInfo({folderId: fid, notebookId: nid}); setCurrentView('QUIZ_PLAYER'); }} 
             strategicMode={strategicMode}
