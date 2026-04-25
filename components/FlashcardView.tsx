@@ -121,10 +121,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
       alert(`${newFlashcards.length} flashcards gerados com sucesso!`);
     } catch (error: any) {
       console.error(error);
-      const errorMessage = error.message?.includes('status') 
-        ? "Erro ao ativar IA: Limite de cota excedido ou problema no servidor." 
-        : "Erro ao gerar cards com IA. Verifique sua conexão ou tente um tema diferente.";
-      alert(errorMessage);
+      alert(error.message || "Erro desconhecido ao gerar cards com IA. Verifique sua conexão ou tente um tema diferente.");
     } finally {
       setIsGeneratingAI(false);
     }

@@ -35,11 +35,11 @@ const handleAIError = (error: any) => {
     throw new AIError("Limite de uso da IA atingido. O Google limita o uso gratuito da IA por minuto/dia. Aguarde um momento e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
   }
   
-  if (error?.message?.includes('API key not valid')) {
-    throw new AIError("Chave de API inválida. Verifique suas configurações.", 401, 'INVALID_API_KEY');
+  if (error?.message?.includes('API key not valid') || error?.message?.toLowerCase().includes('api key') || error?.message?.includes('key')) {
+    throw new AIError("Chave de API do Gemini inválida ou ausente. Se você estiver na Vercel, certifique-se de configurar a variável de ambiente VITE_GEMINI_API_KEY (Settings > Environment Variables) e faça um novo Deploy.", 401, 'INVALID_API_KEY');
   }
 
-  throw new AIError(error?.message || "Erro desconhecido ao processar IA.");
+  throw new AIError(error?.message || "Erro desconhecido ao processar IA. Verifique sua conexão ou a chave de API.");
 };
 
 // Utility to get current date/time context for AI

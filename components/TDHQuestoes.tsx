@@ -72,10 +72,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
       setQuestions(formatted);
     } catch (error: any) {
       console.error(error);
-      const errorMessage = error.message?.includes('status')
-        ? "Erro ao ativar IA: Quota excedida ou erro de conexão."
-        : "Erro ao gerar simulado. Tente novamente ou mude o tema.";
-      alert(errorMessage);
+      alert(error.message || "Erro desconhecido ao gerar simulado. Tente novamente.");
     } finally {
       setLoading(false);
     }
