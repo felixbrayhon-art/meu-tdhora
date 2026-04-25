@@ -31,6 +31,10 @@ export class AIError extends Error {
 const handleAIError = (error: any) => {
   console.error("AI Error details:", error);
   
+  if (error?.status === 503 || error?.status === 'UNAVAILABLE' || error?.message?.includes('503') || error?.message?.includes('high demand') || error?.message?.includes('UNAVAILABLE')) {
+    throw new AIError("O Gemini está com alta demanda no momento (Servidor Sobrecarregado). Isso costuma ser temporário. Por favor, aguarde alguns minutos e tente novamente.", 503, 'UNAVAILABLE');
+  }
+
   if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
     throw new AIError("Limite de uso da IA atingido. O Google limita o uso gratuito da IA por minuto/dia. Aguarde um momento e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
   }
