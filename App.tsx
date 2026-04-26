@@ -16,12 +16,14 @@ import SplashScreen from './components/SplashScreen';
 import FishCompanion from './components/FishCompanion';
 import ProfileSelection from './components/ProfileSelection';
 import FocusModeView from './components/FocusModeView';
+import FishCatalog from './components/FishCatalog';
 import DynamicTimer from './components/DynamicTimer';
 import EditalSetup from './components/EditalSetup';
 import EditalView from './components/EditalView';
 import SmartRevisionView from './components/SmartRevisionView';
 import SocialModule from './components/SocialModule';
 import StudyCycleView from './components/StudyCycleView';
+import GuidedLessonView from './components/GuidedLessonView';
 
 const LOFI_RELAX_URL = "https://stream.zeno.fm/0r0xa792kwzuv"; 
 const MPB_LOFI_URL = "https://stream.zeno.fm/f978v6v6h0huv";
@@ -67,6 +69,7 @@ const App: React.FC = () => {
   });
   
   const [activeNotebookInfo, setActiveNotebookInfo] = useState<{folderId: string, notebookId: string} | null>(null);
+  const [guidedLessonData, setGuidedLessonData] = useState<{ subject: string, topic: string } | null>(null);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [history, setHistory] = useState<DailyHistory>(() => {
@@ -269,6 +272,10 @@ const App: React.FC = () => {
       
       return { ...prev, xp: newXP, level: newLevel };
     });
+  };
+
+  const addCoins = (amount: number) => {
+    setStats(prev => ({ ...prev, coins: prev.coins + amount }));
   };
 
   const getSubjectForTopic = (topic: string): string | null => {
@@ -477,16 +484,36 @@ const App: React.FC = () => {
   };
 
   const handleSaveToNotebook = (folderId: string, notebookName: string, questions: QuizQuestion[], summary?: string) => {
-    setFolders(prev => prev.map(f => {
-      if (f.id !== folderId) return f;
-      const existingNotebook = f.notebooks.find(n => n.name.toLowerCase() === notebookName.toLowerCase());
-      if (existingNotebook) {
-        return { ...f, notebooks: f.notebooks.map(n => n.id === existingNotebook.id ? { ...n, questions: [...n.questions, ...questions], summary: summary || n.summary } : n) };
-      } else {
-        const newNotebook: Notebook = { id: Math.random().toString(36).substr(2, 9), name: notebookName, questions, summary, createdAt: Date.now() };
-        return { ...f, notebooks: [...f.notebooks, newNotebook] };
+    let targetFolderId = folderId;
+    
+    setFolders(prev => {
+      let currentFolders = [...prev];
+      
+      // Handle NEW folder creation
+      if (folderId.startsWith('NEW:')) {
+        const newName = folderId.replace('NEW:', '');
+        const newFolder: QuizFolder = { 
+          id: Math.random().toString(36).substr(2, 9), 
+          name: newName, 
+          topic: newName, 
+          notebooks: [], 
+          createdAt: Date.now() 
+        };
+        currentFolders.push(newFolder);
+        targetFolderId = newFolder.id;
       }
-    }));
+
+      return currentFolders.map(f => {
+        if (f.id !== targetFolderId) return f;
+        const existingNotebook = f.notebooks.find(n => n.name.toLowerCase() === notebookName.toLowerCase());
+        if (existingNotebook) {
+          return { ...f, notebooks: f.notebooks.map(n => n.id === existingNotebook.id ? { ...n, questions: [...n.questions, ...questions], summary: summary || n.summary } : n) };
+        } else {
+          const newNotebook: Notebook = { id: Math.random().toString(36).substr(2, 9), name: notebookName, questions, summary, createdAt: Date.now() };
+          return { ...f, notebooks: [...f.notebooks, newNotebook] };
+        }
+      });
+    });
   };
 
   const handleCloseGlobalBar = () => {
@@ -506,7 +533,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#0A0F1E] pb-32">
+    <div className="min-h-screen bg-[#FDFBF7] text-[#0A0F1E] pb-32">
       <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop />
       <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop />
       <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop />
@@ -572,6 +599,7 @@ const App: React.FC = () => {
             setIsPlayingRain={setIsPlayingRain}
             editalConfig={editalConfig}
             setStrategicMode={setStrategicMode}
+            setGuidedLessonData={setGuidedLessonData}
             smartRevisionItems={smartSystem.queue}
             isAIEnabled={isAIEnabled}
           />
@@ -735,6 +763,10 @@ const App: React.FC = () => {
               if (type === 'LESSON') {
                 setPrefillAI({ topic: fullTopic, autoStart: true });
                 setCurrentView('AI_DIRECT');
+              } else if (type === 'GUIDED_LESSON') {
+                const [s, t] = fullTopic.includes(':') ? fullTopic.split(':').map(str => str.trim()) : ['', fullTopic];
+                setGuidedLessonData({ subject: s, topic: t });
+                setCurrentView('GUIDED_LESSON');
               } else if (type === 'QUIZ') {
                 setPrefillQuiz(fullTopic);
                 setCurrentView('TDH_QUESTOES');
@@ -792,12 +824,27 @@ const App: React.FC = () => {
             stats={stats} 
             onUpdate={setStats} 
             onBack={() => setCurrentView('HUB')} 
+            onOpenCatalog={() => setCurrentView('FISH_CATALOG')}
             myId={socialState.myId} 
             isAIEnabled={isAIEnabled}
             setIsAIEnabled={setIsAIEnabled}
           />
         )}
         {currentView === 'COMMUNITY' && <CommunityView activities={activities} onBack={() => setCurrentView('HUB')} onPostManual={handleManualPost} />}
+        {currentView === 'FISH_CATALOG' && <FishCatalog onBack={() => setCurrentView('HUB')} />}
+        {currentView === 'GUIDED_LESSON' && guidedLessonData && (
+          <GuidedLessonView 
+            subject={guidedLessonData.subject}
+            topic={guidedLessonData.topic} 
+            profile={stats.studyProfile || 'VESTIBULAR'} 
+            onBack={() => setCurrentView('HUB')}
+            onComplete={(score) => {
+              addCoins(score * 10);
+              addXP(score * 20);
+              setCurrentView('HUB');
+            }}
+          />
+        )}
       </main>
 
       <FishCompanion studyProfile={stats.studyProfile} />

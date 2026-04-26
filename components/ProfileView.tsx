@@ -7,6 +7,7 @@ interface ProfileViewProps {
   stats: UserStats;
   onUpdate: (stats: UserStats) => void;
   onBack: () => void;
+  onOpenCatalog?: () => void;
   myId?: string;
   isAIEnabled: boolean;
   setIsAIEnabled: (val: boolean) => void;
@@ -20,7 +21,7 @@ const AVATAR_OPTIONS = [
   { color: '#0A0F1E', name: 'Peixe Dark' },
 ];
 
-  const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, myId, isAIEnabled, setIsAIEnabled }) => {
+  const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled }) => {
   const [name, setName] = useState(stats.name);
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
@@ -146,9 +147,18 @@ const AVATAR_OPTIONS = [
                <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M10 30 C 25 10, 55 5, 80 25 C 90 20, 95 15, 100 20 C 97 30, 97 30, 100 40 C 95 45, 90 40, 80 35 C 55 55, 25 50, 10 30 Z" /></svg>
             </div>
             
-            <h3 className="text-xl font-black italic uppercase tracking-tighter mb-10 relative z-10 border-b border-white/10 pb-4">
-              AQUÁRIO DE ELITE
-            </h3>
+            <div className="flex items-center justify-between mb-10 relative z-10 border-b border-white/10 pb-4">
+              <h3 className="text-xl font-black italic uppercase tracking-tighter">
+                AQUÁRIO DE ELITE
+              </h3>
+              <button 
+                onClick={() => onOpenCatalog && onOpenCatalog()}
+                className="text-xs font-bold bg-yellow-400 text-[#0A0F1E] px-4 py-1.5 rounded-full uppercase tracking-wider hover:scale-105 transition-transform"
+                id="btn-catalogo"
+              >
+                Catálogo
+              </button>
+            </div>
             
             <div className="space-y-10 relative z-10">
               {FISH_RANKS.map((rank, idx) => {

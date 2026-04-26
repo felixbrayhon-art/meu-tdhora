@@ -76,7 +76,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile }) => {
           {/* Área de Mensagens */}
           <div 
             ref={scrollRef}
-            className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#FAFAFA] scroll-smooth"
+            className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#FDFBF7] scroll-smooth"
           >
             {chatHistory.length === 0 && (
               <div className="text-center py-10 space-y-4">

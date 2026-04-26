@@ -4,6 +4,7 @@ import { AppView, TimerMode, UserStats, HubCategory, EditalConfig, SmartRevision
 import MemoryHeatmap from './MemoryHeatmap';
 import { getProactiveAdvice } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
+import { BookOpen } from 'lucide-react';
 
 interface HubProps {
   setView: (view: AppView) => void;
@@ -16,6 +17,7 @@ interface HubProps {
   setIsPlayingRain: (p: boolean) => void;
   editalConfig: EditalConfig;
   setStrategicMode: (s: boolean) => void;
+  setGuidedLessonData: (data: { subject: string, topic: string }) => void;
   smartRevisionItems: SmartRevisionItem[];
   isAIEnabled: boolean;
 }
@@ -31,29 +33,16 @@ const Hub: React.FC<HubProps> = ({
   setIsPlayingRain, 
   editalConfig, 
   setStrategicMode,
+  setGuidedLessonData,
   smartRevisionItems,
   isAIEnabled
 }) => {
   const [activeTab, setActiveTab] = useState<HubCategory>('ESTUDO');
   const [copyFeedback, setCopyFeedback] = useState(false);
-  const [aiInsight, setAiInsight] = useState<{ greeting: string; insight: string; task: string; taskView: string } | null>(null);
-  const [loadingAI, setLoadingAI] = useState(false);
-
-  useEffect(() => {
-    const fetchAdvice = async () => {
-      if (!isAIEnabled) return;
-      setLoadingAI(true);
-      try {
-        const advice = await getProactiveAdvice(stats, editalConfig, stats.studyProfile!);
-        setAiInsight(advice);
-      } catch (e) {
-        console.error("Erro ao ativar IA:", e);
-      } finally {
-        setLoadingAI(false);
-      }
-    };
-    fetchAdvice();
-  }, [stats.studyProfile]);
+  
+  // Guided Lesson Input States
+  const [guidedSubject, setGuidedSubject] = useState('');
+  const [guidedTopic, setGuidedTopic] = useState('');
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -84,67 +73,6 @@ const Hub: React.FC<HubProps> = ({
         </button>
       </div>
       
-      {/* MODO IA ATIVO */}
-      <AnimatePresence>
-        {isAIEnabled ? (
-          (aiInsight || loadingAI) && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-[#0A0F1E] border border-blue-500/30 rounded-[35px] p-6 text-white shadow-2xl relative overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <svg className="w-24 h-24 text-blue-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-              </div>
-              
-              <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-                <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 animate-bounce">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                </div>
-                
-                <div className="flex-1 space-y-1">
-                  {loadingAI ? (
-                    <div className="animate-pulse space-y-2">
-                      <div className="h-4 bg-white/10 rounded w-1/4"></div>
-                      <div className="h-6 bg-white/10 rounded w-3/4"></div>
-                    </div>
-                  ) : (
-                    <>
-                      <h3 className="text-blue-400 font-bold text-[10px] uppercase tracking-widest leading-none mb-2 italic">IA Ativa • Mergulho do Mentor Peixe</h3>
-                      <h4 className="text-xl font-black italic uppercase leading-tight">"{aiInsight?.greeting} {stats.name}!"</h4>
-                      <p className="text-gray-400 text-sm font-medium">{aiInsight?.insight}</p>
-                    </>
-                  )}
-                </div>
-                
-                {!loadingAI && aiInsight && (
-                  <button 
-                    onClick={() => setView(aiInsight.taskView as any)}
-                    className="bg-white text-black px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-3 active:scale-95 shadow-xl"
-                  >
-                    {aiInsight.task}
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                  </button>
-                )}
-              </div>
-              
-              {/* Visual indicator of "Active AI" */}
-              <div className="absolute bottom-0 left-0 h-1 bg-blue-500 w-full opacity-30"></div>
-            </motion.div>
-          )
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gray-100 border border-gray-200 rounded-[35px] p-8 text-center text-gray-400"
-          >
-            <h3 className="font-black text-xs uppercase tracking-widest mb-2">IA Mentor Desativada</h3>
-            <p className="text-xs mb-4">Ative o "Cérebro Artificial" nas configurações do seu perfil para receber orientações estratégicas.</p>
-            <button onClick={() => setView('PROFILE')} className="text-[10px] font-black text-blue-500 uppercase underline tracking-widest">Ativar agora</button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div className="flex p-2 bg-white rounded-[30px] shadow-sm border border-gray-100 max-w-4xl overflow-x-auto">
         <button onClick={() => setActiveTab('ESTUDO')} className={`flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'ESTUDO' ? 'bg-blue-500 text-white shadow-xl shadow-blue-100' : 'text-gray-400 hover:bg-gray-50'}`}>
@@ -337,6 +265,58 @@ const Hub: React.FC<HubProps> = ({
                   <h2 className="text-3xl font-black mb-2 italic uppercase">AULA DIRETA</h2>
                   <p className="text-yellow-400/80 text-[10px] font-bold uppercase tracking-widest">{activeTab === 'EDITAL' ? 'Conteúdo do Edital' : 'IA Powered Bizu'}</p>
                 </button>
+
+                <div 
+                  className={`text-white p-8 rounded-[40px] text-left relative overflow-hidden group transition-all animate-in zoom-in-95 duration-300 delay-200 shadow-2xl ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-blue-600 to-blue-800 shadow-blue-900/40' : 'bg-gradient-to-br from-slate-800 to-slate-900'}`}
+                >
+                  <div className="mb-8 w-12 h-12 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center backdrop-blur-md border border-blue-500/30">
+                    <BookOpen className="w-7 h-7" />
+                  </div>
+                  <h2 className="text-3xl font-black mb-2 italic uppercase leading-none">AULA <span className="text-blue-500">GUIADA</span></h2>
+                  <p className="text-blue-400/80 text-[10px] font-bold uppercase tracking-widest mb-6">Narrativa Contínua (Active Recall)</p>
+                  
+                  <div className="flex flex-col gap-2 relative z-10">
+                    <input 
+                      type="text" 
+                      placeholder="Matéria (Ex: Português)" 
+                      value={guidedSubject}
+                      onChange={(e) => setGuidedSubject(e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-white/30"
+                    />
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Assunto (Ex: Crase)" 
+                        value={guidedTopic}
+                        onChange={(e) => setGuidedTopic(e.target.value)}
+                        className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-white/30"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            if(guidedSubject && guidedTopic) {
+                              setGuidedLessonData({ subject: guidedSubject, topic: guidedTopic });
+                              setView('GUIDED_LESSON');
+                            }
+                          }
+                        }}
+                      />
+                      <button 
+                        onClick={() => {
+                          if(guidedSubject && guidedTopic) {
+                            setGuidedLessonData({ subject: guidedSubject, topic: guidedTopic });
+                            setView('GUIDED_LESSON');
+                          }
+                        }}
+                        className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-xl transition-all"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <BookOpen className="w-32 h-32 text-white" />
+                  </div>
+                </div>
 
                 <button 
                   onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('DYNAMIC_TIMER'); }} 

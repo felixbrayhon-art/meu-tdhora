@@ -29,21 +29,21 @@ export class AIError extends Error {
 }
 
 const handleAIError = (error: any) => {
-  console.error("AI Error details:", error);
+  console.error("AI Error details:", JSON.stringify(error));
   
-  if (error?.status === 503 || error?.status === 'UNAVAILABLE' || error?.message?.includes('503') || error?.message?.includes('high demand') || error?.message?.includes('UNAVAILABLE')) {
-    throw new AIError("O Gemini está com alta demanda no momento (Servidor Sobrecarregado). Isso costuma ser temporário. Por favor, aguarde alguns minutos e tente novamente.", 503, 'UNAVAILABLE');
+  const errorMessage = error?.message || (error?.error?.message) || "";
+  const errorStatus = error?.status || (error?.error?.code) || 0;
+  const isQuotaError = errorStatus === 429 || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || error?.error?.status === 'RESOURCE_EXHAUSTED';
+  
+  if (isQuotaError) {
+    throw new AIError("Limite de Cota do Google Gemini atingido. O Google limita o uso gratuito por minuto e por dia. Isso geralmente acontece após muitas gerações seguidas. Aguarde 1 a 2 minutos e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
+  }
+  
+  if (errorMessage.includes('API key not valid') || errorMessage.toLowerCase().includes('api key') || errorMessage.includes('key')) {
+    throw new AIError("Chave de API do Gemini inválida ou ausente. Verifique as configurações de ambiente.", 401, 'INVALID_API_KEY');
   }
 
-  if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
-    throw new AIError("Limite de uso da IA atingido. O Google limita o uso gratuito da IA por minuto/dia. Aguarde um momento e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
-  }
-  
-  if (error?.message?.includes('API key not valid') || error?.message?.toLowerCase().includes('api key') || error?.message?.includes('key')) {
-    throw new AIError("Chave de API do Gemini inválida ou ausente. Se você estiver na Vercel, certifique-se de configurar a variável de ambiente VITE_GEMINI_API_KEY (Settings > Environment Variables) e faça um novo Deploy.", 401, 'INVALID_API_KEY');
-  }
-
-  throw new AIError(error?.message || "Erro desconhecido ao processar IA. Verifique sua conexão ou a chave de API.");
+  throw new AIError(errorMessage || "Erro desconhecido ao processar IA. Verifique sua conexão ou a chave de API.");
 };
 
 // Utility to get current date/time context for AI
@@ -753,6 +753,81 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
             }
           },
           required: ["steps"]
+        }
+      }
+    });
+    return JSON.parse(response.text);
+  } catch (error) {
+    return handleAIError(error);
+  }
+};
+
+export const generateGuidedLesson = async (subject: string, topic: string, profile: StudyProfile = 'VESTIBULAR') => {
+  const profileContext = profile === 'CONCURSO' 
+    ? "Foco em editais públicos, doutrina e lei seca. Linguagem técnica mas narrativa."
+    : "Foco em ENEM e grandes vestibulares. Linguagem didática e interdisciplinar.";
+
+  try {
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: `${getTimeContext()}
+      Gere uma AULA GUIADA (Narrativa Contínua) sobre o tema "${topic}" da matéria "${subject}".
+      ${profileContext}
+      
+      OBJETIVO: Conduzir o aluno em um fluxo de aprendizado imersivo para TDAH, sem exigir interação constante, mas mantendo o cérebro ativo através de uma narrativa.
+      
+      ESTRUTURA DA RESPOSTA (Sequência de Passos):
+      1. OPENING: Começa direto, engajando o aluno com uma pergunta ou fato curioso. Sem botões.
+      2. OVERVIEW: Um mapa mental rápido do que será visto.
+      3. NARRATIVE: Desenvolve o tema através de uma história ou exemplo prático ("Imagina que...").
+      4. CONCEPT: Insere explicações técnicas dentro da narrativa.
+      5. QUESTION_PAUSE: Faz uma pergunta mental para ativar o recall ativo (ex: "Agora pense: o que acontece se...?"). A resposta NÃO deve estar neste bloco, mas no seguinte.
+      6. REINFORCEMENT: Responde a pergunta anterior e reforça o ponto chave.
+      7. ANALOGY: Usa uma associação forte (ex: VAR no futebol, receita de bolo).
+      8. CLOSING_APPLICATION: Mostra como esse tema cai na prova.
+      
+      IMPORTANTE:
+      - Divida em blocos pequenos e impactantes.
+      - O fluxo deve ser lógico: História -> Conceito -> Pergunta -> Resposta -> Associação.
+      - Não use emojis.
+      - Gere também 3 questões de fixação para o final.
+      
+      Retorne em JSON rigoroso.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            topic: { type: Type.STRING },
+            steps: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  type: { type: Type.STRING },
+                  content: { type: Type.STRING },
+                  pauseAfterMilliseconds: { type: Type.NUMBER }
+                },
+                required: ["type", "content"]
+              }
+            },
+            quiz: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  question: { type: Type.STRING },
+                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  correctAnswer: { type: Type.INTEGER },
+                  commentary: { type: Type.STRING },
+                  memoryHint: { type: Type.STRING }
+                },
+                required: ["question", "options", "correctAnswer", "commentary", "memoryHint"]
+              }
+            }
+          },
+          required: ["id", "topic", "steps", "quiz"]
         }
       }
     });

@@ -30,7 +30,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   }, [onComplete]);
 
   return (
-    <div className={`fixed inset-0 z-[100] bg-[#FAFAFA] flex flex-col items-center justify-center transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+    <div className={`fixed inset-0 z-[100] bg-[#FDFBF7] flex flex-col items-center justify-center transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
       <div className="max-w-md w-full text-center px-10 space-y-12 animate-in zoom-in-95 duration-1000">
         <div className="relative flex justify-center">
           <FishSilhouette className="w-64 h-32 text-gray-100 opacity-60" />

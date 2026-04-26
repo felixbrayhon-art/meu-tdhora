@@ -1,6 +1,22 @@
 
-export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE';
+export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON';
 export type StudyProfile = 'VESTIBULAR' | 'CONCURSO';
+
+export type GuidedLessonStepType = 'OPENING' | 'OVERVIEW' | 'NARRATIVE' | 'CONCEPT' | 'QUESTION_PAUSE' | 'REINFORCEMENT' | 'ANALOGY' | 'CLOSING_APPLICATION';
+
+export interface GuidedLessonStep {
+  type: GuidedLessonStepType;
+  content: string;
+  pauseAfterMilliseconds?: number;
+}
+
+export interface GuidedLesson {
+  id: string;
+  topic: string;
+  steps: GuidedLessonStep[];
+  quiz?: QuizQuestion[];
+  createdAt: number;
+}
 export type HubCategory = 'ESTUDO' | 'ORGANIZACAO' | 'RELAXE' | 'EDITAL' | 'REVISAO';
 
 export enum TimerMode {

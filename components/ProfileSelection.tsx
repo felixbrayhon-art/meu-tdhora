@@ -9,7 +9,7 @@ interface ProfileSelectionProps {
 
 const ProfileSelection: React.FC<ProfileSelectionProps> = ({ onSelect }) => {
   return (
-    <div className="fixed inset-0 z-[110] bg-[#FAFAFA] flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
+    <div className="fixed inset-0 z-[110] bg-[#FDFBF7] flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
       <div className="max-w-4xl w-full text-center space-y-12">
         <div className="flex flex-col items-center space-y-4">
           <FishLogo className="scale-125 mb-4" />
