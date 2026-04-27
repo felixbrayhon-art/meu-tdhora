@@ -48,9 +48,9 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
       setCurrentQIdx(0);
       setScore(0);
       setShowResult(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Erro ao carregar validação.");
+      alert(error.message || "Erro ao carregar validação.");
     } finally {
       setLoading(false);
     }
@@ -75,8 +75,9 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
         setScore(0);
         setShowResult(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      alert(error.message || "Erro ao analisar ou resolver cofre de erros.");
     } finally {
       setLoading(false);
     }

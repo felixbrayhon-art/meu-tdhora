@@ -45,9 +45,9 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({
       };
       onUpdateCycle(newCycle);
       setIsEditing(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Erro ao arquitetar ciclo neural.");
+      alert(error.message || "Erro ao arquitetar ciclo neural.");
     } finally {
       setLoading(false);
     }

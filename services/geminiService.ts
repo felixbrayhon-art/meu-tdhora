@@ -31,9 +31,20 @@ export class AIError extends Error {
 const handleAIError = (error: any) => {
   console.error("AI Error details:", JSON.stringify(error));
   
-  const errorMessage = error?.message || (error?.error?.message) || "";
-  const errorStatus = error?.status || (error?.error?.code) || 0;
-  const isQuotaError = errorStatus === 429 || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || error?.error?.status === 'RESOURCE_EXHAUSTED';
+  if (error === 429 || error === "429") {
+    throw new AIError("Limite de Cota do Google Gemini atingido. O Google limita o uso gratuito por minuto e por dia. Aguarde 1 a 2 minutos e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
+  }
+  
+  const errorMessage = error?.message || error?.error?.message || "";
+  const errorStatus = error?.status || error?.error?.code || (error?.name === 'ApiError' ? error?.status : 0);
+  
+  const isQuotaError = 
+    errorStatus === 429 || 
+    errorStatus === "429" ||
+    errorMessage.includes('429') || 
+    errorMessage.includes('RESOURCE_EXHAUSTED') || 
+    error?.error?.status === 'RESOURCE_EXHAUSTED' ||
+    (error?.name === 'ApiError' && error?.status === 429);
   
   if (isQuotaError) {
     throw new AIError("Limite de Cota do Google Gemini atingido. O Google limita o uso gratuito por minuto e por dia. Isso geralmente acontece após muitas gerações seguidas. Aguarde 1 a 2 minutos e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
@@ -362,21 +373,15 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
   try {
     const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
-      contents: `${getTimeContext()}
-      Sua missão é atuar como um Extrator de Conteúdo Programático Inteligente. 
-      Analise o texto bruto do edital para a disciplina "${subjectName}" abaixo e extraia apenas os tópicos que o aluno realmente precisa estudar.
+      contents: `Extraia APENAS os tópicos de estudo para a disciplina "${subjectName}" do texto abaixo. 
+      Ignore burocracias, regras de prova ou datas. 
+      Retorne apenas uma lista de temas didáticos (ex: 'Conjuntos Numerativos').
+      Máximo 15 tópicos curtos.
+      Texto: "${rawContent}"
       
-      TEXTO DO EDITAL:
-      "${rawContent}"
-      
-      DIRETRIZES:
-      1. Ignore das, locais, nomes de fiscais, regras de inscrição ou burocracias. 
-      2. Liste apenas temas didáticos (ex: 'Equações de 2º Grau', 'Direito Administrativo', etc).
-      3. Seja conciso: máximo 15 tópicos.
-      4. Se o texto for confuso, tente identificar os nomes das matérias principais.
-      
-      Retorne no formato JSON rigoroso.`,
+      Retorne em JSON: { "topics": ["string"] }`,
       config: {
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -682,6 +687,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
       Retorne em JSON: { "greeting": string, "insight": string, "task": string, "taskView": string }
       Opções de taskView: HUB, TIMER, FLASHCARDS, MATERIALS, TDH_QUESTOES, AI_DIRECT, SMART_REVISION.`,
       config: {
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -735,6 +741,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
         ]
       }`,
       config: {
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,

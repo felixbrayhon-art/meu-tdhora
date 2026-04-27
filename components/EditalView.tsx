@@ -18,7 +18,7 @@ interface EditalViewProps {
 
 const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic, onBack, onDisable, onSmartRevision, onTopicComplete }) => {
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
-  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractingSubjectIds, setExtractingSubjectIds] = useState<string[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<{subject: string, topic: string} | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTopic, setEditingTopic] = useState<{ subjectId: string, oldTopic: string, newTopic: string } | null>(null);
@@ -26,16 +26,18 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
   const [newTopicName, setNewTopicName] = useState('');
 
   const activeSubject = config.subjects.find(s => s.id === activeSubjectId);
+  const isExtracting = extractingSubjectIds.length > 0;
 
   useEffect(() => {
-    const extractNeeded = config.subjects.find(s => s.content.trim() && s.topics.length === 0);
-    if (extractNeeded) {
-      handleAutoExtract(extractNeeded);
+    const subjectsToExtract = config.subjects.filter(s => s.content.trim() && s.topics.length === 0 && !extractingSubjectIds.includes(s.id));
+    if (subjectsToExtract.length > 0 && extractingSubjectIds.length < 2) {
+      // Process up to 2 at a time for speed
+      handleAutoExtract(subjectsToExtract[0]);
     }
-  }, [config.subjects]);
+  }, [config.subjects, extractingSubjectIds]);
 
   const handleAutoExtract = async (subject: EditalSubject) => {
-    setIsExtracting(true);
+    setExtractingSubjectIds(prev => [...prev, subject.id]);
     try {
       const result = await extractTopicsFromEdital(subject.name, subject.content);
       const updatedSubjects = config.subjects.map(s => 
@@ -44,9 +46,9 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
       onUpdate({ ...config, subjects: updatedSubjects });
     } catch (error) {
       console.error("Erro ao extrair tópicos:", error);
-      alert("Houve um erro ao extrair os tópicos do edital usando IA. Verifique sua conexão e chave de API. Você também pode adicionar os tópicos manualmente no card da matéria.");
+      // We don't alert here to avoid spamming the user if multiple fail
     } finally {
-      setIsExtracting(false);
+      setExtractingSubjectIds(prev => prev.filter(id => id !== subject.id));
     }
   };
 
@@ -184,7 +186,12 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
                   className={`w-full text-left p-5 rounded-[25px] font-black uppercase italic transition-all border-2 mb-2 ${activeSubjectId === subject.id ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-100' : 'bg-white border-transparent text-gray-400 hover:bg-gray-50'}`}
                 >
                   <div className="flex justify-between items-center mb-3">
-                    <span className="text-sm truncate mr-2">{subject.name}</span>
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="text-sm truncate">{subject.name}</span>
+                      {extractingSubjectIds.includes(subject.id) && (
+                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse shadow-sm shadow-yellow-400"></div>
+                      )}
+                    </div>
                     <span className={`text-[10px] tracking-widest shrink-0 ${activeSubjectId === subject.id ? 'text-blue-200' : 'text-gray-300'}`}>{completedCount}/{totalCount}</span>
                   </div>
                   <div className={`w-full h-1.5 rounded-full overflow-hidden ${activeSubjectId === subject.id ? 'bg-blue-700' : 'bg-gray-100'}`}>
@@ -202,9 +209,9 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
         {/* Content Area */}
         <div className="lg:col-span-3">
           <div className="bg-white rounded-[50px] p-10 shadow-xl border border-gray-100 min-h-[600px] relative">
-            {isExtracting && (
+            {extractingSubjectIds.includes(activeSubjectId || '') && (
               <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-[50px]">
-                <LoadingFish message="O Peixe está mapeando o edital..." submessage="Transformando texto bruto em tópicos estratégicos" />
+                <LoadingFish message="O Peixe está mapeando esta matéria..." submessage="Transformando texto bruto em tópicos estratégicos" />
               </div>
             )}
 
