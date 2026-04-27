@@ -6,12 +6,15 @@ const getApiKey = () => {
   // @ts-ignore - Vite handles import.meta.env and process might not exist
   const key = (import.meta as any).env?.VITE_GEMINI_API_KEY || 
               (import.meta as any).env?.GEMINI_API_KEY || 
-              (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined);
+              (typeof process !== 'undefined' ? process.env.VITE_GEMINI_API_KEY : undefined) ||
+              (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined) ||
+              (typeof process !== 'undefined' ? process.env.API_KEY : undefined);
               
-  if (!key || key === 'undefined') {
+  if (!key || key === 'undefined' || key === 'null') {
     console.warn("Gemini API Key não encontrada. Certifique-se de configurar VITE_GEMINI_API_KEY no seu ambiente (Vercel/Local).");
+    return '';
   }
-  return key || '';
+  return key;
 };
 
 const ai = new GoogleGenAI({ 
@@ -51,7 +54,7 @@ const handleAIError = (error: any) => {
   }
   
   if (errorMessage.includes('API key not valid') || errorMessage.toLowerCase().includes('api key') || errorMessage.includes('key')) {
-    throw new AIError("Chave de API do Gemini inválida ou ausente. Verifique as configurações de ambiente.", 401, 'INVALID_API_KEY');
+    throw new AIError("Chave de API do Gemini inválida ou ausente. No Vercel, vá em Settings > Environment Variables, adicione VITE_GEMINI_API_KEY e faça um novo Deploy para aplicar.", 401, 'INVALID_API_KEY');
   }
 
   throw new AIError(errorMessage || "Erro desconhecido ao processar IA. Verifique sua conexão ou a chave de API.");
