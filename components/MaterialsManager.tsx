@@ -53,15 +53,45 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
           <h2 className="text-3xl font-black tracking-tighter italic uppercase flex-1">
             {strategicMode ? 'MATERIAIS' : 'MEUS'} <span className={strategicMode ? 'text-blue-900' : 'text-blue-500'}>{selectedFolderId ? 'CADERNOS' : (strategicMode ? 'ESTRATÉGICOS' : 'MATERIAIS')}</span>
           </h2>
-          {!selectedNotebookId && (
-            <button 
-              onClick={() => setIsCreating(selectedFolderId ? 'NOTEBOOK' : 'FOLDER')}
-              className="bg-blue-500 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-600 transition-all flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
-              {selectedFolderId ? 'NOVO CADERNO' : 'NOVA PASTA'}
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {selectedFolderId && !selectedNotebookId && onDeleteFolder && (
+              <button 
+                onClick={() => {
+                  if (window.confirm("Deseja realmente apagar esta pasta e todos os seus cadernos?")) {
+                    onDeleteFolder(selectedFolderId);
+                    setSelectedFolderId(null);
+                  }
+                }}
+                className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all border border-gray-100"
+                title="Excluir esta Pasta"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </button>
+            )}
+            {selectedNotebookId && selectedFolderId && onDeleteNotebook && (
+              <button 
+                onClick={() => {
+                  if (window.confirm("Deseja realmente apagar este caderno?")) {
+                    onDeleteNotebook(selectedFolderId, selectedNotebookId);
+                    setSelectedNotebookId(null);
+                  }
+                }}
+                className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all border border-gray-100"
+                title="Excluir este Caderno"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </button>
+            )}
+            {!selectedNotebookId && (
+              <button 
+                onClick={() => setIsCreating(selectedFolderId ? 'NOTEBOOK' : 'FOLDER')}
+                className="bg-blue-500 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-600 transition-all flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+                {selectedFolderId ? 'NOVO CADERNO' : 'NOVA PASTA'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -197,7 +227,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                          onDeleteNotebook(selectedFolderId, notebook.id); 
                        }
                      }}
-                     className="absolute top-6 right-6 p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100 z-50 shadow-sm"
+                     className="absolute top-6 right-6 p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all z-50 shadow-sm md:opacity-0 group-hover:opacity-100"
                      title="Excluir Caderno"
                    >
                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -268,7 +298,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                          onDeleteFolder(folder.id); 
                        }
                      }}
-                     className="absolute top-6 right-6 p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100 z-50 shadow-sm"
+                     className="absolute top-6 right-6 p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all z-50 shadow-sm md:opacity-0 group-hover:opacity-100"
                      title="Excluir Pasta"
                    >
                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

@@ -29,8 +29,13 @@ const LOFI_RELAX_URL = "https://stream.zeno.fm/0r0xa792kwzuv";
 const MPB_LOFI_URL = "https://stream.zeno.fm/f978v6v6h0huv";
 const RAIN_SOUND_URL = "https://www.soundjay.com/nature/rain-01.mp3"; 
 
+import { auth, googleProvider, signInWithPopup, onAuthStateChanged, db, handleFirestoreError, OperationType, FirebaseUser, cleanData } from './src/lib/firebase';
+import { doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
+
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [currentView, setCurrentView] = useState<AppView>('HUB');
   const [timerMode, setTimerMode] = useState<TimerMode>(TimerMode.POMODORO);
   const [showGlobalBar, setShowGlobalBar] = useState(true);
@@ -153,7 +158,76 @@ const App: React.FC = () => {
   const [prefillAI, setPrefillAI] = useState<{topic: string, autoStart: boolean} | null>(null);
   const [prefillQuiz, setPrefillQuiz] = useState<string | null>(null);
 
-  // Persistence Effects
+  // Authentication and Data Loading
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        setIsSyncing(true);
+        try {
+          // Sync Stats
+          const statsDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (statsDoc.exists()) {
+            setStats(statsDoc.data() as UserStats);
+          } else {
+            // First time login, save current local stats to Firestore
+            await setDoc(doc(db, 'users', firebaseUser.uid), stats);
+          }
+
+          // Sync Edital
+          const editalDoc = await getDoc(doc(doc(db, 'users', firebaseUser.uid), 'configs', 'edital'));
+          if (editalDoc.exists()) setEditalConfig(editalDoc.data() as EditalConfig);
+
+          // Sync Quiz Folders (simplified, just get one level for now)
+          const foldersSnap = await getDocs(collection(doc(db, 'users', firebaseUser.uid), 'quizFolders'));
+          if (!foldersSnap.empty) {
+            const cloudFolders: QuizFolder[] = [];
+            for (const fDoc of foldersSnap.docs) {
+              const fData = fDoc.data() as QuizFolder;
+              // Get notebooks
+              const notebooksSnap = await getDocs(collection(fDoc.ref, 'notebooks'));
+              const notebooks = notebooksSnap.docs.map(n => n.data() as Notebook);
+              cloudFolders.push({ ...fData, notebooks });
+            }
+            setFolders(cloudFolders);
+          }
+
+          // Sync Flashcards
+          const cardsSnap = await getDocs(collection(doc(db, 'users', firebaseUser.uid), 'flashcards'));
+          if (!cardsSnap.empty) {
+            setFlashcards(cardsSnap.docs.map(d => d.data() as Flashcard));
+          }
+
+        } catch (error) {
+          console.error("Error syncing with Firestore:", error);
+        } finally {
+          setIsSyncing(false);
+        }
+      }
+      setIsInitializing(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Login failed", error);
+    }
+  };
+
+  const handleLogout = () => auth.signOut();
+
+  // Helper to save sub-items to Firestore
+  const saveToFirestore = async (path: string, data: any) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid, ...path.split('/')), cleanData(data));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, path);
+    }
+  };
   useEffect(() => {
     // Migration for subjects without heat
     if (editalConfig.isActive && editalConfig.subjects.some(s => s.heat === undefined)) {
@@ -162,19 +236,51 @@ const App: React.FC = () => {
         subjects: prev.subjects.map(s => ({ ...s, heat: s.heat ?? 50 }))
       }));
     }
+    if (user && !isInitializing && !isSyncing) {
+      saveToFirestore('configs/edital', editalConfig);
+    }
     localStorage.setItem('focus_edital', JSON.stringify(editalConfig));
-  }, [editalConfig]);
+  }, [editalConfig, user, isInitializing, isSyncing]);
+
   useEffect(() => {
+    if (user && !isInitializing && !isSyncing) {
+      const syncCards = async () => {
+        const batch = writeBatch(db);
+        for (const card of flashcards) {
+          const cardRef = doc(db, 'users', user.uid, 'flashcards', card.id);
+          batch.set(cardRef, cleanData(card));
+        }
+        await batch.commit();
+      };
+      syncCards().catch(e => console.error("Error syncing cards:", e));
+    }
     localStorage.setItem('focus_flashcards', JSON.stringify(flashcards));
-  }, [flashcards]);
+  }, [flashcards, user, isInitializing, isSyncing]);
 
   useEffect(() => {
     localStorage.setItem('focus_flashcard_folders', JSON.stringify(flashcardFolders));
   }, [flashcardFolders]);
 
   useEffect(() => {
+    if (user && !isInitializing && !isSyncing) {
+      const syncFolders = async () => {
+        const batch = writeBatch(db);
+        for (const folder of folders) {
+          const folderRef = doc(db, 'users', user.uid, 'quizFolders', folder.id);
+          const { notebooks, ...folderMeta } = folder;
+          batch.set(folderRef, cleanData(folderMeta));
+          
+          for (const notebook of notebooks) {
+            const notebookRef = doc(db, 'users', user.uid, 'quizFolders', folder.id, 'notebooks', notebook.id);
+            batch.set(notebookRef, cleanData(notebook));
+          }
+        }
+        await batch.commit();
+      };
+      syncFolders().catch(e => console.error("Error syncing folders:", e));
+    }
     localStorage.setItem('focus_folders', JSON.stringify(folders));
-  }, [folders]);
+  }, [folders, user, isInitializing, isSyncing]);
 
   useEffect(() => {
     localStorage.setItem('focus_attempts', JSON.stringify(attempts));
@@ -197,8 +303,11 @@ const App: React.FC = () => {
   }, [studyPlan]);
 
   useEffect(() => {
+    if (user && !isInitializing && !isSyncing) {
+      setDoc(doc(db, 'users', user.uid), cleanData(stats)).catch(e => handleFirestoreError(e, OperationType.WRITE, 'users/profile'));
+    }
     localStorage.setItem('focus_stats', JSON.stringify(stats));
-  }, [stats]);
+  }, [stats, user, isInitializing, isSyncing]);
 
   useEffect(() => {
     localStorage.setItem('focus_smart_system', JSON.stringify(smartSystem));
@@ -602,6 +711,9 @@ const App: React.FC = () => {
             setGuidedLessonData={setGuidedLessonData}
             smartRevisionItems={smartSystem.queue}
             isAIEnabled={isAIEnabled}
+            user={user}
+            onLogin={handleLogin}
+            isSyncing={isSyncing}
           />
         )}
         
@@ -828,6 +940,8 @@ const App: React.FC = () => {
             myId={socialState.myId} 
             isAIEnabled={isAIEnabled}
             setIsAIEnabled={setIsAIEnabled}
+            onLogout={handleLogout}
+            isLoggedIn={!!user}
           />
         )}
         {currentView === 'COMMUNITY' && <CommunityView activities={activities} onBack={() => setCurrentView('HUB')} onPostManual={handleManualPost} />}

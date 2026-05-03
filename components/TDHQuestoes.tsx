@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain } from 'lucide-react';
-import { generateExamQuestions } from '../services/geminiService';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy } from 'lucide-react';
+import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig } from '../types';
 import LoadingFish from './LoadingFish';
 import SaveToFolderModal from './SaveToFolderModal';
@@ -30,6 +30,9 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   editalConfig,
   onBatchComplete
 }) => {
+  const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE'>('AUTO');
+  const [pastedText, setPastedText] = useState('');
+  const [batchStatus, setBatchStatus] = useState<{ current: number, total: number } | null>(null);
   const [topic, setTopic] = useState(prefill || '');
   const [banca, setBanca] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -75,6 +78,62 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
       alert(error.message || "Erro desconhecido ao gerar simulado. Tente novamente.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleParsePasted = async () => {
+    if (!pastedText.trim()) return;
+    setLoading(true);
+    setQuestions([]);
+    setCurrentIdx(0);
+    setShowCommentary(false);
+    setSaved(false);
+    setUserAnswers({});
+    
+    try {
+      // Step 1: Detect how many questions
+      const estimatedCount = await identifyQuestionCount(pastedText);
+      const batchSize = 10;
+      const totalBatches = Math.ceil((estimatedCount || 1) / batchSize) || 1;
+      
+      let allQuestions: any[] = [];
+      
+      // Step 2: Extract in blocks
+      for (let i = 0; i < totalBatches; i++) {
+        setBatchStatus({ current: i + 1, total: totalBatches });
+        console.log(`Processando bloco ${i + 1} de ${totalBatches}...`);
+        
+        const result = await parsePastedQuestions(pastedText, studyProfile, { current: i + 1, total: totalBatches });
+        
+        if (result.questions && Array.isArray(result.questions)) {
+          const formatted = result.questions.map((q: any) => ({
+            ...q,
+            id: Math.random().toString(36).substr(2, 9)
+          }));
+          allQuestions = [...allQuestions, ...formatted];
+          console.log(`Bloco ${i + 1} concluído. Total de questões extraídas até agora: ${allQuestions.length}`);
+          // Show progress incrementally
+          setQuestions([...allQuestions]);
+        } else {
+          console.warn(`Bloco ${i + 1} retornou 0 questões.`);
+        }
+
+        // Breve pausa para não sobrecarregar a cota da API (rate limit)
+        if (i < totalBatches - 1) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+      }
+      
+      if (allQuestions.length === 0) throw new Error("Não conseguimos extrair nenhuma questão do texto.");
+      
+      setTopic("Questões do Texto Colado");
+      setBatchStatus(null);
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || "Erro ao processar texto. Verifique o formato e tente novamente.");
+    } finally {
+      setLoading(false);
+      setBatchStatus(null);
     }
   };
 
@@ -124,11 +183,35 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[200] bg-[#0A0F1E] flex items-center justify-center">
-        <LoadingFish 
-          message="Arquitetando seu Simulado..." 
-          submessage={`IA preparando questões focadas em ${studyProfile === 'CONCURSO' ? 'Concursos de Elite' : 'ENEM/Vestibular'}`}
-        />
+      <div className="fixed inset-0 z-[200] bg-[#0A0F1E] flex flex-col items-center justify-center p-6">
+        <div className="bg-white rounded-[50px] p-12 md:p-20 shadow-2xl flex flex-col items-center max-w-xl w-full">
+          <LoadingFish 
+            message={batchStatus ? `Bloco ${batchStatus.current} de ${batchStatus.total}` : "Arquitetando Simulado..."} 
+            submessage={batchStatus 
+              ? `Extraindo questões via IA de alta performance`
+              : `IA preparando questões focadas em ${studyProfile === 'CONCURSO' ? 'Concursos de Elite' : 'ENEM/Vestibular'}`
+            }
+          />
+          
+          {batchStatus && (
+            <div className="mt-8 w-full">
+              <div className="flex justify-between mb-2">
+                <span className="text-[#0A0F1E] font-black text-[10px] tracking-widest uppercase">Progresso da Extração</span>
+                <span className="text-[#0A0F1E] font-black text-[10px]">{Math.round((batchStatus.current / batchStatus.total) * 100)}%</span>
+              </div>
+              <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-orange-500 transition-all duration-1000 ease-out" 
+                  style={{ width: `${(batchStatus.current / batchStatus.total) * 100}%` }}
+                ></div>
+              </div>
+              <p className="mt-4 text-center text-gray-400 font-bold text-[8px] uppercase tracking-widest leading-relaxed">
+                Estamos processando em blocos de 10 para garantir o máximo de <br/>
+                profundidade técnica e não perder nenhuma questão do texto colado.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -158,80 +241,124 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                 </p>
                 
                 <div className="space-y-8">
-                  {strategicMode && editalConfig ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-3 text-left">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Matéria do Edital</label>
-                        <select 
-                          value={selectedSubject}
-                          onChange={(e) => { setSelectedSubject(e.target.value); setSelectedTopic(''); }}
-                          className="w-full bg-white/5 border-2 border-white/10 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-orange-500 transition-all font-bold appearance-none cursor-pointer text-white"
-                        >
-                          <option value="" className="bg-[#0A0F1E]">Selecionar Matéria...</option>
-                          {editalConfig.subjects.map((s, i) => (
-                             <option key={i} value={s.name} className="bg-[#0A0F1E]">{s.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-3 text-left">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Assunto Específico</label>
-                        <select 
-                          value={selectedTopic}
-                          onChange={(e) => setSelectedTopic(e.target.value)}
-                          disabled={!selectedSubject}
-                          className="w-full bg-white/5 border-2 border-white/10 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-orange-500 transition-all font-bold appearance-none cursor-pointer disabled:opacity-20 text-white"
-                        >
-                          <option value="" className="bg-[#0A0F1E]">Selecionar Assunto...</option>
-                          {editalConfig.subjects.find(s => s.name === selectedSubject)?.topics.map((t, i) => (
-                            <option key={i} value={t} className="bg-[#0A0F1E]">{t}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 text-left">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-6">O que vamos treinar hoje?</label>
-                      <input 
-                        value={topic}
-                        onChange={(e) => setTopic(e.target.value)}
-                        placeholder={studyProfile === 'CONCURSO' ? "Ex: Atos Administrativos" : "Ex: Genética Mendeliana"}
-                        className="w-full bg-white/5 border-2 border-white/10 rounded-[40px] px-10 py-8 text-2xl focus:outline-none focus:border-orange-500 transition-all font-black text-center text-white placeholder:text-white/10"
-                        onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                      />
+                  {!strategicMode && (
+                    <div className="flex bg-white/5 p-2 rounded-[30px] mx-auto max-w-md mb-8 relative z-20">
+                      <button 
+                        onClick={() => setInputMode('AUTO')}
+                        className={`flex-1 py-3 px-6 rounded-[24px] font-black text-xs uppercase tracking-widest transition-all ${inputMode === 'AUTO' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        Gerar com IA
+                      </button>
+                      <button 
+                        onClick={() => setInputMode('PASTE')}
+                        className={`flex-1 py-3 px-6 rounded-[24px] font-black text-xs uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'PASTE' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        <Copy className="w-4 h-4" /> COLAR TEXTO
+                      </button>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white/5 p-8 rounded-[35px] text-left border-2 border-white/5 focus-within:border-orange-500/50 transition-all">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-3">Banca Examinadora</label>
-                      <input 
-                        value={banca}
-                        onChange={(e) => setBanca(e.target.value)}
-                        placeholder="Ex: FCC, FGV, CESPE..."
-                        className="w-full bg-transparent border-none text-xl focus:outline-none font-black text-white placeholder:text-white/10"
-                      />
-                    </div>
-                    <div className="bg-white/5 p-8 rounded-[35px] text-left">
-                      <div className="flex justify-between items-center mb-6">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Qtd. Questões</label>
-                        <span className="text-orange-500 font-black text-2xl">{numQuestions}</span>
-                      </div>
-                      <input 
-                        type="range" min="1" max="50" 
-                        value={numQuestions}
-                        onChange={(e) => setNumQuestions(Number(e.target.value))}
-                        className="w-full h-2 bg-white/10 rounded-full accent-orange-500 cursor-pointer"
-                      />
-                    </div>
-                  </div>
+                  {inputMode === 'AUTO' ? (
+                    <>
+                      {strategicMode && editalConfig ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-3 text-left">
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Matéria do Edital</label>
+                            <select 
+                              value={selectedSubject}
+                              onChange={(e) => { setSelectedSubject(e.target.value); setSelectedTopic(''); }}
+                              className="w-full bg-white/5 border-2 border-white/10 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-orange-500 transition-all font-bold appearance-none cursor-pointer text-white"
+                            >
+                              <option value="" className="bg-[#0A0F1E]">Selecionar Matéria...</option>
+                              {editalConfig.subjects.map((s, i) => (
+                                 <option key={i} value={s.name} className="bg-[#0A0F1E]">{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-3 text-left">
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Assunto Específico</label>
+                            <select 
+                              value={selectedTopic}
+                              onChange={(e) => setSelectedTopic(e.target.value)}
+                              disabled={!selectedSubject}
+                              className="w-full bg-white/5 border-2 border-white/10 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-orange-500 transition-all font-bold appearance-none cursor-pointer disabled:opacity-20 text-white"
+                            >
+                              <option value="" className="bg-[#0A0F1E]">Selecionar Assunto...</option>
+                              {editalConfig.subjects.find(s => s.name === selectedSubject)?.topics.map((t, i) => (
+                                <option key={i} value={t} className="bg-[#0A0F1E]">{t}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 text-left">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-6">O que vamos treinar hoje?</label>
+                          <input 
+                            value={topic}
+                            onChange={(e) => setTopic(e.target.value)}
+                            placeholder={studyProfile === 'CONCURSO' ? "Ex: Atos Administrativos" : "Ex: Genética Mendeliana"}
+                            className="w-full bg-white/5 border-2 border-white/10 rounded-[40px] px-10 py-8 text-2xl focus:outline-none focus:border-orange-500 transition-all font-black text-center text-white placeholder:text-white/10"
+                            onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                          />
+                        </div>
+                      )}
 
-                  <button 
-                    onClick={() => handleGenerate()}
-                    className="w-full bg-orange-500 text-white py-8 rounded-[40px] font-black text-2xl hover:bg-orange-400 transition-all shadow-2xl shadow-orange-900/40 flex items-center justify-center gap-4 active:scale-95 group mt-8"
-                  >
-                    CONFIGURAR SIMULADO
-                    <ChevronRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
-                  </button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white/5 p-8 rounded-[35px] text-left border-2 border-white/5 focus-within:border-orange-500/50 transition-all">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-3">Banca Examinadora</label>
+                          <input 
+                            value={banca}
+                            onChange={(e) => setBanca(e.target.value)}
+                            placeholder="Ex: FCC, FGV, CESPE..."
+                            className="w-full bg-transparent border-none text-xl focus:outline-none font-black text-white placeholder:text-white/10"
+                          />
+                        </div>
+                        <div className="bg-white/5 p-8 rounded-[35px] text-left">
+                          <div className="flex justify-between items-center mb-6">
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Qtd. Questões</label>
+                            <span className="text-orange-500 font-black text-2xl">{numQuestions}</span>
+                          </div>
+                          <input 
+                            type="range" min="1" max="50" 
+                            value={numQuestions}
+                            onChange={(e) => setNumQuestions(Number(e.target.value))}
+                            className="w-full h-2 bg-white/10 rounded-full accent-orange-500 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => handleGenerate()}
+                        className="w-full bg-orange-500 text-white py-8 rounded-[40px] font-black text-2xl hover:bg-orange-400 transition-all shadow-2xl shadow-orange-900/40 flex items-center justify-center gap-4 active:scale-95 group mt-8 relative z-20"
+                      >
+                        CONFIGURAR SIMULADO
+                        <ChevronRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="space-y-6 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
+                      <div className="bg-orange-500/10 p-6 rounded-3xl border border-orange-500/20 mb-6">
+                        <p className="text-orange-500 text-sm font-bold flex items-center gap-2">
+                          <Brain className="w-5 h-5" /> A IA vai ler as questões, identificar a resposta certa (se não tiver gabarito) e criar a explicação detalhada para você!
+                        </p>
+                      </div>
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-6">Cole as questões aqui</label>
+                      <textarea
+                        value={pastedText}
+                        onChange={(e) => setPastedText(e.target.value)}
+                        placeholder="Cole aqui o texto de uma prova, pdf ou site contendo as questões e alternativas..."
+                        className="w-full bg-white/5 border-2 border-white/10 rounded-[30px] p-8 text-lg focus:outline-none focus:border-orange-500 transition-all font-medium text-white placeholder:text-white/20 min-h-[300px] resize-y"
+                      />
+                      <button 
+                        onClick={() => handleParsePasted()}
+                        disabled={!pastedText.trim()}
+                        className="w-full bg-orange-500 text-white py-8 rounded-[40px] font-black text-2xl hover:bg-orange-400 transition-all shadow-2xl shadow-orange-900/40 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        PROCESSAR QUESTÕES
+                        <ChevronRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

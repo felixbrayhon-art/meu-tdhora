@@ -1,0 +1,126 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User statistics, levels, and XP",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "avatarColor": { "type": "string" },
+        "level": { "type": "number" },
+        "xp": { "type": "number" },
+        "coins": { "type": "number" },
+        "streak": { "type": "number" },
+        "totalDaysStudied": { "type": "number" },
+        "studyProfile": { "type": "string" },
+        "lastStudyDate": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "FocusSettings": {
+      "title": "Focus Settings",
+      "description": "User habits and notification settings",
+      "type": "object",
+      "properties": {
+        "waterReminder": { "type": "boolean" },
+        "waterInterval": { "type": "number" },
+        "medicationReminder": { "type": "boolean" },
+        "medicationTime": { "type": "string" },
+        "workTransition": { "type": "boolean" },
+        "workStartTime": { "type": "string" },
+        "prepTime": { "type": "number" }
+      }
+    },
+    "Flashcard": {
+      "title": "Flashcard",
+      "description": "SRS-based flashcard",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "question": { "type": "string" },
+        "answer": { "type": "string" },
+        "topic": { "type": "string" },
+        "folderId": { "type": "string" },
+        "nextReview": { "type": "number" },
+        "interval": { "type": "number" },
+        "easeFactor": { "type": "number" },
+        "reviewsCount": { "type": "number" }
+      }
+    },
+    "FlashcardFolder": {
+      "title": "Flashcard Folder",
+      "description": "Collection of flashcards",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "QuizFolder": {
+      "title": "Quiz Folder",
+      "description": "Categorized quiz collections",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "topic": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "Notebook": {
+      "title": "Quiz Notebook",
+      "description": "Group of quiz questions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "summary": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "questions": { "type": "array" }
+      }
+    },
+    "EditalConfig": {
+      "title": "Edital Config",
+      "description": "Active exam configuration",
+      "type": "object",
+      "properties": {
+        "isActive": { "type": "boolean" },
+        "examDate": { "type": "string" },
+        "dailyHours": { "type": "number" },
+        "subjects": { "type": "array" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile document"
+    },
+    "/users/{userId}/settings/focus": {
+      "schema": "FocusSettings",
+      "description": "User specific focus settings"
+    },
+    "/users/{userId}/flashcards/{cardId}": {
+      "schema": "Flashcard",
+      "description": "User's flashcards"
+    },
+    "/users/{userId}/flashcardFolders/{folderId}": {
+      "schema": "FlashcardFolder",
+      "description": "User's flashcard folders"
+    },
+    "/users/{userId}/quizFolders/{folderId}": {
+      "schema": "QuizFolder",
+      "description": "User's quiz folders"
+    },
+    "/users/{userId}/quizFolders/{folderId}/notebooks/{notebookId}": {
+      "schema": "Notebook",
+      "description": "Detailed quiz notebooks"
+    },
+    "/users/{userId}/configs/edital": {
+      "schema": "EditalConfig",
+      "description": "User's current exam setup"
+    }
+  }
+}

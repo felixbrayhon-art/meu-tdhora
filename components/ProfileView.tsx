@@ -11,6 +11,8 @@ interface ProfileViewProps {
   myId?: string;
   isAIEnabled: boolean;
   setIsAIEnabled: (val: boolean) => void;
+  onLogout?: () => void;
+  isLoggedIn?: boolean;
 }
 
 const AVATAR_OPTIONS = [
@@ -21,7 +23,7 @@ const AVATAR_OPTIONS = [
   { color: '#0A0F1E', name: 'Peixe Dark' },
 ];
 
-  const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled }) => {
+  const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled, onLogout, isLoggedIn }) => {
   const [name, setName] = useState(stats.name);
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
@@ -137,6 +139,14 @@ const AVATAR_OPTIONS = [
               >
                 SALVAR ALTERAÇÕES
               </button>
+              {isLoggedIn && onLogout && (
+                <button 
+                  onClick={onLogout}
+                  className="w-full mt-4 bg-gray-100 text-gray-400 py-4 rounded-[25px] font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-all border border-transparent hover:border-red-100"
+                >
+                  ENCERRAR SESSÃO (LOGOUT)
+                </button>
+              )}
             </div>
           </div>
         </div>

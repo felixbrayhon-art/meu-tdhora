@@ -20,6 +20,9 @@ interface HubProps {
   setGuidedLessonData: (data: { subject: string, topic: string }) => void;
   smartRevisionItems: SmartRevisionItem[];
   isAIEnabled: boolean;
+  user: any; // FirebaseUser
+  onLogin: () => void;
+  isSyncing: boolean;
 }
 
 const Hub: React.FC<HubProps> = ({ 
@@ -35,7 +38,10 @@ const Hub: React.FC<HubProps> = ({
   setStrategicMode,
   setGuidedLessonData,
   smartRevisionItems,
-  isAIEnabled
+  isAIEnabled,
+  user,
+  onLogin,
+  isSyncing
 }) => {
   const [activeTab, setActiveTab] = useState<HubCategory>('ESTUDO');
   const [copyFeedback, setCopyFeedback] = useState(false);
@@ -64,13 +70,32 @@ const Hub: React.FC<HubProps> = ({
             <p className="text-yellow-600 font-black text-xs uppercase tracking-[0.2em]">{profileLabel}</p>
           </div>
         </div>
-        <button 
-          onClick={() => setView('COMMUNITY')}
-          className="flex items-center gap-2 bg-black text-white px-6 py-3 rounded-2xl font-black text-sm hover:shadow-xl hover:bg-gray-800 transition-all shadow-lg"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-          CARDUME SOCIAL
-        </button>
+        
+        <div className="flex flex-col md:flex-row items-center gap-3">
+          {!user ? (
+            <button 
+              onClick={onLogin}
+              className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-2xl font-black text-sm hover:shadow-xl hover:bg-orange-600 transition-all shadow-lg animate-bounce"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+              SALVAR NA NUVEM (GRÁTIS)
+            </button>
+          ) : (
+             <div className="bg-green-500/10 border border-green-500/20 px-6 py-3 rounded-2xl flex items-center gap-3">
+               <div className="w-2 h-2 rounded-full bg-green-500"></div>
+               <span className="text-green-700 font-black text-[10px] uppercase tracking-widest">Nuvem Sincronizada</span>
+               {isSyncing && <div className="animate-spin w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full"></div>}
+             </div>
+          )}
+
+          <button 
+            onClick={() => setView('COMMUNITY')}
+            className="flex items-center gap-2 bg-black text-white px-6 py-3 rounded-2xl font-black text-sm hover:shadow-xl hover:bg-gray-800 transition-all shadow-lg"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            CARDUME SOCIAL
+          </button>
+        </div>
       </div>
       
 

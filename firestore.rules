@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Public test connection
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // HELPER FUNCTIONS
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- ENTITY VALIDATIONS ---
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'avatarColor', 'level', 'xp', 'streak']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.avatarColor is string && data.avatarColor.size() <= 20 &&
+             data.level is number && data.xp is number &&
+             data.streak is number &&
+             (!('coins' in data) || data.coins is number) &&
+             (!('totalDaysStudied' in data) || data.totalDaysStudied is number) &&
+             (!('lastStudyDate' in data) || data.lastStudyDate is string) &&
+             (!('studyProfile' in data) || data.studyProfile is string);
+    }
+
+    function isValidFlashcard(data) {
+      return data.keys().hasAll(['id', 'question', 'answer', 'topic']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.question is string && data.question.size() <= 5000 &&
+             data.answer is string && data.answer.size() <= 10000 &&
+             data.topic is string && data.topic.size() <= 200;
+    }
+
+    function isValidQuizFolder(data) {
+      return data.keys().hasAll(['id', 'name', 'createdAt']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 200 &&
+             data.createdAt is number;
+    }
+
+    function isValidNotebook(data) {
+      return data.keys().hasAll(['id', 'name', 'questions', 'createdAt']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 200 &&
+             data.questions is list &&
+             data.createdAt is number &&
+             (!('summary' in data) || data.summary is string);
+    }
+
+    // --- COLLECTION MATCHES ---
+
+    // USERS COLLECTION
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming());
+      
+      // Flashcards
+      match /flashcards/{cardId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidFlashcard(incoming()) && isValidId(cardId);
+        allow update: if isOwner(userId) && isValidFlashcard(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      // Flashcard Folders
+      match /flashcardFolders/{folderId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(folderId);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      // Quiz Folders
+      match /quizFolders/{folderId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidQuizFolder(incoming()) && isValidId(folderId);
+        allow update: if isOwner(userId) && isValidQuizFolder(incoming());
+        allow delete: if isOwner(userId);
+
+        // Notebooks
+        match /notebooks/{notebookId} {
+          allow list: if isOwner(userId);
+          allow get: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidNotebook(incoming()) && isValidId(notebookId);
+          allow update: if isOwner(userId) && isValidNotebook(incoming());
+          allow delete: if isOwner(userId);
+        }
+      }
+
+      // Configurations
+      match /configs/{configId} {
+        allow get: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      // Settings
+      match /settings/{settingId} {
+        allow get: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+    }
+  }
+}

@@ -82,27 +82,27 @@ export const generateStudyContent = async (topic: string, technique: string, num
       1. executiveSummary: Deve ser longo (mínimo 4 parágrafos), detalhado e estruturado.
       2. deepDive: Uma análise técnica profunda sobre o ponto mais complexo do tema.
       3. explorationMenu: 3 a 4 tópicos específicos relacionados a este tema para o usuário escolher explorar depois.
-      4. quiz: Em cada questão, use a seguinte ESTRUTURA OBRIGATÓRIA no "commentary" (use Markdown para títulos e listas):
-         - **CONCEITO E DEFINIÇÃO**: Explique o que é, natureza jurídica e distinções primárias.
-         - **REQUISITOS/ELEMENTOS**: Descreva os componentes essenciais.
-         - **CLASSIFICAÇÕES/ESPÉCIES**: Divida o tema em categorias claras e liste tipos existentes.
-         - **BASE LEGAL ATUAL**: Forneça o embasamento jurídico vigente.
-         - **POR QUE A LETRA ESTÁ CORRETA?**: Explicação detalhada da alternativa certa.
-         - **POR QUE AS OUTRAS ESTÃO ERRADAS?**: Razão pela qual cada incorreta falhou.
-         - **PEGADINHA DE PROVA**: Destaque pontos onde as bancas costumam enganar o candidato.
-         - **RESUMO PRA PROVA**: Tópicos rápidos para revisão.
-         - **DICA FINAL**: Conselho estratégico para este ponto específico.
+      4. quiz: Em cada questão, use a seguinte ESTRUTURA OBRIGATÓRIA no "commentary" (use Markdown Ricamente):
+         Seja EXAUSTIVO e TÉCNICO. Não seja breve. A explicação DEVE ser uma mini-aula profunda.
+         - **CONCEITO E DEFINIÇÃO**: O que é, natureza jurídica, distinções primárias e evolução do tema. Seja denso e técnico.
+         - **REQUISITOS/ELEMENTOS**: Descreva minuciosamente todos os componentes essenciais com exemplos práticos.
+         - **CLASSIFICAÇÕES/ESPÉCIES**: Divida o tema em categorias claras e explique cada uma de forma rica.
+         - **BASE LEGAL/CIENTÍFICA ATUAL**: Forneça o embasamento jurídico ou científico vigente com citações precisas.
+         - **POR QUE A LETRA ESTÁ CORRETA?**: Demonstração técnica detalhada da validade da alternativa certa.
+         - **POR QUE AS OUTRAS ESTÃO ERRADAS?**: Desconstrução INDIVIDUAL e minuciosa de cada uma das alternativas incorretas, apontando o erro jurídico ou lógico em cada ponto.
+         - **PEGADINHA DE PROVA**: Destaque pontos onde as bancas costumam usar sutilezas para enganar o candidato.
+         - **RESUMO RÁPIDO**: Tópicos estratégicos para revisão imediata e densa.
+         - **DICA FINAL**: Conselho de elite sobre a tendência de cobrança deste tema.
 
       5. memoryHint (DICA DE MEMORIZAÇÃO): Deve ser de ALTO IMPACTO para usuários com TDAH/ADHD.
-         - Ensine o usuário uma forma DEFINITIVA de não errar mais essa questão.
-         - Forneça uma explicação chocante e esclarecedora que fará com que o cérebro nunca mais esqueça o conceito.
-         - Você pode usar mnemônicos criativos, gatilhos visuais, analogias absurdas e rimas.
-         - O foco é a fixação e ancoragem profunda do conceito na memória de longo prazo.
+         - Ensine uma forma DEFINITIVA de não errar mais essa questão.
+         - Forneça uma explicação técnica tão esclarecedora que resolva qualquer ambiguidade teórica de forma profunda.
+         - Use mnemônicos potentes, gatilhos visuais, analogias de alto nível ou rimas táticas.
       
       6. flashcards: Gere cards que facilitem a memorização ativa.
          - A "answer" deve ser direta, mas pode incluir um pequeno mnemônico entre parênteses para temas complexos.
       
-      Não use emojis excessivos. Use formatação em negrito para termos-chave. Profundidade 8/10. Foco total em aprovação.
+      Não use emojis excessivos. Use formatação em negrito para termos-chave. Profundidade 10/10. Foco total em aprovação de elite.
       
       ESTRUTURA JSON:
       {
@@ -205,24 +205,34 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
       Não use emojis. Não use formatação de texto com asteriscos.
       
       ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("commentary") (Use Markdown Ricamente):
-      Separe rigorosamente cada tópico com DUAS quebras de linha (parágrafos distintos) e use listas com marcadores sempre que enumerar itens. A explicação DEVE ter um espaçamento excelente e ser muito limpa visualmente.
-      - **CONCEITO E DEFINIÇÃO**: O que é, natureza jurídica e distinções primárias.
-      - **BASE LEGAL ATUAL**: Citações de leis, artigos ou súmulas vigentes.
-      - **POR QUE A LETRA ESTÁ CORRETA?**: Demonstração técnica da alternativa certa.
-      - **POR QUE AS OUTRAS ESTÃO ERRADAS?**: Desconstrução individual das alternativas incorretas.
-      - **REQUISITOS/ELEMENTOS**: Descreva os componentes essenciais (use marcadores/bullet points).
-      - **CLASSIFICAÇÕES/ESPÉCIES**: Divida em categorias e liste os tipos (use marcadores).
-      - **PEGADINHA DE PROVA**: Destaque o ponto onde as bancas costumam enganar o candidato.
-      - **RESUMO PRA PROVA**: Tópicos curtos para revisão rápida (use marcadores).
-      - **DICA FINAL**: Um conselho estratégico sobre o tema.
-
+      Seja EXAUSTIVO e TÉCNICO. Não use explicações curtas. A explicação DEVE ser uma mini-aula profunda.
+      ### CONCEITO E DEFINIÇÃO
+      O que é, natureza jurídica, distinções primárias e contexto histórico/teórico.
+      
+      ### BASE LEGAL/CIENTÍFICA ATUAL
+      Citações de leis, artigos, incisos, súmulas ou teorias científicas vigentes com explicação do texto legal.
+      
+      ### POR QUE A ALTERNATIVA ESTÁ CORRETA?
+      Demonstração técnica e fundamentada da alternativa certa.
+      
+      ### POR QUE AS DEMAIS ALTERNATIVAS ESTÃO ERRADAS? (Desconstruir Individualmente)
+      Analise detalhadamente cada uma das outras opções apontando o erro técnico de forma separada.
+      
+      ### REQUISITOS E CLASSIFICAÇÕES DETALHADAS
+      Descreva os componentes essenciais e categorias de forma minuciosa (use marcadores/bullet points).
+      
+      ### PEGADINHA DE PROVA E "PEGAS"
+      Destaque as armadilhas semânticas onde as bancas costumam enganar o candidato.
+      
+      ### RESUMO RÁPIDO E ESTRATÉGICO
+      Tópicos curtos mas densos para revisão.
+ 
       A Dica de Memorização ("memoryHint") DEVE ser de ALTO IMPACTO:
       - Foque em usuários com TDAH/ADHD.
-      - Ensine o usuário uma forma DEFINITIVA de não errar mais essa questão.
-      - Forneça uma explicação inovadora e esclarecedora para nunca mais esquecer o conceito central abordado.
-      - Use gatilhos visuais, analogias absurdas, mnemônicos bizarros ou histórias que ancorem o conhecimento na memória de longo prazo.
+      - Ensine uma forma DEFINITIVA e profunda de não errar.
+      - Use gatilhos visuais, mnemônicos absurdos ou histórias que ancorem o conhecimento na memória de longo prazo.
       
-      Não use emojis excessivos. Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada. Profundidade 8/10. Objetivo: Aprovação.`,
+      Não use emojis excessivos. Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada. Profundidade 10/10. Objetivo: Aprovação de Elite.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -251,6 +261,95 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
     });
     return JSON.parse(response.text);
   } catch (error) {
+    return handleAIError(error);
+  }
+};
+
+export const identifyQuestionCount = async (text: string) => {
+  try {
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: `Analise cuidadosamente o texto abaixo e conte quantas questões de múltipla escolha (com alternativas A, B, C...) existem nele. 
+      Se houver numeração, use-a. Se não, conte os enunciados.
+      Retorne APENAS um número inteiro representando o total de questões.
+      
+      Texto:
+      """
+      ${text.substring(0, 15000)}
+      """`
+    });
+    const count = parseInt(response.text?.trim().replace(/[^0-9]/g, '') || "0");
+    return isNaN(count) ? 0 : count;
+  } catch (error) {
+    return 0;
+  }
+};
+
+export const parsePastedQuestions = async (pastedText: string, profile: StudyProfile = 'VESTIBULAR', batchInfo?: { current: number, total: number }) => {
+  const profileStyle = profile === 'CONCURSO'
+    ? "estilo Concursos Públicos de alto nível"
+    : "estilo ENEM/FUVEST";
+
+  const startNum = batchInfo ? (batchInfo.current - 1) * 10 + 1 : 1;
+  const endNum = batchInfo ? batchInfo.current * 10 : 100;
+
+  const batchPrompt = batchInfo 
+    ? `\nFOCO: EXTRAIA EXATAMENTE AS QUESTÕES QUE SÃO AS DE NÚMERO ${startNum} ATÉ ${endNum} NO TEXTO ORIGINAL. 
+       Se o texto não tiver numeração explícita, extraia o bloco correspondente à posição ${batchInfo.current} de ${batchInfo.total} do conteúdo total.
+       Não extraia questões que você já extraiu em blocos anteriores.`
+    : "";
+
+  try {
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: `${getTimeContext()}
+      Você é um extrator de questões de ALTA PRECISÃO. O usuário colou um texto longo. 
+      Sua missão é extrair as questões solicitadas e transformá-las em JSON. ${batchPrompt}
+      
+      Se não houver gabarito no texto, resolva você mesmo (${profileStyle}).
+      
+      ESTRUTURA DE CADA QUESTÃO NO JSON:
+      - question: Enunciado integral e limpo.
+      - options: Array com exatamente 5 alternativas.
+      - correctAnswer: Index 0-4.
+      - commentary: Mini-aula técnica estruturada (### CONCEITO, ### POR QUE ESTÁ CORRETA, ### ERRO DAS DEMAIS). Profundidade Máxima.
+      - memoryHint: Gatilho mental TDAH.
+
+      TEXTO PARA ANALISAR:
+      """
+      ${pastedText}
+      """`,
+      config: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 16000,
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            questions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  question: { type: Type.STRING },
+                  options: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: 5, maxItems: 5 },
+                  correctAnswer: { type: Type.INTEGER },
+                  commentary: { type: Type.STRING },
+                  memoryHint: { type: Type.STRING }
+                },
+                required: ["question", "options", "correctAnswer", "commentary", "memoryHint"]
+              }
+            }
+          },
+          required: ["questions"]
+        }
+      }
+    });
+
+    if (response.text) {
+      return JSON.parse(response.text);
+    }
+    throw new AIError("Resposta vazia da IA.");
+  } catch (error: any) {
     return handleAIError(error);
   }
 };
@@ -332,19 +431,19 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
       Se o estudante não cometeu erros, gere questões sobre os pontos que ele esqueceu ou sobre o tema geral.
       
       ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("commentary") (Use Markdown Ricamente):
-      Separe rigorosamente cada tópico com DUAS quebras de linha (parágrafos distintos) e use listas com marcadores sempre que enumerar itens. A explicação DEVE ter um espaçamento excelente e ser muito limpa visualmente.
-      - **CONCEITO E DEFINIÇÃO**: O que é e natureza jurídica.
-      - **BASE LEGAL ATUAL**: Lei/Artigo/Súmula.
-      - **POR QUE A LETRA ESTÁ CORRETA?** e **POR QUE AS OUTRAS ESTÃO ERRADAS?**
-      - **REQUISITOS/ELEMENTOS**: O que deve existir (use marcadores/bullet points).
-      - **CLASSIFICAÇÕES/ESPÉCIES** (use marcadores).
-      - **PEGADINHA DE PROVA:** Destaque o ponto onde houve o erro anterior.
-      - **RESUMO PRA PROVA** e **DICA FINAL** (use marcadores).
+      Seja EXAUSTIVO e TÉCNICO. Não seja breve. Desconstrua cada erro do estudante e de cada alternativa individualmente.
+      - **CONCEITO E DEFINIÇÃO**: Natureza jurídica, distinções e fundamentos teóricos profundos.
+      - **BASE LEGAL/CIENTÍFICA ATUAL**: Citações exatas e explicações da norma/teoria.
+      - **POR QUE A LETRA ESTÁ CORRETA?** e **POR QUE AS OUTRAS ESTÃO ERRADAS?** (Analise cada uma individualmente).
+      - **REQUISITOS/ELEMENTOS**: O que deve existir (use marcadores de forma detalhada).
+      - **CLASSIFICAÇÕES/ESPÉCIES** (analise as categorias minuciosamente).
+      - **PEGADINHA DE PROVA:** Destaque o ponto exato onde houve a falha de interpretação anterior.
+      - **RESUMO PRA PROVA** e **DICA FINAL** (pontos de elite para não esquecer).
       - VISUAL: Negrito em termos-chave.
       
-      A Dica de Memorização ("memoryHint") DEVE ser um gatilho mental de alto impacto. Ensine o usuário uma forma DEFINITIVA de não errar mais essa questão. Forneça uma explicação esclarecedora combinada com mnemônicos ou recursos imaginativos para que ele nunca mais esqueça o motivo pelo qual errou.
+      A Dica de Memorização ("memoryHint") DEVE ser um gatilho mental de impacto massivo. Ensine o usuário uma forma DEFINITIVA de não errar mais essa questão. Forneça uma explicação esclarecedora combinada com mnemônicos ou recursos imaginativos potentes para que ele nunca mais esqueça o motivo pelo qual errou.
       
-      Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada. Profundidade 8/10. Foco total em recuperação acelerada.
+      Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada. Profundidade 10/10. Foco total em recuperação acelerada e domínio do tema.
       
       Retorne no formato JSON rigoroso.`,
       config: {
@@ -420,19 +519,19 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
       - Linguagem direta para cérebro TDAH.
       
       ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("commentary") (Use Markdown Ricamente):
-      Separe rigorosamente cada tópico com DUAS quebras de linha (parágrafos distintos) e use listas com marcadores sempre que enumerar itens. A explicação DEVE ter um espaçamento excelente e ser muito limpa visualmente.
-      - **CONCEITO E DEFINIÇÃO**: O que é.
-      - **BASE LEGAL ATUAL**.
-      - **POR QUE A LETRA ESTÁ CORRETA?** e **POR QUE AS OUTRAS ESTÃO ERRADAS?**
-      - **REQUISITOS/ELEMENTOS**: Noções essenciais (use marcadores/bullet points).
-      - **CLASSIFICAÇÕES/ESPÉCIES** (use marcadores).
-      - **PEGADINHA DE PROVA**: Onde a banca tenta enganar.
-      - **RESUMO PRA PROVA** e **DICA FINAL** (use marcadores).
+      Seja EXAUSTIVO e TÉCNICO. Não seja breve. Desconstrua cada alternativa individualmente.
+      - **CONCEITO E DEFINIÇÃO**: O que é, natureza jurídica e fundamentos.
+      - **BASE LEGAL/CIENTÍFICA ATUAL**: Citações e explicações técnicas.
+      - **POR QUE A LETRA ESTÁ CORRETA?** e **POR QUE AS OUTRAS ESTÃO ERRADAS?** (Analise cada uma separadamente).
+      - **REQUISITOS/ELEMENTOS**: Noções essenciais detalhadas.
+      - **CLASSIFICAÇÕES/ESPÉCIES** (analise as categorias minuciosamente).
+      - **PEGADINHA DE PROVA**: Onde a banca tenta ludibriar o candidato.
+      - **RESUMO RÁPIDO** e **DICA FINAL**: Pontos de elite para não esquecer.
       - VISUAL: Negrito em conceitos-chave.
       
-      A Dica de Memorização ("memoryHint") DEVE ser um ensinamento de ALTO IMPACTO que esclarece o assunto de forma definitiva. Mostre um atalho mental ou uma explicação tão original que impedirá o usuário de errar questões semelhantes no futuro (use metáforas bizarros, mnemônicos ou rimas para ajudar na ancoragem).
+      A Dica de Memorização ("memoryHint") DEVE ser um ensinamento de ALTO IMPACTO que esclarece o assunto de forma definitiva e profunda. Mostre um atalho mental ou uma explicação tão original que impedirá o usuário de errar questões semelhantes no futuro.
       
-      Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada.
+      Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada. Profundidade 10/10.
       
       Retorne em JSON:`,
       config: {
