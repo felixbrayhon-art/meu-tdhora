@@ -88,9 +88,9 @@ export const generateStudyContent = async (topic: string, technique: string, num
          - **BASE LEGAL**: Citações de leis, artigos, incisos, súmulas ou teorias vigentes com embasamento técnico.
          - **CLASSIFICAÇÃO, ELEMENTOS E ESPÉCIE**: Categorias detalhadas e componentes estruturais minuciosos.
          - **REQUISITOS**: Requisitos essenciais para a validade ou ocorrência do tema.
-         - **PEGADINHAS DA FGV (ATENÇÃO!)**: Pontos de ambiguidade que bancas de elite usam para enganar candidates.
+         - **PEGADINHAS DA FGV (ATENÇÃO!)**: Pontos de ambiguidade que bancas de elite usam para enganar candidatos.
          - **RESUMO PARA A PROVA**: Tópicos chave densos para fixação estratégica.
-         - **ANÁLISE TÉCNICA DAS ALTERNATIVAS**: Por que a alternativa correta é válida e por que as demais incorretas falharam technicalmente.
+         - **ANÁLISE TÉCNICA DAS ALTERNATIVAS**: Por que a alternativa correta é válida e por que as demais incorretas falharam tecnicamente.
 
       5. memoryHint (DICA DE MEMORIZAÇÃO): Deve ser de ALTO IMPACTO para usuários com TDAH/ADHD.
          - Ensine uma forma DEFINITIVA de não errar mais essa questão.
@@ -210,14 +210,14 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
       ### Base Legal
       Citações de leis, artigos, incisos, súmulas ou teorias científicas vigentes com explicação do texto legal.
       
+      ### Classificação, elementos e Espécie
+      Categorias detalhadas e componentes estruturais minuciosos.
+      
       ### Requisitos
       Requisitos essenciais para a validade ou ocorrência do tema.
       
       ### Pegadinhas da FGV (Atenção!)
       Destaque as armadilhas semânticas onde as bancas costumam enganar o candidato.
-      
-      ### Classificação, elementos e Espécie
-      Categorias detalhadas e componentes estruturais minuciosos.
       
       ### Resumo para a Prova
       Tópicos curtos mas densos para revisão estratégica.
