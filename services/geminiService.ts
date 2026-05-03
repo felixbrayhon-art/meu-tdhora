@@ -84,15 +84,13 @@ export const generateStudyContent = async (topic: string, technique: string, num
       3. explorationMenu: 3 a 4 tópicos específicos relacionados a este tema para o usuário escolher explorar depois.
       4. quiz: Em cada questão, use a seguinte ESTRUTURA OBRIGATÓRIA no "commentary" (use Markdown Ricamente):
          Seja EXAUSTIVO e TÉCNICO. Não seja breve. A explicação DEVE ser uma mini-aula profunda.
-         - **CONCEITO E DEFINIÇÃO**: O que é, natureza jurídica, distinções primárias e evolução do tema. Seja denso e técnico.
-         - **REQUISITOS/ELEMENTOS**: Descreva minuciosamente todos os componentes essenciais com exemplos práticos.
-         - **CLASSIFICAÇÕES/ESPÉCIES**: Divida o tema em categorias claras e explique cada uma de forma rica.
-         - **BASE LEGAL/CIENTÍFICA ATUAL**: Forneça o embasamento jurídico ou científico vigente com citações precisas.
-         - **POR QUE A LETRA ESTÁ CORRETA?**: Demonstração técnica detalhada da validade da alternativa certa.
-         - **POR QUE AS OUTRAS ESTÃO ERRADAS?**: Desconstrução INDIVIDUAL e minuciosa de cada uma das alternativas incorretas, apontando o erro jurídico ou lógico em cada ponto.
-         - **PEGADINHA DE PROVA**: Destaque pontos onde as bancas costumam usar sutilezas para enganar o candidato.
-         - **RESUMO RÁPIDO**: Tópicos estratégicos para revisão imediata e densa.
-         - **DICA FINAL**: Conselho de elite sobre a tendência de cobrança deste tema.
+         - **CONCEITO**: Definição, natureza jurídica, distinções primárias e evolução do tema.
+         - **BASE LEGAL**: Citações de leis, artigos, incisos, súmulas ou teorias vigentes com embasamento técnico.
+         - **CLASSIFICAÇÃO, ELEMENTOS E ESPÉCIE**: Categorias detalhadas e componentes estruturais minuciosos.
+         - **REQUISITOS**: Requisitos essenciais para a validade ou ocorrência do tema.
+         - **PEGADINHAS DA FGV (ATENÇÃO!)**: Pontos de ambiguidade que bancas de elite usam para enganar candidates.
+         - **RESUMO PARA A PROVA**: Tópicos chave densos para fixação estratégica.
+         - **ANÁLISE TÉCNICA DAS ALTERNATIVAS**: Por que a alternativa correta é válida e por que as demais incorretas falharam technicalmente.
 
       5. memoryHint (DICA DE MEMORIZAÇÃO): Deve ser de ALTO IMPACTO para usuários com TDAH/ADHD.
          - Ensine uma forma DEFINITIVA de não errar mais essa questão.
@@ -206,26 +204,26 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
       
       ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("commentary") (Use Markdown Ricamente):
       Seja EXAUSTIVO e TÉCNICO. Não use explicações curtas. A explicação DEVE ser uma mini-aula profunda.
-      ### CONCEITO E DEFINIÇÃO
-      O que é, natureza jurídica, distinções primárias e contexto histórico/teórico.
+      ### Conceito
+      Definição, natureza jurídica, distinções primárias e contexto histórico/teórico.
       
-      ### BASE LEGAL/CIENTÍFICA ATUAL
+      ### Base Legal
       Citações de leis, artigos, incisos, súmulas ou teorias científicas vigentes com explicação do texto legal.
       
-      ### POR QUE A ALTERNATIVA ESTÁ CORRETA?
-      Demonstração técnica e fundamentada da alternativa certa.
+      ### Requisitos
+      Requisitos essenciais para a validade ou ocorrência do tema.
       
-      ### POR QUE AS DEMAIS ALTERNATIVAS ESTÃO ERRADAS? (Desconstruir Individualmente)
-      Analise detalhadamente cada uma das outras opções apontando o erro técnico de forma separada.
-      
-      ### REQUISITOS E CLASSIFICAÇÕES DETALHADAS
-      Descreva os componentes essenciais e categorias de forma minuciosa (use marcadores/bullet points).
-      
-      ### PEGADINHA DE PROVA E "PEGAS"
+      ### Pegadinhas da FGV (Atenção!)
       Destaque as armadilhas semânticas onde as bancas costumam enganar o candidato.
       
-      ### RESUMO RÁPIDO E ESTRATÉGICO
-      Tópicos curtos mas densos para revisão.
+      ### Classificação, elementos e Espécie
+      Categorias detalhadas e componentes estruturais minuciosos.
+      
+      ### Resumo para a Prova
+      Tópicos curtos mas densos para revisão estratégica.
+      
+      ### Análise Técnica das Alternativas
+      Por que a alternativa correta é válida e por que as demais incorretas falharam tecnicamente (analisadas individualmente).
  
       A Dica de Memorização ("memoryHint") DEVE ser de ALTO IMPACTO:
       - Foque em usuários com TDAH/ADHD.
@@ -312,7 +310,7 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
       - question: Enunciado integral e limpo.
       - options: Array com exatamente 5 alternativas.
       - correctAnswer: Index 0-4.
-      - commentary: Mini-aula técnica estruturada (### CONCEITO, ### POR QUE ESTÁ CORRETA, ### ERRO DAS DEMAIS). Profundidade Máxima.
+      - commentary: Mini-aula técnica estruturada (### CONCEITO, ### BASE LEGAL, ### CLASSIFICAÇÃO, ELEMENTOS E ESPÉCIE, ### REQUISITOS, ### PEGADINHAS DA FGV (ATENÇÃO!), ### RESUMO PARA A PROVA, ### ANÁLISE TÉCNICA DAS ALTERNATIVAS). Profundidade Máxima.
       - memoryHint: Gatilho mental TDAH.
 
       TEXTO PARA ANALISAR:
