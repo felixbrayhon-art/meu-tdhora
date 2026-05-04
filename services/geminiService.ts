@@ -807,6 +807,24 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
   }
 };
 
+export const getDailyBibleMotivation = async (): Promise<string> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: `${getTimeContext()}
+      Gere uma passagem curta e motivacional da Bíblia totalmente focada para um estudante com TDAH (foco, superação, ansiedade, perseverança).
+      A linguagem deve ser inspiradora e focada no esforço, na superação e na esperança.
+      Adicione uma reflexão rápida e pessoal de máximo 30 palavras para o estudante focar no dia de hoje.
+      O formato deve ser: "Passagem (Capítulo:Versículo) - Reflexão curta."
+      NÃO use emojis. NÃO use formatação com asteriscos.`,
+    });
+    return response.text?.trim() || "Tudo posso naquele que me fortalece. - Reflexão: Confie no seu processo e mantenha a calma.";
+  } catch (error) {
+    console.error("Erro ao buscar motivação:", error);
+    return "Tudo posso naquele que me fortalece. - Reflexão: Confie no seu processo e mantenha a calma.";
+  }
+};
+
 export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: number) => {
   const context = {
     subjects: edital.subjects.map(s => ({ 

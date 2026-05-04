@@ -17,7 +17,7 @@ export interface GuidedLesson {
   quiz?: QuizQuestion[];
   createdAt: number;
 }
-export type HubCategory = 'ESTUDO' | 'ORGANIZACAO' | 'RELAXE' | 'EDITAL' | 'REVISAO';
+export type HubCategory = 'ESTUDO' | 'ORGANIZACAO' | 'RELAXE' | 'EDITAL' | 'REVISAO' | 'MOTIVACAO';
 
 export enum TimerMode {
   POMODORO = 'POMODORO',
