@@ -160,7 +160,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
           <div className="absolute top-0 left-0 w-2 h-full bg-blue-600 opacity-50"></div>
           
           <div className="flex justify-between items-start mb-12">
-            <h3 className="text-3xl font-black text-white leading-tight flex-1 italic tracking-tight">{currentQ.question}</h3>
+            <h3 className="text-xl font-bold text-white leading-tight flex-1 italic tracking-tight">{currentQ.question}</h3>
             <button 
               onClick={handleDeleteQuestion}
               className="ml-6 p-3 bg-red-500/10 text-red-500/40 hover:text-red-500 hover:bg-red-500/20 rounded-2xl transition-all active:scale-90"
@@ -171,16 +171,16 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
           </div>
           
           {selectedAnswer === null ? (
-            <div className="grid grid-cols-1 gap-5">
+            <div className="grid grid-cols-1 gap-4">
               {questions[currentIndex].options.map((opt, idx) => {
                 const isCorrect = idx === currentQ.correctAnswer;
                 const isSelected = selectedAnswer === idx;
                 const isCrossedOut = crossedOut.includes(idx);
                 
-                let btnClass = "border-2 border-white/5 bg-white/5 hover:bg-white/10 hover:border-blue-500/50 text-slate-300";
+                let btnClass = "border border-white/10 bg-white/5 hover:bg-white/10 hover:border-blue-500/50 text-slate-300";
                 
                 if (isCrossedOut && selectedAnswer === null) {
-                  btnClass = "border-2 border-white/5 text-white/10 bg-black/20 line-through opacity-20 grayscale";
+                  btnClass = "border border-white/5 text-white/10 bg-black/20 line-through opacity-20 grayscale";
                 }
                 
                 return (
@@ -188,16 +188,16 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
                     key={idx}
                     onClick={() => handleSelect(idx)}
                     onDoubleClick={() => handleDoubleClick(idx)}
-                    className={`w-full text-left p-10 rounded-[40px] font-bold text-xl transition-all flex justify-between items-center select-none cursor-pointer group active:scale-[0.98] ${btnClass}`}
+                    className={`w-full text-left p-6 rounded-2xl font-medium text-sm transition-all flex justify-between items-center select-none cursor-pointer group active:scale-[0.98] ${btnClass}`}
                     role="button"
                     aria-disabled={selectedAnswer !== null}
                     tabIndex={0}
                   >
-                    <div className="flex items-center gap-6 flex-1">
-                      <span className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center text-sm font-black shadow-lg transition-colors ${selectedAnswer !== null && isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-white/10 text-white/30 group-hover:border-blue-500/50 group-hover:text-blue-500'}`}>
+                    <div className="flex items-center gap-4 flex-1">
+                      <span className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-black shadow-lg transition-colors ${selectedAnswer !== null && isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-white/10 text-white/30 group-hover:border-blue-500/50 group-hover:text-blue-500'}`}>
                         {String.fromCharCode(65 + idx)}
                       </span>
-                      <span className="leading-relaxed">{opt}</span>
+                      <span className="leading-snug">{opt}</span>
                     </div>
                     
                     {selectedAnswer === null && (
@@ -206,10 +206,10 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
                           e.stopPropagation();
                           handleDoubleClick(idx);
                         }}
-                        className={`p-3 rounded-2xl transition-all active:scale-90 ${isCrossedOut ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'bg-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}
+                        className={`p-2 rounded-lg transition-all active:scale-90 ${isCrossedOut ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'bg-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}
                         title="Recortar alternativa"
                       >
-                        <Scissors className="w-5 h-5" />
+                        <Scissors className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -256,17 +256,13 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
                     </button>
                   </div>
                   
-                  <textarea
-                    value={userCommentaryInput}
-                    onChange={(e) => setUserCommentaryInput(e.target.value)}
-                    onBlur={() => handleSaveUserCommentary()}
-                    placeholder="Adicione sua própria explicação ou anotação para esta questão..."
-                    className="w-full bg-black/20 border-2 border-white/5 rounded-[30px] p-6 text-slate-300 focus:outline-none focus:border-yellow-500/50 transition-all font-medium text-lg min-h-[150px] resize-none"
-                  />
-                  
-                  <p className="mt-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">
-                    Salva automaticamente ao sair do campo
-                  </p>
+                  {userCommentaryInput ? (
+                      <div className="text-slate-300 text-lg font-medium space-y-4 markdown-body prose prose-invert prose-yellow max-w-none">
+                        <ReactMarkdown>{userCommentaryInput}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-white/30 font-bold text-sm italic">Nenhuma anotação adicionada ainda.</p>
+                    )}
                 </div>
 
                 {isNoteExpanded && (

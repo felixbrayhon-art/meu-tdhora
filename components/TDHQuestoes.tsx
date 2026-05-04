@@ -436,69 +436,62 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                <div className="absolute top-0 left-0 w-2 h-full bg-orange-500 opacity-50"></div>
               
               <div className="flex justify-between items-start mb-12">
-                <h3 className="text-3xl font-black text-white leading-tight flex-1 italic tracking-tight">
+                <h3 className="text-xl font-bold text-white leading-tight flex-1 italic tracking-tight">
                   {currentQ.question}
                 </h3>
-                <button 
-                  onClick={handleDeleteQuestion}
-                  className="ml-6 p-3 bg-red-500/10 text-red-500/40 hover:text-red-500 hover:bg-red-500/20 rounded-2xl transition-all"
-                  title="Excluir questão"
-                >
-                  <Trash2 className="w-6 h-6" />
-                </button>
               </div>
 
               {selectedOpt === null ? (
                 <div className="grid grid-cols-1 gap-5 mb-12">
-                  {currentQ.options.map((opt, idx) => {
-                    const isCorrect = idx === currentQ.correctAnswer;
-                    const isSelected = selectedOpt === idx;
-                    const isCrossedOut = crossedOut.includes(idx);
-                    
-                    let btnClass = "border-2 border-white/5 bg-white/5 hover:bg-white/10 hover:border-orange-500/50 text-slate-300";
-                    
-                    if (isCrossedOut && selectedOpt === null) {
-                      btnClass = "border-2 border-white/5 text-white/10 bg-black/20 line-through grayscale";
-                    }
-
-                    if (selectedOpt !== null) {
-                      if (isCorrect) btnClass = "border-green-500 bg-green-500/10 text-green-400 ring-4 ring-green-500/20";
-                      else if (isSelected) btnClass = "border-red-500 bg-red-500/10 text-red-400 ring-4 ring-red-500/20";
-                      else btnClass = "opacity-20 border-white/5 text-white/50";
-                    }
-
-                    return (
-                      <div 
-                        key={idx}
-                        onClick={() => handleAnswerSelection(idx)}
-                        onDoubleClick={() => handleDoubleClick(idx)}
-                        className={`w-full text-left p-10 rounded-[40px] font-bold text-xl transition-all flex items-center gap-6 select-none cursor-pointer group ${btnClass}`}
-                        role="button"
-                        aria-disabled={selectedOpt !== null}
-                        tabIndex={0}
-                      >
-                        <div className="flex items-center gap-6 flex-1">
-                          <span className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center text-sm font-black flex-shrink-0 transition-colors ${selectedOpt !== null && isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-white/10 text-white/30 group-hover:border-orange-500/50 group-hover:text-orange-500'}`}>
-                            {String.fromCharCode(65 + idx)}
-                          </span>
-                          <span className="leading-relaxed">{opt}</span>
+                    {currentQ.options.map((opt, idx) => {
+                      const isCorrect = idx === currentQ.correctAnswer;
+                      const isSelected = selectedOpt === idx;
+                      const isCrossedOut = crossedOut.includes(idx);
+                      
+                      let btnClass = "border border-white/10 bg-white/5 hover:bg-white/10 hover:border-orange-500/50 text-slate-300";
+                      
+                      if (isCrossedOut && selectedOpt === null) {
+                        btnClass = "border border-white/5 text-white/10 bg-black/20 line-through grayscale";
+                      }
+  
+                      if (selectedOpt !== null) {
+                        if (isCorrect) btnClass = "border-green-500 bg-green-500/10 text-green-400 ring-1 ring-green-500/20";
+                        else if (isSelected) btnClass = "border-red-500 bg-red-500/10 text-red-400 ring-1 ring-red-500/20";
+                        else btnClass = "opacity-20 border-white/5 text-white/50";
+                      }
+  
+                      return (
+                        <div 
+                          key={idx}
+                          onClick={() => handleAnswerSelection(idx)}
+                          onDoubleClick={() => handleDoubleClick(idx)}
+                          className={`w-full text-left p-6 rounded-2xl font-medium text-sm transition-all flex items-center gap-4 select-none cursor-pointer group ${btnClass}`}
+                          role="button"
+                          aria-disabled={selectedOpt !== null}
+                          tabIndex={0}
+                        >
+                          <div className="flex items-center gap-4 flex-1">
+                            <span className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-black flex-shrink-0 transition-colors ${selectedOpt !== null && isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-white/10 text-white/30 group-hover:border-orange-500/50 group-hover:text-orange-500'}`}>
+                              {String.fromCharCode(65 + idx)}
+                            </span>
+                            <span className="leading-snug">{opt}</span>
+                          </div>
+  
+                          {selectedOpt === null && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDoubleClick(idx);
+                              }}
+                              className={`p-2 rounded-lg transition-all active:scale-90 ${isCrossedOut ? 'bg-orange-600 text-white' : 'bg-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}
+                              title="Descartar alternativa"
+                            >
+                              <Scissors className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
-
-                        {selectedOpt === null && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDoubleClick(idx);
-                            }}
-                            className={`p-3 rounded-2xl transition-all active:scale-90 ${isCrossedOut ? 'bg-orange-600 text-white' : 'bg-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}
-                            title="Descartar alternativa"
-                          >
-                            <Scissors className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               ) : (
                 <div className="animate-in fade-in zoom-in-95 duration-500 mb-12">
@@ -537,17 +530,13 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         </button>
                       </div>
                       
-                      <textarea
-                        value={userCommentaryInput}
-                        onChange={(e) => setUserCommentaryInput(e.target.value)}
-                        onBlur={() => handleSaveUserCommentary()}
-                        placeholder="Adicione sua própria explicação ou anotação para esta questão..."
-                        className="w-full bg-white/5 border-2 border-white/10 rounded-[30px] p-6 text-slate-300 focus:outline-none focus:border-orange-500/50 transition-all font-medium text-lg min-h-[150px] resize-none"
-                      />
-                      
-                      <p className="mt-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">
-                        Salva automaticamente ao sair do campo
-                      </p>
+                      {userCommentaryInput ? (
+                      <div className="text-slate-300 text-lg font-medium space-y-4 markdown-body prose prose-invert prose-orange max-w-none">
+                        <ReactMarkdown>{userCommentaryInput}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-white/30 font-bold text-sm italic">Nenhuma anotação adicionada ainda.</p>
+                    )}
                     </div>
 
                     {isNoteExpanded && (
