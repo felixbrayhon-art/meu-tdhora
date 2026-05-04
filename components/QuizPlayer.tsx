@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain } from 'lucide-react';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, Maximize2, Minimize2, X } from 'lucide-react';
 import { QuizFolder, Notebook, QuizQuestion } from '../types';
 import ReactMarkdown from 'react-markdown';
 
@@ -9,9 +9,10 @@ interface QuizPlayerProps {
   notebook: Notebook;
   onBack: () => void;
   onComplete: (score: number, total: number) => void;
+  onUpdateQuestions?: (questions: QuizQuestion[]) => void;
 }
 
-const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onComplete }) => {
+const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onComplete, onUpdateQuestions }) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>(notebook.questions);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -19,6 +20,25 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
   const [showResult, setShowResult] = useState(false);
   const [showCommentary, setShowCommentary] = useState(false);
   const [crossedOut, setCrossedOut] = useState<number[]>([]);
+  const [userCommentaryInput, setUserCommentaryInput] = useState('');
+  const [isNoteExpanded, setIsNoteExpanded] = useState(false);
+
+  const currentQ = questions[currentIndex];
+
+  React.useEffect(() => {
+    setUserCommentaryInput(questions[currentIndex]?.userCommentary || '');
+  }, [currentIndex, questions]);
+
+  const handleSaveUserCommentary = (overrideValue?: string) => {
+    const valueToSave = overrideValue !== undefined ? overrideValue : userCommentaryInput;
+    const newQuestions = [...questions];
+    newQuestions[currentIndex] = {
+      ...newQuestions[currentIndex],
+      userCommentary: valueToSave
+    };
+    setQuestions(newQuestions);
+    onUpdateQuestions?.(newQuestions);
+  };
 
   const handleSelect = (optionIndex: number) => {
     if (selectedAnswer !== null) return; 
@@ -54,6 +74,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
   };
 
   const nextQuestion = () => {
+    handleSaveUserCommentary();
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setSelectedAnswer(null);
@@ -64,7 +85,6 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
     }
   };
 
-  const currentQ = questions[currentIndex];
 
   if (showResult) {
     return (
@@ -113,7 +133,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
       <div className="w-full max-w-5xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-10 duration-700">
         <div className="flex justify-between items-center mb-12">
           <button 
-            onClick={onBack} 
+            onClick={() => { handleSaveUserCommentary(); onBack(); }} 
             className="text-gray-500 font-black text-[10px] tracking-[0.3em] flex items-center gap-3 hover:text-white transition-all group active:scale-90"
           >
             <ChevronLeft className="w-6 h-6 group-hover:-translate-x-1" />
@@ -221,6 +241,75 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
                 <div className="markdown-body text-slate-300 text-xl font-medium space-y-6 mb-10 prose prose-invert prose-xl max-w-none">
                   <ReactMarkdown>{currentQ.commentary}</ReactMarkdown>
                 </div>
+
+                <div className="bg-white/5 border border-white/10 p-8 rounded-[40px] mt-10 relative">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3 text-xs font-black text-yellow-500 uppercase tracking-[0.3em]">
+                      <FileText className="w-4 h-4" /> SUA NOTA PESSOAL
+                    </div>
+                    <button 
+                      onClick={() => setIsNoteExpanded(true)}
+                      className="p-3 hover:bg-white/10 rounded-xl transition-all text-white/50 hover:text-white active:scale-90 cursor-pointer"
+                      title="Expandir anotação"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  <textarea
+                    value={userCommentaryInput}
+                    onChange={(e) => setUserCommentaryInput(e.target.value)}
+                    onBlur={() => handleSaveUserCommentary()}
+                    placeholder="Adicione sua própria explicação ou anotação para esta questão..."
+                    className="w-full bg-black/20 border-2 border-white/5 rounded-[30px] p-6 text-slate-300 focus:outline-none focus:border-yellow-500/50 transition-all font-medium text-lg min-h-[150px] resize-none"
+                  />
+                  
+                  <p className="mt-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">
+                    Salva automaticamente ao sair do campo
+                  </p>
+                </div>
+
+                {isNoteExpanded && (
+                  <div className="fixed inset-0 z-[1000] bg-[#0A0F1E]/95 backdrop-blur-2xl animate-in fade-in duration-300 p-6 md:p-12 flex flex-col">
+                    <div className="flex items-center justify-between mb-8 max-w-6xl mx-auto w-full">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-yellow-500/20 rounded-2xl flex items-center justify-center text-yellow-500">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-black text-white tracking-tight uppercase italic">Expansão de Nota</h2>
+                          <p className="text-white/40 text-[10px] font-black tracking-[0.3em] uppercase">Foco total na sua explicação pessoal</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => { handleSaveUserCommentary(); setIsNoteExpanded(false); }}
+                        className="p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all active:scale-90 cursor-pointer"
+                      >
+                        <Minimize2 className="w-6 h-6" />
+                      </button>
+                    </div>
+
+                    <div className="flex-1 max-w-6xl mx-auto w-full bg-white/5 rounded-[50px] p-12 border border-white/10 shadow-3xl">
+                      <textarea
+                        autoFocus
+                        value={userCommentaryInput}
+                        onChange={(e) => setUserCommentaryInput(e.target.value)}
+                        placeholder="Escreva livremente aqui sua explicação detalhada..."
+                        className="w-full h-full bg-transparent border-none text-slate-200 text-2xl md:text-3xl font-medium focus:outline-none resize-none leading-relaxed placeholder:text-white/5"
+                      />
+                    </div>
+
+                    <div className="max-w-6xl mx-auto w-full mt-8 flex justify-between items-center">
+                      <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">TDAH ORA • MODO FOCO EDITOR</p>
+                      <button 
+                        onClick={() => { handleSaveUserCommentary(); setIsNoteExpanded(false); }}
+                        className="px-12 py-6 bg-yellow-500 text-black font-black uppercase tracking-[0.3em] text-xs rounded-full hover:scale-105 transition-all shadow-2xl shadow-yellow-500/20 active:scale-95 cursor-pointer"
+                      >
+                        SALVAR E RECOLHER
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {currentQ.memoryHint && (
                   <div className="bg-blue-600/5 p-10 rounded-[40px] border-2 border-blue-600/20 shadow-2xl shadow-blue-900/10 animate-in slide-in-from-top-4 relative overflow-hidden mt-12">

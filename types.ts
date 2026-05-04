@@ -107,6 +107,7 @@ export interface QuizQuestion {
   userAnswer?: number;
   commentary?: string;
   memoryHint?: string;
+  userCommentary?: string;
 }
 
 export interface Notebook {

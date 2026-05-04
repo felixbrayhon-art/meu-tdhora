@@ -625,6 +625,16 @@ const App: React.FC = () => {
     });
   };
 
+  const handleUpdateQuestions = (folderId: string, notebookId: string, questions: QuizQuestion[]) => {
+    setFolders(prev => prev.map(f => {
+      if (f.id !== folderId) return f;
+      return {
+        ...f,
+        notebooks: f.notebooks.map(n => n.id === notebookId ? { ...n, questions } : n)
+      };
+    }));
+  };
+
   const handleCloseGlobalBar = () => {
     setGlobalTimerActive(false);
     setActiveChannel(null);
@@ -806,6 +816,7 @@ const App: React.FC = () => {
              folder={folders.find(f => f.id === activeNotebookInfo.folderId)!} 
              notebook={folders.find(f => f.id === activeNotebookInfo.folderId)!.notebooks.find(n => n.id === activeNotebookInfo.notebookId)!} 
              onBack={() => setCurrentView('MATERIALS')} 
+            onUpdateQuestions={(qs) => handleUpdateQuestions(activeNotebookInfo.folderId, activeNotebookInfo.notebookId, qs)}
              onComplete={(score, total) => { 
                 setAttempts(prev => [...prev, { folderId: activeNotebookInfo.folderId, notebookId: activeNotebookInfo.notebookId, date: Date.now(), score, total }]); 
                 addXP(score * 50); 
