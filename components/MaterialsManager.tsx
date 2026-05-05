@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { QuizFolder, Notebook, QuizAttempt, EditalConfig } from '../types';
+import { MoveAllNotebookQuestionsModal } from './MoveAllNotebookQuestionsModal';
 
 interface MaterialsManagerProps {
   folders: QuizFolder[];
@@ -11,13 +12,16 @@ interface MaterialsManagerProps {
   onCreateNotebook: (folderId: string, name: string) => void;
   onDeleteFolder?: (folderId: string) => void;
   onDeleteNotebook?: (folderId: string, notebookId: string) => void;
+  onMergeNotebooks?: (sourceNotebookId: string, sourceFolderId: string, targetNotebookId: string, targetFolderId: string) => void;
+  onMoveAllQuestions?: (sourceNotebookId: string, sourceFolderId: string, targetNotebookId: string, targetFolderId: string) => void;
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
 }
 
-const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, onBack, onPlayQuiz, onCreateFolder, onCreateNotebook, onDeleteFolder, onDeleteNotebook, strategicMode, editalConfig }) => {
+const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, onBack, onPlayQuiz, onCreateFolder, onCreateNotebook, onDeleteFolder, onDeleteNotebook, onMoveAllQuestions, strategicMode, editalConfig }) => {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
+  const [moveAllNotebook, setMoveAllNotebook] = useState<Notebook | null>(null);
   const [isCreating, setIsCreating] = useState<'FOLDER' | 'NOTEBOOK' | null>(null);
   const [newName, setNewName] = useState('');
 
@@ -233,6 +237,19 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                    </button>
                  )}
+                 {onMoveAllQuestions && (
+                     <button 
+                       onClick={(e) => { 
+                         e.stopPropagation(); 
+                         e.preventDefault();
+                         setMoveAllNotebook(notebook);
+                       }}
+                       className="absolute top-6 left-6 p-3 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all z-50 shadow-sm"
+                       title="Mover todas as questões"
+                     >
+                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                     </button>
+                 )}
                  
                  <div className="flex justify-between items-start mb-8 z-10 relative">
                    <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
@@ -343,6 +360,20 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
         <div className="py-20 text-center animate-in fade-in slide-in-from-bottom-4">
           <p className="text-gray-300 text-sm mt-2">Organize seu material criando pastas primeiro.</p>
         </div>
+      )}
+      {moveAllNotebook && (
+        <MoveAllNotebookQuestionsModal
+          folders={folders}
+          currentFolderId={selectedFolderId || ''}
+          currentNotebookId={moveAllNotebook.id}
+          onConfirm={(targetFolderId, targetNotebookId) => {
+            if (onMoveAllQuestions && selectedFolderId) {
+                onMoveAllQuestions(moveAllNotebook.id, selectedFolderId, targetNotebookId, targetFolderId);
+            }
+            setMoveAllNotebook(null);
+          }}
+          onClose={() => setMoveAllNotebook(null)}
+        />
       )}
     </div>
   );

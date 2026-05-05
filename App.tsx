@@ -635,6 +635,82 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleMoveQuestion = (questionId: string, sourceFolderId: string, sourceNotebookId: string, targetFolderId: string, targetNotebookId: string) => {
+    setFolders(prev => {
+      let questionToMove: QuizQuestion | undefined;
+      const newFolders = prev.map(f => {
+        if (f.id === sourceFolderId) {
+          return {
+            ...f,
+            notebooks: f.notebooks.map(n => {
+              if (n.id === sourceNotebookId) {
+                questionToMove = n.questions.find(q => q.id === questionId);
+                return { ...n, questions: n.questions.filter(q => q.id !== questionId) };
+              }
+              return n;
+            })
+          };
+        }
+        return f;
+      });
+
+      if (!questionToMove) return prev;
+
+      return newFolders.map(f => {
+        if (f.id === targetFolderId) {
+          return {
+            ...f,
+            notebooks: f.notebooks.map(n => {
+              if (n.id === targetNotebookId) {
+                return { ...n, questions: [...n.questions, questionToMove!] };
+              }
+              return n;
+            })
+          };
+        }
+        return f;
+      });
+    });
+  };
+
+  const handleMoveAllQuestions = (sourceNotebookId: string, sourceFolderId: string, targetNotebookId: string, targetFolderId: string) => {
+    setFolders(prev => {
+      let questionsToMove: QuizQuestion[] = [];
+      const newFolders = prev.map(f => {
+        if (f.id === sourceFolderId) {
+          return {
+            ...f,
+            notebooks: f.notebooks.map(n => {
+              if (n.id === sourceNotebookId) {
+                questionsToMove = [...n.questions];
+                return { ...n, questions: [] };
+              }
+              return n;
+            })
+          };
+        }
+        return f;
+      });
+
+      if (questionsToMove.length === 0) return prev;
+
+      return newFolders.map(f => {
+        if (f.id === targetFolderId) {
+          return {
+            ...f,
+            notebooks: f.notebooks.map(n => {
+              if (n.id === targetNotebookId) {
+                return { ...n, questions: [...n.questions, ...questionsToMove] };
+              }
+              return n;
+            })
+          };
+        }
+        return f;
+      });
+    });
+  };
+
   const handleCloseGlobalBar = () => {
     setGlobalTimerActive(false);
     setActiveChannel(null);
@@ -815,8 +891,10 @@ const App: React.FC = () => {
            <QuizPlayer 
              folder={folders.find(f => f.id === activeNotebookInfo.folderId)!} 
              notebook={folders.find(f => f.id === activeNotebookInfo.folderId)!.notebooks.find(n => n.id === activeNotebookInfo.notebookId)!} 
+             folders={folders}
              onBack={() => setCurrentView('MATERIALS')} 
-            onUpdateQuestions={(qs) => handleUpdateQuestions(activeNotebookInfo.folderId, activeNotebookInfo.notebookId, qs)}
+             onUpdateQuestions={(qs) => handleUpdateQuestions(activeNotebookInfo.folderId, activeNotebookInfo.notebookId, qs)}
+             onMoveQuestion={handleMoveQuestion}
              onComplete={(score, total) => { 
                 setAttempts(prev => [...prev, { folderId: activeNotebookInfo.folderId, notebookId: activeNotebookInfo.notebookId, date: Date.now(), score, total }]); 
                 addXP(score * 50); 

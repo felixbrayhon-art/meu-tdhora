@@ -1,18 +1,22 @@
 
 import React, { useState } from 'react';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, Maximize2, Minimize2, X } from 'lucide-react';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, Maximize2, Minimize2, Move } from 'lucide-react';
 import { QuizFolder, Notebook, QuizQuestion } from '../types';
 import ReactMarkdown from 'react-markdown';
+import { RichTextEditor } from './RichTextEditor';
+import { MoveToNotebookModal } from './MoveToNotebookModal';
 
 interface QuizPlayerProps {
   folder: QuizFolder;
   notebook: Notebook;
+  folders: QuizFolder[];
   onBack: () => void;
   onComplete: (score: number, total: number) => void;
   onUpdateQuestions?: (questions: QuizQuestion[]) => void;
+  onMoveQuestion: (questionId: string, sourceFolderId: string, sourceNotebookId: string, targetFolderId: string, targetNotebookId: string) => void;
 }
 
-const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onComplete, onUpdateQuestions }) => {
+const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBack, onComplete, onUpdateQuestions, onMoveQuestion }) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>(notebook.questions);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -22,6 +26,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
   const [crossedOut, setCrossedOut] = useState<number[]>([]);
   const [userCommentaryInput, setUserCommentaryInput] = useState('');
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
 
   const currentQ = questions[currentIndex];
 
@@ -85,6 +90,16 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
     }
   };
 
+  const prevQuestion = () => {
+    handleSaveUserCommentary();
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+      setSelectedAnswer(null);
+      setShowCommentary(false);
+      setCrossedOut([]);
+    }
+  };
+
 
   if (showResult) {
     return (
@@ -137,23 +152,33 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
             className="text-gray-500 font-black text-[10px] tracking-[0.3em] flex items-center gap-3 hover:text-white transition-all group active:scale-90"
           >
             <ChevronLeft className="w-6 h-6 group-hover:-translate-x-1" />
-            ABANDONAR TREINO
+            ABANDONAR
           </button>
           
-          <div className="flex-1 max-w-md mx-12">
-            <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">
-               <span>PROCESSO DE APRENDIZAGEM</span>
-               <span className="text-blue-500">{currentIndex + 1} de {questions.length}</span>
-            </div>
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5 shadow-inner">
-              <div 
-                className="h-full bg-blue-600 rounded-full transition-all duration-700 ease-out shadow-[0_0_15px_rgba(37,99,235,0.4)]" 
-                style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-              ></div>
-            </div>
+          <div className="flex items-center gap-4">
+             {currentIndex > 0 && (
+                <button onClick={() => { handleSaveUserCommentary(); setCurrentIndex(s => s - 1); }} className="text-white/50 hover:text-white">
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+             )}
+             <div className="flex-1 max-w-md">
+                <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">
+                  <span>PROCESSO DE APRENDIZAGEM</span>
+                  <span className="text-blue-500">{currentIndex + 1} de {questions.length}</span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5 shadow-inner">
+                  <div 
+                    className="h-full bg-blue-600 rounded-full transition-all duration-700 ease-out shadow-[0_0_15px_rgba(37,99,235,0.4)]" 
+                    style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+             {currentIndex < questions.length - 1 && (
+                <button onClick={nextQuestion} className="text-white/50 hover:text-white">
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+             )}
           </div>
-
-          <div className="w-12"></div> {/* Spacer for symmetry */}
         </div>
 
         <div className="bg-white/5 backdrop-blur-2xl rounded-[60px] p-12 md:p-16 border border-white/10 shadow-2xl relative overflow-hidden mb-10">
@@ -161,14 +186,44 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
           
           <div className="flex justify-between items-start mb-12">
             <h3 className="text-xl font-bold text-white leading-tight flex-1 italic tracking-tight">{currentQ.question}</h3>
-            <button 
-              onClick={handleDeleteQuestion}
-              className="ml-6 p-3 bg-red-500/10 text-red-500/40 hover:text-red-500 hover:bg-red-500/20 rounded-2xl transition-all active:scale-90"
-              title="Excluir questão"
-            >
-              <Trash2 className="w-6 h-6" />
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setShowMoveModal(true)}
+                className="ml-6 p-3 bg-blue-500/10 text-blue-500/40 hover:text-blue-500 hover:bg-blue-500/20 rounded-2xl transition-all active:scale-90"
+                title="Mover questão"
+              >
+                <Move className="w-6 h-6" />
+              </button>
+              <button 
+                onClick={handleDeleteQuestion}
+                className="p-3 bg-red-500/10 text-red-500/40 hover:text-red-500 hover:bg-red-500/20 rounded-2xl transition-all active:scale-90"
+                title="Excluir questão"
+              >
+                <Trash2 className="w-6 h-6" />
+              </button>
+            </div>
           </div>
+          
+          {showMoveModal && (
+            <MoveToNotebookModal
+              folders={folders}
+              currentFolderId={folder.id}
+              currentNotebookId={notebook.id}
+              onConfirm={(targetFolderId, targetNotebookId) => {
+                onMoveQuestion(currentQ.id, folder.id, notebook.id, targetFolderId, targetNotebookId);
+                setShowMoveModal(false);
+                // After moving, if we have only one question, go back, or remove it from the list
+                if (questions.length === 1) {
+                    onBack();
+                } else {
+                    const newQuestions = questions.filter((_, idx) => idx !== currentIndex);
+                    setQuestions(newQuestions);
+                    if (currentIndex >= newQuestions.length) setCurrentIndex(newQuestions.length - 1);
+                }
+              }}
+              onClose={() => setShowMoveModal(false)}
+            />
+          )}
           
           {selectedAnswer === null ? (
             <div className="grid grid-cols-1 gap-4">
@@ -215,6 +270,24 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
                   </div>
                 );
               })}
+              
+              <div className="mt-4 grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700">
+                <button 
+                  onClick={prevQuestion}
+                  disabled={currentIndex === 0}
+                  className="w-full bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed text-white py-4 rounded-[20px] font-black text-sm hover:bg-white/10 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 group uppercase tracking-widest"
+                >
+                  <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                  ANTERIOR
+                </button>
+                <button 
+                  onClick={nextQuestion}
+                  className="w-full bg-blue-600 text-white py-4 rounded-[20px] font-black text-sm hover:bg-blue-500 transition-all flex items-center justify-center gap-2 shadow-sm uppercase tracking-widest active:scale-95"
+                >
+                  {currentIndex < questions.length - 1 ? 'PRÓXIMA QUESTÃO' : 'FINALIZAR'}
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="animate-in fade-in slide-in-from-bottom-5 duration-500">
@@ -235,14 +308,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
               </div>
 
               <div className="bg-white/5 rounded-[50px] p-12 border border-white/10 shadow-3xl mb-10 leading-relaxed">
-                <h4 className="flex items-center gap-3 text-xs font-black text-blue-500 mb-8 uppercase tracking-[0.3em]">
-                   🧠 MAPEAMENTO DA LÓGICA
-                </h4>
-                <div className="markdown-body text-slate-300 text-xl font-medium space-y-6 mb-10 prose prose-invert prose-xl max-w-none">
-                  <ReactMarkdown>{currentQ.commentary}</ReactMarkdown>
-                </div>
-
-                <div className="bg-white/5 border border-white/10 p-8 rounded-[40px] mt-10 relative">
+                <div className="bg-white/5 border border-white/10 p-8 rounded-[40px] mb-10 relative">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3 text-xs font-black text-yellow-500 uppercase tracking-[0.3em]">
                       <FileText className="w-4 h-4" /> SUA NOTA PESSOAL
@@ -257,12 +323,17 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
                   </div>
                   
                   {userCommentaryInput ? (
-                      <div className="text-slate-300 text-lg font-medium space-y-4 markdown-body prose prose-invert prose-yellow max-w-none">
-                        <ReactMarkdown>{userCommentaryInput}</ReactMarkdown>
-                      </div>
-                    ) : (
-                      <p className="text-white/30 font-bold text-sm italic">Nenhuma anotação adicionada ainda.</p>
-                    )}
+                    <div className="text-slate-300 text-lg font-medium space-y-4 markdown-body prose prose-invert prose-yellow max-w-none" dangerouslySetInnerHTML={{ __html: userCommentaryInput }} />
+                  ) : (
+                    <p className="text-white/30 font-bold text-sm italic">Nenhuma anotação adicionada ainda.</p>
+                  )}
+                </div>
+
+                <h4 className="flex items-center gap-3 text-xs font-black text-blue-500 mb-8 uppercase tracking-[0.3em]">
+                   🧠 MAPEAMENTO DA LÓGICA
+                </h4>
+                <div className="markdown-body text-slate-300 text-xl font-medium space-y-6 prose prose-invert prose-xl max-w-none">
+                  <ReactMarkdown>{currentQ.commentary}</ReactMarkdown>
                 </div>
 
                 {isNoteExpanded && (
@@ -286,12 +357,9 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
                     </div>
 
                     <div className="flex-1 max-w-6xl mx-auto w-full bg-white/5 rounded-[50px] p-12 border border-white/10 shadow-3xl">
-                      <textarea
-                        autoFocus
-                        value={userCommentaryInput}
-                        onChange={(e) => setUserCommentaryInput(e.target.value)}
-                        placeholder="Escreva livremente aqui sua explicação detalhada..."
-                        className="w-full h-full bg-transparent border-none text-slate-200 text-2xl md:text-3xl font-medium focus:outline-none resize-none leading-relaxed placeholder:text-white/5"
+                      <RichTextEditor
+                        content={userCommentaryInput}
+                        onChange={setUserCommentaryInput}
                       />
                     </div>
 
@@ -332,13 +400,21 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, onBack, onCom
           )}
 
           {selectedAnswer !== null && (
-            <div className="mt-12 space-y-6 animate-in fade-in slide-in-from-top-6 duration-700">
+            <div className="mt-6 grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700">
+               <button 
+                onClick={() => { handleSaveUserCommentary(); setCurrentIndex(s => s - 1); setSelectedAnswer(null); setShowCommentary(false); setCrossedOut([]); }}
+                disabled={currentIndex === 0}
+                className="w-full bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed text-white py-4 rounded-[20px] font-black text-sm hover:bg-white/10 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 group uppercase tracking-widest"
+              >
+                <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                ANTERIOR
+              </button>
                <button 
                 onClick={nextQuestion}
-                className="w-full bg-blue-600 text-white py-10 rounded-[40px] font-black text-2xl hover:bg-blue-500 transition-all flex items-baseline justify-center gap-4 shadow-3xl shadow-blue-900/40 active:scale-95 group uppercase tracking-widest"
+                className="w-full bg-blue-600 text-white py-4 rounded-[20px] font-black text-sm hover:bg-blue-500 transition-all flex items-center justify-center gap-2 shadow-sm shadow-blue-900/20 active:scale-95 group uppercase tracking-widest"
               >
-                PRÓXIMO PASSO
-                <ChevronRight className="w-8 h-8 group-hover:translate-x-3 transition-transform self-center" />
+                {currentIndex < questions.length - 1 ? 'PRÓXIMA QUESTÃO' : 'FINALIZAR'}
+                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           )}

@@ -6,6 +6,7 @@ import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig } from '../types';
 import LoadingFish from './LoadingFish';
 import SaveToFolderModal from './SaveToFolderModal';
 import ReactMarkdown from 'react-markdown';
+import { RichTextEditor } from './RichTextEditor';
 
 interface TDHQuestoesProps {
   onBack: () => void;
@@ -531,9 +532,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       </div>
                       
                       {userCommentaryInput ? (
-                      <div className="text-slate-300 text-lg font-medium space-y-4 markdown-body prose prose-invert prose-orange max-w-none">
-                        <ReactMarkdown>{userCommentaryInput}</ReactMarkdown>
-                      </div>
+                      <div className="text-slate-300 text-lg font-medium space-y-4 markdown-body prose prose-invert prose-orange max-w-none" dangerouslySetInnerHTML={{ __html: userCommentaryInput }} />
                     ) : (
                       <p className="text-white/30 font-bold text-sm italic">Nenhuma anotação adicionada ainda.</p>
                     )}
@@ -560,12 +559,9 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         </div>
 
                         <div className="flex-1 max-w-6xl mx-auto w-full bg-white/5 rounded-[50px] p-12 border border-white/10 shadow-3xl">
-                          <textarea
-                            autoFocus
-                            value={userCommentaryInput}
-                            onChange={(e) => setUserCommentaryInput(e.target.value)}
-                            placeholder="Escreva livremente aqui sua explicação detalhada..."
-                            className="w-full h-full bg-transparent border-none text-slate-200 text-2xl md:text-3xl font-medium focus:outline-none resize-none leading-relaxed placeholder:text-white/5"
+                          <RichTextEditor
+                            content={userCommentaryInput}
+                            onChange={setUserCommentaryInput}
                           />
                         </div>
 
