@@ -58,10 +58,17 @@ export interface FocusSettings {
 
 export interface Flashcard {
   id: string;
-  question: string;
-  answer: string;
   topic: string;
   folderId?: string;
+  type: 'SIMPLE' | 'MULTIPLE_CHOICE'; // NEW
+  question: string;
+  answer: string; // Only for simple
+  explanation?: string; // NEW - Added explanation field
+  
+  // For multiple choice
+  options?: string[]; // 5 options
+  correctAnswerIndex?: number; // 0-4
+
   // SRS Fields
   nextReview?: number; // timestamp
   interval?: number; // in days
@@ -105,7 +112,7 @@ export interface QuizQuestion {
   options: string[];
   correctAnswer: number;
   userAnswer?: number;
-  commentary?: string;
+  explanation?: string;
   memoryHint?: string;
   userCommentary?: string;
 }

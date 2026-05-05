@@ -514,7 +514,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       <span className="font-black text-xs uppercase tracking-[0.3em]">Mapeamento de Resposta</span>
                     </div>
                     <div className="text-slate-300 text-xl font-medium space-y-6 mb-10 markdown-body prose prose-invert prose-xl max-w-none">
-                      <ReactMarkdown>{currentQ.commentary}</ReactMarkdown>
+                      <ReactMarkdown>{currentQ.explanation}</ReactMarkdown>
                     </div>
 
                     <div className="bg-[#0A0F1E] border border-white/5 p-8 rounded-[40px] mt-10 relative">
@@ -615,7 +615,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         <span className="w-6 h-6 bg-orange-500 rounded-lg flex items-center justify-center text-white text-[10px] tracking-tight">IA</span>
                         LÓGICA DO CONSTRUTOR
                       </div>
-                      <ReactMarkdown>{currentQ.commentary}</ReactMarkdown>
+                      <ReactMarkdown>{currentQ.explanation}</ReactMarkdown>
                     </div>
                   )}
                 </div>

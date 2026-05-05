@@ -82,7 +82,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
       1. executiveSummary: Deve ser longo (mínimo 4 parágrafos), detalhado e estruturado.
       2. deepDive: Uma análise técnica profunda sobre o ponto mais complexo do tema.
       3. explorationMenu: 3 a 4 tópicos específicos relacionados a este tema para o usuário escolher explorar depois.
-      4. quiz: Em cada questão, use a seguinte ESTRUTURA OBRIGATÓRIA no "commentary" (use Markdown Ricamente):
+      4. quiz: Em cada questão, use a seguinte ESTRUTURA OBRIGATÓRIA no "explanation" (use Markdown Ricamente):
          Seja EXAUSTIVO e TÉCNICO. Não seja breve. A explicação DEVE ser uma mini-aula profunda.
          - **CONCEITO**: Definição, natureza jurídica, distinções primárias e evolução do tema.
          - **BASE LEGAL**: Citações de leis, artigos, incisos, súmulas ou teorias vigentes com embasamento técnico.
@@ -113,7 +113,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
           "rightData": { "desc": "string", "example": "string" }
         },
         "explorationMenu": [{"topic": "string", "description": "string"}],
-        "quiz": [{"question": "string", "options": ["string"], "correctAnswer": number, "commentary": "string", "memoryHint": "string"}],
+        "quiz": [{"question": "string", "options": ["string"], "correctAnswer": number, "explanation": "string", "memoryHint": "string"}],
         "flashcards": [{"question": "string", "answer": "string"}]
       }`,
       config: {
@@ -162,18 +162,18 @@ export const generateStudyContent = async (topic: string, technique: string, num
                   question: { type: Type.STRING },
                   options: { type: Type.ARRAY, items: { type: Type.STRING } },
                   correctAnswer: { type: Type.INTEGER },
-                  commentary: { type: Type.STRING },
+                  explanation: { type: Type.STRING },
                   memoryHint: { type: Type.STRING }
                 },
-                required: ["question", "options", "correctAnswer", "commentary", "memoryHint"]
+                required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
               }
             },
             flashcards: {
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
-                properties: { question: { type: Type.STRING }, answer: { type: Type.STRING } },
-                required: ["question", "answer"]
+                properties: { question: { type: Type.STRING }, answer: { type: Type.STRING }, explanation: { type: Type.STRING } },
+                required: ["question", "answer", "explanation"]
               }
             }
           },
@@ -202,7 +202,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
       Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E). 
       Não use emojis. Não use formatação de texto com asteriscos.
       
-      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("commentary") (Use Markdown Ricamente):
+      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("explanation") (Use Markdown Ricamente):
       Seja EXAUSTIVO e TÉCNICO. Não use explicações curtas. A explicação DEVE ser uma mini-aula profunda.
       ### Conceito
       Definição, natureza jurídica, distinções primárias e contexto histórico/teórico.
@@ -246,10 +246,10 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
                   question: { type: Type.STRING },
                   options: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: 5, maxItems: 5 },
                   correctAnswer: { type: Type.INTEGER },
-                  commentary: { type: Type.STRING },
+                  explanation: { type: Type.STRING },
                   memoryHint: { type: Type.STRING }
                 },
-                required: ["question", "options", "correctAnswer", "commentary", "memoryHint"]
+                required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
               }
             }
           },
@@ -268,7 +268,7 @@ export const identifyQuestionCount = async (text: string) => {
     const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
       contents: `Analise cuidadosamente o texto abaixo e conte quantas questões de múltipla escolha (com alternativas A, B, C...) existem nele. 
-      Se houver numeração, use-a. Se não, conte os enunciados.
+      Ignore blocos de explicação, comentários ou gabaritos que venham após as questões; conte apenas os enunciados das perguntas.
       Retorne APENAS um número inteiro representando o total de questões.
       
       Texto:
@@ -304,14 +304,19 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
       Você é um extrator de questões de ALTA PRECISÃO. O usuário colou um texto longo. 
       Sua missão é extrair as questões solicitadas e transformá-las em JSON. ${batchPrompt}
       
-      Se não houver gabarito no texto, resolva você mesmo (${profileStyle}).
+      IDENTIFICAÇÃO DE RESPOSTAS E EXPLICAÇÕES (CRÍTICO - PRIORIDADE MÁXIMA AO TEXTO):
+      - O usuário frequentemente cola a resposta e a explicação logo abaixo de cada questão para guiar a IA. 
+      - BUSQUE ATENTAMENTE por padrões como: "Gabarito: A", "Resposta: B", "Alternativa correta: C", "[A]", "(B)", ou se uma alternativa estiver marcada com asteriscos, ou até mesmo apenas uma letra isolada logo após as alternativas que indique a resposta.
+      - BUSQUE também por "Explicação:", "Comentário:", "Justificativa:", "Fundamentação:" ou blocos de texto explicativos que venham imediatamente após o gabarito ou as alternativas.
+      - **REGRA DE OURO**: Se o texto colado indicar uma resposta ou explicação, você DEVE usá-las obrigatoriamente. Sua função aqui é de EXTRAÇÃO fiel e precisa, não de criação (a menos que a informação falte).
+      - Se a resposta no texto for "A", o 'correctAnswer' DEVE ser 0. Se for "B", 1, e assim por diante.
       
       ESTRUTURA DE CADA QUESTÃO NO JSON:
-      - question: Enunciado integral e limpo.
-      - options: Array com exatamente 5 alternativas.
-      - correctAnswer: Index 0-4.
-      - commentary: Mini-aula técnica estruturada (### CONCEITO, ### BASE LEGAL, ### CLASSIFICAÇÃO, ELEMENTOS E ESPÉCIE, ### REQUISITOS, ### PEGADINHAS DA FGV (ATENÇÃO!), ### RESUMO PARA A PROVA, ### ANÁLISE TÉCNICA DAS ALTERNATIVAS). Profundidade Máxima.
-      - memoryHint: Gatilho mental TDAH.
+      - question: Enunciado integral e limpo da questão.
+      - options: Array com exatamente 5 alternativas. Se o original tiver menos, complete com alternativas plausíveis.
+      - correctAnswer: Index 0-4 (0=A, 1=B, etc). USE O GABARITO DO TEXTO SE DISPONÍVEL.
+      - explanation: A EXPLICAÇÃO FORNECIDA NO TEXTO (se disponível no texto colado logo após a questão ou no fim da lista). Se o texto original não tiver comentário, gere você mesmo uma explicação técnica e estruturada rica em markdown.
+      - memoryHint: Gatilho mental TDAH (mnemônico ou analogia visual) para nunca mais esquecer o conceito.
 
       TEXTO PARA ANALISAR:
       """
@@ -331,10 +336,10 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
                   question: { type: Type.STRING },
                   options: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: 5, maxItems: 5 },
                   correctAnswer: { type: Type.INTEGER },
-                  commentary: { type: Type.STRING },
+                  explanation: { type: Type.STRING },
                   memoryHint: { type: Type.STRING }
                 },
-                required: ["question", "options", "correctAnswer", "commentary", "memoryHint"]
+                required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
               }
             }
           },
@@ -428,7 +433,7 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
       Gere 5 questões de múltipla escolha (A, B, C, D, E) focadas PRINCIPALMENTE nos erros cometidos e pontos esquecidos (identificados acima).
       Se o estudante não cometeu erros, gere questões sobre os pontos que ele esqueceu ou sobre o tema geral.
       
-      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("commentary") (Use Markdown Ricamente):
+      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("explanation") (Use Markdown Ricamente):
       Seja EXAUSTIVO e TÉCNICO. Não seja breve. Desconstrua cada erro do estudante e de cada alternativa individualmente.
       - **CONCEITO E DEFINIÇÃO**: Natureza jurídica, distinções e fundamentos teóricos profundos.
       - **BASE LEGAL/CIENTÍFICA ATUAL**: Citações exatas e explicações da norma/teoria.
@@ -455,10 +460,10 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
               question: { type: Type.STRING },
               options: { type: Type.ARRAY, items: { type: Type.STRING } },
               correctAnswer: { type: Type.NUMBER },
-              commentary: { type: Type.STRING },
+              explanation: { type: Type.STRING },
               memoryHint: { type: Type.STRING }
             },
-            required: ["id", "question", "options", "correctAnswer", "commentary", "memoryHint"]
+            required: ["id", "question", "options", "correctAnswer", "explanation", "memoryHint"]
           }
         }
       }
@@ -516,7 +521,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
       - Múltipla escolha (A a D).
       - Linguagem direta para cérebro TDAH.
       
-      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("commentary") (Use Markdown Ricamente):
+      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("explanation") (Use Markdown Ricamente):
       Seja EXAUSTIVO e TÉCNICO. Não seja breve. Desconstrua cada alternativa individualmente.
       - **CONCEITO E DEFINIÇÃO**: O que é, natureza jurídica e fundamentos.
       - **BASE LEGAL/CIENTÍFICA ATUAL**: Citações e explicações técnicas.
@@ -545,10 +550,10 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
                   question: { type: Type.STRING },
                   options: { type: Type.ARRAY, items: { type: Type.STRING } },
                   correctAnswer: { type: Type.INTEGER },
-                  commentary: { type: Type.STRING },
+                  explanation: { type: Type.STRING },
                   memoryHint: { type: Type.STRING }
                 },
-                required: ["question", "options", "correctAnswer", "commentary", "memoryHint"]
+                required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
               }
             }
           },
@@ -685,7 +690,7 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
     question: q.question,
     userAnswer: q.options[q.userAnswer ?? -1] || 'Não respondida',
     correctAnswer: q.options[q.correctAnswer],
-    commentary: q.commentary
+    explanation: q.explanation
   }));
 
   try {
@@ -704,7 +709,7 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
       3. QUESTÕES DE CONTRAGOLPE: Gere 3 novas questões focadas nos pontos de falha.
       4. FLASHCARDS DE RESGATE: Gere 3 flashcards.
       
-      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("commentary") nas questões (Use Markdown Ricamente):
+      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("explanation") nas questões (Use Markdown Ricamente):
       Separe rigorosamente cada tópico com DUAS quebras de linha (parágrafos distintos) e use listas com marcadores sempre que enumerar itens. A explicação DEVE ter um espaçamento excelente e ser muito limpa visualmente.
       - **CONCEITO E DEFINIÇÃO**: Natureza jurídica e distinções.
       - **BASE LEGAL ATUAL**.
@@ -735,10 +740,10 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
                   question: { type: Type.STRING },
                   options: { type: Type.ARRAY, items: { type: Type.STRING } },
                   correctAnswer: { type: Type.INTEGER },
-                  commentary: { type: Type.STRING },
+                  explanation: { type: Type.STRING },
                   memoryHint: { type: Type.STRING }
                 },
-                required: ["question", "options", "correctAnswer", "commentary", "memoryHint"]
+                required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
               }
             },
             recoveryFlashcards: {
@@ -945,10 +950,10 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
                   question: { type: Type.STRING },
                   options: { type: Type.ARRAY, items: { type: Type.STRING } },
                   correctAnswer: { type: Type.INTEGER },
-                  commentary: { type: Type.STRING },
+                  explanation: { type: Type.STRING },
                   memoryHint: { type: Type.STRING }
                 },
-                required: ["question", "options", "correctAnswer", "commentary", "memoryHint"]
+                required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
               }
             }
           },

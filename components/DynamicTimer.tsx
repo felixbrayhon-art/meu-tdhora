@@ -434,7 +434,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
                              <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm leading-relaxed text-left">
                                <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-4">Por que essa é a resposta?</p>
                                <p className="text-sm font-medium text-gray-600 italic mb-6">
-                                 {practiceQuestions[currentQuestionIndex].commentary}
+                                 {practiceQuestions[currentQuestionIndex].explanation}
                                </p>
 
                                {practiceQuestions[currentQuestionIndex].memoryHint && (

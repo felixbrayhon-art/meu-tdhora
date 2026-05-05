@@ -333,7 +333,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                    🧠 MAPEAMENTO DA LÓGICA
                 </h4>
                 <div className="markdown-body text-slate-300 text-xl font-medium space-y-6 prose prose-invert prose-xl max-w-none">
-                  <ReactMarkdown>{currentQ.commentary}</ReactMarkdown>
+                  <ReactMarkdown>{currentQ.explanation}</ReactMarkdown>
                 </div>
 
                 {isNoteExpanded && (

@@ -883,6 +883,7 @@ const App: React.FC = () => {
             onDeleteNotebook={(fid, nid) => setFolders(prev => prev.map(f => f.id === fid ? { ...f, notebooks: f.notebooks.filter(n => n.id !== nid) } : f))}
             onBack={() => { setCurrentView('HUB'); setStrategicMode(false); }} 
             onPlayQuiz={(fid, nid) => { setActiveNotebookInfo({folderId: fid, notebookId: nid}); setCurrentView('QUIZ_PLAYER'); }} 
+            onMoveAllQuestions={handleMoveAllQuestions}
             strategicMode={strategicMode}
             editalConfig={editalConfig}
           />
