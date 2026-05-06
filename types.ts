@@ -114,6 +114,7 @@ export interface QuizQuestion {
   userAnswer?: number;
   explanation?: string;
   memoryHint?: string;
+  topic?: string;
   userCommentary?: string;
 }
 

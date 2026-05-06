@@ -333,6 +333,11 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
       Você é um extrator de questões de ALTA PRECISÃO. O usuário colou um texto longo. 
       Sua missão é extrair as questões solicitadas e transformá-las em JSON. ${batchPrompt}${gabaritoPrompt}
       
+      REGRAS DE OURO DE PRODUÇÃO:
+      - NÃO adicione nenhum preâmbulo, texto introdutório ou conclusão fora do JSON (ex: NÃO diga "Aqui está o JSON..." ou "Processamento concluído"). 
+      - Retorne EXCLUSIVAMENTE o bloco de código JSON. 
+      - NÃO inclua rótulos redundantes dentro dos campos do JSON (ex: NÃO comece o 'question' com "QUESTÃO:" ou "Enunciado:"). O texto deve ser o conteúdo puro.
+      
       IDENTIFICAÇÃO DE RESPOSTAS E EXPLICAÇÕES (CRÍTICO - PRIORIDADE MÁXIMA AO TEXTO):
       - O usuário frequentemente cola a resposta e a explicação logo abaixo de cada questão para guiar a IA. 
       - BUSQUE ATENTAMENTE por padrões como: "Gabarito: A", "Resposta: B", "Alternativa correta: C", "[A]", "(B)", ou se uma alternativa estiver marcada com asteriscos, ou até mesmo apenas uma letra isolada logo após as alternativas que indique a resposta.

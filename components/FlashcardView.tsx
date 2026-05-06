@@ -461,7 +461,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                       <Check className="w-16 h-16" />
                     </div>
                     <div>
-                      <h2 className="text-5xl font-black italic tracking-tighter uppercase mb-4">Missão Cumprida</h2>
+                      <h2 className="text-3xl font-black tracking-tight uppercase mb-4">Missão Cumprida</h2>
                       <p className="text-gray-400 font-bold uppercase tracking-widest text-xs max-w-sm mx-auto leading-relaxed">
                         Sessão de reforço sináptico concluída com sucesso. Seu cérebro está mais denso!
                       </p>
@@ -518,7 +518,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                                 exit={{ opacity: 0, y: -10 }}
                                 className="flex flex-col h-full items-center text-center"
                               >
-                                <div className="text-2xl md:text-3xl font-black italic leading-[1.3] mb-12 markdown-body overflow-y-auto max-h-[300px] custom-scrollbar selection:bg-orange-500/50" dangerouslySetInnerHTML={{ __html: currentCard?.question || '' }} />
+                                <div className="text-base md:text-lg font-bold leading-relaxed mb-8 markdown-body overflow-y-auto max-h-[300px] custom-scrollbar selection:bg-orange-500/50" dangerouslySetInnerHTML={{ __html: currentCard?.question || '' }} />
                                 
                                 {currentCard?.type === 'MULTIPLE_CHOICE' && (
                                     <div className="w-full space-y-4 max-w-lg">
@@ -550,7 +550,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                                  {(!currentCard?.type || currentCard.type === 'SIMPLE') && (
                                     <div className="text-center">
                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6">RESPOSTA DIRETA</h4>
-                                       <div className="text-3xl md:text-4xl font-black italic tracking-tighter leading-tight text-[#0A0F1E] markdown-body selection:bg-orange-200" dangerouslySetInnerHTML={{ __html: currentCard?.answer || '' }} />
+                                       <div className="text-xl md:text-2xl font-bold tracking-tight text-[#0A0F1E] markdown-body selection:bg-orange-200" dangerouslySetInnerHTML={{ __html: currentCard?.answer || '' }} />
                                     </div>
                                  )}
 
@@ -558,7 +558,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                                  {currentCard?.type === 'MULTIPLE_CHOICE' && (
                                     <div className="bg-green-500/10 border border-green-500/20 p-8 rounded-[40px] text-center">
                                         <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.4em] mb-4 text-center">GABARITO CONFIRMADO</h4>
-                                        <div className="text-2xl md:text-3xl font-black italic text-[#0A0F1E] leading-tight">
+                                        <div className="text-xl md:text-2xl font-bold text-[#0A0F1E] leading-tight">
                                             {String.fromCharCode(65 + (currentCard.correctAnswerIndex || 0))}) {currentCard.options?.[currentCard.correctAnswerIndex || 0]}
                                         </div>
                                     </div>

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2 } from 'lucide-react';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark } from 'lucide-react';
 import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig } from '../types';
 import LoadingFish from './LoadingFish';
@@ -31,7 +31,19 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   editalConfig,
   onBatchComplete
 }) => {
-  const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE'>('AUTO');
+  const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE' | 'MANUAL'>('AUTO');
+  const [manualQuestionsList, setManualQuestionsList] = useState<QuizQuestion[]>([]);
+  const [manualQuestion, setManualQuestion] = useState<{
+    question: string;
+    options: string[];
+    correctAnswer: number;
+    explanation: string;
+  }>({
+    question: '',
+    options: ['', '', '', '', ''],
+    correctAnswer: 0,
+    explanation: ''
+  });
   const [pastedText, setPastedText] = useState('');
   const [pastedGabarito, setPastedGabarito] = useState('');
   const [batchStatus, setBatchStatus] = useState<{ current: number, total: number } | null>(null);
@@ -42,6 +54,9 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [flagged, setFlagged] = useState<number[]>([]);
+  const [tempSelectedOpt, setTempSelectedOpt] = useState<number | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [selectedOpt, setSelectedOpt] = useState<number | null>(null);
   const [showCommentary, setShowCommentary] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -74,7 +89,10 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     if (currentIdx < questions.length - 1) {
       const nextIdx = currentIdx + 1;
       setCurrentIdx(nextIdx);
-      setSelectedOpt(userAnswers[nextIdx] ?? null);
+      const prevAnswer = userAnswers[nextIdx];
+      setTempSelectedOpt(prevAnswer ?? null);
+      setSelectedOpt(prevAnswer ?? null);
+      setIsSubmitted(prevAnswer !== undefined);
       setShowCommentary(false);
       setCrossedOut([]);
     }
@@ -85,7 +103,10 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     if (currentIdx > 0) {
       const prevIdx = currentIdx - 1;
       setCurrentIdx(prevIdx);
-      setSelectedOpt(userAnswers[prevIdx] ?? null);
+      const prevAnswer = userAnswers[prevIdx];
+      setTempSelectedOpt(prevAnswer ?? null);
+      setSelectedOpt(prevAnswer ?? null);
+      setIsSubmitted(prevAnswer !== undefined);
       setShowCommentary(false);
       setCrossedOut([]);
     }
@@ -116,6 +137,8 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
         id: Math.random().toString(36).substr(2, 9)
       }));
       setQuestions(formatted);
+      setTempSelectedOpt(null);
+      setIsSubmitted(false);
     } catch (error: any) {
       console.error(error);
       alert(error.message || "Erro desconhecido ao gerar simulado. Tente novamente.");
@@ -179,6 +202,8 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
           console.log(`Bloco ${i + 1} concluído. Total de questões extraídas até agora: ${allQuestions.length}`);
           // Show progress incrementally
           setQuestions([...allQuestions]);
+          setTempSelectedOpt(null);
+          setIsSubmitted(false);
         } else {
           console.warn(`Bloco ${i + 1} retornou 0 questões.`);
         }
@@ -198,15 +223,69 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   };
 
   const handleAnswerSelection = (idx: number) => {
-    setSelectedOpt(idx);
-    setUserAnswers(prev => ({ ...prev, [currentIdx]: idx }));
+    if (isSubmitted) return;
+    setTempSelectedOpt(idx);
+    setCrossedOut(prev => prev.filter(i => i !== idx)); // Un-cross if selected
+  };
+
+  const handleSubmitAnswer = () => {
+    if (tempSelectedOpt === null || isSubmitted) return;
+    setSelectedOpt(tempSelectedOpt);
+    setIsSubmitted(true);
+    setUserAnswers(prev => ({ ...prev, [currentIdx]: tempSelectedOpt }));
   };
 
   const handleDoubleClick = (idx: number) => {
-    if (selectedOpt !== null) return;
+    if (isSubmitted) return;
+    if (tempSelectedOpt === idx) setTempSelectedOpt(null);
     setCrossedOut(prev => 
       prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
     );
+  };
+
+  const toggleFlag = () => {
+    setFlagged(prev => 
+      prev.includes(currentIdx) ? prev.filter(i => i !== currentIdx) : [...prev, currentIdx]
+    );
+  };
+
+  const addManualQuestion = () => {
+    if (!manualQuestion.question) return;
+    const newQ: QuizQuestion = {
+        id: Math.random().toString(36).substr(2, 9),
+        ...manualQuestion,
+        topic: topic || 'Questões Manuais'
+    };
+    setManualQuestionsList(prev => [...prev, newQ]);
+    setManualQuestion({
+        question: '',
+        options: ['', '', '', '', ''],
+        correctAnswer: 0,
+        explanation: ''
+    });
+  };
+
+  const startManualSimulado = () => {
+    let finalQuestions = [...manualQuestionsList];
+    if (manualQuestion.question.trim()) {
+        const lastQ: QuizQuestion = {
+            id: Math.random().toString(36).substr(2, 9),
+            ...manualQuestion,
+            topic: topic || 'Questões Manuais'
+        };
+        finalQuestions.push(lastQ);
+    }
+    
+    if (finalQuestions.length === 0) {
+        alert("Adicione pelo menos uma questão.");
+        return;
+    }
+
+    setQuestions(finalQuestions);
+    setTopic(topic || "Simulado Manual");
+    setCurrentIdx(0);
+    setTempSelectedOpt(null);
+    setIsSubmitted(false);
   };
 
   const handleDeleteQuestion = () => {
@@ -301,19 +380,35 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                 </p>
                 
                 <div className="space-y-8">
+                  <div className="space-y-3 text-left max-w-2xl mx-auto">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-6">O que vamos treinar hoje? (Título do Simulado)</label>
+                    <input 
+                      value={topic}
+                      onChange={(e) => setTopic(e.target.value)}
+                      placeholder={studyProfile === 'CONCURSO' ? "Ex: Atos Administrativos" : "Ex: Genética Mendeliana"}
+                      className="w-full bg-white/5 border-2 border-white/10 rounded-[40px] px-10 py-6 text-xl focus:outline-none focus:border-orange-500 transition-all font-black text-center text-white placeholder:text-white/10"
+                    />
+                  </div>
+
                   {!strategicMode && (
-                    <div className="flex bg-white/5 p-2 rounded-[30px] mx-auto max-w-md mb-8 relative z-20">
+                    <div className="flex bg-white/5 p-2 rounded-[30px] mx-auto max-w-lg mb-8 relative z-20">
                       <button 
                         onClick={() => setInputMode('AUTO')}
-                        className={`flex-1 py-3 px-6 rounded-[24px] font-black text-xs uppercase tracking-widest transition-all ${inputMode === 'AUTO' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        className={`flex-1 py-3 px-4 md:px-6 rounded-[24px] font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${inputMode === 'AUTO' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                       >
-                        Gerar com IA
+                        IA
                       </button>
                       <button 
                         onClick={() => setInputMode('PASTE')}
-                        className={`flex-1 py-3 px-6 rounded-[24px] font-black text-xs uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'PASTE' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        className={`flex-1 py-3 px-4 md:px-6 rounded-[24px] font-black text-[10px] md:text-xs uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'PASTE' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                       >
-                        <Copy className="w-4 h-4" /> COLAR TEXTO
+                        COLAR
+                      </button>
+                      <button 
+                        onClick={() => setInputMode('MANUAL')}
+                        className={`flex-1 py-3 px-4 md:px-6 rounded-[24px] font-black text-[10px] md:text-xs uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'MANUAL' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        MANUAL
                       </button>
                     </div>
                   )}
@@ -350,18 +445,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                             </select>
                           </div>
                         </div>
-                      ) : (
-                        <div className="space-y-3 text-left">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-6">O que vamos treinar hoje?</label>
-                          <input 
-                            value={topic}
-                            onChange={(e) => setTopic(e.target.value)}
-                            placeholder={studyProfile === 'CONCURSO' ? "Ex: Atos Administrativos" : "Ex: Genética Mendeliana"}
-                            className="w-full bg-white/5 border-2 border-white/10 rounded-[40px] px-10 py-8 text-2xl focus:outline-none focus:border-orange-500 transition-all font-black text-center text-white placeholder:text-white/10"
-                            onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                          />
-                        </div>
-                      )}
+                      ) : null}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-white/5 p-8 rounded-[35px] text-left border-2 border-white/5 focus-within:border-orange-500/50 transition-all">
@@ -395,7 +479,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         <ChevronRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
                       </button>
                     </>
-                  ) : (
+                  ) : inputMode === 'PASTE' ? (
                     <div className="space-y-6 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
                       <div className="bg-orange-500/10 p-6 rounded-3xl border border-orange-500/20 mb-6">
                         <p className="text-orange-500 text-sm font-bold flex items-center gap-2">
@@ -434,6 +518,86 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         <ChevronRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
                       </button>
                     </div>
+                  ) : (
+                    <div className="space-y-8 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
+                       <div className="space-y-3">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Enunciado da Questão</label>
+                          <RichTextEditor 
+                            content={manualQuestion.question}
+                            onChange={html => setManualQuestion(prev => ({ ...prev, question: html }))}
+                          />
+                       </div>
+
+                       <div className="space-y-3">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Alternativas e Gabarito</label>
+                          <div className="space-y-3">
+                            {manualQuestion.options.map((opt, i) => (
+                                <div key={i} className="flex gap-4 items-center">
+                                    <input 
+                                      type="radio" 
+                                      name="manualCorrect"
+                                      checked={manualQuestion.correctAnswer === i}
+                                      onChange={() => setManualQuestion(p => ({ ...p, correctAnswer: i }))}
+                                      className="w-6 h-6 accent-orange-500 cursor-pointer"
+                                    />
+                                    <input 
+                                      value={opt}
+                                      onChange={e => setManualQuestion(p => {
+                                          const newOptions = [...p.options];
+                                          newOptions[i] = e.target.value;
+                                          return { ...p, options: newOptions };
+                                      })}
+                                      className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-orange-500 transition-all font-bold text-sm text-white"
+                                      placeholder={`Alternativa ${String.fromCharCode(65 + i)}`}
+                                    />
+                                </div>
+                            ))}
+                          </div>
+                       </div>
+
+                       <div className="space-y-3">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Explicação / Resolução (Opcional)</label>
+                          <RichTextEditor 
+                            content={manualQuestion.explanation}
+                            onChange={html => setManualQuestion(prev => ({ ...prev, explanation: html }))}
+                          />
+                       </div>
+
+                       <div className="flex flex-col md:flex-row gap-4 pt-4">
+                          <button 
+                            onClick={addManualQuestion}
+                            className="flex-1 bg-white/5 border border-white/10 text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-[10px] hover:bg-white/10 active:scale-95 transition-all"
+                          >
+                             + Adicionar e Próxima ({manualQuestionsList.length})
+                          </button>
+                          <button 
+                            onClick={startManualSimulado}
+                            disabled={manualQuestionsList.length === 0 && !manualQuestion.question.trim()}
+                            className="flex-[2] bg-orange-500 text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl active:scale-95 disabled:opacity-50"
+                          >
+                             {manualQuestionsList.length === 0 ? 'Iniciar com esta questão' : `Iniciar Simulado (${manualQuestionsList.length + (manualQuestion.question.trim() ? 1 : 0)})`}
+                          </button>
+                       </div>
+
+                       {manualQuestionsList.length > 0 && (
+                          <div className="mt-8 pt-8 border-t border-white/5">
+                             <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Questões Adicionadas:</h4>
+                             <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                {manualQuestionsList.map((q, idx) => (
+                                   <div key={q.id} className="bg-white/5 p-4 rounded-2xl flex justify-between items-center group">
+                                      <p className="text-xs font-bold text-slate-400 truncate flex-1 pr-4">#{idx + 1}: <span dangerouslySetInnerHTML={{ __html: q.question.replace(/<[^>]*>/g, '') }} /></p>
+                                      <button 
+                                        onClick={() => setManualQuestionsList(prev => prev.filter((_, i) => i !== idx))}
+                                        className="p-2 text-red-500/50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                                      >
+                                         <Trash2 className="w-4 h-4" />
+                                      </button>
+                                   </div>
+                                ))}
+                             </div>
+                          </div>
+                       )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -467,85 +631,107 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
               </div>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-2xl rounded-[60px] p-12 md:p-16 border border-white/10 shadow-2xl relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-2 h-full bg-orange-500 opacity-50"></div>
+            <div className="bg-white/95 rounded-[50px] p-10 md:p-14 border border-gray-100 shadow-xl relative overflow-hidden text-[#0A0F1E]">
+               <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-500 opacity-40"></div>
               
-              <div className="flex justify-between items-start mb-12">
-                <h3 className="text-xl font-bold text-white leading-tight flex-1 italic tracking-tight" dangerouslySetInnerHTML={{ __html: currentQ.question }} />
+              <div className="flex justify-between items-start mb-10 gap-6">
+                <h3 className="text-sm font-medium text-[#0A0F1E] leading-relaxed flex-1 tracking-tight" dangerouslySetInnerHTML={{ __html: currentQ.question }} />
+                <button 
+                  onClick={toggleFlag}
+                  className={`p-3 rounded-xl transition-all active:scale-90 ${flagged.includes(currentIdx) ? 'bg-orange-500 text-white' : 'bg-gray-50 text-gray-300 hover:text-orange-500 hover:bg-orange-50'}`}
+                  title="Marcar para revisão"
+                >
+                  <Flag className={`w-5 h-5 ${flagged.includes(currentIdx) ? 'fill-current' : ''}`} />
+                </button>
               </div>
 
-              {selectedOpt === null ? (
-                <div className="grid grid-cols-1 gap-5 mb-12">
-                    {currentQ.options.map((opt, idx) => {
-                      const isCorrect = idx === currentQ.correctAnswer;
-                      const isSelected = selectedOpt === idx;
-                      const isCrossedOut = crossedOut.includes(idx);
-                      
-                      let btnClass = "border border-white/10 bg-white/5 hover:bg-white/10 hover:border-orange-500/50 text-slate-300";
-                      
-                      if (isCrossedOut && selectedOpt === null) {
-                        btnClass = "border border-white/5 text-white/10 bg-black/20 line-through grayscale";
-                      }
-  
-                      if (selectedOpt !== null) {
-                        if (isCorrect) btnClass = "border-green-500 bg-green-500/10 text-green-400 ring-1 ring-green-500/20";
-                        else if (isSelected) btnClass = "border-red-500 bg-red-500/10 text-red-400 ring-1 ring-red-500/20";
-                        else btnClass = "opacity-20 border-white/5 text-white/50";
-                      }
-  
-                      return (
-                        <div 
-                          key={idx}
-                          onClick={() => handleAnswerSelection(idx)}
-                          onDoubleClick={() => handleDoubleClick(idx)}
-                          className={`w-full text-left p-6 rounded-2xl font-medium text-sm transition-all flex items-center gap-4 select-none cursor-pointer group ${btnClass}`}
-                          role="button"
-                          aria-disabled={selectedOpt !== null}
-                          tabIndex={0}
-                        >
-                          <div className="flex items-center gap-4 flex-1">
-                            <span className={`w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-black flex-shrink-0 transition-colors ${selectedOpt !== null && isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-white/10 text-white/30 group-hover:border-orange-500/50 group-hover:text-orange-500'}`}>
-                              {String.fromCharCode(65 + idx)}
-                            </span>
-                            <span className="leading-snug">{opt}</span>
-                          </div>
-  
-                          {selectedOpt === null && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDoubleClick(idx);
-                              }}
-                              className={`p-2 rounded-lg transition-all active:scale-90 ${isCrossedOut ? 'bg-orange-600 text-white' : 'bg-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}
-                              title="Descartar alternativa"
-                            >
-                              <Scissors className="w-4 h-4" />
-                            </button>
-                          )}
+              <div className="grid grid-cols-1 gap-3 mb-10">
+                  {currentQ.options.map((opt, idx) => {
+                    const isCorrect = idx === currentQ.correctAnswer;
+                    const isSelected = tempSelectedOpt === idx;
+                    const isCrossedOut = crossedOut.includes(idx);
+                    const isFinalSelected = selectedOpt === idx;
+                    
+                    let btnClass = "bg-[#fcfcfc] border border-gray-100 text-gray-700 hover:border-orange-500/20 hover:bg-orange-50/5";
+                    
+                    if (isCrossedOut && !isSubmitted) {
+                      btnClass = "bg-gray-50/30 border-gray-100/30 text-gray-300 opacity-40";
+                    }
+
+                    if (isSelected && !isSubmitted) {
+                      btnClass = "bg-orange-50/50 border-orange-500/50 text-orange-950 shadow-sm";
+                    }
+
+                    if (isSubmitted) {
+                      if (isCorrect) btnClass = "bg-green-50/80 border-green-500/50 text-green-900";
+                      else if (isFinalSelected) btnClass = "bg-red-50/80 border-red-500/50 text-red-900";
+                      else btnClass = "opacity-30 bg-white border-gray-100 text-gray-400";
+                    }
+
+                    return (
+                      <div 
+                        key={idx}
+                        onClick={() => handleAnswerSelection(idx)}
+                        className={`w-full text-left p-5 rounded-xl font-medium text-[13px] transition-all flex items-center gap-4 select-none cursor-pointer group ${btnClass} ${isCrossedOut && !isSubmitted ? 'grayscale grayscale-50' : ''}`}
+                        role="button"
+                        aria-disabled={isSubmitted}
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <span className={`w-7 h-7 rounded-full border flex items-center justify-center text-[10px] font-black flex-shrink-0 transition-colors ${isSelected || isFinalSelected ? 'bg-orange-500 border-orange-500 text-white' : 'border-gray-200 text-gray-400 group-hover:border-orange-200 group-hover:text-orange-500'}`}>
+                            {String.fromCharCode(65 + idx)}
+                          </span>
+                          <span className={`leading-snug ${isCrossedOut && !isSubmitted ? 'line-through text-gray-400 opacity-60' : ''}`}>{opt}</span>
                         </div>
-                      );
-                    })}
+
+                        {!isSubmitted && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDoubleClick(idx);
+                            }}
+                            className={`p-1.5 rounded-lg transition-all active:scale-90 ${isCrossedOut ? 'bg-orange-100/50 text-orange-600' : 'bg-transparent text-gray-200 hover:text-orange-400 opacity-0 group-hover:opacity-100'}`}
+                            title="Descartar esta alternativa"
+                          >
+                            <Scissors className={`w-3.5 h-3.5 ${isCrossedOut ? 'rotate-12' : ''}`} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {!isSubmitted ? (
+                <div className="flex justify-start">
+                  <button 
+                    onClick={handleSubmitAnswer}
+                    disabled={tempSelectedOpt === null}
+                    className="bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-gray-200 disabled:cursor-not-allowed text-white font-black px-8 py-3.5 rounded-xl uppercase text-[11px] tracking-widest transition-all active:scale-95 shadow-md shadow-green-100/50"
+                  >
+                    RESPONDER QUESTÃO
+                  </button>
                 </div>
               ) : (
-                <div className="animate-in fade-in zoom-in-95 duration-500 mb-12">
-                  <div className={`p-8 rounded-[40px] mb-8 border backdrop-blur-xl ${selectedOpt === currentQ.correctAnswer ? 'bg-green-500/10 border-green-500/30 shadow-2xl shadow-green-900/20' : 'bg-red-500/10 border-red-500/30 shadow-2xl shadow-red-900/20'}`}>
+                <div className="animate-in fade-in zoom-in-95 duration-500">
+                  <div className={`p-8 rounded-[40px] mb-8 border backdrop-blur-xl ${selectedOpt === currentQ.correctAnswer ? 'bg-green-500/10 border-green-500/30 shadow-2xl shadow-green-900/10' : 'bg-red-500/10 border-red-500/30 shadow-2xl shadow-red-900/10'}`}>
                     <div className="flex items-center gap-3 mb-2">
                        {selectedOpt === currentQ.correctAnswer ? <CheckCircle2 className="w-6 h-6 text-green-500" /> : <RotateCcw className="w-6 h-6 text-red-500" />}
                        <p className={`text-xs font-black uppercase tracking-[0.3em] ${selectedOpt === currentQ.correctAnswer ? 'text-green-500' : 'text-red-500'}`}>
-                        {selectedOpt === currentQ.correctAnswer ? 'ALVO ATINGIDO' : 'DESVIO DE ROTA'}
+                        {selectedOpt === currentQ.correctAnswer ? 'RESPOSTA CORRETA' : 'RESPOSTA INCORRETA'}
                       </p>
                     </div>
-                    <p className="text-white text-xl font-black italic">
-                      Gabarito: <span className="text-orange-500">{currentQ.options[currentQ.correctAnswer]}</span>
+                    <p className="text-[#0A0F1E] text-xl font-black italic">
+                      Gabarito: <span className="text-orange-500">{String.fromCharCode(65 + currentQ.correctAnswer)}</span>
                     </p>
                   </div>
 
-                  <div className="bg-white/5 rounded-[50px] p-10 border border-white/10 leading-relaxed shadow-3xl">
+
+                  <div className="bg-[#f8f9fa] rounded-[50px] p-10 border border-gray-100 leading-relaxed shadow-sm">
                     <div className="flex items-center gap-3 mb-6 text-orange-500">
                       <HelpCircle className="w-6 h-6" />
-                      <span className="font-black text-xs uppercase tracking-[0.3em]">Mapeamento de Resposta</span>
+                      <span className="font-black text-xs uppercase tracking-[0.3em]">Comentário do Professor</span>
                     </div>
-                    <div className="text-slate-300 text-xl font-medium space-y-6 mb-10 prose prose-invert prose-xl max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.explanation }} />
+                    <div className="text-gray-700 text-base font-medium space-y-6 mb-10 prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.explanation }} />
+
 
                     <div className="bg-[#0A0F1E] border border-white/5 p-8 rounded-[40px] mt-10 relative">
                       <div className="flex items-center justify-between mb-6">
