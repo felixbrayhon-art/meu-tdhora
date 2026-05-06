@@ -52,12 +52,54 @@ const handleAIError = (error: any) => {
   if (isQuotaError) {
     throw new AIError("Limite de Cota do Google Gemini atingido. O Google limita o uso gratuito por minuto e por dia. Isso geralmente acontece após muitas gerações seguidas. Aguarde 1 a 2 minutos e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
   }
+
+  const isHighDemand = 
+    errorStatus === 503 || 
+    errorStatus === "503" || 
+    errorMessage.includes('503') || 
+    errorMessage.includes('high demand') || 
+    errorMessage.includes('UNAVAILABLE');
+
+  if (isHighDemand) {
+    throw new AIError("O servidor da IA está com alta demanda no momento (Erro 503). O aplicativo tentou processar automaticamente, mas o tráfego do Google continua intenso. Por favor, aguarde 10 segundos e tente novamente.", 503, 'UNAVAILABLE');
+  }
   
   if (errorMessage.includes('API key not valid') || errorMessage.toLowerCase().includes('api key') || errorMessage.includes('key')) {
     throw new AIError("Chave de API do Gemini inválida ou ausente. No Vercel, vá em Settings > Environment Variables, adicione VITE_GEMINI_API_KEY e faça um novo Deploy para aplicar.", 401, 'INVALID_API_KEY');
   }
 
   throw new AIError(errorMessage || "Erro desconhecido ao processar IA. Verifique sua conexão ou a chave de API.");
+};
+
+// Helper for calling AI with automatic retries for transient errors (503/500)
+const generateContentWithRetry = async (params: any, maxRetries = 3) => {
+  let delay = 2000;
+  let lastError;
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await ai.models.generateContent(params);
+    } catch (error: any) {
+      lastError = error;
+      const errorMessage = error?.message || error?.error?.message || "";
+      const errorStatus = error?.status || error?.error?.code || 0;
+      
+      const isTransient = 
+        errorStatus === 503 || errorStatus === "503" || 
+        errorStatus === 500 || errorStatus === "500" ||
+        errorMessage.includes('503') || errorMessage.includes('500') ||
+        errorMessage.includes('high demand') || errorMessage.includes('UNAVAILABLE');
+
+      if (isTransient && i < maxRetries - 1) {
+        console.warn(`IA com alta demanda (Tentativa ${i + 1}/${maxRetries}). Tentando novamente em ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Exponential backoff
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
 };
 
 // Utility to get current date/time context for AI
@@ -72,7 +114,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
     : "Foco em ENEM e grandes vestibulares. Relacione com atualidades, use linguagem didática e interdisciplinar.";
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       Gere um DOSSIÊ COMPLETO de estudo sobre "${topic}". Especialmente, gere exatamente ${numQuestions} questões no quiz.
@@ -196,7 +238,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
   const bancaInstruction = banca ? ` A banca examinadora solicitada é a "${banca}". Siga rigorosamente o padrão de cobrança, a linguagem e os temas recorrentes dessa banca específica.` : "";
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()} 
       Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E). 
@@ -265,7 +307,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
 
 export const identifyQuestionCount = async (text: string) => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `Analise cuidadosamente o texto abaixo e conte quantas questões de múltipla escolha (com alternativas A, B, C...) existem nele. 
       Ignore blocos de explicação, comentários ou gabaritos que venham após as questões; conte apenas os enunciados das perguntas.
@@ -306,7 +348,7 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
     : "";
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       Você é um extrator de questões de ALTA PRECISÃO. O usuário colou um texto longo. 
@@ -371,7 +413,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
     : "O usuário está estudando para vestibulares/ENEM. Use referências a universidade e futuro acadêmico quando apropriado.";
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: [
         ...history,
@@ -392,7 +434,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
 
 export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VESTIBULAR') => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       Analise o seguinte texto de evocação ativa de um estudante (TDAH):
@@ -427,7 +469,7 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
 
 export const generateQuestionsFromAnalysis = async (analysis: any, profile: StudyProfile = 'VESTIBULAR') => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       Com base nesta análise de evocação de um estudante (TDAH):
@@ -484,7 +526,7 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
 
 export const extractTopicsFromEdital = async (subjectName: string, rawContent: string) => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `Extraia APENAS os tópicos de estudo para a disciplina "${subjectName}" do texto abaixo. 
       Ignore burocracias, regras de prova ou datas. 
@@ -517,7 +559,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
     : "Foco em conceitos fundamentais do ENEM/Vestibular.";
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       Gere uma VALIDAÇÃO DE MICRO-TEMA sobre "${topic}". 
@@ -577,7 +619,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
 
 export const explainStuckTopic = async (topic: string, profile: StudyProfile = 'VESTIBULAR') => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       O estudante está travado no tópico "${topic}" (errou 3 vezes). 
@@ -617,7 +659,7 @@ export const optimizeStudyPlan = async (
 ) => {
   const subjectsPrompt = edital.subjects.map(s => `- ${s.name} (ID: ${s.id}, Peso atual: ${currentSubjects.find(cs => cs.editalSubjectId === s.id)?.weight || 1})`).join('\n');
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       Você é um estrategista de estudos para ${profile}.
@@ -702,7 +744,7 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
   }));
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       O estudante está com dificuldade severa no tópico "${topic}". 
@@ -785,7 +827,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
   };
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       Você é o Mentor Peixe, o guia TDAH do estudante.
