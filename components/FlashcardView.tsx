@@ -518,7 +518,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                                 exit={{ opacity: 0, y: -10 }}
                                 className="flex flex-col h-full items-center text-center"
                               >
-                                <div className="text-base md:text-lg font-bold leading-relaxed mb-8 markdown-body overflow-y-auto max-h-[300px] custom-scrollbar selection:bg-orange-500/50" dangerouslySetInnerHTML={{ __html: currentCard?.question || '' }} />
+                                <div className="text-[15px] font-normal text-[#0A0F1E]/80 leading-relaxed mb-10 markdown-body overflow-y-auto max-h-[320px] custom-scrollbar selection:bg-orange-500/50 px-4" dangerouslySetInnerHTML={{ __html: currentCard?.question || '' }} />
                                 
                                 {currentCard?.type === 'MULTIPLE_CHOICE' && (
                                     <div className="w-full space-y-4 max-w-lg">

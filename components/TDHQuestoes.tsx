@@ -631,15 +631,15 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
               </div>
             </div>
 
-            <div className="bg-white/95 rounded-[50px] p-10 md:p-14 border border-gray-100 shadow-xl relative overflow-hidden text-[#0A0F1E]">
-               <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-500 opacity-40"></div>
-              
-              <div className="flex justify-between items-start mb-10 gap-6">
-                <h3 className="text-sm font-medium text-[#0A0F1E] leading-relaxed flex-1 tracking-tight" dangerouslySetInnerHTML={{ __html: currentQ.question }} />
+            <div className="bg-[#f8f9fa] rounded-[40px] p-8 md:p-12 shadow-inner border border-gray-100/50 relative overflow-hidden text-[#0A0F1E]">
+              <div className="flex justify-between items-start mb-10 gap-8">
+                <div className="flex-1">
+                  <div className="text-[13.5px] font-normal text-[#0A0F1E]/80 leading-relaxed tracking-normal markdown-body" dangerouslySetInnerHTML={{ __html: currentQ.question }} />
+                </div>
                 <button 
                   onClick={toggleFlag}
-                  className={`p-3 rounded-xl transition-all active:scale-90 ${flagged.includes(currentIdx) ? 'bg-orange-500 text-white' : 'bg-gray-50 text-gray-300 hover:text-orange-500 hover:bg-orange-50'}`}
-                  title="Marcar para revisão"
+                  className={`p-3 rounded-2xl transition-all active:scale-90 flex-shrink-0 ${flagged.includes(currentIdx) ? 'bg-orange-500 text-white shadow-lg' : 'bg-white text-gray-300 hover:text-orange-500 hover:shadow-md'}`}
+                  title="Marcar para análise"
                 >
                   <Flag className={`w-5 h-5 ${flagged.includes(currentIdx) ? 'fill-current' : ''}`} />
                 </button>
@@ -652,35 +652,48 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                     const isCrossedOut = crossedOut.includes(idx);
                     const isFinalSelected = selectedOpt === idx;
                     
-                    let btnClass = "bg-[#fcfcfc] border border-gray-100 text-gray-700 hover:border-orange-500/20 hover:bg-orange-50/5";
-                    
+                    let cardClass = "bg-white border border-transparent shadow-sm hover:shadow-md";
+                    let circleClass = "border-gray-200 text-gray-400 group-hover:border-orange-200 group-hover:text-orange-500";
+                    let textClass = "text-gray-700";
+
                     if (isCrossedOut && !isSubmitted) {
-                      btnClass = "bg-gray-50/30 border-gray-100/30 text-gray-300 opacity-40";
+                      cardClass = "bg-gray-50/50 border-transparent opacity-40";
+                      textClass = "text-gray-300 line-through";
                     }
 
                     if (isSelected && !isSubmitted) {
-                      btnClass = "bg-orange-50/50 border-orange-500/50 text-orange-950 shadow-sm";
+                      cardClass = "bg-white border-orange-500 shadow-md ring-1 ring-orange-500/20";
+                      circleClass = "bg-orange-500 border-orange-500 text-white";
+                      textClass = "text-gray-900";
                     }
 
                     if (isSubmitted) {
-                      if (isCorrect) btnClass = "bg-green-50/80 border-green-500/50 text-green-900";
-                      else if (isFinalSelected) btnClass = "bg-red-50/80 border-red-500/50 text-red-900";
-                      else btnClass = "opacity-30 bg-white border-gray-100 text-gray-400";
+                      if (isCorrect) {
+                        cardClass = "bg-green-50 border-green-500 shadow-sm";
+                        circleClass = "bg-green-500 border-green-500 text-white";
+                        textClass = "text-green-900";
+                      } else if (isFinalSelected) {
+                        cardClass = "bg-red-50 border-red-500 shadow-sm";
+                        circleClass = "bg-red-500 border-red-500 text-white";
+                        textClass = "text-red-900";
+                      } else {
+                        cardClass = "opacity-40 bg-white border-gray-100";
+                      }
                     }
 
                     return (
                       <div 
                         key={idx}
                         onClick={() => handleAnswerSelection(idx)}
-                        className={`w-full text-left p-5 rounded-xl font-medium text-[13px] transition-all flex items-center gap-4 select-none cursor-pointer group ${btnClass} ${isCrossedOut && !isSubmitted ? 'grayscale grayscale-50' : ''}`}
+                        className={`w-full text-left p-5 rounded-2xl font-medium transition-all duration-200 flex items-center gap-6 select-none cursor-pointer group ${cardClass}`}
                         role="button"
                         aria-disabled={isSubmitted}
                       >
-                        <div className="flex items-center gap-4 flex-1">
-                          <span className={`w-7 h-7 rounded-full border flex items-center justify-center text-[10px] font-black flex-shrink-0 transition-colors ${isSelected || isFinalSelected ? 'bg-orange-500 border-orange-500 text-white' : 'border-gray-200 text-gray-400 group-hover:border-orange-200 group-hover:text-orange-500'}`}>
+                        <div className="flex items-center gap-5 flex-1">
+                          <span className={`w-8 h-8 rounded-full border flex items-center justify-center text-[11px] font-black flex-shrink-0 transition-all ${circleClass}`}>
                             {String.fromCharCode(65 + idx)}
                           </span>
-                          <span className={`leading-snug ${isCrossedOut && !isSubmitted ? 'line-through text-gray-400 opacity-60' : ''}`}>{opt}</span>
+                          <span className={`text-[14px] leading-relaxed transition-colors ${textClass}`}>{opt}</span>
                         </div>
 
                         {!isSubmitted && (
@@ -689,10 +702,10 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                               e.stopPropagation();
                               handleDoubleClick(idx);
                             }}
-                            className={`p-1.5 rounded-lg transition-all active:scale-90 ${isCrossedOut ? 'bg-orange-100/50 text-orange-600' : 'bg-transparent text-gray-200 hover:text-orange-400 opacity-0 group-hover:opacity-100'}`}
+                            className={`p-2 rounded-xl transition-all active:scale-90 ${isCrossedOut ? 'bg-orange-100 text-orange-600' : 'bg-transparent text-gray-200 hover:text-orange-400 opacity-0 group-hover:opacity-100'}`}
                             title="Descartar esta alternativa"
                           >
-                            <Scissors className={`w-3.5 h-3.5 ${isCrossedOut ? 'rotate-12' : ''}`} />
+                            <Scissors className={`w-4 h-4 ${isCrossedOut ? 'rotate-12' : ''}`} />
                           </button>
                         )}
                       </div>
@@ -701,13 +714,13 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
               </div>
 
               {!isSubmitted ? (
-                <div className="flex justify-start">
+                <div className="flex justify-center md:justify-start">
                   <button 
                     onClick={handleSubmitAnswer}
                     disabled={tempSelectedOpt === null}
-                    className="bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-gray-200 disabled:cursor-not-allowed text-white font-black px-8 py-3.5 rounded-xl uppercase text-[11px] tracking-widest transition-all active:scale-95 shadow-md shadow-green-100/50"
+                    className="bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-black px-12 py-5 rounded-[25px] uppercase text-[12px] tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-green-100/50"
                   >
-                    RESPONDER QUESTÃO
+                    CONFERIR RESPOSTA
                   </button>
                 </div>
               ) : (
