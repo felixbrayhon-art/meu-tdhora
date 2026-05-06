@@ -146,6 +146,12 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
         setBatchStatus({ current: i + 1, total: totalBatches });
         console.log(`Processando bloco ${i + 1} de ${totalBatches}...`);
         
+        // Delay estratégico para não estourar a cota de requisições por minuto do Google
+        if (i > 0) {
+          console.log(`Aguardando 12s para evitar bloqueio de cota...`);
+          await new Promise(resolve => setTimeout(resolve, 12000));
+        }
+
         const result = await parsePastedQuestions(pastedText, studyProfile, { current: i + 1, total: totalBatches }, pastedGabarito);
         
         if (result.questions && Array.isArray(result.questions)) {

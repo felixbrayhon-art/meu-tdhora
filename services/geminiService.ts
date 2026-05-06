@@ -87,13 +87,17 @@ const generateContentWithRetry = async (params: any, maxRetries = 3) => {
       const isTransient = 
         errorStatus === 503 || errorStatus === "503" || 
         errorStatus === 500 || errorStatus === "500" ||
-        errorMessage.includes('503') || errorMessage.includes('500') ||
-        errorMessage.includes('high demand') || errorMessage.includes('UNAVAILABLE');
+        errorStatus === 429 || errorStatus === "429" ||
+        errorMessage.includes('503') || errorMessage.includes('500') || errorMessage.includes('429') ||
+        errorMessage.includes('high demand') || errorMessage.includes('UNAVAILABLE') || 
+        errorMessage.includes('RESOURCE_EXHAUSTED');
 
       if (isTransient && i < maxRetries - 1) {
-        console.warn(`IA com alta demanda (Tentativa ${i + 1}/${maxRetries}). Tentando novamente em ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2; // Exponential backoff
+        const isQuota = errorStatus === 429 || errorStatus === "429" || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED');
+        const retryDelay = isQuota ? 15000 : delay; // Wait longer for quota (15s)
+        console.warn(`IA ocupada ou limite atingido (Tentativa ${i + 1}/${maxRetries}). Tentando novamente em ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        delay *= 2; 
         continue;
       }
       throw error;
