@@ -117,8 +117,10 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
           questions: lesson.quiz.map(q => ({ ...q, id: Math.random().toString(36).substr(2,9) })), 
           createdAt: Date.now() 
         }}
+        folders={[]}
         onComplete={(score) => onComplete(score)}
         onBack={() => setShowQuiz(false)}
+        onMoveQuestion={() => {}}
       />
     );
   }

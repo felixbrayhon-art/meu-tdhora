@@ -283,7 +283,7 @@ export const identifyQuestionCount = async (text: string) => {
   }
 };
 
-export const parsePastedQuestions = async (pastedText: string, profile: StudyProfile = 'VESTIBULAR', batchInfo?: { current: number, total: number }) => {
+export const parsePastedQuestions = async (pastedText: string, profile: StudyProfile = 'VESTIBULAR', batchInfo?: { current: number, total: number }, pastedGabarito?: string) => {
   const profileStyle = profile === 'CONCURSO'
     ? "estilo Concursos Públicos de alto nível"
     : "estilo ENEM/FUVEST";
@@ -297,12 +297,20 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
        Não extraia questões que você já extraiu em blocos anteriores.`
     : "";
 
+  const gabaritoPrompt = pastedGabarito 
+    ? `\nO USUÁRIO FORNECEU UM GABARITO ADICIONAL PARA ESTAS QUESTÕES:
+       """
+       ${pastedGabarito}
+       """
+       USE ESTE GABARITO PARA IDENTIFICAR O 'correctAnswer' DE CADA QUESTÃO CORRESPONDENTE COM PRECISÃO MÁXIMA.`
+    : "";
+
   try {
     const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       Você é um extrator de questões de ALTA PRECISÃO. O usuário colou um texto longo. 
-      Sua missão é extrair as questões solicitadas e transformá-las em JSON. ${batchPrompt}
+      Sua missão é extrair as questões solicitadas e transformá-las em JSON. ${batchPrompt}${gabaritoPrompt}
       
       IDENTIFICAÇÃO DE RESPOSTAS E EXPLICAÇÕES (CRÍTICO - PRIORIDADE MÁXIMA AO TEXTO):
       - O usuário frequentemente cola a resposta e a explicação logo abaixo de cada questão para guiar a IA. 

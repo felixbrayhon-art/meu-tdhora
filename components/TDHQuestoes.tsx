@@ -33,6 +33,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
 }) => {
   const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE'>('AUTO');
   const [pastedText, setPastedText] = useState('');
+  const [pastedGabarito, setPastedGabarito] = useState('');
   const [batchStatus, setBatchStatus] = useState<{ current: number, total: number } | null>(null);
   const [topic, setTopic] = useState(prefill || '');
   const [banca, setBanca] = useState<string>('');
@@ -145,7 +146,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
         setBatchStatus({ current: i + 1, total: totalBatches });
         console.log(`Processando bloco ${i + 1} de ${totalBatches}...`);
         
-        const result = await parsePastedQuestions(pastedText, studyProfile, { current: i + 1, total: totalBatches });
+        const result = await parsePastedQuestions(pastedText, studyProfile, { current: i + 1, total: totalBatches }, pastedGabarito);
         
         if (result.questions && Array.isArray(result.questions)) {
           const formatted = result.questions.map((q: any) => ({
@@ -384,13 +385,29 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                           <Brain className="w-5 h-5" /> A IA vai ler as questões, identificar a resposta certa (se não tiver gabarito) e criar a explicação detalhada para você!
                         </p>
                       </div>
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-6">Cole as questões aqui</label>
-                      <textarea
-                        value={pastedText}
-                        onChange={(e) => setPastedText(e.target.value)}
-                        placeholder="Cole aqui o texto de uma prova, pdf ou site contendo as questões e alternativas..."
-                        className="w-full bg-white/5 border-2 border-white/10 rounded-[30px] p-8 text-lg focus:outline-none focus:border-orange-500 transition-all font-medium text-white placeholder:text-white/20 min-h-[300px] resize-y"
-                      />
+                      <div className="space-y-6">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-6">Cole as questões aqui</label>
+                        <textarea
+                          value={pastedText}
+                          onChange={(e) => setPastedText(e.target.value)}
+                          placeholder="Cole aqui o texto de uma prova, pdf ou site contendo as questões e alternativas..."
+                          className="w-full bg-white/5 border-2 border-white/10 rounded-[30px] p-8 text-lg focus:outline-none focus:border-orange-500 transition-all font-medium text-white placeholder:text-white/20 min-h-[300px] resize-y"
+                        />
+                      </div>
+                      
+                      <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="flex items-center justify-between px-6">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Gabarito das Questões (Opcional)</label>
+                          <span className="text-[8px] font-black text-orange-500/50 uppercase tracking-widest">Aumenta a precisão da IA</span>
+                        </div>
+                        <textarea
+                          value={pastedGabarito}
+                          onChange={(e) => setPastedGabarito(e.target.value)}
+                          placeholder="Ex: 1-A, 2-C, 3-E... ou cole o gabarito oficial completo aqui."
+                          className="w-full bg-white/5 border-2 border-white/10 rounded-[30px] p-8 text-lg focus:outline-none focus:border-orange-500 transition-all font-medium text-white placeholder:text-white/20 min-h-[150px] resize-y"
+                        />
+                      </div>
+
                       <button 
                         onClick={() => handleParsePasted()}
                         disabled={!pastedText.trim()}

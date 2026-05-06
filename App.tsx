@@ -564,8 +564,10 @@ const App: React.FC = () => {
       const v = smartSystem.vault.find(v => v.id === vaultId);
       const newFlashcards: Flashcard[] = recoveryFlashcards.map(rf => ({
         id: Math.random().toString(36).substr(2, 9),
+        type: 'SIMPLE',
         question: rf.question,
         answer: rf.answer,
+        explanation: rf.explanation || '',
         topic: v?.topic || 'Recuperação',
         interval: 1,
         easeFactor: 2.5,

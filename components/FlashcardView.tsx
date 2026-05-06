@@ -4,6 +4,7 @@ import { Flashcard, FlashcardFolder, StudyProfile, EditalConfig } from '../types
 import { generateStudyContent } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
 import ReactMarkdown from 'react-markdown';
+import { RichTextEditor } from './RichTextEditor';
 import { ChevronLeft, Brain, Plus, Trash2, FolderPlus, Sparkles, Check, X, RotateCcw, HelpCircle, Layers, Maximize2, Minimize2 } from 'lucide-react';
 
 interface FlashcardViewProps {
@@ -517,9 +518,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                                 exit={{ opacity: 0, y: -10 }}
                                 className="flex flex-col h-full items-center text-center"
                               >
-                                <div className="text-2xl md:text-3xl font-black italic leading-[1.3] mb-12 markdown-body overflow-y-auto max-h-[300px] custom-scrollbar selection:bg-orange-500/50">
-                                  <ReactMarkdown>{currentCard?.question || ''}</ReactMarkdown>
-                                </div>
+                                <div className="text-2xl md:text-3xl font-black italic leading-[1.3] mb-12 markdown-body overflow-y-auto max-h-[300px] custom-scrollbar selection:bg-orange-500/50" dangerouslySetInnerHTML={{ __html: currentCard?.question || '' }} />
                                 
                                 {currentCard?.type === 'MULTIPLE_CHOICE' && (
                                     <div className="w-full space-y-4 max-w-lg">
@@ -551,9 +550,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                                  {(!currentCard?.type || currentCard.type === 'SIMPLE') && (
                                     <div className="text-center">
                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6">RESPOSTA DIRETA</h4>
-                                       <div className="text-3xl md:text-4xl font-black italic tracking-tighter leading-tight text-[#0A0F1E] markdown-body selection:bg-orange-200">
-                                          <ReactMarkdown>{currentCard?.answer || ''}</ReactMarkdown>
-                                       </div>
+                                       <div className="text-3xl md:text-4xl font-black italic tracking-tighter leading-tight text-[#0A0F1E] markdown-body selection:bg-orange-200" dangerouslySetInnerHTML={{ __html: currentCard?.answer || '' }} />
                                     </div>
                                  )}
 
@@ -574,9 +571,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                                         <HelpCircle className="w-5 h-5" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">ANÁLISE TÉCNICA</span>
                                       </div>
-                                      <div className="prose prose-lg text-[#0A0F1E] font-medium leading-[1.6] markdown-body selection:bg-orange-200">
-                                        <ReactMarkdown>{currentCard.explanation}</ReactMarkdown>
-                                      </div>
+                                      <div className="prose prose-lg text-[#0A0F1E] font-medium leading-[1.6] markdown-body selection:bg-orange-200" dangerouslySetInnerHTML={{ __html: currentCard.explanation }} />
                                     </div>
                                  )}
                               </motion.div>
@@ -692,34 +687,26 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                    
                    <div className="space-y-3">
                       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Pergunta (Enunciado)</label>
-                      <textarea 
-                        required
-                        value={newCard.question}
-                        onChange={e => setNewCard(prev => ({ ...prev, question: e.target.value }))}
-                        className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-8 py-6 focus:outline-none focus:border-orange-500 transition-all font-medium text-lg min-h-[120px] resize-none"
-                        placeholder="Qual o conceito de...?"
+                      <RichTextEditor 
+                        content={newCard.question}
+                        onChange={html => setNewCard(prev => ({ ...prev, question: html }))}
                       />
                    </div>
 
                    <div className="space-y-3">
                       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Explicação Técnica (Opcional)</label>
-                      <textarea 
-                        value={newCard.explanation}
-                        onChange={e => setNewCard(prev => ({ ...prev, explanation: e.target.value }))}
-                        className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-8 py-6 focus:outline-none focus:border-orange-500 transition-all font-medium text-lg min-h-[100px] resize-none"
-                        placeholder="Detalhes técnicos que reforçam a resposta..."
+                      <RichTextEditor 
+                        content={newCard.explanation}
+                        onChange={html => setNewCard(prev => ({ ...prev, explanation: html }))}
                       />
                    </div>
 
                    {newCard.type === 'SIMPLE' ? (
                      <div className="space-y-3">
                         <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Resposta Direta</label>
-                        <textarea 
-                          required
-                          value={newCard.answer}
-                          onChange={e => setNewCard(prev => ({ ...prev, answer: e.target.value }))}
-                          className="w-full bg-white/5 border-2 border-orange-500/20 rounded-[30px] px-8 py-6 focus:outline-none focus:border-orange-500 transition-all font-black italic text-xl min-h-[120px] resize-none"
-                          placeholder="A resposta que deve estar na mente do aluno..."
+                        <RichTextEditor 
+                          content={newCard.answer}
+                          onChange={html => setNewCard(prev => ({ ...prev, answer: html }))}
                         />
                      </div>
                    ) : (
