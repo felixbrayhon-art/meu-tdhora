@@ -134,11 +134,27 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     setUserAnswers({});
     
     try {
-      // Step 1: Detect how many questions
-      const estimatedCount = await identifyQuestionCount(pastedText);
-      const batchSize = 10;
-      const totalBatches = Math.ceil((estimatedCount || 1) / batchSize) || 1;
+      // Step 1: Split text into physical chunks to avoid context window issues and improve precision
+      // We aim for larger chunks for Pro model (~40,000 characters)
+      const chunkSize = 40000;
+      const chunks: string[] = [];
+      let remainingText = pastedText;
       
+      while (remainingText.length > 0) {
+        if (remainingText.length <= chunkSize) {
+          chunks.push(remainingText);
+          break;
+        }
+        
+        let splitPoint = remainingText.lastIndexOf('\n\n', chunkSize);
+        if (splitPoint === -1) splitPoint = remainingText.lastIndexOf('\n', chunkSize);
+        if (splitPoint === -1) splitPoint = chunkSize;
+        
+        chunks.push(remainingText.substring(0, splitPoint));
+        remainingText = remainingText.substring(splitPoint).trim();
+      }
+
+      const totalBatches = chunks.length;
       let allQuestions: any[] = [];
       
       // Step 2: Extract in blocks
@@ -146,13 +162,13 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
         setBatchStatus({ current: i + 1, total: totalBatches });
         console.log(`Processando bloco ${i + 1} de ${totalBatches}...`);
         
-        // Delay estratégico para não estourar a cota de requisições por minuto do Google
+        // Delay estratégico para não estourar a cota
         if (i > 0) {
-          console.log(`Aguardando 12s para evitar bloqueio de cota...`);
-          await new Promise(resolve => setTimeout(resolve, 12000));
+          console.log(`Aguardando 5s para evitar bloqueio de cota...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
-        const result = await parsePastedQuestions(pastedText, studyProfile, { current: i + 1, total: totalBatches }, pastedGabarito);
+        const result = await parsePastedQuestions(chunks[i], studyProfile, { current: i + 1, total: totalBatches }, pastedGabarito);
         
         if (result.questions && Array.isArray(result.questions)) {
           const formatted = result.questions.map((q: any) => ({
@@ -165,11 +181,6 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
           setQuestions([...allQuestions]);
         } else {
           console.warn(`Bloco ${i + 1} retornou 0 questões.`);
-        }
-
-        // Breve pausa para não sobrecarregar a cota da API (rate limit)
-        if (i < totalBatches - 1) {
-          await new Promise(resolve => setTimeout(resolve, 800));
         }
       }
       
@@ -235,9 +246,9 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
       <div className="fixed inset-0 z-[200] bg-[#0A0F1E] flex flex-col items-center justify-center p-6">
         <div className="bg-white rounded-[50px] p-12 md:p-20 shadow-2xl flex flex-col items-center max-w-xl w-full">
           <LoadingFish 
-            message={batchStatus ? `Bloco ${batchStatus.current} de ${batchStatus.total}` : "Arquitetando Simulado..."} 
+            message={batchStatus ? `Extraindo Bloco ${batchStatus.current} de ${batchStatus.total}` : "Arquitetando Simulado..."} 
             submessage={batchStatus 
-              ? `Extraindo questões via IA de alta performance`
+              ? `A IA está processando seu texto em partes para não pular nenhuma questão.`
               : `IA preparando questões focadas em ${studyProfile === 'CONCURSO' ? 'Concursos de Elite' : 'ENEM/Vestibular'}`
             }
           />
@@ -245,7 +256,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
           {batchStatus && (
             <div className="mt-8 w-full">
               <div className="flex justify-between mb-2">
-                <span className="text-[#0A0F1E] font-black text-[10px] tracking-widest uppercase">Progresso da Extração</span>
+                <span className="text-[#0A0F1E] font-black text-[10px] tracking-widest uppercase">Análise de Conteúdo</span>
                 <span className="text-[#0A0F1E] font-black text-[10px]">{Math.round((batchStatus.current / batchStatus.total) * 100)}%</span>
               </div>
               <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
@@ -254,9 +265,9 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                   style={{ width: `${(batchStatus.current / batchStatus.total) * 100}%` }}
                 ></div>
               </div>
-              <p className="mt-4 text-center text-gray-400 font-bold text-[8px] uppercase tracking-widest leading-relaxed">
-                Estamos processando em blocos de 10 para garantir o máximo de <br/>
-                profundidade técnica e não perder nenhuma questão do texto colado.
+              <p className="mt-6 text-center text-gray-400 font-bold text-[9px] uppercase tracking-[0.2em] leading-relaxed max-w-xs mx-auto">
+                Estamos processando em lotes de segurança.<br/>
+                Isso evita erros de memória da IA e garante a extração de 100% das perguntas coladas.
               </p>
             </div>
           )}
@@ -460,9 +471,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                <div className="absolute top-0 left-0 w-2 h-full bg-orange-500 opacity-50"></div>
               
               <div className="flex justify-between items-start mb-12">
-                <h3 className="text-xl font-bold text-white leading-tight flex-1 italic tracking-tight">
-                  {currentQ.question}
-                </h3>
+                <h3 className="text-xl font-bold text-white leading-tight flex-1 italic tracking-tight" dangerouslySetInnerHTML={{ __html: currentQ.question }} />
               </div>
 
               {selectedOpt === null ? (
@@ -536,9 +545,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       <HelpCircle className="w-6 h-6" />
                       <span className="font-black text-xs uppercase tracking-[0.3em]">Mapeamento de Resposta</span>
                     </div>
-                    <div className="text-slate-300 text-xl font-medium space-y-6 mb-10 markdown-body prose prose-invert prose-xl max-w-none">
-                      <ReactMarkdown>{currentQ.explanation}</ReactMarkdown>
-                    </div>
+                    <div className="text-slate-300 text-xl font-medium space-y-6 mb-10 prose prose-invert prose-xl max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.explanation }} />
 
                     <div className="bg-[#0A0F1E] border border-white/5 p-8 rounded-[40px] mt-10 relative">
                       <div className="flex items-center justify-between mb-6">
@@ -606,9 +613,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                            <span className="text-2xl">🧠</span>
                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.4em]">MENTALIZAÇÃO ACELERADA</p>
                          </div>
-                         <div className="text-xl font-bold text-white italic markdown-body prose prose-invert prose-orange prose-xl max-w-none">
-                           <ReactMarkdown>{currentQ.memoryHint}</ReactMarkdown>
-                         </div>
+                         <div className="text-xl font-bold text-white italic prose prose-invert prose-orange prose-xl max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.memoryHint }} />
                       </div>
                     )}
                   </div>
@@ -633,12 +638,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                   </button>
 
                   {showCommentary && (
-                    <div className="bg-[#0A0F1E] border-2 border-orange-500/10 rounded-[50px] p-12 text-xl leading-relaxed text-slate-300 animate-in zoom-in-95 duration-500 markdown-body prose prose-invert prose-orange prose-xl max-w-none shadow-inner">
-                      <div className="flex items-center gap-3 text-orange-500 font-black mb-8 uppercase tracking-[0.4em] text-[10px]">
-                        <span className="w-6 h-6 bg-orange-500 rounded-lg flex items-center justify-center text-white text-[10px] tracking-tight">IA</span>
-                        LÓGICA DO CONSTRUTOR
-                      </div>
-                      <ReactMarkdown>{currentQ.explanation}</ReactMarkdown>
+                    <div className="bg-[#0A0F1E] border-2 border-orange-500/10 rounded-[50px] p-12 text-xl leading-relaxed text-slate-300 animate-in zoom-in-95 duration-500 prose prose-invert prose-orange prose-xl max-w-none shadow-inner" dangerouslySetInnerHTML={{ __html: currentQ.explanation }}>
                     </div>
                   )}
                 </div>

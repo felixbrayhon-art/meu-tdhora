@@ -185,7 +185,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
           <div className="absolute top-0 left-0 w-2 h-full bg-blue-600 opacity-50"></div>
           
           <div className="flex justify-between items-start mb-12">
-            <h3 className="text-xl font-bold text-white leading-tight flex-1 italic tracking-tight">{currentQ.question}</h3>
+            <h3 className="text-xl font-bold text-white leading-tight flex-1 italic tracking-tight" dangerouslySetInnerHTML={{ __html: currentQ.question }} />
             <div className="flex gap-2">
               <button 
                 onClick={() => setShowMoveModal(true)}
@@ -332,9 +332,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                 <h4 className="flex items-center gap-3 text-xs font-black text-blue-500 mb-8 uppercase tracking-[0.3em]">
                    🧠 MAPEAMENTO DA LÓGICA
                 </h4>
-                <div className="markdown-body text-slate-300 text-xl font-medium space-y-6 prose prose-invert prose-xl max-w-none">
-                  <ReactMarkdown>{currentQ.explanation}</ReactMarkdown>
-                </div>
+                <div className="text-slate-300 text-xl font-medium space-y-6 prose prose-invert prose-xl max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.explanation }} />
 
                 {isNoteExpanded && (
                   <div className="fixed inset-0 z-[1000] bg-[#0A0F1E]/95 backdrop-blur-2xl animate-in fade-in duration-300 p-6 md:p-12 flex flex-col">
@@ -383,9 +381,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                     <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] mb-4 flex items-center gap-3">
                       <span className="text-2xl">🔥</span> BIZU DE MEMÓRIA (MÁXIMO IMPACTO)
                     </p>
-                    <div className="markdown-body text-xl md:text-2xl font-bold text-white italic leading-relaxed prose prose-invert prose-blue prose-xl max-w-none">
-                      <ReactMarkdown>{currentQ.memoryHint}</ReactMarkdown>
-                    </div>
+                    <div className="text-xl md:text-2xl font-bold text-white italic leading-relaxed prose prose-invert prose-blue prose-xl max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.memoryHint }} />
                   </div>
                 )}
               </div>

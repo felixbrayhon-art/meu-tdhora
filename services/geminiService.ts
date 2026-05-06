@@ -3,15 +3,13 @@ import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion } from "../types";
 
 const getApiKey = () => {
-  // @ts-ignore - Vite handles import.meta.env and process might not exist
-  const key = (import.meta as any).env?.VITE_GEMINI_API_KEY || 
-              (import.meta as any).env?.GEMINI_API_KEY || 
-              (typeof process !== 'undefined' ? process.env.VITE_GEMINI_API_KEY : undefined) ||
-              (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined) ||
-              (typeof process !== 'undefined' ? process.env.API_KEY : undefined);
+  // Use strictly process.env.GEMINI_API_KEY as per platform recommendation
+  // with fallback to import.meta.env for local dev
+  const key = (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined) || 
+              (import.meta as any).env?.VITE_GEMINI_API_KEY;
               
   if (!key || key === 'undefined' || key === 'null') {
-    console.warn("Gemini API Key não encontrada. Certifique-se de configurar VITE_GEMINI_API_KEY no seu ambiente (Vercel/Local).");
+    console.warn("Gemini API Key não encontrada!");
     return '';
   }
   return key;
@@ -22,6 +20,7 @@ const ai = new GoogleGenAI({
 });
 
 const DEFAULT_MODEL = 'gemini-3-flash-preview';
+const PRO_MODEL = 'gemini-3.1-pro-preview';
 
 // Custom error class for API issues
 export class AIError extends Error {
@@ -32,43 +31,24 @@ export class AIError extends Error {
 }
 
 const handleAIError = (error: any) => {
-  console.error("AI Error details:", JSON.stringify(error));
+  console.error("AI Error details:", error);
   
-  if (error === 429 || error === "429") {
-    throw new AIError("Limite de Cota do Google Gemini atingido. O Google limita o uso gratuito por minuto e por dia. Aguarde 1 a 2 minutos e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
-  }
-  
-  const errorMessage = error?.message || error?.error?.message || "";
+  const errorMessage = error?.message || error?.error?.message || String(error);
   const errorStatus = error?.status || error?.error?.code || (error?.name === 'ApiError' ? error?.status : 0);
   
-  const isQuotaError = 
-    errorStatus === 429 || 
-    errorStatus === "429" ||
-    errorMessage.includes('429') || 
-    errorMessage.includes('RESOURCE_EXHAUSTED') || 
-    error?.error?.status === 'RESOURCE_EXHAUSTED' ||
-    (error?.name === 'ApiError' && error?.status === 429);
-  
-  if (isQuotaError) {
-    throw new AIError("Limite de Cota do Google Gemini atingido. O Google limita o uso gratuito por minuto e por dia. Isso geralmente acontece após muitas gerações seguidas. Aguarde 1 a 2 minutos e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
+  if (errorStatus === 429 || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+    throw new AIError("Limite de Cota do Google Gemini atingido. O Google limita o uso gratuito. Aguarde 1 a 2 minutos e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
   }
 
-  const isHighDemand = 
-    errorStatus === 503 || 
-    errorStatus === "503" || 
-    errorMessage.includes('503') || 
-    errorMessage.includes('high demand') || 
-    errorMessage.includes('UNAVAILABLE');
-
-  if (isHighDemand) {
-    throw new AIError("O servidor da IA está com alta demanda no momento (Erro 503). O aplicativo tentou processar automaticamente, mas o tráfego do Google continua intenso. Por favor, aguarde 10 segundos e tente novamente.", 503, 'UNAVAILABLE');
+  if (errorStatus === 503 || errorMessage.includes('503') || errorMessage.includes('high demand') || errorMessage.includes('UNAVAILABLE')) {
+    throw new AIError("O servidor da IA está com alta demanda (Erro 503). O aplicativo tentou processar automaticamente, mas o tráfego do Google continua intenso. Por favor, aguarde alguns segundos e tente novamente.", 503, 'UNAVAILABLE');
   }
   
-  if (errorMessage.includes('API key not valid') || errorMessage.toLowerCase().includes('api key') || errorMessage.includes('key')) {
-    throw new AIError("Chave de API do Gemini inválida ou ausente. No Vercel, vá em Settings > Environment Variables, adicione VITE_GEMINI_API_KEY e faça um novo Deploy para aplicar.", 401, 'INVALID_API_KEY');
+  if (errorMessage.toLowerCase().includes('api key') || errorMessage.includes('key')) {
+    throw new AIError("Chave de API do Gemini inválida ou ausente. Verifique suas configurações de ambiente.", 401, 'INVALID_API_KEY');
   }
 
-  throw new AIError(errorMessage || "Erro desconhecido ao processar IA. Verifique sua conexão ou a chave de API.");
+  throw new AIError(errorMessage || "Erro inesperado ao chamar a API do Gemini. Verifique sua conexão.");
 };
 
 // Helper for calling AI with automatic retries for transient errors (503/500)
@@ -319,7 +299,7 @@ export const identifyQuestionCount = async (text: string) => {
       
       Texto:
       """
-      ${text.substring(0, 15000)}
+      ${text.substring(0, 50000)}
       """`
     });
     const count = parseInt(response.text?.trim().replace(/[^0-9]/g, '') || "0");
@@ -334,13 +314,8 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
     ? "estilo Concursos Públicos de alto nível"
     : "estilo ENEM/FUVEST";
 
-  const startNum = batchInfo ? (batchInfo.current - 1) * 10 + 1 : 1;
-  const endNum = batchInfo ? batchInfo.current * 10 : 100;
-
   const batchPrompt = batchInfo 
-    ? `\nFOCO: EXTRAIA EXATAMENTE AS QUESTÕES QUE SÃO AS DE NÚMERO ${startNum} ATÉ ${endNum} NO TEXTO ORIGINAL. 
-       Se o texto não tiver numeração explícita, extraia o bloco correspondente à posição ${batchInfo.current} de ${batchInfo.total} do conteúdo total.
-       Não extraia questões que você já extraiu em blocos anteriores.`
+    ? `\nLOTE ATUAL: Processando parte ${batchInfo.current} de ${batchInfo.total} do documento. Extraia as questões contidas NESTE TEXTO ESPECÍFICO.`
     : "";
 
   const gabaritoPrompt = pastedGabarito 
@@ -353,7 +328,7 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
 
   try {
     const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
+      model: PRO_MODEL, // Use Pro model for extraction tasks to improve precision and capacity
       contents: `${getTimeContext()}
       Você é um extrator de questões de ALTA PRECISÃO. O usuário colou um texto longo. 
       Sua missão é extrair as questões solicitadas e transformá-las em JSON. ${batchPrompt}${gabaritoPrompt}
@@ -378,7 +353,9 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
       """`,
       config: {
         responseMimeType: "application/json",
-        maxOutputTokens: 16000,
+        maxOutputTokens: 25000,
+        temperature: 0.1,
+        topP: 0.95,
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -540,7 +517,6 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
       
       Retorne em JSON: { "topics": ["string"] }`,
       config: {
-        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
