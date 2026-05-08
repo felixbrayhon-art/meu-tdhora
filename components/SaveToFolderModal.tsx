@@ -38,21 +38,29 @@ const SaveToFolderModal: React.FC<SaveToFolderModalProps> = ({ folders, suggeste
             <div className="space-y-4">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] block ml-2">Destino do Material</label>
               <div className="space-y-3 max-h-56 overflow-y-auto pr-2 custom-scrollbar">
-                {folders.map(f => (
-                  <button 
-                    key={f.id}
-                    onClick={() => setSelectedFolderId(f.id)}
-                    className={`w-full p-6 rounded-[30px] border-2 text-left transition-all flex items-center gap-4 group ${selectedFolderId === f.id ? 'border-orange-500 bg-orange-500/10 shadow-lg shadow-orange-500/10' : 'border-white/5 bg-white/5 hover:border-white/20'}`}
-                  >
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedFolderId === f.id ? 'bg-orange-500 border-orange-500' : 'border-white/10 group-hover:border-white/30'}`}>
-                      {selectedFolderId === f.id && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" /></svg>}
-                    </div>
-                    <div>
-                      <span className={`font-black text-sm uppercase tracking-tight transition-colors ${selectedFolderId === f.id ? 'text-white' : 'text-slate-400'}`}>{f.name}</span>
-                      <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{f.notebooks.length} cadernos</p>
-                    </div>
-                  </button>
-                ))}
+                {folders.map(f => {
+                  const getFullPath = (folder: QuizFolder): string => {
+                    const parent = folders.find(p => p.id === folder.parentId);
+                    return parent ? `${getFullPath(parent)} > ${folder.name}` : folder.name;
+                  };
+                  const fullPath = getFullPath(f);
+                  
+                  return (
+                    <button 
+                      key={f.id}
+                      onClick={() => setSelectedFolderId(f.id)}
+                      className={`w-full p-6 rounded-[30px] border-2 text-left transition-all flex items-center gap-4 group ${selectedFolderId === f.id ? 'border-orange-500 bg-orange-500/10 shadow-lg shadow-orange-500/10' : 'border-white/5 bg-white/5 hover:border-white/20'}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedFolderId === f.id ? 'bg-orange-500 border-orange-500' : 'border-white/10 group-hover:border-white/30'}`}>
+                        {selectedFolderId === f.id && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" /></svg>}
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <span className={`font-black text-xs uppercase tracking-tight transition-colors block truncate ${selectedFolderId === f.id ? 'text-white' : 'text-slate-400'}`}>{fullPath}</span>
+                        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{f.notebooks.length} cadernos</p>
+                      </div>
+                    </button>
+                  );
+                })}
                 
                 <button 
                   onClick={() => setSelectedFolderId('NEW')}

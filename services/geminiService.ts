@@ -20,7 +20,7 @@ const ai = new GoogleGenAI({
 });
 
 const DEFAULT_MODEL = 'gemini-3-flash-preview';
-const PRO_MODEL = 'gemini-3.1-pro-preview';
+const PRO_MODEL = 'gemini-3-flash-preview'; // Switched to flash for more reliable extraction speed and quota compatibility
 
 // Custom error class for API issues
 export class AIError extends Error {
@@ -208,7 +208,16 @@ export const generateStudyContent = async (topic: string, technique: string, num
       }
     });
   
-    return JSON.parse(response.text);
+    if (response.text) {
+      let text = response.text.trim();
+      if (text.startsWith('```json')) {
+        text = text.replace(/^```json/, '').replace(/```$/, '').trim();
+      } else if (text.startsWith('```')) {
+        text = text.replace(/^```/, '').replace(/```$/, '').trim();
+      }
+      return JSON.parse(text);
+    }
+    throw new AIError("Resposta vazia da IA.");
   } catch (error) {
     return handleAIError(error);
   }
@@ -385,7 +394,14 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
     });
 
     if (response.text) {
-      return JSON.parse(response.text);
+      // Robust JSON extraction in case the model wraps the response in markdown blocks
+      let text = response.text.trim();
+      if (text.startsWith('```json')) {
+        text = text.replace(/^```json/, '').replace(/```$/, '').trim();
+      } else if (text.startsWith('```')) {
+        text = text.replace(/^```/, '').replace(/```$/, '').trim();
+      }
+      return JSON.parse(text);
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error: any) {
@@ -485,26 +501,17 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
       Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada. Profundidade 10/10. Foco total em recuperação acelerada e domínio do tema.
       
       Retorne no formato JSON rigoroso.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              question: { type: Type.STRING },
-              options: { type: Type.ARRAY, items: { type: Type.STRING } },
-              correctAnswer: { type: Type.NUMBER },
-              explanation: { type: Type.STRING },
-              memoryHint: { type: Type.STRING }
-            },
-            required: ["id", "question", "options", "correctAnswer", "explanation", "memoryHint"]
-          }
-        }
-      }
     });
-    return JSON.parse(response.text);
+    if (response.text) {
+      let text = response.text.trim();
+      if (text.startsWith('```json')) {
+        text = text.replace(/^```json/, '').replace(/```$/, '').trim();
+      } else if (text.startsWith('```')) {
+        text = text.replace(/^```/, '').replace(/```$/, '').trim();
+      }
+      return JSON.parse(text);
+    }
+    throw new AIError("Resposta vazia da IA.");
   } catch (error) {
     return handleAIError(error);
   }

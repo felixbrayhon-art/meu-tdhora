@@ -550,7 +550,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                                  {(!currentCard?.type || currentCard.type === 'SIMPLE') && (
                                     <div className="text-center">
                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6">RESPOSTA DIRETA</h4>
-                                       <div className="text-xl md:text-2xl font-bold tracking-tight text-[#0A0F1E] markdown-body selection:bg-orange-200" dangerouslySetInnerHTML={{ __html: currentCard?.answer || '' }} />
+                                       <div className="text-lg md:text-xl font-normal tracking-tight text-[#0A0F1E] markdown-body selection:bg-orange-200" dangerouslySetInnerHTML={{ __html: currentCard?.answer || '' }} />
                                     </div>
                                  )}
 
@@ -558,7 +558,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                                  {currentCard?.type === 'MULTIPLE_CHOICE' && (
                                     <div className="bg-green-500/10 border border-green-500/20 p-8 rounded-[40px] text-center">
                                         <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.4em] mb-4 text-center">GABARITO CONFIRMADO</h4>
-                                        <div className="text-xl md:text-2xl font-bold text-[#0A0F1E] leading-tight">
+                                        <div className="text-lg md:text-xl font-normal text-[#0A0F1E] leading-tight">
                                             {String.fromCharCode(65 + (currentCard.correctAnswerIndex || 0))}) {currentCard.options?.[currentCard.correctAnswerIndex || 0]}
                                         </div>
                                     </div>
@@ -571,7 +571,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                                         <HelpCircle className="w-5 h-5" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">ANÁLISE TÉCNICA</span>
                                       </div>
-                                      <div className="prose prose-lg text-[#0A0F1E] font-medium leading-[1.6] markdown-body selection:bg-orange-200" dangerouslySetInnerHTML={{ __html: currentCard.explanation }} />
+                                      <div className="prose prose-base text-[#0A0F1E] font-normal leading-[1.6] markdown-body selection:bg-orange-200" dangerouslySetInnerHTML={{ __html: currentCard.explanation }} />
                                     </div>
                                  )}
                               </motion.div>

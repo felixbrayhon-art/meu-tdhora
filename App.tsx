@@ -783,7 +783,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 py-8 relative">
+      <main className="max-w-[1600px] mx-auto px-4 py-8 relative">
         {currentView === 'HUB' && (
           <Hub 
             setView={setCurrentView} 
@@ -879,7 +879,7 @@ const App: React.FC = () => {
           <MaterialsManager 
             folders={folders} 
             attempts={attempts} 
-            onCreateFolder={name => setFolders(prev => [...prev, { id: Math.random().toString(36).substr(2,9), name, topic: name, notebooks: [], createdAt: Date.now() }])} 
+            onCreateFolder={(name, parentId) => setFolders(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name, topic: name, notebooks: [], createdAt: Date.now(), parentId }])} 
             onCreateNotebook={(fid, name) => setFolders(prev => prev.map(f => f.id === fid ? { ...f, notebooks: [...f.notebooks, { id: Math.random().toString(36).substr(2,9), name, questions: [], createdAt: Date.now() }] } : f))} 
             onDeleteFolder={fid => setFolders(prev => prev.filter(f => f.id !== fid))}
             onDeleteNotebook={(fid, nid) => setFolders(prev => prev.map(f => f.id === fid ? { ...f, notebooks: f.notebooks.filter(n => n.id !== nid) } : f))}

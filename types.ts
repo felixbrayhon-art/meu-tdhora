@@ -132,6 +132,7 @@ export interface QuizFolder {
   notebooks: Notebook[];
   topic: string;
   createdAt: number;
+  parentId?: string; // Support for subfolders
 }
 
 export interface QuizAttempt {

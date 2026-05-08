@@ -53,46 +53,46 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   }
 
   return (
-    <div className="border border-white/10 rounded-[30px] p-6 bg-white/5 shadow-2xl relative">
-      <div className="flex flex-wrap gap-3 mb-6 border-b border-white/10 pb-6 items-center">
-        <div className="flex gap-1 bg-white/5 p-1 rounded-2xl">
+    <div className="border border-slate-100 rounded-[30px] p-6 bg-slate-50/50 shadow-inner relative h-full flex flex-col">
+      <div className="flex flex-wrap gap-2 mb-6 border-b border-slate-100 pb-6 items-center shrink-0">
+        <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-2xl shadow-sm">
           <button 
             type="button"
             onClick={() => editor.chain().focus().toggleBold().run()} 
-            className={`p-3 rounded-xl transition-all ${editor.isActive('bold') ? 'bg-orange-500 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+            className={`p-2.5 rounded-xl transition-all ${editor.isActive('bold') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-blue-600 hover:bg-slate-50'}`}
           >
             <Bold className="w-4 h-4" />
           </button>
           <button 
             type="button"
             onClick={() => editor.chain().focus().toggleItalic().run()} 
-            className={`p-3 rounded-xl transition-all ${editor.isActive('italic') ? 'bg-orange-500 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+            className={`p-2.5 rounded-xl transition-all ${editor.isActive('italic') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-blue-600 hover:bg-slate-50'}`}
           >
             <Italic className="w-4 h-4" />
           </button>
           <button 
             type="button"
             onClick={() => editor.chain().focus().toggleUnderline().run()} 
-            className={`p-3 rounded-xl transition-all ${editor.isActive('underline') ? 'bg-orange-500 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+            className={`p-3 rounded-xl transition-all ${editor.isActive('underline') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-blue-600 hover:bg-slate-50'}`}
           >
             <UnderlineIcon className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="h-8 w-px bg-white/10 mx-1" />
+        <div className="h-6 w-px bg-slate-200 mx-1" />
 
         <div className="relative">
           <button 
             type="button"
             onClick={() => setShowColorMenu(showColorMenu === 'text' ? null : 'text')} 
-            className={`flex items-center gap-2 p-3 rounded-xl transition-all ${showColorMenu === 'text' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+            className={`flex items-center gap-2 p-2.5 rounded-xl transition-all border ${showColorMenu === 'text' ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200'}`}
           >
             <Palette className="w-4 h-4" />
             <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Cor</span>
           </button>
 
           {showColorMenu === 'text' && (
-            <div className="absolute top-full left-0 mt-2 p-3 bg-[#1A1F2E] border border-white/10 rounded-[24px] shadow-3xl z-[50] flex gap-2">
+            <div className="absolute top-full left-0 mt-3 p-3 bg-white border border-slate-200 rounded-[24px] shadow-2xl z-[50] flex gap-2 animate-in fade-in zoom-in-95 duration-200">
               {TEXT_COLORS.map((c) => (
                 <button
                   key={c.color}
@@ -101,7 +101,7 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
                     editor.chain().focus().setColor(c.color).run();
                     setShowColorMenu(null);
                   }}
-                  className="w-8 h-8 rounded-xl border border-white/10 hover:scale-110 transition-transform shadow-lg"
+                  className="w-8 h-8 rounded-xl border border-slate-200 hover:scale-110 transition-transform shadow-sm"
                   style={{ backgroundColor: c.color }}
                   title={c.name}
                 />
@@ -112,7 +112,7 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
                   editor.chain().focus().unsetColor().run();
                   setShowColorMenu(null);
                 }}
-                className="w-8 h-8 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center hover:scale-110 transition-transform"
+                className="w-8 h-8 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center hover:scale-110 transition-transform"
                 title="Reset Color"
               >
                 <div className="w-full h-px bg-red-500 rotate-45" />
@@ -125,14 +125,14 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
           <button 
             type="button"
             onClick={() => setShowColorMenu(showColorMenu === 'highlight' ? null : 'highlight')} 
-            className={`flex items-center gap-2 p-3 rounded-xl transition-all ${showColorMenu === 'highlight' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+            className={`flex items-center gap-2 p-2.5 rounded-xl transition-all border ${showColorMenu === 'highlight' ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200'}`}
           >
             <Highlighter className="w-4 h-4" />
             <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Realce</span>
           </button>
 
           {showColorMenu === 'highlight' && (
-            <div className="absolute top-full left-0 mt-2 p-3 bg-[#1A1F2E] border border-white/10 rounded-[24px] shadow-3xl z-[50] flex gap-2">
+            <div className="absolute top-full left-0 mt-3 p-3 bg-white border border-slate-200 rounded-[24px] shadow-2xl z-[50] flex gap-2 animate-in fade-in zoom-in-95 duration-200">
               {HIGHLIGHT_COLORS.map((c) => (
                 <button
                   key={c.color}
@@ -141,7 +141,7 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
                     editor.chain().focus().setHighlight({ color: c.color }).run();
                     setShowColorMenu(null);
                   }}
-                  className="w-8 h-8 rounded-xl border border-white/10 hover:scale-110 transition-transform shadow-lg"
+                  className="w-8 h-8 rounded-xl border border-slate-200 hover:scale-110 transition-transform shadow-sm"
                   style={{ backgroundColor: c.color }}
                   title={c.name}
                 />
@@ -152,7 +152,7 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
                   editor.chain().focus().unsetHighlight().run();
                   setShowColorMenu(null);
                 }}
-                className="w-8 h-8 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center hover:scale-110 transition-transform font-black text-[8px] text-white/40"
+                className="w-8 h-8 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center hover:scale-110 transition-transform font-black text-[8px] text-slate-400"
                 title="Clear Highlight"
               >
                 OFF
@@ -164,17 +164,17 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
         <button 
           type="button"
           onClick={() => editor.chain().focus().unsetAllMarks().run()} 
-          className="p-3 text-white/40 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+          className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all ml-auto"
           title="Limpar Estilos"
         >
           <Eraser className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="min-h-[400px] overflow-y-auto px-2">
+      <div className="flex-1 overflow-y-auto px-2 custom-scrollbar">
         <EditorContent 
           editor={editor} 
-          className="prose prose-invert prose-orange max-w-none focus:outline-none min-h-[300px] text-lg font-medium selection:bg-blue-500/30" 
+          className="prose prose-slate max-w-none focus:outline-none min-h-[300px] text-lg font-medium selection:bg-blue-500/10" 
         />
       </div>
 

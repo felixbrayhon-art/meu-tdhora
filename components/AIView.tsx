@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { CheckCircle2 } from 'lucide-react';
 import { generateStudyContent } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
 import SaveToFolderModal from './SaveToFolderModal';
@@ -308,6 +309,48 @@ const AIView: React.FC<AIViewProps> = ({
                     ))}
                   </div>
                 </div>
+
+                {/* VISUALIZAÇÃO DE QUESTÕES */}
+                {result.quiz && result.quiz.length > 0 && (
+                  <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl border border-gray-100 mb-10 overflow-hidden relative">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <h3 className="text-lg font-black italic uppercase tracking-tight text-[#1E293B]">Bateria de Fixação</h3>
+                    </div>
+
+                    <ul className="space-y-8 divide-y divide-gray-50">
+                      {result.quiz.map((q: any, i: number) => (
+                        <li key={i} className={i > 0 ? "pt-8" : ""}>
+                          <div className="flex gap-4 items-start mb-6">
+                            <span className="w-7 h-7 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-center text-[10px] font-black text-blue-600 shrink-0">
+                              {i + 1}
+                            </span>
+                            <div 
+                              className="text-base text-[#1E293B] font-medium leading-relaxed markdown-body" 
+                              dangerouslySetInnerHTML={{ __html: q.question }} 
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 ml-11">
+                            {q.options.map((opt: string, idx: number) => (
+                              <div 
+                                key={idx}
+                                className={`p-4 rounded-xl border text-[13px] transition-all flex items-center gap-3 ${idx === q.correctAnswer ? 'bg-green-50 border-green-200/50 text-green-700 font-semibold' : 'bg-gray-50/50 border-gray-50 text-gray-500'}`}
+                              >
+                                <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold uppercase ${idx === q.correctAnswer ? 'bg-green-500 text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-300'}`}>
+                                  {String.fromCharCode(65 + idx)}
+                                </span>
+                                {opt}
+                              </div>
+                            ))}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* SALVAR E PRATICAR */}
                 <div className="bg-blue-600 rounded-[50px] p-12 text-white shadow-[0_35px_60px_-15px_rgba(37,99,235,0.3)] relative overflow-hidden group">

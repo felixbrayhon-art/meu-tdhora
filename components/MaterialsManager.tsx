@@ -8,7 +8,7 @@ interface MaterialsManagerProps {
   attempts: QuizAttempt[];
   onBack: () => void;
   onPlayQuiz: (folderId: string, notebookId: string) => void;
-  onCreateFolder: (name: string) => void;
+  onCreateFolder: (name: string, parentId?: string) => void;
   onCreateNotebook: (folderId: string, name: string) => void;
   onDeleteFolder?: (folderId: string) => void;
   onDeleteNotebook?: (folderId: string, notebookId: string) => void;
@@ -18,7 +18,19 @@ interface MaterialsManagerProps {
   editalConfig?: EditalConfig;
 }
 
-const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, onBack, onPlayQuiz, onCreateFolder, onCreateNotebook, onDeleteFolder, onDeleteNotebook, onMoveAllQuestions, strategicMode, editalConfig }) => {
+const MaterialsManager: React.FC<MaterialsManagerProps> = ({ 
+  folders, 
+  attempts, 
+  onBack, 
+  onPlayQuiz, 
+  onCreateFolder, 
+  onCreateNotebook, 
+  onDeleteFolder, 
+  onDeleteNotebook, 
+  onMoveAllQuestions, 
+  strategicMode, 
+  editalConfig 
+}) => {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
   const [moveAllNotebook, setMoveAllNotebook] = useState<Notebook | null>(null);
@@ -32,10 +44,28 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
   const selectedFolder = folders.find(f => f.id === selectedFolderId);
   const selectedNotebook = selectedFolder?.notebooks.find(n => n.id === selectedNotebookId);
 
+  // Get current level folders and notebooks
+  const currentFolders = folders.filter(f => f.parentId === (selectedFolderId || undefined));
+
+  const getBreadcrumbs = () => {
+    const crumbs: { id: string | null; name: string }[] = [{ id: null, name: 'MATERIAIS' }];
+    if (!selectedFolderId) return crumbs;
+
+    const path: { id: string | null; name: string }[] = [];
+    let curr: QuizFolder | undefined = folders.find(f => f.id === selectedFolderId);
+    while (curr) {
+      path.unshift({ id: curr.id, name: curr.name });
+      curr = folders.find(f => f.id === curr?.parentId);
+    }
+    return [...crumbs, ...path];
+  };
+
+  const breadcrumbs = getBreadcrumbs();
+
   const handleCreate = () => {
     if (!newName.trim()) return;
     if (isCreating === 'FOLDER') {
-      onCreateFolder(newName.trim());
+      onCreateFolder(newName.trim(), selectedFolderId || undefined);
     } else if (isCreating === 'NOTEBOOK' && selectedFolderId) {
       onCreateNotebook(selectedFolderId, newName.trim());
     }
@@ -45,66 +75,72 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
 
   return (
     <div className="animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-12">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <button 
-          onClick={selectedNotebookId ? () => setSelectedNotebookId(null) : (selectedFolderId ? () => setSelectedFolderId(null) : onBack)} 
+          onClick={selectedNotebookId ? () => setSelectedNotebookId(null) : (selectedFolderId ? () => setSelectedFolderId(selectedFolder?.parentId || null) : onBack)} 
           className="text-gray-400 font-bold text-xs tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors uppercase"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
-          {selectedNotebookId ? 'VOLTAR PARA PASTA' : (selectedFolderId ? 'VOLTAR ÀS PASTAS' : 'HUB PRINCIPAL')}
+          {selectedNotebookId ? 'VOLTAR PARA PASTA' : (selectedFolderId ? (selectedFolder?.parentId ? 'VOLTAR PARA PASTA PAI' : 'VOLTAR ÀS PASTAS') : 'HUB PRINCIPAL')}
         </button>
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <h2 className="text-3xl font-black tracking-tighter italic uppercase flex-1">
-            {strategicMode ? 'MATERIAIS' : 'MEUS'} <span className={strategicMode ? 'text-blue-900' : 'text-blue-500'}>{selectedFolderId ? 'CADERNOS' : (strategicMode ? 'ESTRATÉGICOS' : 'MATERIAIS')}</span>
-          </h2>
-          <div className="flex items-center gap-3">
-            {selectedFolderId && !selectedNotebookId && onDeleteFolder && (
-              <button 
-                onClick={() => {
-                  if (window.confirm("Deseja realmente apagar esta pasta e todos os seus cadernos?")) {
-                    onDeleteFolder(selectedFolderId);
-                    setSelectedFolderId(null);
-                  }
-                }}
-                className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all border border-gray-100"
-                title="Excluir esta Pasta"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              </button>
-            )}
-            {selectedNotebookId && selectedFolderId && onDeleteNotebook && (
-              <button 
-                onClick={() => {
-                  if (window.confirm("Deseja realmente apagar este caderno?")) {
-                    onDeleteNotebook(selectedFolderId, selectedNotebookId);
+
+        <div className="flex flex-col gap-3 flex-1">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar max-w-full md:max-w-2xl">
+            {breadcrumbs.map((crumb, idx) => (
+              <React.Fragment key={crumb.id || 'root'}>
+                {idx > 0 && <span className="text-gray-300 font-bold text-[10px]">/</span>}
+                <button 
+                  onClick={() => {
+                    setSelectedFolderId(crumb.id);
                     setSelectedNotebookId(null);
-                  }
-                }}
-                className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all border border-gray-100"
-                title="Excluir este Caderno"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              </button>
-            )}
-            {!selectedNotebookId && (
+                  }}
+                  className={`text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-colors ${idx === breadcrumbs.length - 1 ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                  {crumb.name}
+                </button>
+              </React.Fragment>
+            ))}
+          </div>
+          <h2 className="text-3xl font-black tracking-tighter italic uppercase leading-none">
+            {strategicMode ? 'MATERIAIS' : 'MEUS'} <span className={strategicMode ? 'text-blue-900' : 'text-blue-500'}>{selectedNotebookId ? 'CADERNO' : (strategicMode ? 'ESTRATÉGICOS' : 'MATERIAIS')}</span>
+          </h2>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          {(!selectedNotebookId) && (
+            <>
               <button 
-                onClick={() => setIsCreating(selectedFolderId ? 'NOTEBOOK' : 'FOLDER')}
-                className="bg-blue-500 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-600 transition-all flex items-center gap-2"
+                onClick={() => setIsCreating('FOLDER')}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
-                {selectedFolderId ? 'NOVO CADERNO' : 'NOVA PASTA'}
+                {selectedFolderId ? 'Subpasta' : 'Pasta'}
               </button>
-            )}
-          </div>
+              {selectedFolderId && (
+                <button 
+                  onClick={() => setIsCreating('NOTEBOOK')}
+                  className="bg-orange-50 hover:bg-orange-100 text-orange-600 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+                  Caderno
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
 
       {isCreating && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl p-10 animate-in zoom-in-95 duration-500">
-            <h3 className="text-2xl font-black italic tracking-tighter mb-8 uppercase">
-              {isCreating === 'FOLDER' ? 'CRIAR NOVA PASTA' : 'CRIAR NOVO CADERNO'}
-            </h3>
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-black italic tracking-tighter uppercase">
+                {isCreating === 'FOLDER' ? (selectedFolderId ? 'CRIAR SUBPASTA' : 'CRIAR NOVA PASTA') : 'CRIAR NOVO CADERNO'}
+              </h3>
+              <button onClick={() => setIsCreating(null)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
             <input 
               autoFocus
               value={newName}
@@ -132,28 +168,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
         </div>
       )}
 
-      {/* Stats Summary Only on Folders View */}
-      {!selectedFolderId && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12 animate-in slide-in-from-top-4">
-          <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
-            <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mb-2">Sua Precisão</p>
-            <span className="text-5xl font-black text-blue-600">{accuracy}%</span>
-          </div>
-          <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
-            <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mb-2">Pastas</p>
-            <span className="text-5xl font-black text-gray-800">{folders.length}</span>
-          </div>
-          <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
-            <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mb-2">Acertos</p>
-            <span className="text-5xl font-black text-green-500">{totalCorrect}</span>
-          </div>
-          <div className="bg-[#0A0F1E] p-8 rounded-[40px] text-white shadow-2xl">
-            <p className="text-blue-400 font-bold uppercase text-[10px] tracking-widest mb-2">Treinos</p>
-            <span className="text-5xl font-black">{attempts.length}</span>
-          </div>
-        </div>
-      )}
-
+      {/* MAIN CONTENT AREA */}
       {selectedNotebookId && selectedNotebook && selectedFolderId ? (
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-500">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -164,7 +179,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                 {selectedNotebook.summary ? (
                   <div className="space-y-6">
                     <div className="flex items-center gap-2 text-blue-600 font-black uppercase text-[10px] tracking-widest">
-                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
+                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1.01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
                        Resumo do Caderno
                     </div>
                     <p className="text-lg leading-relaxed text-gray-700 font-medium whitespace-pre-wrap">
@@ -204,171 +219,155 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
             </div>
           </div>
         </div>
-      ) : selectedFolderId && selectedFolder ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
-          {selectedFolder.notebooks.map(notebook => {
-             const notebookAttempts = attempts.filter(a => a.notebookId === notebook.id);
-             const accuracy = notebookAttempts.length > 0 
-               ? Math.round((notebookAttempts.reduce((acc, c) => acc + c.score, 0) / notebookAttempts.reduce((acc, c) => acc + c.total, 0)) * 100) 
-               : 0;
+      ) : (
+        <div className="space-y-16">
+          {!selectedFolderId && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="bg-white p-10 rounded-[50px] shadow-xl shadow-blue-900/5 border border-gray-100 group hover:-translate-y-1 transition-all">
+                <p className="text-gray-400 font-black uppercase text-[10px] tracking-[0.3em] mb-4">Precisão Geral</p>
+                <div className="flex items-end gap-2">
+                  <span className="text-6xl font-black text-blue-600 italic tracking-tighter leading-none">{accuracy}%</span>
+                  <div className="w-1.5 h-10 bg-blue-100 rounded-full mb-1"></div>
+                </div>
+              </div>
+              <div className="bg-white p-10 rounded-[50px] shadow-xl shadow-gray-900/5 border border-gray-100 group hover:-translate-y-1 transition-all">
+                <p className="text-gray-400 font-black uppercase text-[10px] tracking-[0.3em] mb-4">Pastas</p>
+                <div className="flex items-end gap-2">
+                  <span className="text-6xl font-black text-gray-800 italic tracking-tighter leading-none">{folders.length}</span>
+                  <div className="w-1.5 h-10 bg-gray-100 rounded-full mb-1"></div>
+                </div>
+              </div>
+              <div className="bg-white p-10 rounded-[50px] shadow-xl shadow-green-900/5 border border-gray-100 group hover:-translate-y-1 transition-all">
+                <p className="text-gray-400 font-black uppercase text-[10px] tracking-[0.3em] mb-4">Acertos</p>
+                <div className="flex items-end gap-2">
+                  <span className="text-6xl font-black text-green-500 italic tracking-tighter leading-none">{totalCorrect}</span>
+                  <div className="w-1.5 h-10 bg-green-100 rounded-full mb-1"></div>
+                </div>
+              </div>
+              <div className="bg-[#0A0F1E] p-10 rounded-[50px] text-white shadow-2xl shadow-blue-900/20 group hover:-translate-y-1 transition-all">
+                <p className="text-blue-400 font-black uppercase text-[10px] tracking-[0.3em] mb-4">Treinos</p>
+                <div className="flex items-end gap-2">
+                  <span className="text-6xl font-black italic tracking-tighter leading-none">{attempts.length}</span>
+                  <div className="w-1.5 h-10 bg-blue-900/50 rounded-full mb-1"></div>
+                </div>
+              </div>
+            </div>
+          )}
 
-             return (
-               <div 
-                 key={notebook.id} 
-                 onClick={() => setSelectedNotebookId(notebook.id)}
-                 className="bg-white rounded-[45px] p-10 border border-gray-100 hover:shadow-2xl transition-all group cursor-pointer relative overflow-hidden h-full flex flex-col"
-               >
-                 <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                 </div>
-                 
-                 {onDeleteNotebook && (
-                   <button 
-                     onClick={(e) => { 
-                       e.stopPropagation(); 
-                       e.preventDefault();
-                       if(window.confirm("Deseja realmente apagar este caderno?")) {
-                         onDeleteNotebook(selectedFolderId, notebook.id); 
-                       }
-                     }}
-                     className="absolute top-6 right-6 p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all z-50 shadow-sm"
-                     title="Excluir Caderno"
-                   >
-                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                   </button>
-                 )}
-                 {onMoveAllQuestions && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-10">
+            {/* List Subfolders */}
+            {currentFolders.map(folder => {
+              const totalQuestionsInFolder = folder.notebooks.reduce((acc, n) => acc + n.questions.length, 0);
+              return (
+                <div 
+                  key={folder.id} 
+                  onClick={() => setSelectedFolderId(folder.id)}
+                  className="bg-white rounded-[50px] p-12 border border-gray-100 hover:shadow-2xl hover:shadow-blue-900/10 transform hover:-translate-y-2 transition-all group cursor-pointer relative overflow-hidden h-full flex flex-col min-h-[300px]"
+                >
+                  <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                     <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                  </div>
+                  
+                  {onDeleteFolder && (
                      <button 
                        onClick={(e) => { 
                          e.stopPropagation(); 
-                         e.preventDefault();
-                         setMoveAllNotebook(notebook);
+                         if (window.confirm("Deseja realmente apagar esta pasta?")) onDeleteFolder(folder.id); 
                        }}
-                       className="absolute top-6 left-6 p-3 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all z-50 shadow-sm"
-                       title="Mover todas as questões"
+                       className="absolute top-6 right-6 p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all z-10"
                      >
-                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1.012 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                      </button>
-                 )}
-                 
-                 <div className="flex justify-between items-start mb-8 z-10 relative">
-                   <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
-                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                   </div>
-                   {notebook.summary && (
-                     <span className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">RESUMO</span>
-                   )}
-                 </div>
-                 
-                 <h3 className="text-2xl font-black mb-6 uppercase tracking-tighter leading-none italic flex-1">{notebook.name}</h3>
-                 
-                 <div className="space-y-4">
-                   <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                     <span>QUESTÕES</span>
-                     <span className="text-blue-600">{notebook.questions.length}</span>
-                   </div>
-                   <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                     <div 
-                       className="bg-blue-400 h-full" 
-                       style={{ width: `${accuracy}%` }}
-                     />
-                   </div>
-                   <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-gray-300">
-                     <span>PRECISÃO MÉDIA</span>
-                     <span>{accuracy}%</span>
-                   </div>
-                 </div>
-               </div>
-             );
-          })}
-
-          <button 
-            onClick={() => setIsCreating('NOTEBOOK')}
-            className="bg-gray-50 rounded-[45px] p-10 border-4 border-dashed border-gray-100 hover:border-orange-200 hover:bg-white transition-all group flex flex-col items-center justify-center text-center min-h-[280px]"
-          >
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-gray-200 group-hover:text-orange-500 shadow-sm transition-colors mb-4">
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
-            </div>
-            <p className="text-gray-400 group-hover:text-orange-600 font-black text-lg tracking-tight uppercase italic">Novo Caderno</p>
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {folders.map(folder => {
-            const totalNotebookQuestions = folder.notebooks.reduce((acc, n) => acc + n.questions.length, 0);
-            return (
-              <div 
-                key={folder.id} 
-                onClick={() => setSelectedFolderId(folder.id)}
-                className="bg-white rounded-[45px] p-10 border border-gray-100 hover:shadow-2xl transition-all group cursor-pointer relative overflow-hidden h-full flex flex-col"
-              >
-                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                   <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
-                </div>
-                
-                {onDeleteFolder && (
-                   <button 
-                     onClick={(e) => { 
-                       e.stopPropagation(); 
-                       e.preventDefault();
-                       if (window.confirm("Deseja realmente apagar esta pasta e todos os seus cadernos?")) {
-                         onDeleteFolder(folder.id); 
-                       }
-                     }}
-                     className="absolute top-6 right-6 p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all z-50 shadow-sm"
-                     title="Excluir Pasta"
-                   >
-                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                   </button>
-                )}
-                
-                <div className="flex justify-between items-start mb-8 z-10 relative">
-                  <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                  )}
+                  
+                  <div className="flex justify-between items-start mb-8 z-10 relative">
+                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                    </div>
+                    <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{folder.notebooks.length} CADERNOS</span>
                   </div>
-                  <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{folder.notebooks.length} CADERNOS</span>
+                  
+                  <h3 className="text-2xl font-black mb-6 uppercase tracking-tighter leading-none italic flex-1">{folder.name}</h3>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <span>{totalQuestionsInFolder} QUESTÕES TOTAIS</span>
+                  </div>
                 </div>
-                
-                <h3 className="text-2xl font-black mb-6 uppercase tracking-tighter leading-none italic flex-1">{folder.name}</h3>
-                
-                <div className="space-y-4">
+              );
+            })}
+
+            {/* List Notebooks */}
+            {selectedFolder?.notebooks.map(notebook => {
+              const notebookAttempts = attempts.filter(a => a.notebookId === notebook.id);
+              const notebookAccuracy = notebookAttempts.length > 0 
+                ? Math.round((notebookAttempts.reduce((acc, c) => acc + c.score, 0) / notebookAttempts.reduce((acc, c) => acc + c.total, 0)) * 100) 
+                : 0;
+
+              return (
+                <div 
+                  key={notebook.id} 
+                  onClick={() => setSelectedNotebookId(notebook.id)}
+                  className="bg-white rounded-[50px] p-12 border border-gray-100 hover:shadow-2xl hover:shadow-orange-900/10 transform hover:-translate-y-2 transition-all group cursor-pointer relative overflow-hidden h-full flex flex-col min-h-[300px]"
+                >
+                  {onDeleteNotebook && selectedFolderId && (
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (window.confirm("Apagar este caderno?")) onDeleteNotebook(selectedFolderId, notebook.id); 
+                      }}
+                      className="absolute top-6 right-6 p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all z-10"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1.012 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  )}
+                  {onMoveAllQuestions && selectedFolderId && (
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setMoveAllNotebook(notebook);
+                      }}
+                      className="absolute top-6 left-6 p-3 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all z-10"
+                      title="Mover questões"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                    </button>
+                  )}
+                  
+                  <div className="flex justify-between items-start mb-8">
+                    <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                    </div>
+                    {notebook.summary && <span className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">RESUMO</span>}
+                  </div>
+                  <h3 className="text-2xl font-black mb-6 uppercase tracking-tighter leading-none italic flex-1">{notebook.name}</h3>
                   <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    <span>QUESTÕES TOTAIS</span>
-                    <span className="text-blue-600">{totalNotebookQuestions}</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-blue-400 h-full" style={{ width: '100%' }} />
+                    <span>{notebook.questions.length} QUESTÕES</span>
+                    <span className="text-blue-600">{notebookAccuracy}% ACC</span>
                   </div>
                 </div>
+              );
+            })}
+
+            {currentFolders.length === 0 && (!selectedFolder || selectedFolder.notebooks.length === 0) && (
+              <div className="col-span-full py-32 text-center border-4 border-dashed border-gray-100 rounded-[50px] bg-gray-50/30">
+                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                   <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                </div>
+                <p className="text-gray-400 font-bold text-xl tracking-tight italic">Nenhum conteúdo encontrado aqui.</p>
+                <p className="text-gray-400 text-xs mt-2 uppercase tracking-widest font-black">Use os botões acima para começar!</p>
               </div>
-            );
-          })}
-
-          <button 
-            onClick={() => setIsCreating('FOLDER')}
-            className="bg-gray-50 rounded-[45px] p-10 border-4 border-dashed border-gray-100 hover:border-blue-200 hover:bg-white transition-all group flex flex-col items-center justify-center text-center min-h-[280px]"
-          >
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-gray-200 group-hover:text-blue-500 shadow-sm transition-colors mb-4">
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
-            </div>
-            <p className="text-gray-400 group-hover:text-blue-600 font-black text-lg tracking-tight uppercase italic">Nova Pasta</p>
-          </button>
+            )}
+          </div>
         </div>
       )}
 
-      {!selectedFolderId && folders.length === 0 && (
-        <div className="py-20 text-center animate-in fade-in slide-in-from-bottom-4">
-          <p className="text-gray-300 text-sm mt-2">Organize seu material criando pastas primeiro.</p>
-        </div>
-      )}
-      {moveAllNotebook && (
+      {moveAllNotebook && selectedFolderId && (
         <MoveAllNotebookQuestionsModal
           folders={folders}
-          currentFolderId={selectedFolderId || ''}
+          currentFolderId={selectedFolderId}
           currentNotebookId={moveAllNotebook.id}
           onConfirm={(targetFolderId, targetNotebookId) => {
-            if (onMoveAllQuestions && selectedFolderId) {
-                onMoveAllQuestions(moveAllNotebook.id, selectedFolderId, targetNotebookId, targetFolderId);
+            if (onMoveAllQuestions) {
+              onMoveAllQuestions(moveAllNotebook.id, selectedFolderId, targetNotebookId, targetFolderId);
             }
             setMoveAllNotebook(null);
           }}

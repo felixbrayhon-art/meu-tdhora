@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2 } from 'lucide-react';
 import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig } from '../types';
 import LoadingFish from './LoadingFish';
@@ -32,6 +32,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   onBatchComplete
 }) => {
   const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE' | 'MANUAL'>('AUTO');
+  const [manualInputType, setManualInputType] = useState<'FULL' | 'QUICK'>('FULL');
   const [manualQuestionsList, setManualQuestionsList] = useState<QuizQuestion[]>([]);
   const [manualQuestion, setManualQuestion] = useState<{
     question: string;
@@ -55,6 +56,39 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [flagged, setFlagged] = useState<number[]>([]);
+  const [questionScratched, setQuestionScratched] = useState<number[]>([]);
+  const [questionHighlighted, setQuestionHighlighted] = useState<number[]>([]);
+  const [undoStack, setUndoStack] = useState<Record<number, string[]>>({});
+  const questionTextRef = useRef<HTMLDivElement>(null);
+
+  const saveToUndo = (idx: number, content: string) => {
+    setUndoStack(prev => ({
+      ...prev,
+      [idx]: [...(prev[idx] || []), content].slice(-10)
+    }));
+  };
+
+  const handleUndo = () => {
+    const qHistory = undoStack[currentIdx] || [];
+    if (qHistory.length === 0) return;
+
+    const previousContent = qHistory[qHistory.length - 1];
+    const newHistory = qHistory.slice(0, -1);
+
+    setUndoStack(prev => ({
+      ...prev,
+      [currentIdx]: newHistory
+    }));
+
+    const newQuestions = [...questions];
+    newQuestions[currentIdx].question = previousContent;
+    setQuestions(newQuestions);
+    
+    if (questionTextRef.current) {
+      questionTextRef.current.innerHTML = previousContent;
+    }
+  };
+
   const [tempSelectedOpt, setTempSelectedOpt] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [selectedOpt, setSelectedOpt] = useState<number | null>(null);
@@ -187,8 +221,8 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
         
         // Delay estratégico para não estourar a cota
         if (i > 0) {
-          console.log(`Aguardando 5s para evitar bloqueio de cota...`);
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          console.log(`Aguardando 1.5s para evitar bloqueio de cota...`);
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
         const result = await parsePastedQuestions(chunks[i], studyProfile, { current: i + 1, total: totalBatches }, pastedGabarito);
@@ -251,6 +285,9 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
 
   const addManualQuestion = () => {
     if (!manualQuestion.question) return;
+    
+    // In QUICK mode, we store empty strings for options because the text is in the question field
+    // But for consistency with the QuizQuestion type, we ensure the array has 5 elements
     const newQ: QuizQuestion = {
         id: Math.random().toString(36).substr(2, 9),
         ...manualQuestion,
@@ -318,6 +355,74 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     setShowSaveModal(false);
   };
 
+  const handleShuffle = () => {
+    if (confirm("Deseja embaralhar as questões deste simulado?")) {
+      const shuffled = [...questions].sort(() => Math.random() - 0.5);
+      setQuestions(shuffled);
+      setCurrentIdx(0);
+      setTempSelectedOpt(null);
+      setSelectedOpt(null);
+      setIsSubmitted(false);
+      setCrossedOut([]);
+    }
+  };
+
+  const handleSelectiveMark = (type: 'strike' | 'highlight') => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.toString().trim() === '') {
+      if (type === 'strike') toggleQuestionScratch();
+      else toggleQuestionHighlight();
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const container = questionTextRef.current;
+    
+    if (container && (container.contains(range.commonAncestorContainer) || container === range.commonAncestorContainer)) {
+      const span = document.createElement('span');
+      if (type === 'strike') {
+        span.className = 'line-through decoration-red-500/30 decoration-2 text-slate-400 opacity-80';
+      } else {
+        span.className = 'bg-yellow-200/60 rounded-sm px-0.5 text-slate-900 border-b border-yellow-300';
+      }
+      
+      try {
+        saveToUndo(currentIdx, container.innerHTML);
+        if (range.startContainer === range.endContainer) {
+          range.surroundContents(span);
+        } else {
+          const content = range.extractContents();
+          span.appendChild(content);
+          range.insertNode(span);
+        }
+        const newQuestions = [...questions];
+        newQuestions[currentIdx].question = container.innerHTML;
+        setQuestions(newQuestions);
+      } catch (e) {
+        console.warn("Selection failed", e);
+      }
+      selection.removeAllRanges();
+    }
+  };
+
+  const toggleQuestionScratch = () => {
+    if (questionScratched.includes(currentIdx)) {
+      setQuestionScratched(questionScratched.filter(i => i !== currentIdx));
+    } else {
+      setQuestionScratched([...questionScratched, currentIdx]);
+      setQuestionHighlighted(questionHighlighted.filter(i => i !== currentIdx));
+    }
+  };
+
+  const toggleQuestionHighlight = () => {
+    if (questionHighlighted.includes(currentIdx)) {
+      setQuestionHighlighted(questionHighlighted.filter(i => i !== currentIdx));
+    } else {
+      setQuestionHighlighted([...questionHighlighted, currentIdx]);
+      setQuestionScratched(questionScratched.filter(i => i !== currentIdx));
+    }
+  };
+
   const currentQ = questions[currentIdx];
 
   if (loading) {
@@ -356,8 +461,8 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#0A0F1E] text-white selection:bg-orange-500/30 overflow-y-auto font-sans">
-      <div className="w-full max-w-5xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-10 duration-700">
+    <div className="fixed inset-0 z-[200] bg-[#f8fafc] text-[#1e293b] selection:bg-blue-500/30 overflow-y-auto font-sans">
+      <div className="w-full max-w-5xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
         {!questions.length ? (
           <div className="py-10">
             <button onClick={onBack} className="mb-12 text-gray-500 font-black uppercase text-[10px] tracking-[0.3em] flex items-center gap-2 hover:text-white transition-all group">
@@ -365,48 +470,48 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
               ABANDONAR SIMULADO
             </button>
             
-            <div className="bg-white/5 backdrop-blur-2xl rounded-[50px] p-12 md:p-20 border border-white/10 relative overflow-hidden shadow-2xl">
-              <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
+            <div className="bg-white rounded-[50px] p-12 md:p-20 border border-slate-200 relative overflow-hidden shadow-sm">
+              <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none text-blue-500">
                  <FileText className="w-64 h-64" />
               </div>
               
               <div className="relative z-10 text-center max-w-2xl mx-auto">
-                <div className="w-24 h-24 bg-orange-500/10 text-orange-500 border border-orange-500/30 rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-lg">
-                  <Scissors className="w-10 h-10" />
+                <div className="w-20 h-20 bg-blue-50 text-blue-500 border border-blue-100 rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-sm">
+                  <Scissors className="w-8 h-8" />
                 </div>
-                <h1 className="text-6xl font-black mb-4 tracking-tighter leading-none italic uppercase">TDH<span className="text-orange-500">{strategicMode ? 'estratégico' : 'questões'}</span></h1>
-                <p className="text-slate-400 text-lg mb-12 font-bold uppercase tracking-widest text-[10px] opacity-60">
+                <h1 className="text-4xl md:text-6xl font-black mb-4 tracking-tighter leading-none italic uppercase text-slate-800">TDH<span className="text-blue-600">{strategicMode ? 'estratégico' : 'questões'}</span></h1>
+                <p className="text-slate-400 text-lg mb-12 font-black uppercase tracking-widest text-[10px]">
                   {strategicMode ? 'Alinhamento Automático ao Edital' : `Simulados ${studyProfile === 'CONCURSO' ? 'Elite' : 'Vestibular'} • Gabarito Comentado`}
                 </p>
                 
                 <div className="space-y-8">
                   <div className="space-y-3 text-left max-w-2xl mx-auto">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-6">O que vamos treinar hoje? (Título do Simulado)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-6 italic">O que vamos treinar hoje?</label>
                     <input 
                       value={topic}
                       onChange={(e) => setTopic(e.target.value)}
                       placeholder={studyProfile === 'CONCURSO' ? "Ex: Atos Administrativos" : "Ex: Genética Mendeliana"}
-                      className="w-full bg-white/5 border-2 border-white/10 rounded-[40px] px-10 py-6 text-xl focus:outline-none focus:border-orange-500 transition-all font-black text-center text-white placeholder:text-white/10"
+                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-[40px] px-10 py-6 text-xl focus:outline-none focus:border-blue-500 transition-all font-black text-center text-slate-700 placeholder:text-slate-300"
                     />
                   </div>
 
                   {!strategicMode && (
-                    <div className="flex bg-white/5 p-2 rounded-[30px] mx-auto max-w-lg mb-8 relative z-20">
+                    <div className="flex bg-slate-50 p-1.5 rounded-[24px] mx-auto max-w-sm mb-8 border border-slate-100">
                       <button 
                         onClick={() => setInputMode('AUTO')}
-                        className={`flex-1 py-3 px-4 md:px-6 rounded-[24px] font-black text-[10px] md:text-xs uppercase tracking-widest transition-all ${inputMode === 'AUTO' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${inputMode === 'AUTO' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
                       >
                         IA
                       </button>
                       <button 
                         onClick={() => setInputMode('PASTE')}
-                        className={`flex-1 py-3 px-4 md:px-6 rounded-[24px] font-black text-[10px] md:text-xs uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'PASTE' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'PASTE' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
                       >
                         COLAR
                       </button>
                       <button 
                         onClick={() => setInputMode('MANUAL')}
-                        className={`flex-1 py-3 px-4 md:px-6 rounded-[24px] font-black text-[10px] md:text-xs uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'MANUAL' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'MANUAL' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
                       >
                         MANUAL
                       </button>
@@ -448,144 +553,179 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       ) : null}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white/5 p-8 rounded-[35px] text-left border-2 border-white/5 focus-within:border-orange-500/50 transition-all">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-3">Banca Examinadora</label>
+                        <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100 focus-within:border-blue-500/50 transition-all">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3 italic">Banca Examinadora</label>
                           <input 
                             value={banca}
                             onChange={(e) => setBanca(e.target.value)}
                             placeholder="Ex: FCC, FGV, CESPE..."
-                            className="w-full bg-transparent border-none text-xl focus:outline-none font-black text-white placeholder:text-white/10"
+                            className="w-full bg-transparent border-none text-xl focus:outline-none font-black text-slate-700 placeholder:text-slate-300"
                           />
                         </div>
-                        <div className="bg-white/5 p-8 rounded-[35px] text-left">
+                        <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100">
                           <div className="flex justify-between items-center mb-6">
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Qtd. Questões</label>
-                            <span className="text-orange-500 font-black text-2xl">{numQuestions}</span>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Qtd. Questões</label>
+                            <span className="text-blue-600 font-black text-2xl tabular-nums">{numQuestions}</span>
                           </div>
                           <input 
                             type="range" min="1" max="50" 
                             value={numQuestions}
                             onChange={(e) => setNumQuestions(Number(e.target.value))}
-                            className="w-full h-2 bg-white/10 rounded-full accent-orange-500 cursor-pointer"
+                            className="w-full h-1.5 bg-slate-200 rounded-full accent-blue-600 cursor-pointer"
                           />
                         </div>
                       </div>
 
                       <button 
                         onClick={() => handleGenerate()}
-                        className="w-full bg-orange-500 text-white py-8 rounded-[40px] font-black text-2xl hover:bg-orange-400 transition-all shadow-2xl shadow-orange-900/40 flex items-center justify-center gap-4 active:scale-95 group mt-8 relative z-20"
+                        className="w-full bg-blue-600 text-white py-8 rounded-[40px] font-black text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/10 flex items-center justify-center gap-4 active:scale-95 group mt-8"
                       >
                         CONFIGURAR SIMULADO
-                        <ChevronRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
+                        <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                       </button>
                     </>
                   ) : inputMode === 'PASTE' ? (
                     <div className="space-y-6 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
-                      <div className="bg-orange-500/10 p-6 rounded-3xl border border-orange-500/20 mb-6">
-                        <p className="text-orange-500 text-sm font-bold flex items-center gap-2">
-                          <Brain className="w-5 h-5" /> A IA vai ler as questões, identificar a resposta certa (se não tiver gabarito) e criar a explicação detalhada para você!
-                        </p>
+                      <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 mb-6 font-medium text-blue-700 text-sm flex items-center gap-3">
+                        <Brain className="w-5 h-5 flex-shrink-0" /> 
+                        <span>A IA vai ler as questões, identificar a resposta certa (se não tiver gabarito) e criar a explicação detalhada para você!</span>
                       </div>
-                      <div className="space-y-6">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-6">Cole as questões aqui</label>
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Cole as questões aqui</label>
                         <textarea
                           value={pastedText}
                           onChange={(e) => setPastedText(e.target.value)}
                           placeholder="Cole aqui o texto de uma prova, pdf ou site contendo as questões e alternativas..."
-                          className="w-full bg-white/5 border-2 border-white/10 rounded-[30px] p-8 text-lg focus:outline-none focus:border-orange-500 transition-all font-medium text-white placeholder:text-white/20 min-h-[300px] resize-y"
+                          className="w-full bg-slate-50 border-2 border-slate-100 rounded-[30px] p-8 text-lg focus:outline-none focus:border-blue-500 transition-all font-medium text-slate-700 placeholder:text-slate-300 min-h-[300px] resize-y shadow-inner"
                         />
                       </div>
                       
-                      <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                        <div className="flex items-center justify-between px-6">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Gabarito das Questões (Opcional)</label>
-                          <span className="text-[8px] font-black text-orange-500/50 uppercase tracking-widest">Aumenta a precisão da IA</span>
+                      <div className="space-y-3 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="flex items-center justify-between px-4">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Gabarito (Opcional)</label>
                         </div>
                         <textarea
                           value={pastedGabarito}
                           onChange={(e) => setPastedGabarito(e.target.value)}
                           placeholder="Ex: 1-A, 2-C, 3-E... ou cole o gabarito oficial completo aqui."
-                          className="w-full bg-white/5 border-2 border-white/10 rounded-[30px] p-8 text-lg focus:outline-none focus:border-orange-500 transition-all font-medium text-white placeholder:text-white/20 min-h-[150px] resize-y"
+                          className="w-full bg-slate-50 border-2 border-slate-100 rounded-[30px] p-8 text-lg focus:outline-none focus:border-blue-500 transition-all font-medium text-slate-700 placeholder:text-slate-300 min-h-[150px] resize-y shadow-inner"
                         />
                       </div>
 
                       <button 
                         onClick={() => handleParsePasted()}
                         disabled={!pastedText.trim()}
-                        className="w-full bg-orange-500 text-white py-8 rounded-[40px] font-black text-2xl hover:bg-orange-400 transition-all shadow-2xl shadow-orange-900/40 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-blue-600 text-white py-8 rounded-[40px] font-black text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed"
                       >
                         PROCESSAR QUESTÕES
-                        <ChevronRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
+                        <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                       </button>
                     </div>
                   ) : (
                     <div className="space-y-8 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
-                       <div className="space-y-3">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Enunciado da Questão</label>
-                          <RichTextEditor 
-                            content={manualQuestion.question}
-                            onChange={html => setManualQuestion(prev => ({ ...prev, question: html }))}
-                          />
+                       <div className="flex bg-slate-100 p-1 rounded-2xl w-fit mb-4 border border-slate-200 shadow-inner">
+                          <button 
+                            onClick={() => setManualInputType('FULL')}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${manualInputType === 'FULL' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
+                          >
+                            Completo
+                          </button>
+                          <button 
+                            onClick={() => setManualInputType('QUICK')}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${manualInputType === 'QUICK' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
+                          >
+                            Modo Rápido
+                          </button>
                        </div>
 
                        <div className="space-y-3">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Alternativas e Gabarito</label>
-                          <div className="space-y-3">
-                            {manualQuestion.options.map((opt, i) => (
-                                <div key={i} className="flex gap-4 items-center">
-                                    <input 
-                                      type="radio" 
-                                      name="manualCorrect"
-                                      checked={manualQuestion.correctAnswer === i}
-                                      onChange={() => setManualQuestion(p => ({ ...p, correctAnswer: i }))}
-                                      className="w-6 h-6 accent-orange-500 cursor-pointer"
-                                    />
-                                    <input 
-                                      value={opt}
-                                      onChange={e => setManualQuestion(p => {
-                                          const newOptions = [...p.options];
-                                          newOptions[i] = e.target.value;
-                                          return { ...p, options: newOptions };
-                                      })}
-                                      className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-orange-500 transition-all font-bold text-sm text-white"
-                                      placeholder={`Alternativa ${String.fromCharCode(65 + i)}`}
-                                    />
-                                </div>
-                            ))}
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                            {manualInputType === 'QUICK' ? 'Pergunta + Alternativas (Tudo aqui)' : 'Enunciado da Questão'}
+                          </label>
+                          <div className="bg-slate-50 rounded-[30px] border-2 border-slate-100 focus-within:border-blue-500 transition-all overflow-hidden shadow-inner">
+                            <RichTextEditor 
+                              content={manualQuestion.question}
+                              onChange={html => setManualQuestion(prev => ({ ...prev, question: html }))}
+                            />
                           </div>
                        </div>
 
                        <div className="space-y-3">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Explicação / Resolução (Opcional)</label>
-                          <RichTextEditor 
-                            content={manualQuestion.explanation}
-                            onChange={html => setManualQuestion(prev => ({ ...prev, explanation: html }))}
-                          />
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Gabarito</label>
+                          {manualInputType === 'QUICK' ? (
+                            <div className="flex gap-4 items-center bg-slate-50 p-6 rounded-[30px] border border-slate-100 justify-between shadow-inner">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qual a letra correta?</span>
+                              <div className="flex gap-3">
+                                {[0, 1, 2, 3, 4].map(idx => (
+                                  <button
+                                    key={idx}
+                                    onClick={() => setManualQuestion(p => ({ ...p, correctAnswer: idx }))}
+                                    className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black transition-all active:scale-90 ${manualQuestion.correctAnswer === idx ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'border-slate-200 text-slate-300 hover:border-slate-300 shadow-sm bg-white'}`}
+                                  >
+                                    {String.fromCharCode(65 + idx)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {manualQuestion.options.map((opt, i) => (
+                                  <div key={i} className="flex gap-4 items-center group">
+                                      <div 
+                                        onClick={() => setManualQuestion(p => ({ ...p, correctAnswer: i }))}
+                                        className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black transition-all cursor-pointer select-none ${manualQuestion.correctAnswer === i ? 'bg-green-500 border-green-500 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-300 group-hover:border-slate-200'}`}
+                                      >
+                                        {String.fromCharCode(65 + i)}
+                                      </div>
+                                      <input 
+                                        value={opt}
+                                        onChange={e => setManualQuestion(p => {
+                                            const newOptions = [...p.options];
+                                            newOptions[i] = e.target.value;
+                                            return { ...p, options: newOptions };
+                                        })}
+                                        className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 focus:outline-none focus:border-blue-500 transition-all font-bold text-sm text-slate-700 shadow-sm"
+                                        placeholder={`Alternativa ${String.fromCharCode(65 + i)}`}
+                                      />
+                                  </div>
+                              ))}
+                            </div>
+                          )}
+                       </div>
+
+                       <div className="space-y-3">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Explicação / Resolução (Opcional)</label>
+                          <div className="bg-slate-50 rounded-[30px] border-2 border-slate-100 focus-within:border-blue-500 transition-all overflow-hidden shadow-inner">
+                            <RichTextEditor 
+                              content={manualQuestion.explanation}
+                              onChange={html => setManualQuestion(prev => ({ ...prev, explanation: html }))}
+                            />
+                          </div>
                        </div>
 
                        <div className="flex flex-col md:flex-row gap-4 pt-4">
                           <button 
                             onClick={addManualQuestion}
-                            className="flex-1 bg-white/5 border border-white/10 text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-[10px] hover:bg-white/10 active:scale-95 transition-all"
+                            className="flex-1 bg-slate-50 border border-slate-100 text-slate-500 py-6 rounded-[30px] font-black uppercase tracking-widest text-[10px] hover:bg-slate-100 active:scale-95 transition-all shadow-sm"
                           >
                              + Adicionar e Próxima ({manualQuestionsList.length})
                           </button>
                           <button 
                             onClick={startManualSimulado}
                             disabled={manualQuestionsList.length === 0 && !manualQuestion.question.trim()}
-                            className="flex-[2] bg-orange-500 text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl active:scale-95 disabled:opacity-50"
+                            className="flex-[2] bg-blue-600 text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-500/20 active:scale-95 disabled:opacity-20 transition-all"
                           >
                              {manualQuestionsList.length === 0 ? 'Iniciar com esta questão' : `Iniciar Simulado (${manualQuestionsList.length + (manualQuestion.question.trim() ? 1 : 0)})`}
                           </button>
                        </div>
 
                        {manualQuestionsList.length > 0 && (
-                          <div className="mt-8 pt-8 border-t border-white/5">
-                             <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Questões Adicionadas:</h4>
+                          <div className="mt-8 pt-8 border-t border-slate-100">
+                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Questões Adicionadas:</h4>
                              <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                                 {manualQuestionsList.map((q, idx) => (
-                                   <div key={q.id} className="bg-white/5 p-4 rounded-2xl flex justify-between items-center group">
-                                      <p className="text-xs font-bold text-slate-400 truncate flex-1 pr-4">#{idx + 1}: <span dangerouslySetInnerHTML={{ __html: q.question.replace(/<[^>]*>/g, '') }} /></p>
+                                   <div key={q.id} className="bg-slate-50 p-4 rounded-2xl flex justify-between items-center group border border-slate-100 shadow-sm">
+                                      <p className="text-xs font-bold text-slate-500 truncate flex-1 pr-4">#{idx + 1}: <span dangerouslySetInnerHTML={{ __html: q.question.replace(/<[^>]*>/g, '') }} /></p>
                                       <button 
                                         onClick={() => setManualQuestionsList(prev => prev.filter((_, i) => i !== idx))}
                                         className="p-2 text-red-500/50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
@@ -604,26 +744,45 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
             </div>
           </div>
         ) : (
-          <div className="py-6 space-y-10 pb-32">
+          <div className="py-6 space-y-8 pb-32">
             {/* Header Mini Imersivo */}
-            <div className="flex justify-between items-center bg-black/40 backdrop-blur-2xl p-8 rounded-[40px] border border-white/5 shadow-2xl sticky top-0 z-30">
+            <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm sticky top-0 z-30">
               <div className="flex items-center gap-6">
-                <button onClick={() => { handleFinish(); setQuestions([]); }} className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90">
-                  <ChevronLeft className="w-6 h-6 text-white/50 group-hover:text-white" />
+                <button onClick={() => { handleFinish(); setQuestions([]); }} className="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all group active:scale-90">
+                  <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-blue-500" />
                 </button>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-                    <h4 className="font-black text-sm tracking-widest uppercase italic text-white/80">{topic}</h4>
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                    <h4 className="font-black text-sm tracking-widest uppercase italic text-slate-800">{topic}</h4>
                   </div>
-                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Questão {currentIdx + 1} de {questions.length} • DESEMPENHO ATIVO</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Questão {currentIdx + 1} de {questions.length} • EM ANDAMENTO</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1 mr-4">
+                   <button className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-500 rounded-xl transition-all border border-slate-100">
+                     <Share2 className="w-4 h-4" />
+                   </button>
+                   <button 
+                     onClick={handlePrev}
+                     disabled={currentIdx === 0}
+                     className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-500 rounded-xl transition-all border border-slate-100 disabled:opacity-30"
+                   >
+                     <ChevronLeft className="w-4 h-4" />
+                   </button>
+                   <button 
+                     onClick={handleNext}
+                     disabled={currentIdx === questions.length - 1}
+                     className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-500 rounded-xl transition-all border border-slate-100 disabled:opacity-30"
+                   >
+                     <ChevronRight className="w-4 h-4" />
+                   </button>
+                </div>
                 <button 
                   onClick={() => { handleSaveUserCommentary(); setShowSaveModal(true); }}
                   disabled={saved}
-                  className={`px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-3 transition-all active:scale-90 shadow-lg ${saved ? 'bg-green-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white hover:text-black border border-white/10'}`}
+                  className={`px-8 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-3 transition-all active:scale-90 shadow-sm ${saved ? 'bg-green-500 text-white' : 'bg-slate-50 text-slate-400 hover:text-blue-500 border border-slate-100'}`}
                 >
                   {saved ? 'CONSOLIDADO!' : 'SALVAR CADERNO'}
                   {!saved && <Save className="w-4 h-4" />}
@@ -631,83 +790,126 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
               </div>
             </div>
 
-            <div className="bg-[#f8f9fa] rounded-[40px] p-8 md:p-12 shadow-inner border border-gray-100/50 relative overflow-hidden text-[#0A0F1E]">
-              <div className="flex justify-between items-start mb-10 gap-8">
-                <div className="flex-1">
-                  <div className="text-[13.5px] font-normal text-[#0A0F1E]/80 leading-relaxed tracking-normal markdown-body" dangerouslySetInnerHTML={{ __html: currentQ.question }} />
+            <div className="bg-white rounded-[40px] p-8 md:p-16 shadow-sm border border-slate-200/60 relative overflow-hidden transition-all hover:shadow-md">
+              <div className="mb-10 text-center md:text-left">
+                <div className="flex items-center justify-between mb-6">
+                   <span className="text-[11px] font-black text-blue-500/50 uppercase tracking-[0.3em]">Questão {currentIdx + 1}</span>
+                   
+                   <div className="flex items-center gap-2">
+                     <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner mr-2">
+                        <button 
+                          onClick={() => handleSelectiveMark('highlight')}
+                          className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentIdx) ? 'bg-yellow-100 text-yellow-600 shadow-sm border border-yellow-200' : 'text-slate-300 hover:text-blue-500'}`}
+                          title="Destacar (Selecione texto ou clique para todo enunciado)"
+                        >
+                          <Highlighter className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleSelectiveMark('strike')}
+                          className={`p-2 rounded-lg transition-all active:scale-90 ${questionScratched.includes(currentIdx) ? 'bg-slate-200 text-slate-600 shadow-sm' : 'text-slate-300 hover:text-blue-500'}`}
+                          title="Taxar (Selecione texto ou clique para todo enunciado)"
+                        >
+                          <PenLine className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setQuestionScratched(questionScratched.filter(i => i !== currentIdx));
+                            setQuestionHighlighted(questionHighlighted.filter(i => i !== currentIdx));
+                          }}
+                          className="p-2 text-slate-300 hover:text-red-500 transition-all active:scale-90"
+                          title="Limpar Marcações"
+                        >
+                          <Eraser className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={handleUndo}
+                          disabled={!(undoStack[currentIdx] && undoStack[currentIdx].length > 0)}
+                          className="p-2 text-slate-300 hover:text-orange-500 disabled:opacity-20 transition-all active:scale-90"
+                          title="Desfazer Marcação"
+                        >
+                          <Undo2 className="w-4 h-4" />
+                        </button>
+                     </div>
+
+                     <button 
+                        onClick={toggleFlag}
+                        className={`p-2.5 rounded-xl transition-all active:scale-95 flex-shrink-0 ${flagged.includes(currentIdx) ? 'bg-blue-500 text-white shadow-lg' : 'bg-slate-50 text-slate-300 hover:text-blue-500 hover:bg-blue-50'}`}
+                        title="Marcar para análise"
+                      >
+                        <Flag className={`w-4 h-4 ${flagged.includes(currentIdx) ? 'fill-current' : ''}`} />
+                      </button>
+                   </div>
                 </div>
-                <button 
-                  onClick={toggleFlag}
-                  className={`p-3 rounded-2xl transition-all active:scale-90 flex-shrink-0 ${flagged.includes(currentIdx) ? 'bg-orange-500 text-white shadow-lg' : 'bg-white text-gray-300 hover:text-orange-500 hover:shadow-md'}`}
-                  title="Marcar para análise"
-                >
-                  <Flag className={`w-5 h-5 ${flagged.includes(currentIdx) ? 'fill-current' : ''}`} />
-                </button>
+                <div 
+                  ref={questionTextRef}
+                  className={`text-[17px] md:text-[20px] font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 ${
+                    questionScratched.includes(currentIdx) ? 'text-slate-300 line-through grayscale blur-[0.5px] opacity-40 italic' : 
+                    questionHighlighted.includes(currentIdx) ? 'text-slate-800 bg-yellow-100/50 p-6 rounded-2xl border-l-[6px] border-l-yellow-400' : 
+                    'text-slate-700'
+                  }`} 
+                  dangerouslySetInnerHTML={{ __html: currentQ.question }} 
+                />
               </div>
 
-              <div className="grid grid-cols-1 gap-3 mb-10">
+              <div className={currentQ.options.every(o => !o.trim()) ? "flex flex-wrap justify-center gap-4 mb-10" : "grid grid-cols-1 gap-4 mb-10"}>
                   {currentQ.options.map((opt, idx) => {
                     const isCorrect = idx === currentQ.correctAnswer;
                     const isSelected = tempSelectedOpt === idx;
                     const isCrossedOut = crossedOut.includes(idx);
                     const isFinalSelected = selectedOpt === idx;
+                    const isQuickMode = currentQ.options.every(o => !o.trim());
                     
-                    let cardClass = "bg-white border border-transparent shadow-sm hover:shadow-md";
-                    let circleClass = "border-gray-200 text-gray-400 group-hover:border-orange-200 group-hover:text-orange-500";
-                    let textClass = "text-gray-700";
-
-                    if (isCrossedOut && !isSubmitted) {
-                      cardClass = "bg-gray-50/50 border-transparent opacity-40";
-                      textClass = "text-gray-300 line-through";
+                    let cardClass = "bg-white border border-slate-100 hover:border-blue-200 hover:bg-slate-50/50 text-slate-600 shadow-sm";
+                    let circleClass = "border-slate-100 text-slate-300 group-hover:border-blue-500/50 group-hover:text-blue-500";
+                    let textClass = "text-slate-600";
+                    
+                    if (isSelected && !isSubmitted) {
+                      cardClass = "border-blue-200 bg-blue-50/20 text-slate-900 shadow-md border-l-[4px] border-l-blue-500 ring-4 ring-blue-500/5";
+                      circleClass = "bg-blue-100 border-blue-500 text-blue-600";
                     }
 
-                    if (isSelected && !isSubmitted) {
-                      cardClass = "bg-white border-orange-500 shadow-md ring-1 ring-orange-500/20";
-                      circleClass = "bg-orange-500 border-orange-500 text-white";
-                      textClass = "text-gray-900";
+                    if (isCrossedOut && !isSubmitted) {
+                      cardClass = "border-transparent bg-slate-50/50 opacity-40";
+                      textClass = "text-slate-300 line-through grayscale";
                     }
 
                     if (isSubmitted) {
                       if (isCorrect) {
-                        cardClass = "bg-green-50 border-green-500 shadow-sm";
+                        cardClass = "bg-green-50 border-green-200 text-green-700 border-l-[4px] border-l-green-500";
                         circleClass = "bg-green-500 border-green-500 text-white";
-                        textClass = "text-green-900";
+                        textClass = "text-green-700 font-bold";
                       } else if (isFinalSelected) {
-                        cardClass = "bg-red-50 border-red-500 shadow-sm";
+                        cardClass = "bg-red-50 border-red-200 text-red-700 border-l-[4px] border-l-red-500";
                         circleClass = "bg-red-500 border-red-500 text-white";
-                        textClass = "text-red-900";
+                        textClass = "text-red-700 font-bold";
                       } else {
-                        cardClass = "opacity-40 bg-white border-gray-100";
+                        cardClass = "opacity-40 bg-slate-50 border-transparent grayscale";
                       }
                     }
 
                     return (
-                      <div 
-                        key={idx}
-                        onClick={() => handleAnswerSelection(idx)}
-                        className={`w-full text-left p-5 rounded-2xl font-medium transition-all duration-200 flex items-center gap-6 select-none cursor-pointer group ${cardClass}`}
-                        role="button"
-                        aria-disabled={isSubmitted}
-                      >
-                        <div className="flex items-center gap-5 flex-1">
-                          <span className={`w-8 h-8 rounded-full border flex items-center justify-center text-[11px] font-black flex-shrink-0 transition-all ${circleClass}`}>
-                            {String.fromCharCode(65 + idx)}
-                          </span>
-                          <span className={`text-[14px] leading-relaxed transition-colors ${textClass}`}>{opt}</span>
-                        </div>
+                      <div key={idx} className="relative group">
+                        <div 
+                          onClick={() => handleAnswerSelection(idx)}
+                          onDoubleClick={() => handleDoubleClick(idx)}
+                          className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-6 rounded-[25px] flex items-center gap-6'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] ${cardClass} relative overflow-hidden`}
+                          role="button"
+                          aria-disabled={isSubmitted}
+                          tabIndex={0}
+                        >
+                          <div className={`flex items-center flex-1 ${isQuickMode ? 'justify-center' : 'gap-6'}`}>
+                            <span className={`${isQuickMode ? 'w-10 h-10 rounded-xl' : 'w-12 h-12 rounded-full'} border flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-all ${circleClass}`}>
+                              {String.fromCharCode(65 + idx)}
+                            </span>
+                            {!isQuickMode && <span className={`text-[16px] leading-snug transition-colors ${textClass}`}>{opt}</span>}
+                          </div>
 
-                        {!isSubmitted && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDoubleClick(idx);
-                            }}
-                            className={`p-2 rounded-xl transition-all active:scale-90 ${isCrossedOut ? 'bg-orange-100 text-orange-600' : 'bg-transparent text-gray-200 hover:text-orange-400 opacity-0 group-hover:opacity-100'}`}
-                            title="Descartar esta alternativa"
-                          >
-                            <Scissors className={`w-4 h-4 ${isCrossedOut ? 'rotate-12' : ''}`} />
-                          </button>
-                        )}
+                          {!isSubmitted && !isQuickMode && (
+                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-200'}`}>
+                               {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}
+                             </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -718,166 +920,176 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                   <button 
                     onClick={handleSubmitAnswer}
                     disabled={tempSelectedOpt === null}
-                    className="bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-black px-12 py-5 rounded-[25px] uppercase text-[12px] tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-green-100/50"
+                    className="bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-white/5 disabled:text-white/20 disabled:cursor-not-allowed text-white font-bold px-10 py-3.5 rounded-xl uppercase text-[11px] tracking-wider transition-all active:scale-95 shadow-lg shadow-green-900/10"
                   >
                     CONFERIR RESPOSTA
                   </button>
                 </div>
               ) : (
-                <div className="animate-in fade-in zoom-in-95 duration-500">
-                  <div className={`p-8 rounded-[40px] mb-8 border backdrop-blur-xl ${selectedOpt === currentQ.correctAnswer ? 'bg-green-500/10 border-green-500/30 shadow-2xl shadow-green-900/10' : 'bg-red-500/10 border-red-500/30 shadow-2xl shadow-red-900/10'}`}>
-                    <div className="flex items-center gap-3 mb-2">
-                       {selectedOpt === currentQ.correctAnswer ? <CheckCircle2 className="w-6 h-6 text-green-500" /> : <RotateCcw className="w-6 h-6 text-red-500" />}
-                       <p className={`text-xs font-black uppercase tracking-[0.3em] ${selectedOpt === currentQ.correctAnswer ? 'text-green-500' : 'text-red-500'}`}>
-                        {selectedOpt === currentQ.correctAnswer ? 'RESPOSTA CORRETA' : 'RESPOSTA INCORRETA'}
-                      </p>
+                <div className="animate-in fade-in slide-in-from-bottom-5 duration-500">
+                  <div className={`p-8 rounded-[40px] mb-10 border ${selectedOpt === currentQ.correctAnswer ? 'bg-green-50 border-green-100 shadow-sm' : 'bg-red-50 border-red-100 shadow-sm'}`}>
+                    <div className="flex items-center gap-6">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg ${selectedOpt === currentQ.correctAnswer ? 'bg-green-500' : 'bg-red-500'}`}>
+                        {selectedOpt === currentQ.correctAnswer ? '✓' : '✗'}
+                      </div>
+                      <div>
+                        <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedOpt === currentQ.correctAnswer ? 'text-green-600' : 'text-red-600'}`}>
+                          {selectedOpt === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}
+                        </p>
+                        <p className="text-slate-800 text-[17px] font-bold">
+                          Gabarito: <span className="text-blue-600">{String.fromCharCode(65 + currentQ.correctAnswer)}</span>
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-[#0A0F1E] text-xl font-black italic">
-                      Gabarito: <span className="text-orange-500">{String.fromCharCode(65 + currentQ.correctAnswer)}</span>
-                    </p>
                   </div>
 
-
-                  <div className="bg-[#f8f9fa] rounded-[50px] p-10 border border-gray-100 leading-relaxed shadow-sm">
-                    <div className="flex items-center gap-3 mb-6 text-orange-500">
-                      <HelpCircle className="w-6 h-6" />
-                      <span className="font-black text-xs uppercase tracking-[0.3em]">Comentário do Professor</span>
-                    </div>
-                    <div className="text-gray-700 text-base font-medium space-y-6 mb-10 prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.explanation }} />
-
-
-                    <div className="bg-[#0A0F1E] border border-white/5 p-8 rounded-[40px] mt-10 relative">
+                  <div className="bg-slate-50 rounded-[40px] p-8 md:p-12 border border-slate-100 shadow-inner leading-relaxed mb-10">
+                    <div className="bg-white border border-slate-100 p-6 md:p-8 rounded-[35px] mb-8 relative shadow-sm group hover:shadow-md transition-all">
                       <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-3 text-xs font-black text-orange-500 uppercase tracking-[0.3em]">
-                          <FileText className="w-4 h-4" /> SUA NOTA PESSOAL
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">SUA NOTA ESTRATÉGICA</h4>
+                            <p className="text-[9px] font-bold text-blue-500/60 uppercase tracking-tight">Refine seu conhecimento aqui</p>
+                          </div>
                         </div>
                         <button 
                           onClick={() => setIsNoteExpanded(true)}
-                          className="p-3 hover:bg-white/10 rounded-xl transition-all text-white/50 hover:text-white active:scale-90 cursor-pointer"
-                          title="Expandir anotação"
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-sm"
                         >
-                          <Maximize2 className="w-4 h-4" />
+                          <Maximize2 className="w-3.5 h-3.5" />
+                          ABRIR EDITOR
                         </button>
                       </div>
                       
                       {userCommentaryInput ? (
-                      <div className="text-slate-300 text-lg font-medium space-y-4 markdown-body prose prose-invert prose-orange max-w-none" dangerouslySetInnerHTML={{ __html: userCommentaryInput }} />
-                    ) : (
-                      <p className="text-white/30 font-bold text-sm italic">Nenhuma anotação adicionada ainda.</p>
-                    )}
+                        <div className="text-slate-600 text-[15px] font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2" dangerouslySetInnerHTML={{ __html: userCommentaryInput }} />
+                      ) : (
+                        <div 
+                          onClick={() => setIsNoteExpanded(true)}
+                          className="cursor-pointer py-10 border-2 border-dashed border-slate-100 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-300 hover:text-blue-500 hover:border-blue-200 transition-all"
+                        >
+                           <Brain className="w-8 h-8 opacity-20" />
+                           <p className="font-bold text-xs italic tracking-tight">Nenhuma anotação estratégica ainda. Clique para adicionar.</p>
+                        </div>
+                      )}
                     </div>
 
-                    {isNoteExpanded && (
-                      <div className="fixed inset-0 z-[1000] bg-[#0A0F1E]/95 backdrop-blur-2xl animate-in fade-in duration-300 p-6 md:p-12 flex flex-col">
-                        <div className="flex items-center justify-between mb-8 max-w-6xl mx-auto w-full">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-orange-500/20 rounded-2xl flex items-center justify-center text-orange-500">
-                              <FileText className="w-6 h-6" />
-                            </div>
-                            <div>
-                              <h2 className="text-2xl font-black text-white tracking-tight uppercase italic">Expansão de Nota</h2>
-                              <p className="text-white/40 text-[10px] font-black tracking-[0.3em] uppercase">Foco total na sua explicação pessoal</p>
-                            </div>
-                          </div>
-                          <button 
-                            onClick={() => { handleSaveUserCommentary(); setIsNoteExpanded(false); }}
-                            className="p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all active:scale-90 cursor-pointer"
-                          >
-                            <Minimize2 className="w-6 h-6" />
-                          </button>
-                        </div>
-
-                        <div className="flex-1 max-w-6xl mx-auto w-full bg-white/5 rounded-[50px] p-12 border border-white/10 shadow-3xl">
-                          <RichTextEditor
-                            content={userCommentaryInput}
-                            onChange={setUserCommentaryInput}
-                          />
-                        </div>
-
-                        <div className="max-w-6xl mx-auto w-full mt-8 flex justify-between items-center">
-                          <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">TDAH ORA • MODO FOCO EDITOR</p>
-                          <button 
-                            onClick={() => { handleSaveUserCommentary(); setIsNoteExpanded(false); }}
-                            className="px-12 py-6 bg-orange-500 text-black font-black uppercase tracking-[0.3em] text-xs rounded-full hover:scale-105 transition-all shadow-2xl shadow-orange-500/20 active:scale-95 cursor-pointer"
-                          >
-                            SALVAR E RECOLHER
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
+                    <div className="flex items-center gap-3 mb-6 font-black italic text-blue-500">
+                       <span className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-sm shadow-sm">A</span>
+                       <h4 className="text-[10px] uppercase tracking-widest">MAPEAMENTO DA LÓGICA</h4>
+                    </div>
+                    <div className="text-slate-600 text-[16px] font-medium leading-relaxed space-y-6 prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.explanation }} />
                     {currentQ.memoryHint && (
-                      <div className="bg-orange-500/5 p-10 rounded-[40px] border-2 border-orange-500/20 shadow-2xl shadow-orange-900/10 animate-in slide-in-from-top-4">
-                         <div className="flex items-center gap-3 mb-4">
-                           <span className="text-2xl">🧠</span>
-                           <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.4em]">MENTALIZAÇÃO ACELERADA</p>
-                         </div>
-                         <div className="text-xl font-bold text-white italic prose prose-invert prose-orange prose-xl max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.memoryHint }} />
+                      <div className="bg-blue-500/5 p-8 rounded-[35px] border border-blue-500/10 shadow-sm relative overflow-hidden mt-10">
+                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.4em] mb-4 flex items-center gap-3">
+                          <span className="text-2xl">🔥</span> BIZU DE MEMÓRIA
+                        </p>
+                        <div className="text-[15px] font-normal text-slate-700 leading-relaxed prose prose-blue max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.memoryHint }} />
                       </div>
                     )}
                   </div>
 
-                  <button 
-                    onClick={() => setSelectedOpt(null)}
-                    className="mt-8 text-white/30 hover:text-orange-500 font-black text-[10px] uppercase tracking-[0.4em] transition-all flex items-center gap-3 active:scale-95"
-                  >
-                    <ChevronLeft className="w-5 h-5" /> REANALISAR CAMINHOS
-                  </button>
-                </div>
-              )}
-
-              {selectedOpt !== null && (
-                <div className="animate-in fade-in slide-in-from-top-6 duration-500 space-y-6">
-                  <button 
-                    onClick={() => setShowCommentary(!showCommentary)}
-                    className="w-full bg-white/5 text-white/50 py-5 rounded-3xl font-black text-[10px] tracking-[0.3em] flex items-center justify-center gap-4 hover:bg-white/10 hover:text-white transition-all active:scale-95 border border-white/5 uppercase"
-                  >
-                    <FileText className="w-5 h-5" />
-                    {showCommentary ? 'FECHAR ANÁLISE PROFUNDA' : 'ABRIR ANÁLISE PROFUNDA'}
-                  </button>
-
-                  {showCommentary && (
-                    <div className="bg-[#0A0F1E] border-2 border-orange-500/10 rounded-[50px] p-12 text-xl leading-relaxed text-slate-300 animate-in zoom-in-95 duration-500 prose prose-invert prose-orange prose-xl max-w-none shadow-inner" dangerouslySetInnerHTML={{ __html: currentQ.explanation }}>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between mb-10">
+                    <button 
+                      onClick={() => setIsSubmitted(false)}
+                      className="text-slate-400 hover:text-blue-500 font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95"
+                    >
+                      <ChevronLeft className="w-4 h-4" /> REVISAR RESPOSTA
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-between items-center px-4">
-              <button 
-                onClick={handlePrev}
-                disabled={currentIdx === 0}
-                className="px-10 py-5 bg-white/5 border border-white/5 rounded-3xl font-black text-[10px] tracking-[0.3em] text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-5 transition-all flex items-center gap-3 uppercase cursor-pointer"
-              >
-                <ChevronLeft className="w-5 h-5" /> ANTERIOR
-              </button>
-              <button 
-                onClick={handleNext}
-                disabled={currentIdx === questions.length - 1}
-                className="px-10 py-5 bg-white/5 border border-white/5 rounded-3xl font-black text-[10px] tracking-[0.3em] text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-5 transition-all flex items-center gap-3 uppercase cursor-pointer"
-              >
-                PRÓXIMA <ChevronRight className="w-5 h-5" />
-              </button>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6 mt-16 scale-110">
+               <div className="flex items-center justify-center gap-3">
+                <button 
+                  onClick={handlePrev}
+                  disabled={currentIdx === 0}
+                  className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-xl shadow-sm transition-all disabled:opacity-20 active:scale-95"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <button 
+                  onClick={handleNext}
+                  disabled={currentIdx === questions.length - 1}
+                  className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-xl shadow-sm transition-all disabled:opacity-20 active:scale-95"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+                <button 
+                  onClick={handleShuffle}
+                  className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-xl shadow-sm transition-all active:scale-95"
+                >
+                  <Shuffle className="w-6 h-6" />
+                </button>
+                <button 
+                  onClick={() => { handleFinish(); setQuestions([]); }}
+                  className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-red-500 rounded-xl shadow-sm transition-all active:scale-95"
+                >
+                  <LogOut className="w-6 h-6" />
+                </button>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Barra de Progresso Inferior Estilo Guided Lesson */}
+      {/* Barra de Progresso Inferior */}
       {questions.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-8 bg-black/60 backdrop-blur-2xl border-t border-white/5 z-[210]">
-          <div className="max-w-3xl mx-auto space-y-4">
-             <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
-               <span>PROGRESSO DO SIMULADO</span>
-               <span className="text-orange-500">{Math.round(((currentIdx + 1) / questions.length) * 100)}%</span>
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-slate-100 z-[210] shadow-2xl">
+          <div className="max-w-3xl mx-auto space-y-3">
+             <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
+               <span>PROGRESSO ATUAL</span>
+               <span className="text-blue-600">{Math.round(((currentIdx + 1) / questions.length) * 100)}%</span>
              </div>
-             <div className="h-2.5 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5 shadow-inner">
+             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                <div 
-                 className="h-full bg-gradient-to-r from-orange-600 to-red-600 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-all duration-700"
+                 className="h-full bg-blue-500 transition-all duration-700"
                  style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }}
                />
              </div>
+          </div>
+        </div>
+      )}
+
+      {isNoteExpanded && (
+        <div className="fixed inset-0 z-[1000] bg-slate-900/90 backdrop-blur-md p-6 md:p-12 flex flex-col">
+          <div className="flex items-center justify-between mb-8 max-w-5xl mx-auto w-full">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-xl">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-white tracking-tight uppercase italic">MODO EDIÇÃO</h2>
+                <p className="text-white/40 text-[10px] font-black tracking-[0.3em] uppercase">Refine sua anotação estratégica</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => { handleSaveUserCommentary(); setIsNoteExpanded(false); }}
+              className="p-4 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all active:scale-90"
+            >
+              <Minimize2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 max-w-5xl mx-auto w-full bg-white rounded-[40px] p-8 md:p-12 shadow-2xl overflow-hidden">
+            <RichTextEditor
+              content={userCommentaryInput}
+              onChange={setUserCommentaryInput}
+            />
+          </div>
+          
+          <div className="mt-8 flex justify-center">
+             <button 
+               onClick={() => { handleSaveUserCommentary(); setIsNoteExpanded(false); }}
+               className="px-12 py-5 bg-blue-600 text-white font-black uppercase text-[11px] tracking-widest rounded-full hover:bg-blue-700 transition-all shadow-2xl active:scale-95"
+             >
+               CONCLUIR E SALVAR
+             </button>
           </div>
         </div>
       )}
