@@ -392,10 +392,10 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
             </div>
             <div 
               ref={questionTextRef}
-              className={`text-[17px] md:text-[20px] font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 ${
-                questionScratched.includes(currentQ.id) ? 'text-slate-300 line-through grayscale blur-[0.5px] opacity-40 italic' : 
-                questionHighlighted.includes(currentQ.id) ? 'text-slate-800 bg-yellow-100/50 p-6 rounded-2xl border-l-[6px] border-l-yellow-400' : 
-                'text-slate-700'
+              className={`text-[17px] md:text-[20px] font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 p-8 md:p-12 rounded-[40px] shadow-inner relative z-10 ${
+                questionScratched.includes(currentQ.id) ? 'text-slate-300 bg-slate-100/50 grayscale blur-[0.5px] opacity-40 italic line-through' : 
+                questionHighlighted.includes(currentQ.id) ? 'text-slate-900 bg-yellow-50/80 border-l-[12px] border-l-yellow-400 border border-yellow-200/50' : 
+                'text-slate-800 bg-slate-50 border border-slate-100'
               }`} 
               dangerouslySetInnerHTML={{ __html: currentQ.question }} 
             />
