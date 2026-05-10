@@ -60,7 +60,8 @@ const QuizManager: React.FC<QuizManagerProps> = ({ folders, attempts, onBack, on
         </div>
       </div>
 
-      {/* Lista de Pastas *      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {/* Lista de Pastas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {currentFoldersAtLevel.map(folder => {
           const folderAttempts = attempts.filter(a => a.folderId === folder.id);
           const lastAttempt = folderAttempts.length > 0 ? folderAttempts[folderAttempts.length - 1] : null;
@@ -132,7 +133,6 @@ const QuizManager: React.FC<QuizManagerProps> = ({ folders, attempts, onBack, on
         })}
 
         {currentFoldersAtLevel.length === 0 && (
- 0 && (
           <div className="col-span-full py-32 text-center border-4 border-dashed border-gray-100 rounded-[50px]">
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
                <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>

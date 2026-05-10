@@ -31,24 +31,31 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   editalConfig,
   onBatchComplete
 }) => {
+  const [topic, setTopic] = useState(prefill || '');
   const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE' | 'MANUAL'>('AUTO');
   const [manualInputType, setManualInputType] = useState<'FULL' | 'QUICK'>('FULL');
-  const [manualQuestionsList, setManualQuestionsList] = useState<QuizQuestion[]>([]);
-  const [manualQuestion, setManualQuestion] = useState<{
-    question: string;
-    options: string[];
-    correctAnswer: number;
-    explanation: string;
-  }>({
+  const createEmptyManualQuestion = () => ({
+    id: Math.random().toString(36).substr(2, 9),
     question: '',
     options: ['', '', '', '', ''],
     correctAnswer: 0,
-    explanation: ''
+    explanation: '',
+    topic: topic || 'Questões Manuais'
   });
+
+  const [manualQuestionsList, setManualQuestionsList] = useState<QuizQuestion[]>([
+    {
+      id: Math.random().toString(36).substr(2, 9),
+      question: '',
+      options: ['', '', '', '', ''],
+      correctAnswer: 0,
+      explanation: '',
+      topic: topic || 'Questões Manuais'
+    }
+  ]);
   const [pastedText, setPastedText] = useState('');
   const [pastedGabarito, setPastedGabarito] = useState('');
   const [batchStatus, setBatchStatus] = useState<{ current: number, total: number } | null>(null);
-  const [topic, setTopic] = useState(prefill || '');
   const [banca, setBanca] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
@@ -284,37 +291,22 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   };
 
   const addManualQuestion = () => {
-    if (!manualQuestion.question) return;
-    
-    // In QUICK mode, we store empty strings for options because the text is in the question field
-    // But for consistency with the QuizQuestion type, we ensure the array has 5 elements
-    const newQ: QuizQuestion = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...manualQuestion,
-        topic: topic || 'Questões Manuais'
-    };
-    setManualQuestionsList(prev => [...prev, newQ]);
-    setManualQuestion({
-        question: '',
-        options: ['', '', '', '', ''],
-        correctAnswer: 0,
-        explanation: ''
+    setManualQuestionsList(prev => [...prev, createEmptyManualQuestion()]);
+  };
+
+  const updateManualQuestion = (idx: number, field: string, value: any) => {
+    setManualQuestionsList(prev => {
+        const newList = [...prev];
+        newList[idx] = { ...newList[idx], [field]: value };
+        return newList;
     });
   };
 
   const startManualSimulado = () => {
-    let finalQuestions = [...manualQuestionsList];
-    if (manualQuestion.question.trim()) {
-        const lastQ: QuizQuestion = {
-            id: Math.random().toString(36).substr(2, 9),
-            ...manualQuestion,
-            topic: topic || 'Questões Manuais'
-        };
-        finalQuestions.push(lastQ);
-    }
+    const finalQuestions = manualQuestionsList.filter(q => q.question.trim().length > 0);
     
     if (finalQuestions.length === 0) {
-        alert("Adicione pelo menos uma questão.");
+        alert("Preencha pelo menos uma questão.");
         return;
     }
 
@@ -622,7 +614,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-8 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="space-y-12 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
                        <div className="flex bg-slate-100 p-1 rounded-2xl w-fit mb-4 border border-slate-200 shadow-inner">
                           <button 
                             onClick={() => setManualInputType('FULL')}
@@ -638,105 +630,108 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                           </button>
                        </div>
 
-                       <div className="space-y-3">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
-                            {manualInputType === 'QUICK' ? 'Pergunta + Alternativas (Tudo aqui)' : 'Enunciado da Questão'}
-                          </label>
-                          <div className="bg-slate-50 rounded-[30px] border-2 border-slate-100 focus-within:border-blue-500 transition-all overflow-hidden shadow-inner">
-                            <RichTextEditor 
-                              content={manualQuestion.question}
-                              onChange={html => setManualQuestion(prev => ({ ...prev, question: html }))}
-                            />
-                          </div>
-                       </div>
+                       <div className="space-y-16">
+                          {manualQuestionsList.map((mq, qIdx) => (
+                            <div key={mq.id} className="bg-white p-8 md:p-12 rounded-[45px] border border-slate-100 shadow-sm relative group animate-in zoom-in-95 duration-300">
+                               <div className="absolute -top-4 -left-4 w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black italic shadow-lg z-10">
+                                 {qIdx + 1}
+                               </div>
+                               
+                               {manualQuestionsList.length > 1 && (
+                                 <button 
+                                   onClick={() => setManualQuestionsList(prev => prev.filter((_, i) => i !== qIdx))}
+                                   className="absolute top-8 right-8 p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
+                                 >
+                                   <Trash2 className="w-5 h-5" />
+                                 </button>
+                               )}
 
-                       <div className="space-y-3">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Gabarito</label>
-                          {manualInputType === 'QUICK' ? (
-                            <div className="flex gap-4 items-center bg-slate-50 p-6 rounded-[30px] border border-slate-100 justify-between shadow-inner">
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qual a letra correta?</span>
-                              <div className="flex gap-3">
-                                {[0, 1, 2, 3, 4].map(idx => (
-                                  <button
-                                    key={idx}
-                                    onClick={() => setManualQuestion(p => ({ ...p, correctAnswer: idx }))}
-                                    className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black transition-all active:scale-90 ${manualQuestion.correctAnswer === idx ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'border-slate-200 text-slate-300 hover:border-slate-300 shadow-sm bg-white'}`}
-                                  >
-                                    {String.fromCharCode(65 + idx)}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {manualQuestion.options.map((opt, i) => (
-                                  <div key={i} className="flex gap-4 items-center group">
-                                      <div 
-                                        onClick={() => setManualQuestion(p => ({ ...p, correctAnswer: i }))}
-                                        className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black transition-all cursor-pointer select-none ${manualQuestion.correctAnswer === i ? 'bg-green-500 border-green-500 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-300 group-hover:border-slate-200'}`}
-                                      >
-                                        {String.fromCharCode(65 + i)}
-                                      </div>
-                                      <input 
-                                        value={opt}
-                                        onChange={e => setManualQuestion(p => {
-                                            const newOptions = [...p.options];
-                                            newOptions[i] = e.target.value;
-                                            return { ...p, options: newOptions };
-                                        })}
-                                        className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 focus:outline-none focus:border-blue-500 transition-all font-bold text-sm text-slate-700 shadow-sm"
-                                        placeholder={`Alternativa ${String.fromCharCode(65 + i)}`}
+                               <div className="space-y-8">
+                                 <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
+                                      {manualInputType === 'QUICK' ? 'Pergunta + Alternativas (Tudo aqui)' : 'Enunciado da Questão'}
+                                    </label>
+                                    <div className="bg-slate-50 rounded-[30px] border-2 border-slate-100 focus-within:border-blue-500 transition-all overflow-hidden shadow-inner">
+                                      <RichTextEditor 
+                                        content={mq.question}
+                                        onChange={html => updateManualQuestion(qIdx, 'question', html)}
                                       />
-                                  </div>
-                              ))}
+                                    </div>
+                                 </div>
+
+                                 <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Gabarito</label>
+                                    {manualInputType === 'QUICK' ? (
+                                      <div className="flex gap-4 items-center bg-slate-50 p-6 rounded-[30px] border border-slate-100 justify-between shadow-inner">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qual a letra correta?</span>
+                                        <div className="flex gap-3">
+                                          {[0, 1, 2, 3, 4].map(idx => (
+                                            <button
+                                              key={idx}
+                                              onClick={() => updateManualQuestion(qIdx, 'correctAnswer', idx)}
+                                              className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black transition-all active:scale-90 ${mq.correctAnswer === idx ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'border-slate-200 text-slate-300 hover:border-slate-300 shadow-sm bg-white'}`}
+                                            >
+                                              {String.fromCharCode(65 + idx)}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-3">
+                                        {mq.options.map((opt, i) => (
+                                            <div key={i} className="flex gap-4 items-center group/opt">
+                                                <div 
+                                                  onClick={() => updateManualQuestion(qIdx, 'correctAnswer', i)}
+                                                  className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black transition-all cursor-pointer select-none ${mq.correctAnswer === i ? 'bg-green-500 border-green-500 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-300 group-hover/opt:border-slate-200'}`}
+                                                >
+                                                  {String.fromCharCode(65 + i)}
+                                                </div>
+                                                <input 
+                                                  value={opt}
+                                                  onChange={e => {
+                                                      const newOptions = [...mq.options];
+                                                      newOptions[i] = e.target.value;
+                                                      updateManualQuestion(qIdx, 'options', newOptions);
+                                                  }}
+                                                  className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 focus:outline-none focus:border-blue-500 transition-all font-bold text-sm text-slate-700 shadow-sm"
+                                                  placeholder={`Alternativa ${String.fromCharCode(65 + i)}`}
+                                                />
+                                            </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                 </div>
+
+                                 <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Explicação / Resolução (Opcional)</label>
+                                    <div className="bg-slate-50 rounded-[30px] border-2 border-slate-100 focus-within:border-blue-500 transition-all overflow-hidden shadow-inner">
+                                      <RichTextEditor 
+                                        content={mq.explanation}
+                                        onChange={html => updateManualQuestion(qIdx, 'explanation', html)}
+                                      />
+                                    </div>
+                                 </div>
+                               </div>
                             </div>
-                          )}
+                          ))}
                        </div>
 
-                       <div className="space-y-3">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Explicação / Resolução (Opcional)</label>
-                          <div className="bg-slate-50 rounded-[30px] border-2 border-slate-100 focus-within:border-blue-500 transition-all overflow-hidden shadow-inner">
-                            <RichTextEditor 
-                              content={manualQuestion.explanation}
-                              onChange={html => setManualQuestion(prev => ({ ...prev, explanation: html }))}
-                            />
-                          </div>
-                       </div>
-
-                       <div className="flex flex-col md:flex-row gap-4 pt-4">
+                       <div className="flex flex-col md:flex-row gap-6 pt-10 sticky bottom-0 bg-[#f8fafc]/90 backdrop-blur-md p-6 border-t border-slate-100 rounded-t-[40px] z-30">
                           <button 
                             onClick={addManualQuestion}
-                            className="flex-1 bg-slate-50 border border-slate-100 text-slate-500 py-6 rounded-[30px] font-black uppercase tracking-widest text-[10px] hover:bg-slate-100 active:scale-95 transition-all shadow-sm"
+                            className="flex-1 bg-white border-2 border-blue-100 text-blue-600 py-6 rounded-[30px] font-black uppercase tracking-widest text-xs hover:bg-blue-50 active:scale-95 transition-all shadow-xl shadow-blue-500/5 flex items-center justify-center gap-3"
                           >
-                             + Adicionar e Próxima ({manualQuestionsList.length})
+                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+                             ADICIONAR NOVA CAIXA
                           </button>
                           <button 
                             onClick={startManualSimulado}
-                            disabled={manualQuestionsList.length === 0 && !manualQuestion.question.trim()}
-                            className="flex-[2] bg-blue-600 text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-500/20 active:scale-95 disabled:opacity-20 transition-all"
+                            className="flex-[2] bg-[#0A0F1E] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"
                           >
-                             {manualQuestionsList.length === 0 ? 'Iniciar com esta questão' : `Iniciar Simulado (${manualQuestionsList.length + (manualQuestion.question.trim() ? 1 : 0)})`}
+                             INICIAR SIMULADO ({manualQuestionsList.filter(q => q.question.trim().length > 0).length} PRONTAS)
+                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                           </button>
                        </div>
-
-                       {manualQuestionsList.length > 0 && (
-                          <div className="mt-8 pt-8 border-t border-slate-100">
-                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Questões Adicionadas:</h4>
-                             <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                                {manualQuestionsList.map((q, idx) => (
-                                   <div key={q.id} className="bg-slate-50 p-4 rounded-2xl flex justify-between items-center group border border-slate-100 shadow-sm">
-                                      <p className="text-xs font-bold text-slate-500 truncate flex-1 pr-4">#{idx + 1}: <span dangerouslySetInnerHTML={{ __html: q.question.replace(/<[^>]*>/g, '') }} /></p>
-                                      <button 
-                                        onClick={() => setManualQuestionsList(prev => prev.filter((_, i) => i !== idx))}
-                                        className="p-2 text-red-500/50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                                      >
-                                         <Trash2 className="w-4 h-4" />
-                                      </button>
-                                   </div>
-                                ))}
-                             </div>
-                          </div>
-                       )}
                     </div>
                   )}
                 </div>

@@ -418,54 +418,82 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
             </button>
           </div>
 
+          {/* We keep the options grid visible regardless of selectedAnswer being null or not */}
+          <div className={`grid ${currentQ.options.every(o => !o.trim()) ? 'grid-cols-5' : 'grid-cols-1'} gap-4 mb-10`}>
+            {questions[currentIndex].options.map((opt, idx) => {
+              const isConfirmed = selectedAnswer !== null;
+              const isCorrectAnswer = idx === currentQ.correctAnswer;
+              const isUserSelection = (isConfirmed ? selectedAnswer : tempSelectedAnswer) === idx;
+              const isCrossedOut = crossedOut.includes(idx);
+              const isQuickMode = currentQ.options.every(o => !o.trim());
+              
+              let btnClass = "border border-slate-100 bg-white hover:bg-slate-50 text-slate-600 shadow-sm";
+              let circleClass = "border-slate-200 text-slate-300 group-hover:border-blue-500/50 group-hover:text-blue-500";
+              
+              if (isConfirmed) {
+                if (isCorrectAnswer) {
+                  // The correct answer is always highlighted in green after confirmation
+                  btnClass = "border-green-500 bg-green-50/30 text-green-700 shadow-md border-l-[6px] border-l-green-500 ring-4 ring-green-500/5";
+                  circleClass = "bg-green-500 border-green-500 text-white";
+                } else if (isUserSelection) {
+                  // User selected the wrong answer: highlight in red
+                  btnClass = "border-red-300 bg-red-50/50 text-red-700 shadow-md border-l-[6px] border-l-red-500 ring-4 ring-red-500/5";
+                  circleClass = "bg-red-500 border-red-500 text-white";
+                } else {
+                  // Other unselected, incorrect options
+                  btnClass = "border-slate-100 bg-slate-50/30 text-slate-400 opacity-60";
+                  circleClass = "border-slate-200 text-slate-300";
+                }
+              } else if (isUserSelection) {
+                // Pre-confirmation selection (blue)
+                btnClass = "border border-blue-200 bg-blue-50/20 text-slate-900 shadow-md border-l-[4px] border-l-blue-500 ring-4 ring-blue-500/5";
+                circleClass = "bg-blue-100 border-blue-500 text-blue-600";
+              }
+
+              if (isCrossedOut && !isConfirmed) {
+                btnClass = "border-slate-50 bg-slate-50/50 text-slate-200 line-through grayscale opacity-40";
+              }
+              
+              return (
+                <div key={idx} className="relative group">
+                  <div 
+                    onClick={() => handleSelect(idx)}
+                    onDoubleClick={() => handleDoubleClick(idx)}
+                    className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-6 rounded-[25px] flex items-center gap-6'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] ${btnClass} relative overflow-hidden`}
+                    role="button"
+                    aria-disabled={isConfirmed}
+                    tabIndex={0}
+                  >
+                    <div className={`flex items-center flex-1 ${isQuickMode ? 'justify-center' : 'gap-6'}`}>
+                      <span className={`${isQuickMode ? 'w-10 h-10 rounded-xl' : 'w-12 h-12 rounded-full'} border flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-all ${circleClass}`}>
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      {!isQuickMode && <span className="text-[16px] leading-snug">{opt}</span>}
+                    </div>
+                    
+                    {!isQuickMode && isConfirmed && isCorrectAnswer && (
+                       <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center shadow-lg animate-in zoom-in-50">
+                          <span className="text-sm">✓</span>
+                       </div>
+                    )}
+                    {!isQuickMode && isConfirmed && isUserSelection && !isCorrectAnswer && (
+                       <div className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg animate-in zoom-in-50">
+                          <span className="text-sm">✗</span>
+                       </div>
+                    )}
+                    {!isQuickMode && !isConfirmed && (
+                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isUserSelection ? 'border-blue-500 bg-blue-500' : 'border-slate-200'}`}>
+                          {isUserSelection && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}
+                       </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {selectedAnswer === null ? (
             <>
-              <div className={`grid ${currentQ.options.every(o => !o.trim()) ? 'grid-cols-5' : 'grid-cols-1'} gap-4 mb-10`}>
-                {questions[currentIndex].options.map((opt, idx) => {
-                  const isSelected = tempSelectedAnswer === idx;
-                  const isCrossedOut = crossedOut.includes(idx);
-                  const isQuickMode = currentQ.options.every(o => !o.trim());
-                  
-                  let btnClass = "border border-slate-100 bg-white hover:bg-slate-50 text-slate-600 shadow-sm";
-                  let circleClass = "border-slate-200 text-slate-300 group-hover:border-blue-500/50 group-hover:text-blue-500";
-                  
-                  if (isSelected) {
-                    btnClass = "border border-blue-200 bg-blue-50/20 text-slate-900 shadow-md border-l-[4px] border-l-blue-500 ring-4 ring-blue-500/5";
-                    circleClass = "bg-blue-100 border-blue-500 text-blue-600";
-                  }
-
-                  if (isCrossedOut) {
-                    btnClass = "border-slate-50 bg-slate-50/50 text-slate-200 line-through grayscale opacity-40";
-                  }
-                  
-                  return (
-                    <div key={idx} className="relative group">
-                      <div 
-                        onClick={() => handleSelect(idx)}
-                        onDoubleClick={() => handleDoubleClick(idx)}
-                        className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-6 rounded-[25px] flex items-center gap-6'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] ${btnClass} relative overflow-hidden`}
-                        role="button"
-                        aria-disabled={selectedAnswer !== null}
-                        tabIndex={0}
-                      >
-                        <div className={`flex items-center flex-1 ${isQuickMode ? 'justify-center' : 'gap-6'}`}>
-                          <span className={`${isQuickMode ? 'w-10 h-10 rounded-xl' : 'w-12 h-12 rounded-full'} border flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-all ${circleClass}`}>
-                            {String.fromCharCode(65 + idx)}
-                          </span>
-                          {!isQuickMode && <span className="text-[16px] leading-snug">{opt}</span>}
-                        </div>
-                        
-                        {!isQuickMode && (
-                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-200'}`}>
-                              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}
-                           </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
               <div className="flex justify-center md:justify-start mb-10">
                 <button 
                   onClick={handleConfirmAnswer}
@@ -517,7 +545,9 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                       {selectedAnswer === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}
                     </p>
                     <p className="text-slate-800 text-[17px] font-bold">
-                      Gabarito Correto: <span className="text-blue-600">{questions[currentIndex].options[currentQ.correctAnswer]}</span>
+                      {selectedAnswer === currentQ.correctAnswer 
+                         ? 'Resposta correta! Você consolidou este conhecimento.' 
+                         : `A resposta correta é a alternativa ${String.fromCharCode(65 + currentQ.correctAnswer)}.`}
                     </p>
                   </div>
                 </div>
