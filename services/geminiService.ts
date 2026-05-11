@@ -2,9 +2,24 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle } from "../types";
 
-const ai = new GoogleGenAI({ 
-  apiKey: process.env.GEMINI_API_KEY || ''
-});
+let aiInstance: GoogleGenAI | null = null;
+let currentApiKey: string | null = null;
+
+const getGenAI = (): GoogleGenAI => {
+  let savedKey = '';
+  try {
+    savedKey = localStorage.getItem('GEMINI_API_KEY') || '';
+  } catch (e) {}
+
+  const keyToUse = savedKey || process.env.GEMINI_API_KEY || '';
+
+  if (!aiInstance || currentApiKey !== keyToUse) {
+    currentApiKey = keyToUse;
+    aiInstance = new GoogleGenAI({ apiKey: keyToUse });
+  }
+
+  return aiInstance;
+};
 
 const DEFAULT_MODEL = 'gemini-3-flash-preview';
 const PRO_MODEL = 'gemini-3.1-pro-preview'; // Improved precision for extraction tasks
@@ -47,7 +62,7 @@ const generateContentWithRetry = async (params: any, maxRetries = 5) => {
 
   for (let i = 0; i < maxRetries; i++) {
     try {
-      return await ai.models.generateContent(params);
+      return await getGenAI().models.generateContent(params);
     } catch (error: any) {
       lastError = error;
       

@@ -28,11 +28,17 @@ const AVATAR_OPTIONS = [
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
   const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>(stats.explanationStyle || 'TECNICA');
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('GEMINI_API_KEY') || '');
 
   const currentRank = getFishRank(stats.totalDaysStudied);
   const nextRank = FISH_RANKS.find(r => r.days > stats.totalDaysStudied);
 
   const handleSave = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem('GEMINI_API_KEY', apiKey.trim());
+    } else {
+      localStorage.removeItem('GEMINI_API_KEY');
+    }
     onUpdate({ ...stats, name, avatarColor: selectedColor, studyProfile: profile, explanationStyle });
     onBack();
   };
@@ -128,7 +134,7 @@ const AVATAR_OPTIONS = [
 
             <div>
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Mentoria por IA</label>
-              <div className="bg-blue-50/50 p-6 rounded-[30px] border border-blue-100 flex items-center justify-between group hover:bg-blue-50 transition-all">
+              <div className="bg-blue-50/50 p-6 rounded-[30px] border border-blue-100 flex items-center justify-between group hover:bg-blue-50 transition-all mb-4">
                 <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isAIEnabled ? 'bg-blue-500 text-white shadow-lg' : 'bg-gray-200 text-gray-400'}`}>
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
@@ -145,6 +151,20 @@ const AVATAR_OPTIONS = [
                   <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all duration-300 ${isAIEnabled ? 'left-7' : 'left-1'}`} />
                 </button>
               </div>
+
+              {isAIEnabled && (
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Sua API Key do Gemini (Opcional)</label>
+                  <input 
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold focus:outline-none focus:border-blue-500 transition-all shadow-sm font-mono placeholder:font-sans placeholder:font-medium"
+                    placeholder="Coloque sua chave aqui. Se vazio, usaremos a padrão."
+                  />
+                  <p className="text-[9px] font-bold text-gray-400 mt-2 ml-2 italic">A sua chave fica salva apenas no seu navegador.</p>
+                </div>
+              )}
             </div>
 
             <div className="pt-6">
