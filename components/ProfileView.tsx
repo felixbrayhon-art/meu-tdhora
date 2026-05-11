@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { UserStats, StudyProfile, FISH_RANKS, getFishRank } from '../types';
+import { UserStats, StudyProfile, ExplanationStyle, FISH_RANKS, getFishRank } from '../types';
 import FishLogo from './FishLogo';
 
 interface ProfileViewProps {
@@ -27,12 +27,13 @@ const AVATAR_OPTIONS = [
   const [name, setName] = useState(stats.name);
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
+  const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>(stats.explanationStyle || 'TECNICA');
 
   const currentRank = getFishRank(stats.totalDaysStudied);
   const nextRank = FISH_RANKS.find(r => r.days > stats.totalDaysStudied);
 
   const handleSave = () => {
-    onUpdate({ ...stats, name, avatarColor: selectedColor, studyProfile: profile });
+    onUpdate({ ...stats, name, avatarColor: selectedColor, studyProfile: profile, explanationStyle });
     onBack();
   };
 
@@ -109,6 +110,20 @@ const AVATAR_OPTIONS = [
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="group">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block group-hover:text-blue-500 transition-colors">ESTILO DO mapeamento da lógica (PROMPT)</label>
+              <div className="relative">
+                <textarea
+                  value={explanationStyle}
+                  onChange={(e) => setExplanationStyle(e.target.value)}
+                  placeholder="Ex: Explique como se eu fosse uma criança, use muitas analogias com esportes e termine com um bizu curto."
+                  className="w-full bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-[30px] p-6 text-sm font-medium text-gray-600 outline-none transition-all min-h-[120px] resize-none shadow-inner"
+                />
+                <div className="absolute top-4 right-6 text-xl opacity-20 group-hover:opacity-100 transition-opacity">✨</div>
+              </div>
+              <p className="text-[9px] font-bold text-gray-300 mt-3 px-2 italic">A IA usará este comando para construir todas as explicações das questões. <span className="text-blue-400">Dica: prompts mais diretos resultam em gerações mais rápidas.</span></p>
             </div>
 
             <div>

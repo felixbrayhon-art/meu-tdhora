@@ -1,6 +1,7 @@
 
-export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON';
+export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON' | 'PERFORMANCE' | 'SAVED_GUIDED_LESSONS';
 export type StudyProfile = 'VESTIBULAR' | 'CONCURSO';
+export type ExplanationStyle = string;
 
 export type GuidedLessonStepType = 'OPENING' | 'OVERVIEW' | 'NARRATIVE' | 'CONCEPT' | 'QUESTION_PAUSE' | 'REINFORCEMENT' | 'ANALOGY' | 'CLOSING_APPLICATION';
 
@@ -13,11 +14,20 @@ export interface GuidedLessonStep {
 export interface GuidedLesson {
   id: string;
   topic: string;
+  subject?: string; // Optional subject for saving purposes
   steps: GuidedLessonStep[];
   quiz?: QuizQuestion[];
   createdAt: number;
 }
-export type HubCategory = 'ESTUDO' | 'ORGANIZACAO' | 'RELAXE' | 'EDITAL' | 'REVISAO' | 'MOTIVACAO';
+
+export interface SavedGuidedLesson {
+  id: string;
+  subject: string;
+  topic: string;
+  lesson: GuidedLesson;
+  savedAt: number;
+}
+export type HubCategory = 'ESTUDO' | 'ORGANIZACAO' | 'RELAXE' | 'EDITAL' | 'REVISAO' | 'MOTIVACAO' | 'PERFORMANCE';
 
 export enum TimerMode {
   POMODORO = 'POMODORO',
@@ -93,6 +103,7 @@ export interface UserStats {
   totalDaysStudied: number;
   lastStudyDate?: string;
   studyProfile?: StudyProfile;
+  explanationStyle?: ExplanationStyle;
 }
 
 export interface Activity {
@@ -116,6 +127,11 @@ export interface QuizQuestion {
   memoryHint?: string;
   topic?: string;
   userCommentary?: string;
+  explanationImages?: string[];
+  explanationImageSizes?: string[];
+  isCorrected?: boolean;
+  originalExplanation?: string;
+  originalCorrectAnswer?: number;
 }
 
 export interface Notebook {

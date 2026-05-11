@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppView, TimerMode, UserStats, HubCategory, EditalConfig, SmartRevisionItem, StudyProfile } from '../types';
+import { AppView, TimerMode, UserStats, HubCategory, EditalConfig, SmartRevisionItem, StudyProfile, QuizAttempt, QuizFolder, SmartRevisionSystem } from '../types';
 import MemoryHeatmap from './MemoryHeatmap';
 import { getProactiveAdvice } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, BarChart3, Bookmark } from 'lucide-react';
 import MotivationView from './MotivationView';
+import PerformanceView from './PerformanceView';
 
 interface HubProps {
   setView: (view: AppView) => void;
@@ -24,6 +25,9 @@ interface HubProps {
   user: any; // FirebaseUser
   onLogin: () => void;
   isSyncing: boolean;
+  attempts: QuizAttempt[];
+  folders: QuizFolder[];
+  smartSystem: SmartRevisionSystem;
 }
 
 const Hub: React.FC<HubProps> = ({ 
@@ -42,7 +46,10 @@ const Hub: React.FC<HubProps> = ({
   isAIEnabled,
   user,
   onLogin,
-  isSyncing
+  isSyncing,
+  attempts,
+  folders,
+  smartSystem
 }) => {
   const [activeTab, setActiveTab] = useState<HubCategory>('ESTUDO');
   const [copyFeedback, setCopyFeedback] = useState(false);
@@ -100,30 +107,37 @@ const Hub: React.FC<HubProps> = ({
       </div>
       
 
-      <div className="flex p-2 bg-white rounded-[30px] shadow-sm border border-gray-100 max-w-4xl overflow-x-auto">
-        <button onClick={() => setActiveTab('ESTUDO')} className={`flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'ESTUDO' ? 'bg-blue-500 text-white shadow-xl shadow-blue-100' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+      <div className="flex p-2 bg-white rounded-[30px] shadow-sm border border-gray-100 max-w-5xl overflow-x-auto no-scrollbar scroll-smooth">
+        <button onClick={() => setActiveTab('ESTUDO')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'ESTUDO' ? 'bg-blue-500 text-white shadow-xl shadow-blue-100' : 'text-gray-400 hover:bg-gray-50'}`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
           ESTUDO
         </button>
-        <button onClick={() => setActiveTab('EDITAL')} className={`flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white shadow-xl shadow-gray-200' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
+        <button onClick={() => setActiveTab('EDITAL')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white shadow-xl shadow-gray-200' : 'text-gray-400 hover:bg-gray-50'}`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
           EDITAL
         </button>
-        <button onClick={() => setActiveTab('ORGANIZACAO')} className={`flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'ORGANIZACAO' ? 'bg-yellow-400 text-white shadow-xl shadow-yellow-100' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+        <button onClick={() => setActiveTab('ORGANIZACAO')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'ORGANIZACAO' ? 'bg-yellow-400 text-white shadow-xl shadow-yellow-100' : 'text-gray-400 hover:bg-gray-50'}`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
           ORGANIZAÇÃO
         </button>
-        <button onClick={() => setActiveTab('RELAXE')} className={`flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'RELAXE' ? 'bg-orange-500 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <button onClick={() => setActiveTab('RELAXE')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'RELAXE' ? 'bg-orange-500 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:bg-gray-50'}`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           RELAXE
         </button>
-        <button onClick={() => setActiveTab('REVISAO')} className={`flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'REVISAO' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+        <button onClick={() => setActiveTab('REVISAO')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'REVISAO' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'}`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           REVISÃO IA
         </button>
-        <button onClick={() => setActiveTab('MOTIVACAO')} className={`flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'MOTIVACAO' ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-100' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+        <button onClick={() => setActiveTab('MOTIVACAO')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'MOTIVACAO' ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-100' : 'text-gray-400 hover:bg-gray-50'}`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
           MOTIVAÇÃO
+        </button>
+        <button 
+          onClick={() => setView('PERFORMANCE')} 
+          className="min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all text-gray-400 hover:bg-gray-50"
+        >
+          <BarChart3 className="w-6 h-6" />
+          DESEMPENHO
         </button>
       </div>
 
@@ -136,18 +150,18 @@ const Hub: React.FC<HubProps> = ({
                    onClick={() => setView('SMART_REVISION')}
                    className="w-full bg-gradient-to-r from-blue-700 via-blue-800 to-black p-1 text-white rounded-[40px] group transition-all hover:scale-[1.01] active:scale-95 shadow-2xl shadow-blue-900/40 relative overflow-hidden"
                  >
-                    <div className="bg-[#0A0F1E] rounded-[38px] p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+                    <div className="bg-[#0A0F1E] rounded-[38px] p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
                        <div className="flex items-center gap-6">
-                          <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                          <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
                              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                           </div>
                           <div className="text-left">
-                             <h3 className="text-3xl font-black italic uppercase tracking-tighter leading-tight">VALIDAÇÃO DE ONTEM</h3>
+                             <h3 className="text-2xl font-black italic uppercase tracking-tighter leading-tight">VALIDAÇÃO DE ONTEM</h3>
                              <p className="text-blue-400 font-bold text-xs uppercase tracking-widest mt-1">Você tem {pendingRevisions} temas para validar hoje</p>
                           </div>
                        </div>
                        
-                       <div className="flex items-center gap-4 bg-blue-600 text-white px-10 py-5 rounded-[25px] font-black uppercase italic tracking-widest group-hover:bg-white group-hover:text-blue-600 transition-all">
+                       <div className="flex items-center gap-4 bg-blue-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest group-hover:bg-white group-hover:text-blue-600 transition-all">
                           COMEÇAR AGORA
                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                        </div>
@@ -162,19 +176,19 @@ const Hub: React.FC<HubProps> = ({
             {/* Edital-only Strategic Entry if not active */}
             {activeTab === 'EDITAL' && !editalConfig.isActive && (
               <div className="lg:col-span-3">
-                <button onClick={() => setView('EDITAL_SETUP')} className="w-full bg-[#0A0F1E] text-white p-12 rounded-[50px] text-left relative overflow-hidden group transition-all hover:scale-[1.01] hover:shadow-2xl animate-in zoom-in-95 duration-300 shadow-blue-900/40">
+                <button onClick={() => setView('EDITAL_SETUP')} className="w-full bg-[#0A0F1E] text-white p-8 rounded-[35px] text-left relative overflow-hidden group transition-all hover:scale-[1.01] hover:shadow-2xl animate-in zoom-in-95 duration-300 shadow-blue-900/40">
                   <div className="absolute top-0 right-0 p-8 opacity-10 scale-150 rotate-12 transition-transform group-hover:scale-[1.8] group-hover:rotate-0">
                     <svg className="w-48 h-48" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                   </div>
                   <div className="max-w-2xl relative z-10">
-                    <div className="mb-10 w-20 h-20 bg-white/10 text-blue-400 rounded-3xl flex items-center justify-center backdrop-blur-md border border-white/10 shadow-inner group-hover:bg-blue-500 group-hover:text-white transition-all">
+                    <div className="mb-10 w-16 h-16 bg-white/10 text-blue-400 rounded-3xl flex items-center justify-center backdrop-blur-md border border-white/10 shadow-inner group-hover:bg-blue-500 group-hover:text-white transition-all">
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
                     </div>
-                    <h2 className="text-6xl font-black mb-4 italic uppercase tracking-tighter leading-none">ATIVAR MODO <span className="text-blue-500 group-hover:text-white transition-colors">edital</span></h2>
+                    <h2 className="text-4xl font-black mb-4 italic uppercase tracking-tighter leading-none">ATIVAR MODO <span className="text-blue-500 group-hover:text-white transition-colors">edital</span></h2>
                     <p className="text-gray-400 font-medium text-lg leading-relaxed mb-10 max-w-lg">
                       Conecte seu conteúdo programático diretamente às funções de IA do app.
                     </p>
-                    <div className="inline-flex items-center gap-4 bg-blue-600 text-white px-10 py-5 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl shadow-blue-900/40 group-hover:bg-white group-hover:text-blue-600 transition-all">
+                    <div className="inline-flex items-center gap-4 bg-blue-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl shadow-blue-900/40 group-hover:bg-white group-hover:text-blue-600 transition-all">
                        CONFIGURAR MEU EDITAL AGORA
                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                     </div>
@@ -189,7 +203,7 @@ const Hub: React.FC<HubProps> = ({
                   <div className="lg:col-span-3">
                     <button 
                       onClick={() => setView('EDITAL_VIEW')}
-                      className="w-full bg-[#0A0F1E] text-white p-8 rounded-[40px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-blue-900/10 border-2 border-blue-600/30"
+                      className="w-full bg-[#0A0F1E] text-white p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-blue-900/10 border-2 border-blue-600/30"
                     >
                       <div className="flex items-center gap-6">
                         <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -211,7 +225,7 @@ const Hub: React.FC<HubProps> = ({
                   <div className="lg:col-span-3">
                     <button 
                       onClick={() => setView('STUDY_CYCLE')}
-                      className="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white p-8 rounded-[40px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-blue-200"
+                      className="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-blue-200"
                     >
                       <div className="flex items-center gap-6">
                         <div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform backdrop-blur-md">
@@ -234,7 +248,7 @@ const Hub: React.FC<HubProps> = ({
 
                 <button 
                   onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('FLASHCARDS'); }} 
-                  className={`p-8 rounded-[40px] text-left transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-none' : 'bg-white border border-gray-100'}`}
+                  className={`p-6 rounded-[30px] text-left transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-none' : 'bg-white border border-gray-100 shadow-sm'}`}
                 >
                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
                     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2v-2" /></svg>
@@ -244,24 +258,15 @@ const Hub: React.FC<HubProps> = ({
                       {flashcardCount} PENDENTES
                     </div>
                   )}
-                  {activeTab === 'EDITAL' && (
-                    <div className="absolute top-8 right-8 bg-blue-600 text-white text-[8px] font-black px-2 py-1 rounded-full tracking-widest uppercase mb-4">MAPA DO EDITAL</div>
-                  )}
                   <h2 className="text-2xl font-black mb-2 italic uppercase">FLASH<span className="text-blue-500">cards</span></h2>
                   <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
                     {activeTab === 'EDITAL' ? 'Conectado ao Edital' : 'Revisão Espaçada'}
                   </p>
-                  
-                  <div className="mt-4 flex items-center gap-2 transform translate-y-20 group-hover:translate-y-0 transition-transform">
-                     <span className="bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-lg">
-                       {activeTab === 'EDITAL' ? 'ABRIR PELO MAPA' : 'ENTRAR NA REVISÃO'}
-                     </span>
-                  </div>
                 </button>
 
                 <button 
                   onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('MATERIALS'); }} 
-                  className={`p-8 rounded-[40px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-gray-100 shadow-sm'}`}
+                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-gray-100 shadow-sm'}`}
                 >
                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
                     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
@@ -274,9 +279,9 @@ const Hub: React.FC<HubProps> = ({
 
                 <button 
                   onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('TDH_QUESTOES'); }} 
-                  className={`p-8 rounded-[40px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-gray-100'}`}
+                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-gray-100 shadow-sm'}`}
                 >
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
                     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
                   </div>
                   <h2 className="text-2xl font-black mb-2 relative z-10 uppercase italic">TDH<span className="text-blue-500">questoes</span></h2>
@@ -287,19 +292,19 @@ const Hub: React.FC<HubProps> = ({
 
                 <button 
                   onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('AI_DIRECT'); }} 
-                  className={`text-white p-8 rounded-[40px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 shadow-2xl ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-blue-900 to-black shadow-blue-900/40' : 'gradient-dark'}`}
+                  className={`text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-100 shadow-2xl ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-blue-900 to-black shadow-blue-900/40' : 'bg-gradient-to-br from-slate-900 to-black'}`}
                 >
                   <div className="mb-8 w-12 h-12 bg-white/10 text-yellow-400 rounded-2xl flex items-center justify-center backdrop-blur-md">
                     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                   </div>
-                  <h2 className="text-3xl font-black mb-2 italic uppercase">AULA DIRETA</h2>
+                  <h2 className="text-3xl font-black mb-2 italic uppercase leading-none">AULA DIRETA</h2>
                   <p className="text-yellow-400/80 text-[10px] font-bold uppercase tracking-widest">{activeTab === 'EDITAL' ? 'Conteúdo do Edital' : 'IA Powered Bizu'}</p>
                 </button>
 
                 <div 
-                  className={`text-white p-8 rounded-[40px] text-left relative overflow-hidden group transition-all animate-in zoom-in-95 duration-300 delay-200 shadow-2xl ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-blue-600 to-blue-800 shadow-blue-900/40' : 'bg-gradient-to-br from-slate-800 to-slate-900'}`}
+                  className={`text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all animate-in zoom-in-95 duration-300 delay-200 shadow-2xl ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-blue-600 to-blue-800 shadow-blue-900/40' : 'bg-gradient-to-br from-slate-800 to-slate-900'}`}
                 >
-                  <div className="mb-8 w-12 h-12 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center backdrop-blur-md border border-blue-500/30">
+                  <div className="mb-6 w-12 h-12 bg-white/10 text-blue-400 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10">
                     <BookOpen className="w-7 h-7" />
                   </div>
                   <h2 className="text-3xl font-black mb-2 italic uppercase leading-none">AULA <span className="text-blue-500">GUIADA</span></h2>
@@ -349,11 +354,24 @@ const Hub: React.FC<HubProps> = ({
                 </div>
 
                 <button 
-                  onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('DYNAMIC_TIMER'); }} 
-                  className={`p-8 rounded-[40px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-150 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-orange-100'}`}
+                  onClick={() => setView('SAVED_GUIDED_LESSONS')} 
+                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-200 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-blue-100 shadow-sm'}`}
                 >
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-500'}`}>
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
+                    <Bookmark className="w-7 h-7" />
+                  </div>
+                  <h2 className="text-2xl font-black mb-2 italic uppercase">AULAS <span className="text-blue-500">salvas</span></h2>
+                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
+                    Biblioteca Offline
+                  </p>
+                </button>
+
+                <button 
+                  onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('DYNAMIC_TIMER'); }} 
+                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-150 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-orange-100'}`}
+                >
+                  <div className={`mb-6 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-500'}`}>
+                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
                   <h2 className="text-3xl font-black mb-2 italic uppercase">BLOCO <span className="text-orange-500">IMUTÁVEL</span></h2>
                   <p className={`text-[10px] font-bold uppercase tracking-widest leading-tight ${activeTab === 'EDITAL' ? 'text-gray-400' : 'text-gray-400'}`}>
@@ -385,17 +403,17 @@ const Hub: React.FC<HubProps> = ({
 
         {activeTab === 'ORGANIZACAO' && (
           <>
-            <button onClick={() => { setTimerMode(TimerMode.POMODORO); setView('TIMER'); }} className="bg-white p-8 rounded-[40px] text-left border border-gray-100 transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300">
+            <button onClick={() => { setTimerMode(TimerMode.POMODORO); setView('TIMER'); }} className="bg-white p-6 rounded-[30px] text-left border border-gray-100 transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300">
               <div className="mb-8 w-12 h-12 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center"><svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
               <h2 className="text-2xl font-black mb-2 italic">POMODORO</h2>
               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Gestão de Tempo</p>
             </button>
-            <button onClick={() => setView('STUDY_PLAN')} className="bg-white p-8 rounded-[40px] text-left border border-gray-100 transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75">
+            <button onClick={() => setView('STUDY_PLAN')} className="bg-white p-6 rounded-[30px] text-left border border-gray-100 transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75">
               <div className="mb-8 w-12 h-12 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center"><svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
               <h2 className="text-2xl font-black mb-2 italic uppercase">CRONOGRAMA</h2>
               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest text-[10px]">Ciclo de Estudo</p>
             </button>
-            <button onClick={() => setView('FOCUS_MODE')} className="gradient-yellow text-white p-8 rounded-[40px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 shadow-yellow-200">
+            <button onClick={() => setView('FOCUS_MODE')} className="gradient-yellow text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 shadow-yellow-200">
               <div className="mb-8 w-12 h-12 bg-white/20 text-white rounded-2xl flex items-center justify-center backdrop-blur-sm"><svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg></div>
               <h2 className="text-2xl font-black mb-2 italic uppercase">MODO FOCO</h2>
               <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Saúde & Blindagem</p>
@@ -405,7 +423,7 @@ const Hub: React.FC<HubProps> = ({
 
         {activeTab === 'RELAXE' && (
           <>
-            <div className="bg-white rounded-[40px] p-10 border border-gray-100 flex flex-col justify-between shadow-sm relative overflow-hidden h-full animate-in zoom-in-95 duration-300 lg:col-span-2">
+            <div className="bg-white rounded-[30px] p-8 border border-gray-100 flex flex-col justify-between shadow-sm relative overflow-hidden h-full animate-in zoom-in-95 duration-300 lg:col-span-2">
                <div>
                   <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2 leading-none">AMBIENTE <span className="text-yellow-400">SONORO</span></h2>
                   <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-10">Controle o Lofi e os ruídos brancos</p>
@@ -420,9 +438,9 @@ const Hub: React.FC<HubProps> = ({
                </div>
             </div>
             
-            <button onClick={() => { setTimerMode(TimerMode.EMERGENCY); setView('TIMER'); }} className="gradient-orange text-white p-8 rounded-[40px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 h-full">
-              <div className="mb-12"><svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div>
-              <h2 className="text-3xl font-black leading-none uppercase italic">EMERGÊNCIA</h2>
+            <button onClick={() => { setTimerMode(TimerMode.EMERGENCY); setView('TIMER'); }} className="gradient-orange text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 h-full">
+              <div className="mb-8"><svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div>
+              <h2 className="text-2xl font-black leading-none uppercase italic">EMERGÊNCIA</h2>
               <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest mt-2">Dê o primeiro passo agora</p>
             </button>
           </>
@@ -432,17 +450,17 @@ const Hub: React.FC<HubProps> = ({
           <div className="lg:col-span-3">
              <button 
                onClick={() => setView('SMART_REVISION')}
-               className="w-full bg-[#0A0F1E] text-white p-12 rounded-[50px] text-left relative overflow-hidden group transition-all hover:scale-[1.01] hover:shadow-2xl animate-in zoom-in-95 duration-300 shadow-indigo-900/40"
+               className="w-full bg-[#0A0F1E] text-white p-8 rounded-[35px] text-left relative overflow-hidden group transition-all hover:scale-[1.01] hover:shadow-2xl animate-in zoom-in-95 duration-300 shadow-indigo-900/40"
              >
                 <div className="max-w-2xl relative z-10">
-                   <div className="mb-10 w-20 h-20 bg-indigo-500 text-white rounded-3xl flex items-center justify-center shadow-xl">
+                   <div className="mb-10 w-16 h-16 bg-indigo-500 text-white rounded-3xl flex items-center justify-center shadow-xl">
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                    </div>
-                   <h2 className="text-6xl font-black mb-4 italic uppercase tracking-tighter leading-none">REVISÃO <span className="text-indigo-400">inteligente</span></h2>
+                   <h2 className="text-4xl font-black mb-4 italic uppercase tracking-tighter leading-none">REVISÃO <span className="text-indigo-400">inteligente</span></h2>
                    <p className="text-gray-400 font-medium text-lg leading-relaxed mb-10 max-w-lg">
                       Acesse seu motor de repetição espaçada e valide o conteúdo do edital com a IA.
                    </p>
-                   <div className="inline-flex items-center gap-4 bg-indigo-600 text-white px-10 py-5 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl transition-all group-hover:bg-white group-hover:text-indigo-600">
+                   <div className="inline-flex items-center gap-4 bg-indigo-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl transition-all group-hover:bg-white group-hover:text-indigo-600">
                       ABRIR PAINEL DE REVISÃO
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                    </div>

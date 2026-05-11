@@ -3,12 +3,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, 
   Maximize2, Minimize2, Move, Share2, Shuffle, LogOut,
-  Highlighter, PenLine, Eraser, Undo2
+  Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import { QuizFolder, Notebook, QuizQuestion } from '../types';
-import ReactMarkdown from 'react-markdown';
+import MarkdownContent from './MarkdownContent';
 import { RichTextEditor } from './RichTextEditor';
 import { MoveToNotebookModal } from './MoveToNotebookModal';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface QuizPlayerProps {
   folder: QuizFolder;
@@ -18,9 +19,10 @@ interface QuizPlayerProps {
   onComplete: (score: number, total: number) => void;
   onUpdateQuestions?: (questions: QuizQuestion[]) => void;
   onMoveQuestion: (questionId: string, sourceFolderId: string, sourceNotebookId: string, targetFolderId: string, targetNotebookId: string) => void;
+  onTriggerGuidedLesson?: (subject: string, topic: string) => void;
 }
 
-const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBack, onComplete, onUpdateQuestions, onMoveQuestion }) => {
+const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBack, onComplete, onUpdateQuestions, onMoveQuestion, onTriggerGuidedLesson }) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>(notebook.questions);
   const initialQuestions = useRef([...notebook.questions]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -33,10 +35,14 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
   const [showCommentary, setShowCommentary] = useState(false);
   const [crossedOut, setCrossedOut] = useState<number[]>([]);
   const [userCommentaryInput, setUserCommentaryInput] = useState('');
+  const [showNoteSection, setShowNoteSection] = useState(false);
+  const [showImageArea, setShowImageArea] = useState(false);
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [undoStack, setUndoStack] = useState<Record<string, string[]>>({});
   const questionTextRef = useRef<HTMLDivElement>(null);
+  const noteSectionRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const saveToUndo = (qId: string, content: string) => {
     setUndoStack(prev => ({
@@ -119,7 +125,61 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
     }
   };
 
+  const handleAddExplanationImage = (imageUrl: string) => {
+    const qIdx = questions.findIndex(q => q.id === currentQ.id);
+    if (qIdx === -1) return;
+    const newQuestions = [...questions];
+    const currentImages = newQuestions[qIdx].explanationImages || [];
+    newQuestions[qIdx] = {
+      ...newQuestions[qIdx],
+      explanationImages: [...currentImages, imageUrl]
+    };
+    setQuestions(newQuestions);
+    onUpdateQuestions?.(newQuestions);
+  };
+
+  const handleRemoveExplanationImage = (imgIdx: number) => {
+    const qIdx = questions.findIndex(q => q.id === currentQ.id);
+    if (qIdx === -1) return;
+    const newQuestions = [...questions];
+    const currentImages = [...(newQuestions[qIdx].explanationImages || [])];
+    currentImages.splice(imgIdx, 1);
+    newQuestions[qIdx] = {
+      ...newQuestions[qIdx],
+      explanationImages: currentImages
+    };
+    setQuestions(newQuestions);
+    onUpdateQuestions?.(newQuestions);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        handleAddExplanationImage(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const currentQ = questions[currentIndex];
+
+  const handleUpdateImageSize = (imgIdx: number, size: string) => {
+    const qIdx = questions.findIndex(q => q.id === currentQ.id);
+    if (qIdx === -1) return;
+    const newQuestions = [...questions];
+    const currentSizes = [...(newQuestions[qIdx].explanationImageSizes || [])];
+    while (currentSizes.length <= imgIdx) currentSizes.push('md');
+    currentSizes[imgIdx] = size;
+    newQuestions[qIdx] = {
+      ...newQuestions[qIdx],
+      explanationImageSizes: currentSizes
+    };
+    setQuestions(newQuestions);
+    onUpdateQuestions?.(newQuestions);
+  };
 
   const toggleQuestionScratch = () => {
     if (questionScratched.includes(currentQ.id)) {
@@ -142,6 +202,38 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
   React.useEffect(() => {
     setUserCommentaryInput(questions[currentIndex]?.userCommentary || '');
   }, [currentIndex, questions]);
+
+  const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState(false);
+  const [correctedAnswer, setCorrectedAnswer] = useState<number>(0);
+  const [correctedExplanation, setCorrectedExplanation] = useState('');
+
+  const handleApplyCorrection = () => {
+    const qIdx = questions.findIndex(q => q.id === currentQ.id);
+    if (qIdx === -1) return;
+
+    const newQuestions = [...questions];
+    const q = newQuestions[qIdx];
+    
+    if (!q.isCorrected) {
+      q.originalExplanation = q.explanation;
+      q.originalCorrectAnswer = q.correctAnswer;
+    }
+    
+    q.explanation = correctedExplanation;
+    q.correctAnswer = correctedAnswer;
+    q.isCorrected = true;
+    
+    setQuestions(newQuestions);
+    onUpdateQuestions?.(newQuestions);
+    setIsCorrectionModalOpen(false);
+  };
+
+  React.useEffect(() => {
+    if (isCorrectionModalOpen && currentQ) {
+      setCorrectedAnswer(currentQ.correctAnswer);
+      setCorrectedExplanation(currentQ.explanation || '');
+    }
+  }, [isCorrectionModalOpen, currentQ]);
 
   const handleSaveUserCommentary = (overrideValue?: string) => {
     const valueToSave = overrideValue !== undefined ? overrideValue : userCommentaryInput;
@@ -554,51 +646,151 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
               </div>
 
               <div className="bg-slate-50 rounded-[40px] p-8 md:p-12 border border-slate-100 shadow-inner mb-8 transition-all">
-                <div className="bg-white border border-slate-100 p-6 md:p-8 rounded-[35px] mb-8 relative shadow-sm group hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shadow-sm">
-                        <FileText className="w-5 h-5" />
+                {showNoteSection && (
+                  <div ref={noteSectionRef} className="bg-white border border-slate-100 p-6 md:p-8 rounded-[35px] mb-8 relative shadow-sm group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">SUA NOTA ESTRATÉGICA</h4>
+                          <p className="text-[9px] font-bold text-blue-500/60 uppercase tracking-tight">Refine seu conhecimento aqui</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setIsNoteExpanded(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-sm"
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                        ABRIR EDITOR
+                      </button>
+                    </div>
+                    
+                    {userCommentaryInput ? (
+                      <div className="text-slate-600 text-[15px] font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2" dangerouslySetInnerHTML={{ __html: userCommentaryInput }} />
+                    ) : (
+                      <div 
+                        onClick={() => setIsNoteExpanded(true)}
+                        className="cursor-pointer py-10 border-2 border-dashed border-slate-100 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-300 hover:text-blue-500 hover:border-blue-200 transition-all"
+                      >
+                         <Brain className="w-8 h-8 opacity-20" />
+                         <p className="font-bold text-xs italic tracking-tight">Nenhuma anotação estratégica ainda. Clique para adicionar.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center font-black text-sm italic shadow-lg shadow-blue-500/20">A</div>
+                    <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest">MAPEAMENTO DA LÓGICA DA QUESTÃO</h4>
+                  </div>
+                  <button 
+                    onClick={() => setIsCorrectionModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all active:scale-95 shadow-sm"
+                  >
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    INDICAR ERRO / CORRIGIR
+                  </button>
+                </div>
+
+                {currentQ.isCorrected && (
+                  <div className="mb-6 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-2xl">
+                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1">Questão Corrigida por Você</p>
+                    <p className="text-amber-600 text-xs font-bold italic">Esta explicação e o gabarito foram editados manualmente para correção.</p>
+                  </div>
+                )}
+
+                {onTriggerGuidedLesson && (
+                  <button 
+                    onClick={() => onTriggerGuidedLesson(currentQ.topic?.includes(':') ? currentQ.topic.split(':')[0] : folder.name, currentQ.topic?.includes(':') ? currentQ.topic.split(':')[1] : (currentQ.topic || notebook.name))}
+                    className="w-full mb-8 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-xl shadow-blue-500/20 active:scale-95"
+                  >
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                        <BookOpen className="w-6 h-6" />
                       </div>
                       <div>
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">SUA NOTA ESTRATÉGICA</h4>
-                        <p className="text-[9px] font-bold text-blue-500/60 uppercase tracking-tight">Refine seu conhecimento aqui</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest opacity-70">Sentiu dificuldade?</p>
+                        <h4 className="font-black text-sm uppercase italic">ACIONAR AULA GUIADA SOBRE ESSE ASSUNTO</h4>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => setIsNoteExpanded(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-sm"
-                    >
-                      <Maximize2 className="w-3.5 h-3.5" />
-                      ABRIR EDITOR
-                    </button>
-                  </div>
-                  
-                  {userCommentaryInput ? (
-                    <div className="text-slate-600 text-[15px] font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2" dangerouslySetInnerHTML={{ __html: userCommentaryInput }} />
-                  ) : (
-                    <div 
-                      onClick={() => setIsNoteExpanded(true)}
-                      className="cursor-pointer py-10 border-2 border-dashed border-slate-100 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-300 hover:text-blue-500 hover:border-blue-200 transition-all"
-                    >
-                       <Brain className="w-8 h-8 opacity-20" />
-                       <p className="font-bold text-xs italic tracking-tight">Nenhuma anotação estratégica ainda. Clique para adicionar.</p>
-                    </div>
-                  )}
-                </div>
+                    <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
 
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center font-black text-sm italic shadow-sm">A</div>
-                  <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest">MAPEAMENTO DA LÓGICA</h4>
-                </div>
-                <div className="text-slate-600 text-[16px] font-medium leading-relaxed space-y-6 prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.explanation }} />
+                <MarkdownContent content={currentQ.explanation} />
+
+                {/* Imagens Adicionais do Usuário */}
+                {(currentQ.explanationImages && currentQ.explanationImages.length > 0) && (
+                  <div className="flex flex-col gap-8 mt-10">
+                    {currentQ.explanationImages.map((img, i) => {
+                      const currentSize = currentQ.explanationImageSizes?.[i] || 'md';
+                      const sizeClasses = {
+                        'sm': 'max-w-[200px]',
+                        'md': 'max-w-md',
+                        'lg': 'max-w-2xl',
+                        'full': 'max-w-full'
+                      }[currentSize as 'sm' | 'md' | 'lg' | 'full'] || 'max-w-md';
+
+                      return (
+                        <div key={i} className={`relative group rounded-[35px] overflow-hidden border-2 border-slate-100 shadow-sm transition-all hover:shadow-xl hover:border-blue-200 mx-auto ${sizeClasses}`}>
+                           <img src={img} alt={`Complemento Visual ${i}`} className="w-full h-auto object-contain bg-white min-h-[100px]" />
+                           
+                           {/* Overlay de Ações */}
+                           <div className="absolute inset-x-0 bottom-0 bg-slate-900/60 backdrop-blur-sm p-4 translate-y-full group-hover:translate-y-0 transition-all flex items-center justify-between">
+                             <div className="flex gap-2">
+                               {['sm', 'md', 'lg', 'full'].map(s => (
+                                 <button
+                                   key={s}
+                                   onClick={() => handleUpdateImageSize(i, s)}
+                                   className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${currentSize === s ? 'bg-blue-500 text-white shadow-lg' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+                                 >
+                                   {s}
+                                 </button>
+                               ))}
+                             </div>
+                             <button 
+                               onClick={() => handleRemoveExplanationImage(i)}
+                               className="p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-xl transition-all active:scale-90"
+                             >
+                               <X className="w-4 h-4" />
+                             </button>
+                           </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Botão de Adição de Mídia */}
+                {showImageArea && (
+                  <div className="mt-10 flex flex-col items-center gap-4">
+                    <label className="flex items-center gap-3 px-10 py-5 bg-white border-2 border-dashed border-blue-100 hover:border-blue-300 text-blue-400 hover:text-blue-600 rounded-[30px] cursor-pointer transition-all active:scale-95 shadow-sm group">
+                      <ImageIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em]">ANEXAR COMPLEMENTO VISUAL</span>
+                      <input 
+                        ref={imageInputRef}
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+                  </div>
+                )}
+                {(showImageArea || (currentQ.explanationImages && currentQ.explanationImages.length > 0)) && (
+                  <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest italic text-center mt-4">Aumente sua retenção com imagens, mapas mentais ou prints.</p>
+                )}
 
                 {currentQ.memoryHint && (
-                  <div className="bg-blue-500/5 p-8 rounded-[35px] border border-blue-500/10 shadow-sm relative overflow-hidden mt-10">
-                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.4em] mb-4 flex items-center gap-3">
-                      <span className="text-xl">🔥</span> BIZU DE MEMÓRIA
+                  <div className="bg-blue-600 p-10 rounded-[45px] border border-blue-500/10 shadow-2xl shadow-blue-900/20 relative overflow-hidden mt-12 group transition-all hover:shadow-blue-900/30">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
+                    <p className="text-[11px] font-black text-white uppercase tracking-[0.5em] mb-6 flex items-center gap-4">
+                      <span className="text-2xl animate-bounce">⚡</span> BIZU DE MEMÓRIA (TDAH FOCUS)
                     </p>
-                    <div className="text-[15px] font-normal text-slate-700 leading-relaxed prose prose-blue max-w-none" dangerouslySetInnerHTML={{ __html: currentQ.memoryHint }} />
+                    <MarkdownContent content={currentQ.memoryHint} isDark />
                   </div>
                 )}
               </div>
@@ -653,6 +845,76 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
           />
         )}
 
+        {/* Modal de Correção de Questão */}
+        <AnimatePresence>
+          {isCorrectionModalOpen && (
+            <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsCorrectionModalOpen(false)}
+                className="absolute inset-0 bg-[#0A0F1E]/80 backdrop-blur-xl"
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl p-8 md:p-12 overflow-hidden"
+              >
+                <div className="flex items-center justify-between mb-10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-200/50">
+                      <AlertCircle className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-black italic uppercase tracking-tighter text-[#0A0F1E]">Corrigir Questão</h2>
+                      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">A IA errou? Indique os dados corretos abaixo.</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsCorrectionModalOpen(false)} className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-8">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 block">Gabarito Correto</label>
+                    <div className="grid grid-cols-5 gap-3">
+                      {['A', 'B', 'C', 'D', 'E'].map((letter, idx) => (
+                        <button
+                          key={letter}
+                          onClick={() => setCorrectedAnswer(idx)}
+                          className={`py-4 rounded-2xl font-black text-xl transition-all border-2 ${correctedAnswer === idx ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-blue-200'}`}
+                        >
+                          {letter}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 block text-center">Explicação Correta (Markdown)</label>
+                    <textarea
+                      value={correctedExplanation}
+                      onChange={(e) => setCorrectedExplanation(e.target.value)}
+                      placeholder="Digite o passo a passo correto aqui..."
+                      className="w-full h-48 bg-slate-50 border-2 border-slate-100 rounded-3xl p-6 font-bold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner resize-none"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleApplyCorrection}
+                    className="w-full bg-gradient-to-r from-[#0A0F1E] to-[#1a2b4d] text-white py-6 rounded-[30px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/10 flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-95 transition-all"
+                  >
+                    APLICAR CORREÇÃO NA BASE <CheckCircle2 className="w-6 h-6" />
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         {isNoteExpanded && (
           <div className="fixed inset-0 z-[1000] bg-slate-900/90 backdrop-blur-md p-6 md:p-12 flex flex-col">
             <div className="flex items-center justify-between mb-8 max-w-5xl mx-auto w-full">
@@ -687,6 +949,69 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                >
                  CONCLUIR E SALVAR
                </button>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Action Buttons Sidebar */}
+        {questions.length > 0 && selectedAnswer !== null && (
+          <div className="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-[250] items-center">
+            <div className="flex flex-col bg-white/100 backdrop-blur-xl p-2.5 rounded-full border border-slate-200 shadow-2xl gap-3">
+              <button 
+                onClick={() => {
+                  setShowNoteSection(!showNoteSection);
+                  if (!showNoteSection) {
+                    setTimeout(() => {
+                      noteSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      setIsNoteExpanded(true);
+                    }, 100);
+                  }
+                }}
+                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative ${showNoteSection ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-100 hover:border-blue-200'}`}
+                title="Alternar Nota Estratégica"
+              >
+                <MessageSquarePlus className="w-6 h-6" />
+                <div className="absolute right-full mr-4 px-3 py-1.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">
+                  {showNoteSection ? 'Ocultar Nota' : 'Nota Estratégica'}
+                </div>
+              </button>
+              <button 
+                onClick={() => {
+                  setShowImageArea(!showImageArea);
+                  if (!showImageArea) {
+                    setTimeout(() => {
+                      imageInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                  }
+                }}
+                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative ${showImageArea ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-100 hover:border-blue-200'}`}
+                title="Alternar Anexo de Imagem"
+              >
+                <ImageIcon className="w-6 h-6" />
+                <div className="absolute right-full mr-4 px-3 py-1.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">
+                  {showImageArea ? 'Ocultar Imagem' : 'Anexar Imagem'}
+                </div>
+              </button>
+              {onTriggerGuidedLesson && (
+                <button 
+                  onClick={() => onTriggerGuidedLesson(currentQ.topic?.includes(':') ? currentQ.topic.split(':')[0] : folder.name, currentQ.topic?.includes(':') ? currentQ.topic.split(':')[1] : (currentQ.topic || notebook.name))}
+                  className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative border border-white/20"
+                  title="Aula Guiada sobre este assunto"
+                >
+                  <BookOpen className="w-6 h-6" />
+                  <div className="absolute right-full mr-4 px-3 py-1.5 bg-indigo-800 text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">
+                    Aula Guiada
+                  </div>
+                </button>
+              )}
+              <div className="w-full h-px bg-slate-100 my-1"></div>
+              <button 
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="w-14 h-14 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all"
+                title="Voltar ao Topo"
+              >
+                <HelpCircle className="w-5 h-5 rotate-180" />
+              </button>
             </div>
           </div>
         )}

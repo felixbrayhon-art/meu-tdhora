@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { SmartRevisionItem, ErrorVaultItem, StudyProfile, StudyPlan } from '../types';
+import MarkdownContent from './MarkdownContent';
+import { SmartRevisionItem, ErrorVaultItem, StudyProfile, StudyPlan, ExplanationStyle } from '../types';
 import { generateMicroThemeValidation, explainStuckTopic, identifyAndProgramRecovery } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
 import ForgettingCurve from './ForgettingCurve';
@@ -11,6 +12,7 @@ interface SmartRevisionViewProps {
   vault: ErrorVaultItem[];
   profile: StudyProfile;
   plan: StudyPlan;
+  explanationStyle?: ExplanationStyle;
   onComplete: (itemId: string, success: boolean) => void;
   onResolveVault: (vaultId: string, recoveryFlashcards?: any[]) => void;
   onBack: () => void;
@@ -21,6 +23,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
   vault, 
   profile, 
   plan,
+  explanationStyle = 'TECNICA',
   onComplete, 
   onResolveVault,
   onBack 
@@ -43,7 +46,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
     setLoading(true);
     setActiveItem(item);
     try {
-      const data = await generateMicroThemeValidation(item.topic, profile);
+      const data = await generateMicroThemeValidation(item.topic, profile, explanationStyle);
       setQuestions(data.questions);
       setCurrentQIdx(0);
       setScore(0);
@@ -62,14 +65,14 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
     try {
       if (vItem.isStuck || (vItem.missedQuestions && vItem.missedQuestions.length > 0)) {
         if (vItem.missedQuestions && vItem.missedQuestions.length > 0) {
-          const data = await identifyAndProgramRecovery(vItem.topic, vItem.missedQuestions, profile);
+          const data = await identifyAndProgramRecovery(vItem.topic, vItem.missedQuestions, profile, explanationStyle);
           setRecoveryPlan(data);
         } else {
           const data = await explainStuckTopic(vItem.topic, profile);
           setExplanation(data);
         }
       } else {
-        const data = await generateMicroThemeValidation(vItem.topic, profile);
+        const data = await generateMicroThemeValidation(vItem.topic, profile, explanationStyle);
         setQuestions(data.questions);
         setCurrentQIdx(0);
         setScore(0);
@@ -258,11 +261,9 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
                 <p className="text-xl font-medium leading-relaxed italic">"{explanation.analogy}"</p>
               </div>
               
-              <div className="prose prose-invert max-w-none">
-                <h3 className="text-purple-400 font-bold uppercase text-[10px] tracking-widest mb-4">Explicação Filtrada</h3>
-                <div className="text-gray-300 text-lg leading-relaxed whitespace-pre-wrap">
-                  {explanation.newExplanation}
-                </div>
+              <div className="max-w-none">
+                <h3 className="text-purple-400 font-bold uppercase text-[10px] tracking-widest mb-6 border-b border-white/10 pb-2">Explicação de Impacto</h3>
+                <MarkdownContent content={explanation.newExplanation} isDark />
               </div>
 
               <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl flex gap-4">

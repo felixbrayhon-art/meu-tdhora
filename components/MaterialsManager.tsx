@@ -16,6 +16,10 @@ interface MaterialsManagerProps {
   onMoveAllQuestions?: (sourceNotebookId: string, sourceFolderId: string, targetNotebookId: string, targetFolderId: string) => void;
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
+  selectedFolderId: string | null;
+  setSelectedFolderId: (id: string | null) => void;
+  selectedNotebookId: string | null;
+  setSelectedNotebookId: (id: string | null) => void;
 }
 
 const MaterialsManager: React.FC<MaterialsManagerProps> = ({ 
@@ -29,10 +33,12 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({
   onDeleteNotebook, 
   onMoveAllQuestions, 
   strategicMode, 
-  editalConfig 
+  editalConfig,
+  selectedFolderId,
+  setSelectedFolderId,
+  selectedNotebookId,
+  setSelectedNotebookId
 }) => {
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
   const [moveAllNotebook, setMoveAllNotebook] = useState<Notebook | null>(null);
   const [isCreating, setIsCreating] = useState<'FOLDER' | 'NOTEBOOK' | null>(null);
   const [newName, setNewName] = useState('');
@@ -254,7 +260,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-10">
+          <div className="flex flex-col gap-4">
             {/* List Subfolders */}
             {currentFolders.map(folder => {
               const totalQuestionsInFolder = folder.notebooks.reduce((acc, n) => acc + n.questions.length, 0);
@@ -262,34 +268,34 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                 <div 
                   key={folder.id} 
                   onClick={() => setSelectedFolderId(folder.id)}
-                  className="bg-white rounded-[50px] p-12 border border-gray-100 hover:shadow-2xl hover:shadow-blue-900/10 transform hover:-translate-y-2 transition-all group cursor-pointer relative overflow-hidden h-full flex flex-col min-h-[300px]"
+                  className="bg-white rounded-[30px] p-6 border border-gray-100 hover:shadow-xl hover:shadow-blue-900/5 transform hover:-translate-x-1 transition-all group cursor-pointer relative flex items-center gap-6"
                 >
-                  <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                     <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                  <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0 group-hover:scale-110 transition-transform">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                   </div>
                   
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-xl font-black uppercase tracking-tighter italic truncate">{folder.name}</h3>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">{folder.notebooks.length} CADERNOS</span>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">{totalQuestionsInFolder} QUESTÕES TOTAIS</span>
+                    </div>
+                  </div>
+
                   {onDeleteFolder && (
-                     <button 
-                       onClick={(e) => { 
-                         e.stopPropagation(); 
-                         if (window.confirm("Deseja realmente apagar esta pasta?")) onDeleteFolder(folder.id); 
-                       }}
-                       className="absolute top-6 right-6 p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all z-10"
-                     >
-                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1.012 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                     </button>
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (window.confirm("Deseja realmente apagar esta pasta?")) onDeleteFolder(folder.id); 
+                      }}
+                      className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1.012 0 00-1-1h-4a1 1.012 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
                   )}
                   
-                  <div className="flex justify-between items-start mb-8 z-10 relative">
-                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
-                    </div>
-                    <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{folder.notebooks.length} CADERNOS</span>
-                  </div>
-                  
-                  <h3 className="text-2xl font-black mb-6 uppercase tracking-tighter leading-none italic flex-1">{folder.name}</h3>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    <span>{totalQuestionsInFolder} QUESTÕES TOTAIS</span>
+                  <div className="text-gray-300 group-hover:text-blue-500 transition-colors">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
                   </div>
                 </div>
               );
@@ -306,49 +312,58 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                 <div 
                   key={notebook.id} 
                   onClick={() => setSelectedNotebookId(notebook.id)}
-                  className="bg-white rounded-[50px] p-12 border border-gray-100 hover:shadow-2xl hover:shadow-orange-900/10 transform hover:-translate-y-2 transition-all group cursor-pointer relative overflow-hidden h-full flex flex-col min-h-[300px]"
+                  className="bg-white rounded-[30px] p-6 border border-gray-100 hover:shadow-xl hover:shadow-orange-900/5 transform hover:-translate-x-1 transition-all group cursor-pointer relative flex items-center gap-6"
                 >
-                  {onDeleteNotebook && selectedFolderId && (
-                    <button 
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        if (window.confirm("Apagar este caderno?")) onDeleteNotebook(selectedFolderId, notebook.id); 
-                      }}
-                      className="absolute top-6 right-6 p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all z-10"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1.012 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                  )}
-                  {onMoveAllQuestions && selectedFolderId && (
-                    <button 
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setMoveAllNotebook(notebook);
-                      }}
-                      className="absolute top-6 left-6 p-3 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all z-10"
-                      title="Mover questões"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                    </button>
-                  )}
-                  
-                  <div className="flex justify-between items-start mb-8">
-                    <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                    </div>
-                    {notebook.summary && <span className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">RESUMO</span>}
+                  <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 shrink-0 group-hover:scale-110 transition-transform">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                   </div>
-                  <h3 className="text-2xl font-black mb-6 uppercase tracking-tighter leading-none italic flex-1">{notebook.name}</h3>
-                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    <span>{notebook.questions.length} QUESTÕES</span>
-                    <span className="text-blue-600">{notebookAccuracy}% ACC</span>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-black uppercase tracking-tighter italic truncate">{notebook.name}</h3>
+                      {notebook.summary && <span className="bg-green-50 text-green-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shrink-0">RESUMO</span>}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">{notebook.questions.length} QUESTÕES</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">{notebookAccuracy}% ACC</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {onMoveAllQuestions && selectedFolderId && (
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setMoveAllNotebook(notebook);
+                        }}
+                        className="p-3 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all"
+                        title="Mover questões"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                      </button>
+                    )}
+                    {onDeleteNotebook && selectedFolderId && (
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          if (window.confirm("Apagar este caderno?")) onDeleteNotebook(selectedFolderId, notebook.id); 
+                        }}
+                        className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1.012 0 00-1-1h-4a1 1.012 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="text-gray-300 group-hover:text-orange-500 transition-colors">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
                   </div>
                 </div>
               );
             })}
 
             {currentFolders.length === 0 && (!selectedFolder || selectedFolder.notebooks.length === 0) && (
-              <div className="col-span-full py-32 text-center border-4 border-dashed border-gray-100 rounded-[50px] bg-gray-50/30">
+              <div className="py-32 text-center border-4 border-dashed border-gray-100 rounded-[50px] bg-gray-50/30">
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
                    <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                 </div>

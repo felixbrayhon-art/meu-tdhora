@@ -1,26 +1,13 @@
 
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
-import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion } from "../types";
-
-const getApiKey = () => {
-  // Use strictly process.env.GEMINI_API_KEY as per platform recommendation
-  // with fallback to import.meta.env for local dev
-  const key = (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined) || 
-              (import.meta as any).env?.VITE_GEMINI_API_KEY;
-              
-  if (!key || key === 'undefined' || key === 'null') {
-    console.warn("Gemini API Key não encontrada!");
-    return '';
-  }
-  return key;
-};
+import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle } from "../types";
 
 const ai = new GoogleGenAI({ 
-  apiKey: getApiKey()
+  apiKey: process.env.GEMINI_API_KEY || ''
 });
 
 const DEFAULT_MODEL = 'gemini-3-flash-preview';
-const PRO_MODEL = 'gemini-3-flash-preview'; // Switched to flash for more reliable extraction speed and quota compatibility
+const PRO_MODEL = 'gemini-3.1-pro-preview'; // Improved precision for extraction tasks
 
 // Custom error class for API issues
 export class AIError extends Error {
@@ -31,16 +18,18 @@ export class AIError extends Error {
 }
 
 const handleAIError = (error: any) => {
-  console.error("AI Error details:", error);
+  console.error("AI Error raw:", error);
   
-  const errorMessage = error?.message || error?.error?.message || String(error);
-  const errorStatus = error?.status || error?.error?.code || (error?.name === 'ApiError' ? error?.status : 0);
+  // Extract error info from different formats the SDK might throw
+  const errorObj = error?.error || error;
+  const errorMessage = errorObj?.message || error?.message || String(error);
+  const errorStatus = errorObj?.code || errorObj?.status || error?.status || 0;
   
-  if (errorStatus === 429 || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+  if (errorStatus === 429 || String(errorStatus) === '429' || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
     throw new AIError("Limite de Cota do Google Gemini atingido. O Google limita o uso gratuito. Aguarde 1 a 2 minutos e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
   }
 
-  if (errorStatus === 503 || errorMessage.includes('503') || errorMessage.includes('high demand') || errorMessage.includes('UNAVAILABLE')) {
+  if (errorStatus === 503 || String(errorStatus) === '503' || errorMessage.includes('503') || errorMessage.includes('high demand') || errorMessage.includes('UNAVAILABLE')) {
     throw new AIError("O servidor da IA está com alta demanda (Erro 503). O aplicativo tentou processar automaticamente, mas o tráfego do Google continua intenso. Por favor, aguarde alguns segundos e tente novamente.", 503, 'UNAVAILABLE');
   }
   
@@ -51,8 +40,8 @@ const handleAIError = (error: any) => {
   throw new AIError(errorMessage || "Erro inesperado ao chamar a API do Gemini. Verifique sua conexão.");
 };
 
-// Helper for calling AI with automatic retries for transient errors (503/500)
-const generateContentWithRetry = async (params: any, maxRetries = 3) => {
+// Helper for calling AI with automatic retries for transient errors (503/500/429)
+const generateContentWithRetry = async (params: any, maxRetries = 5) => {
   let delay = 2000;
   let lastError;
 
@@ -61,21 +50,29 @@ const generateContentWithRetry = async (params: any, maxRetries = 3) => {
       return await ai.models.generateContent(params);
     } catch (error: any) {
       lastError = error;
-      const errorMessage = error?.message || error?.error?.message || "";
-      const errorStatus = error?.status || error?.error?.code || 0;
+      
+      const errorObj = error?.error || error;
+      const errorMessage = errorObj?.message || error?.message || "";
+      const errorStatus = String(errorObj?.code || errorObj?.status || error?.status || "");
       
       const isTransient = 
-        errorStatus === 503 || errorStatus === "503" || 
-        errorStatus === 500 || errorStatus === "500" ||
-        errorStatus === 429 || errorStatus === "429" ||
-        errorMessage.includes('503') || errorMessage.includes('500') || errorMessage.includes('429') ||
-        errorMessage.includes('high demand') || errorMessage.includes('UNAVAILABLE') || 
+        errorStatus === "503" || 
+        errorStatus === "500" ||
+        errorStatus === "429" ||
+        errorMessage.includes('503') || 
+        errorMessage.includes('500') || 
+        errorMessage.includes('429') ||
+        errorMessage.includes('high demand') || 
+        errorMessage.includes('UNAVAILABLE') || 
         errorMessage.includes('RESOURCE_EXHAUSTED');
 
       if (isTransient && i < maxRetries - 1) {
-        const isQuota = errorStatus === 429 || errorStatus === "429" || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED');
-        const retryDelay = isQuota ? 15000 : delay; // Wait longer for quota (15s)
-        console.warn(`IA ocupada ou limite atingido (Tentativa ${i + 1}/${maxRetries}). Tentando novamente em ${retryDelay}ms...`);
+        const isQuota = errorStatus === "429" || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED');
+        // Exponential backoff with jitter
+        const jitter = Math.random() * 1000;
+        const retryDelay = (isQuota ? 15000 : delay) + jitter; 
+        
+        console.warn(`IA ocupada ou limite atingido (Tentativa ${i + 1}/${maxRetries}). Tentando novamente em ${Math.round(retryDelay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
         delay *= 2; 
         continue;
@@ -92,41 +89,36 @@ const getTimeContext = () => {
   return `Contexto Temporal Atual: hoje é ${now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. Horário: ${now.toLocaleTimeString('pt-BR')}.`;
 };
 
-export const generateStudyContent = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR') => {
+export const generateStudyContent = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Explique de forma técnica e objetiva com mapeamento lógico passo a passo.') => {
   const profileContext = profile === 'CONCURSO' 
-    ? "Foco em editais públicos, doutrina pesada, jurisprudência recente e lei seca. Linguagem técnica e formal."
-    : "Foco em ENEM e grandes vestibulares. Relacione com atualidades, use linguagem didática e interdisciplinar.";
+    ? "Foco em editais públicos e lei seca. Linguagem técnica."
+    : "Foco em ENEM e grandes vestibulares. Linguagem didática.";
 
   try {
     const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
-      Gere um DOSSIÊ COMPLETO de estudo sobre "${topic}". Especialmente, gere exatamente ${numQuestions} questões no quiz.
+      Gere um simulado de estudo sobre "${topic}". Especialmente, gere exatamente ${numQuestions} questões no quiz.
       ${profileContext} 
+      Técnica de Estudo: ${technique}.
       
-      REQUISITOS DE CONTEÚDO:
-      1. executiveSummary: Deve ser longo (mínimo 4 parágrafos), detalhado e estruturado.
-      2. deepDive: Uma análise técnica profunda sobre o ponto mais complexo do tema.
-      3. explorationMenu: 3 a 4 tópicos específicos relacionados a este tema para o usuário escolher explorar depois.
-      4. quiz: Em cada questão, use a seguinte ESTRUTURA OBRIGATÓRIA no "explanation" (use Markdown Ricamente):
-         Seja EXAUSTIVO e TÉCNICO. Não seja breve. A explicação DEVE ser uma mini-aula profunda.
-         - **CONCEITO**: Definição, natureza jurídica, distinções primárias e evolução do tema.
-         - **BASE LEGAL**: Citações de leis, artigos, incisos, súmulas ou teorias vigentes com embasamento técnico.
-         - **CLASSIFICAÇÃO, ELEMENTOS E ESPÉCIE**: Categorias detalhadas e componentes estruturais minuciosos.
-         - **REQUISITOS**: Requisitos essenciais para a validade ou ocorrência do tema.
-         - **PEGADINHAS DA FGV (ATENÇÃO!)**: Pontos de ambiguidade que bancas de elite usam para enganar candidatos.
-         - **RESUMO PARA A PROVA**: Tópicos chave densos para fixação estratégica.
-         - **ANÁLISE TÉCNICA DAS ALTERNATIVAS**: Por que a alternativa correta é válida e por que as demais incorretas falharam tecnicamente.
+      INSTRUÇÕES PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES: ${explanationStyle}
+      
+      REQUISITOS (SEJA ULTRA-CONCISO PARA VELOCIDADE):
+      1. executiveSummary: Uma síntese estruturada do tema.
+      2. deepDive: Uma análise técnica sobre o ponto central do tema.
+      3. explorationMenu: 3 tópicos específicos para o usuário escolher explorar depois.
+      4. quiz: Em cada questão, no campo "explanation", siga o estilo acima.
 
-      5. memoryHint (DICA DE MEMORIZAÇÃO): Deve ser de ALTO IMPACTO para usuários com TDAH/ADHD.
-         - Ensine uma forma DEFINITIVA de não errar mais essa questão.
-         - Forneça uma explicação técnica tão esclarecedora que resolva qualquer ambiguidade teórica de forma profunda.
-         - Use mnemônicos potentes, gatilhos visuais, analogias de alto nível ou rimas táticas.
+      5. memoryHint (BIZU DE MEMÓRIA): Gatilho de IMPACTO MÁXIMO para TDAH.
+         - Use mnemônicos inesquecíveis ou analogias visuais absurdas.
+         - Dê uma regra de bolso definitiva para o usuário nunca mais hesitar.
+         - Foque em clareza absoluta e simplicidade radical na decodificação do tema.
       
       6. flashcards: Gere cards que facilitem a memorização ativa.
          - A "answer" deve ser direta, mas pode incluir um pequeno mnemônico entre parênteses para temas complexos.
       
-      Não use emojis excessivos. Use formatação em negrito para termos-chave. Profundidade 10/10. Foco total em aprovação de elite.
+      Não use emojis excessivos. Use formatação em negrito para termos-chave. Use cabeçalhos Markdown (###) para organizar as seções da explicação. Profundidade 10/10. Foco total em aprovação de elite.
       
       ESTRUTURA JSON:
       {
@@ -223,7 +215,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
   }
 };
 
-export const generateExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string) => {
+export const generateExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
   const profileStyle = profile === 'CONCURSO'
     ? "estilo Concursos Públicos de alto nível (FCC/CESPE/FGV), complexas, baseadas em doutrina, jurisprudência e lei seca."
     : "estilo ENEM/FUVEST, baseadas em interpretação, contextualização e conceitos fundamentais.";
@@ -235,37 +227,16 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()} 
       Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E). 
-      Não use emojis. Não use formatação de texto com asteriscos.
+      Não use emojis. Seja extremamente objetivo e rápido na resposta.
       
-      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("explanation") (Use Markdown Ricamente):
-      Seja EXAUSTIVO e TÉCNICO. Não use explicações curtas. A explicação DEVE ser uma mini-aula profunda.
-      ### Conceito
-      Definição, natureza jurídica, distinções primárias e contexto histórico/teórico.
+      INSTRUÇÃO PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES ("explanation"):
+      ${explanationStyle}
       
-      ### Base Legal
-      Citações de leis, artigos, incisos, súmulas ou teorias científicas vigentes com explicação do texto legal.
+      O Mapeamento deve seguir o estilo acima de forma objetiva e clara.
       
-      ### Classificação, elementos e Espécie
-      Categorias detalhadas e componentes estruturais minuciosos.
-      
-      ### Requisitos
-      Requisitos essenciais para a validade ou ocorrência do tema.
-      
-      ### Pegadinhas da FGV (Atenção!)
-      Destaque as armadilhas semânticas onde as bancas costumam enganar o candidato.
-      
-      ### Resumo para a Prova
-      Tópicos curtos mas densos para revisão estratégica.
-      
-      ### Análise Técnica das Alternativas
-      Por que a alternativa correta é válida e por que as demais incorretas falharam tecnicamente (analisadas individualmente).
- 
-      A Dica de Memorização ("memoryHint") DEVE ser de ALTO IMPACTO:
-      - Foque em usuários com TDAH/ADHD.
-      - Ensine uma forma DEFINITIVA e profunda de não errar.
-      - Use gatilhos visuais, mnemônicos absurdos ou histórias que ancorem o conhecimento na memória de longo prazo.
-      
-      Não use emojis excessivos. Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada. Profundidade 10/10. Objetivo: Aprovação de Elite.`,
+      A Dica de Memorização ("memoryHint") DEVE ser um "Bizu de Elite" para TDAH:
+      - Use gatilhos visuais, mnemônicos absurdos ou analogias impactantes.
+      - Ensine uma regra de ouro definitiva para nunca mais esquecer ou confundir este tema.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -318,7 +289,7 @@ export const identifyQuestionCount = async (text: string) => {
   }
 };
 
-export const parsePastedQuestions = async (pastedText: string, profile: StudyProfile = 'VESTIBULAR', batchInfo?: { current: number, total: number }, pastedGabarito?: string) => {
+export const parsePastedQuestions = async (pastedText: string, profile: StudyProfile = 'VESTIBULAR', batchInfo?: { current: number, total: number }, pastedGabarito?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
   const profileStyle = profile === 'CONCURSO'
     ? "estilo Concursos Públicos de alto nível"
     : "estilo ENEM/FUVEST";
@@ -358,7 +329,9 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
       - question: Enunciado integral e limpo da questão.
       - options: Array com exatamente 5 alternativas. Se o original tiver menos, complete com alternativas plausíveis.
       - correctAnswer: Index 0-4 (0=A, 1=B, etc). USE O GABARITO DO TEXTO SE DISPONÍVEL.
-      - explanation: A EXPLICAÇÃO FORNECIDA NO TEXTO (se disponível no texto colado logo após a questão ou no fim da lista). Se o texto original não tiver comentário, gere você mesmo uma explicação técnica e estruturada rica em markdown.
+      - explanation: A EXPLICAÇÃO FORNECIDA NO TEXTO (se disponível no texto colado logo após a questão ou no fim da lista). Se o texto original não tiver comentário, use a seguinte instrução para gerar você mesmo uma explicação técnica e estruturada rica em markdown:
+      ${explanationStyle}
+      
       - memoryHint: Gatilho mental TDAH (mnemônico ou analogia visual) para nunca mais esquecer o conceito.
 
       TEXTO PARA ANALISAR:
@@ -545,7 +518,7 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
   }
 };
 
-export const generateMicroThemeValidation = async (topic: string, profile: StudyProfile = 'VESTIBULAR') => {
+export const generateMicroThemeValidation = async (topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
   const profileStyle = profile === 'CONCURSO'
     ? "Foco em lei seca, doutrina e jurisprudência nível concurso."
     : "Foco em conceitos fundamentais do ENEM/Vestibular.";
@@ -563,16 +536,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
       - Múltipla escolha (A a D).
       - Linguagem direta para cérebro TDAH.
       
-      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("explanation") (Use Markdown Ricamente):
-      Seja EXAUSTIVO e TÉCNICO. Não seja breve. Desconstrua cada alternativa individualmente.
-      - **CONCEITO E DEFINIÇÃO**: O que é, natureza jurídica e fundamentos.
-      - **BASE LEGAL/CIENTÍFICA ATUAL**: Citações e explicações técnicas.
-      - **POR QUE A LETRA ESTÁ CORRETA?** e **POR QUE AS OUTRAS ESTÃO ERRADAS?** (Analise cada uma separadamente).
-      - **REQUISITOS/ELEMENTOS**: Noções essenciais detalhadas.
-      - **CLASSIFICAÇÕES/ESPÉCIES** (analise as categorias minuciosamente).
-      - **PEGADINHA DE PROVA**: Onde a banca tenta ludibriar o candidato.
-      - **RESUMO RÁPIDO** e **DICA FINAL**: Pontos de elite para não esquecer.
-      - VISUAL: Negrito em conceitos-chave.
+      INSTRUÇÕES PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES: ${explanationStyle}
       
       A Dica de Memorização ("memoryHint") DEVE ser um ensinamento de ALTO IMPACTO que esclarece o assunto de forma definitiva e profunda. Mostre um atalho mental ou uma explicação tão original que impedirá o usuário de errar questões semelhantes no futuro.
       
@@ -727,7 +691,7 @@ export const optimizeStudyPlan = async (
   }
 };
 
-export const identifyAndProgramRecovery = async (topic: string, missedQuestions: QuizQuestion[], profile: StudyProfile = 'VESTIBULAR') => {
+export const identifyAndProgramRecovery = async (topic: string, missedQuestions: QuizQuestion[], profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
   const questionsData = missedQuestions.map(q => ({
     question: q.question,
     userAnswer: q.options[q.userAnswer ?? -1] || 'Não respondida',
@@ -748,19 +712,8 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
       TAREFA:
       1. DIAGNÓSTICO: Identifique o padrão de erro.
       2. PLANO DE RECUPERAÇÃO: Sugira 3 passos imediatos.
-      3. QUESTÕES DE CONTRAGOLPE: Gere 3 novas questões focadas nos pontos de falha.
+      3. QUESTÕES DE CONTRAGOLPE: Gere 3 novas questões focadas nos pontos de falha. Use RIGOROSAMENTE a seguinte instrução para o campo "explanation": ${explanationStyle}
       4. FLASHCARDS DE RESGATE: Gere 3 flashcards.
-      
-      ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("explanation") nas questões (Use Markdown Ricamente):
-      Separe rigorosamente cada tópico com DUAS quebras de linha (parágrafos distintos) e use listas com marcadores sempre que enumerar itens. A explicação DEVE ter um espaçamento excelente e ser muito limpa visualmente.
-      - **CONCEITO E DEFINIÇÃO**: Natureza jurídica e distinções.
-      - **BASE LEGAL ATUAL**.
-      - **POR QUE A LETRA ESTÁ CORRETA?** e **POR QUE AS OUTRAS ESTÃO ERRADAS?**
-      - **REQUISITOS/ELEMENTOS** essenciais (use marcadores/bullet points).
-      - **CLASSIFICAÇÕES/ESPÉCIES** (use marcadores).
-      - **PEGADINHA DE PROVA:** Onde a banca costuma atacar.
-      - **RESUMO PRA PROVA** e **DICA FINAL** (use marcadores).
-      - VISUAL: Negrito em termos-chave.
       
       A Dica de Memorização ("memoryHint") nas questões DEVE ser uma explicação de alta intensidade que ensine uma forma definitiva de NÃO ERRAR mais. Mostre ao cérebro do usuário o caminho mais lógico (ou absurdo) para que o conhecimento fique preso para sempre na memória. Use mnemônicos, gatilhos visuais, rimas ou histórias inesquecíveis.
       
@@ -856,14 +809,16 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
 
 export const getDailyBibleMotivation = async (): Promise<string> => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
-      contents: `${getTimeContext()}
+      contents: [
+        { role: 'user', parts: [{ text: `${getTimeContext()}
       Gere uma passagem curta e motivacional da Bíblia totalmente focada para um estudante com TDAH (foco, superação, ansiedade, perseverança).
       A linguagem deve ser inspiradora e focada no esforço, na superação e na esperança.
       Adicione uma reflexão rápida e pessoal de máximo 30 palavras para o estudante focar no dia de hoje.
       O formato deve ser: "Passagem (Capítulo:Versículo) - Reflexão curta."
-      NÃO use emojis. NÃO use formatação com asteriscos.`,
+      NÃO use emojis. NÃO use formatação com asteriscos.` }] }
+      ],
     });
     return response.text?.trim() || "Tudo posso naquele que me fortalece. - Reflexão: Confie no seu processo e mantenha a calma.";
   } catch (error) {
@@ -884,7 +839,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
   };
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       Você é um Engenheiro de Aprendizagem Especialista em Ciclos de Estudo para TDAH.
@@ -934,13 +889,13 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
   }
 };
 
-export const generateGuidedLesson = async (subject: string, topic: string, profile: StudyProfile = 'VESTIBULAR') => {
+export const generateGuidedLesson = async (subject: string, topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
   const profileContext = profile === 'CONCURSO' 
     ? "Foco em editais públicos, doutrina e lei seca. Linguagem técnica mas narrativa."
     : "Foco em ENEM e grandes vestibulares. Linguagem didática e interdisciplinar.";
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
       Gere uma AULA GUIADA (Narrativa Contínua) sobre o tema "${topic}" da matéria "${subject}".
@@ -962,7 +917,6 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
       - Divida em blocos pequenos e impactantes.
       - O fluxo deve ser lógico: História -> Conceito -> Pergunta -> Resposta -> Associação.
       - Não use emojis.
-      - Gere também 3 questões de fixação para o final.
       
       Retorne em JSON rigoroso.`,
       config: {
@@ -983,23 +937,9 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
                 },
                 required: ["type", "content"]
               }
-            },
-            quiz: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  question: { type: Type.STRING },
-                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  correctAnswer: { type: Type.INTEGER },
-                  explanation: { type: Type.STRING },
-                  memoryHint: { type: Type.STRING }
-                },
-                required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
-              }
             }
           },
-          required: ["id", "topic", "steps", "quiz"]
+          required: ["id", "topic", "steps"]
         }
       }
     });

@@ -17,6 +17,10 @@ interface FlashcardViewProps {
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
   onReviewBatchComplete?: (folderName: string, count: number) => void;
+  selectedFolderId: string | null;
+  setSelectedFolderId: (id: string | null) => void;
+  viewMode: ManagedView;
+  setViewMode: (view: ManagedView) => void;
 }
 
 type ManagedView = 'FOLDERS' | 'FOLDER_DETAIL' | 'REVIEW';
@@ -30,10 +34,12 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
   studyProfile,
   strategicMode,
   editalConfig,
-  onReviewBatchComplete
+  onReviewBatchComplete,
+  selectedFolderId,
+  setSelectedFolderId,
+  viewMode,
+  setViewMode
 }) => {
-  const [viewMode, setViewMode] = useState<ManagedView>('FOLDERS');
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
@@ -233,7 +239,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
   if (isGeneratingAI) return <LoadingFish message="PROCESSANDO CONHECIMENTO..." submessage="Sua rede neural está sendo moldada pela IA de elite" />;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#0A0F1E] text-white selection:bg-orange-500/30 overflow-y-auto font-sans">
+    <div className="relative z-10 bg-[#0A0F1E] text-white selection:bg-orange-500/30 font-sans min-h-[80vh] rounded-[40px] shadow-2xl overflow-hidden border border-white/5">
       <div className="w-full max-w-5xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-10 duration-700">
         <AnimatePresence mode="wait">
           

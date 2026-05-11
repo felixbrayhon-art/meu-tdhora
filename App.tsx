@@ -24,6 +24,9 @@ import SmartRevisionView from './components/SmartRevisionView';
 import SocialModule from './components/SocialModule';
 import StudyCycleView from './components/StudyCycleView';
 import GuidedLessonView from './components/GuidedLessonView';
+import PerformanceView from './components/PerformanceView';
+import Sidebar from './components/Sidebar';
+import SavedGuidedLessonsView from './components/SavedGuidedLessonsView';
 
 const LOFI_RELAX_URL = "https://stream.zeno.fm/0r0xa792kwzuv"; 
 const MPB_LOFI_URL = "https://stream.zeno.fm/f978v6v6h0huv";
@@ -74,7 +77,7 @@ const App: React.FC = () => {
   });
   
   const [activeNotebookInfo, setActiveNotebookInfo] = useState<{folderId: string, notebookId: string} | null>(null);
-  const [guidedLessonData, setGuidedLessonData] = useState<{ subject: string, topic: string } | null>(null);
+  const [guidedLessonData, setGuidedLessonData] = useState<{ subject: string, topic: string, initialLesson?: any } | null>(null);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [history, setHistory] = useState<DailyHistory>(() => {
@@ -114,7 +117,8 @@ const App: React.FC = () => {
       coins: 0,
       streak: 0,
       totalDaysStudied: 0,
-      studyProfile: undefined
+      studyProfile: undefined,
+      explanationStyle: 'Explique de forma técnica e exaustiva com mapeamento lógico passo a passo.'
     };
   });
 
@@ -157,6 +161,12 @@ const App: React.FC = () => {
 
   const [prefillAI, setPrefillAI] = useState<{topic: string, autoStart: boolean} | null>(null);
   const [prefillQuiz, setPrefillQuiz] = useState<string | null>(null);
+
+  // States for Sidebar Navigation
+  const [materialsSelectedFolderId, setMaterialsSelectedFolderId] = useState<string | null>(null);
+  const [materialsSelectedNotebookId, setMaterialsSelectedNotebookId] = useState<string | null>(null);
+  const [flashcardsSelectedFolderId, setFlashcardsSelectedFolderId] = useState<string | null>(null);
+  const [flashcardsViewMode, setFlashcardsViewMode] = useState<'FOLDERS' | 'FOLDER_DETAIL' | 'REVIEW'>('FOLDERS');
 
   // Authentication and Data Loading
   useEffect(() => {
@@ -721,7 +731,15 @@ const App: React.FC = () => {
   };
 
   if (isInitializing) return <SplashScreen onComplete={() => setIsInitializing(false)} />;
-  if (!stats.studyProfile) return <ProfileSelection onSelect={(p) => setStats(prev => ({ ...prev, studyProfile: p }))} />;
+  if (!stats.studyProfile) return (
+    <ProfileSelection onSelect={(p) => {
+      const defaultStyles = {
+        'VESTIBULAR': 'Explique de forma didática e interdisciplinar, como nos grandes vestibulares. Use analogias com a vida real e foque na base do conhecimento.',
+        'CONCURSO': 'Explique de forma exaustiva, técnica e analítica. Use cabeçalhos para Passo a Passo, Embasamento Legal, Por que a certa está certa e por que as outras estão erradas.'
+      };
+      setStats(prev => ({ ...prev, studyProfile: p, explanationStyle: defaultStyles[p] }));
+    }} />
+  );
 
   const formatMiniTime = (s: number) => {
     const mins = Math.floor(s / 60);
@@ -730,60 +748,88 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#0A0F1E] pb-32">
-      <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop />
-      <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop />
-      <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop />
+    <div className="flex h-screen bg-[#FDFBF7] text-[#0A0F1E] overflow-hidden">
+      <div className="hidden lg:block shrink-0">
+        <Sidebar 
+          currentView={currentView}
+          setView={(v) => { 
+            setCurrentView(v); 
+            if (v === 'MATERIALS') { setMaterialsSelectedFolderId(null); setMaterialsSelectedNotebookId(null); }
+            if (v === 'FLASHCARDS') { setFlashcardsSelectedFolderId(null); setFlashcardsViewMode('FOLDERS'); }
+          }}
+          quizFolders={folders}
+          flashcardFolders={flashcardFolders}
+          stats={stats}
+          onSelectNotebook={(fid, nid) => {
+            setMaterialsSelectedFolderId(fid);
+            setMaterialsSelectedNotebookId(nid);
+            setCurrentView('MATERIALS');
+          }}
+          onSelectFlashcardFolder={(fid) => {
+            setFlashcardsSelectedFolderId(fid);
+            setFlashcardsViewMode('FOLDER_DETAIL');
+            setCurrentView('FLASHCARDS');
+          }}
+        />
+      </div>
 
-      <Header 
-        stats={stats} 
-        onProfileClick={() => setCurrentView('PROFILE')} 
-        onLogoClick={() => setCurrentView('HUB')} 
-        onRevisionClick={() => setCurrentView('SMART_REVISION')}
-        onSocialClick={() => setCurrentView('SOCIAL_MODULE')}
-        isAIEnabled={isAIEnabled}
-      />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        <header className="shrink-0 z-50">
+          <Header 
+            stats={stats} 
+            onProfileClick={() => setCurrentView('PROFILE')} 
+            onLogoClick={() => setCurrentView('HUB')} 
+            onRevisionClick={() => setCurrentView('SMART_REVISION')}
+            onSocialClick={() => setCurrentView('SOCIAL_MODULE')}
+            isAIEnabled={isAIEnabled}
+          />
+        </header>
 
-      {showGlobalBar && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[150] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500">
-          <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl rounded-[35px] p-2 flex items-center justify-between gap-3 relative">
-            <button 
-              onClick={handleCloseGlobalBar}
-              className="absolute -top-3 -right-3 w-8 h-8 bg-white shadow-md border border-gray-100 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 transition-all hover:scale-110 z-20"
-              title="Parar atividades e fechar"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
+        <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+          <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop />
+          <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop />
+          <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop />
 
-            <div className="flex items-center gap-1 bg-gray-50/50 p-1 rounded-[25px]">
-              <button onClick={() => setActiveChannel(activeChannel === 'RELAX' ? null : 'RELAX')} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${activeChannel === 'RELAX' ? 'bg-yellow-400 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`} title="Lofi Relax">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" /></svg>
-              </button>
-              <button onClick={() => setIsPlayingRain(!isPlayingRain)} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isPlayingRain ? 'bg-blue-500 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`} title="Chuva de Fundo">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
-              </button>
-            </div>
-
-            <div className="flex-1 flex items-center justify-center gap-4 bg-gray-50/50 p-1 rounded-[25px]">
-              <button onClick={() => setCurrentView('TIMER')} className="flex flex-col items-center hover:opacity-70 transition-opacity">
-                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">{timerMode}</span>
-                <span className="text-xl font-black tabular-nums leading-none">{formatMiniTime(globalTimerSeconds)}</span>
-              </button>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setGlobalTimerActive(!globalTimerActive)} className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 ${globalTimerActive ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
-                  {globalTimerActive ? <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg> : <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>}
+          {showGlobalBar && (
+            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[150] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500">
+              <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl rounded-[35px] p-2 flex items-center justify-between gap-3 relative">
+                <button 
+                  onClick={handleCloseGlobalBar}
+                  className="absolute -top-3 -right-3 w-8 h-8 bg-white shadow-md border border-gray-100 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 transition-all hover:scale-110 z-20"
+                  title="Parar atividades e fechar"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
+
+                <div className="flex items-center gap-1 bg-gray-50/50 p-1 rounded-[25px]">
+                  <button onClick={() => setActiveChannel(activeChannel === 'RELAX' ? null : 'RELAX')} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${activeChannel === 'RELAX' ? 'bg-yellow-400 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`} title="Lofi Relax">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" /></svg>
+                  </button>
+                  <button onClick={() => setIsPlayingRain(!isPlayingRain)} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isPlayingRain ? 'bg-blue-500 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`} title="Chuva de Fundo">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                  </button>
+                </div>
+
+                <div className="flex-1 flex items-center justify-center gap-4 bg-gray-50/50 p-1 rounded-[25px]">
+                  <button onClick={() => setCurrentView('TIMER')} className="flex flex-col items-center hover:opacity-70 transition-opacity">
+                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">{timerMode}</span>
+                    <span className="text-xl font-black tabular-nums leading-none">{formatMiniTime(globalTimerSeconds)}</span>
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setGlobalTimerActive(!globalTimerActive)} className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 ${globalTimerActive ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
+                      {globalTimerActive ? <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg> : <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pr-2">
+                  <input type="range" min="0" max="1" step="0.01" value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} className="w-12 h-1 accent-yellow-400 hidden sm:block opacity-40 hover:opacity-100 transition-opacity" />
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="pr-2">
-              <input type="range" min="0" max="1" step="0.01" value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} className="w-12 h-1 accent-yellow-400 hidden sm:block opacity-40 hover:opacity-100 transition-opacity" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      <main className="max-w-[1600px] mx-auto px-4 py-8 relative">
+          <main className="max-w-[1400px] mx-auto px-4 py-8 relative">
         {currentView === 'HUB' && (
           <Hub 
             setView={setCurrentView} 
@@ -802,6 +848,9 @@ const App: React.FC = () => {
             user={user}
             onLogin={handleLogin}
             isSyncing={isSyncing}
+            attempts={attempts}
+            folders={folders}
+            smartSystem={smartSystem}
           />
         )}
         
@@ -823,6 +872,7 @@ const App: React.FC = () => {
             folders={folders} 
             onSaveToNotebook={handleSaveToNotebook} 
             studyProfile={stats.studyProfile!} 
+            explanationStyle={stats.explanationStyle}
             onNewContent={(c) => {
               const cards = c.flashcards.map((f:any) => ({id: Math.random().toString(36).substr(2,9), ...f, nextReview: Date.now(), interval: 0, easeFactor: 2.5, reviewsCount: 0}));
               setFlashcards(prev => [...prev, ...cards]);
@@ -854,6 +904,10 @@ const App: React.FC = () => {
               const mappedSubject = getSubjectForTopic(folderName);
               if (mappedSubject) updateHeat(mappedSubject, count);
             }}
+            selectedFolderId={flashcardsSelectedFolderId}
+            setSelectedFolderId={setFlashcardsSelectedFolderId}
+            viewMode={flashcardsViewMode}
+            setViewMode={setFlashcardsViewMode}
           />
         )}
         {currentView === 'TDH_QUESTOES' && (
@@ -862,6 +916,7 @@ const App: React.FC = () => {
             folders={folders} 
             onSaveToNotebook={handleSaveToNotebook} 
             studyProfile={stats.studyProfile!} 
+            explanationStyle={stats.explanationStyle}
             prefill={prefillQuiz}
             onConsumedPrefill={() => setPrefillQuiz(null)}
             strategicMode={strategicMode}
@@ -872,6 +927,10 @@ const App: React.FC = () => {
                  logErrorToVault(topic, subject, missed);
                }
                if (strategicMode) scheduleRevision(topic, subject);
+            }}
+            onTriggerGuidedLesson={(subject, topic) => {
+              setGuidedLessonData({ subject, topic });
+              setCurrentView('GUIDED_LESSON');
             }}
           />
         )}
@@ -888,6 +947,10 @@ const App: React.FC = () => {
             onMoveAllQuestions={handleMoveAllQuestions}
             strategicMode={strategicMode}
             editalConfig={editalConfig}
+            selectedFolderId={materialsSelectedFolderId}
+            setSelectedFolderId={setMaterialsSelectedFolderId}
+            selectedNotebookId={materialsSelectedNotebookId}
+            setSelectedNotebookId={setMaterialsSelectedNotebookId}
           />
         )}
         {currentView === 'QUIZ_PLAYER' && activeNotebookInfo && (
@@ -898,6 +961,10 @@ const App: React.FC = () => {
              onBack={() => setCurrentView('MATERIALS')} 
              onUpdateQuestions={(qs) => handleUpdateQuestions(activeNotebookInfo.folderId, activeNotebookInfo.notebookId, qs)}
              onMoveQuestion={handleMoveQuestion}
+             onTriggerGuidedLesson={(subject, topic) => {
+               setGuidedLessonData({ subject, topic });
+               setCurrentView('GUIDED_LESSON');
+             }}
              onComplete={(score, total) => { 
                 setAttempts(prev => [...prev, { folderId: activeNotebookInfo.folderId, notebookId: activeNotebookInfo.notebookId, date: Date.now(), score, total }]); 
                 addXP(score * 50); 
@@ -1038,12 +1105,29 @@ const App: React.FC = () => {
         )}
         {currentView === 'COMMUNITY' && <CommunityView activities={activities} onBack={() => setCurrentView('HUB')} onPostManual={handleManualPost} />}
         {currentView === 'FISH_CATALOG' && <FishCatalog onBack={() => setCurrentView('HUB')} />}
+        {currentView === 'PERFORMANCE' && (
+          <PerformanceView 
+            attempts={attempts}
+            folders={folders}
+            smartSystem={smartSystem}
+            stats={stats}
+            onBack={() => setCurrentView('HUB')}
+          />
+        )}
         {currentView === 'GUIDED_LESSON' && guidedLessonData && (
           <GuidedLessonView 
             subject={guidedLessonData.subject}
             topic={guidedLessonData.topic} 
             profile={stats.studyProfile || 'VESTIBULAR'} 
-            onBack={() => setCurrentView('HUB')}
+            explanationStyle={stats.explanationStyle}
+            initialLesson={guidedLessonData.initialLesson}
+            onBack={() => {
+              if (guidedLessonData.initialLesson) {
+                setCurrentView('SAVED_GUIDED_LESSONS');
+              } else {
+                setCurrentView('HUB');
+              }
+            }}
             onComplete={(score) => {
               addCoins(score * 10);
               addXP(score * 20);
@@ -1051,7 +1135,17 @@ const App: React.FC = () => {
             }}
           />
         )}
-      </main>
+        {currentView === 'SAVED_GUIDED_LESSONS' && (
+          <SavedGuidedLessonsView 
+            onOpenLesson={(subject, topic, lesson) => {
+              setGuidedLessonData({ subject, topic, initialLesson: lesson });
+              setCurrentView('GUIDED_LESSON');
+            }}
+          />
+        )}
+        </main>
+      </div>
+     </div>
 
       <FishCompanion studyProfile={stats.studyProfile} />
     </div>

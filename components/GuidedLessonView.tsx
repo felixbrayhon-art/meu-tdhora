@@ -1,36 +1,134 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Play, Pause, RotateCcw, Brain, CheckCircle2, ChevronRight, BookOpen } from 'lucide-react';
-import { GuidedLesson, GuidedLessonStep, StudyProfile, QuizQuestion } from '../types';
+import { ChevronLeft, Play, Pause, RotateCcw, Brain, CheckCircle2, ChevronRight, BookOpen, Download, Bookmark, BookmarkCheck } from 'lucide-react';
+import { GuidedLesson, GuidedLessonStep, StudyProfile, ExplanationStyle, SavedGuidedLesson } from '../types';
 import { generateGuidedLesson } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
-import QuizPlayer from './QuizPlayer';
+import { jsPDF } from 'jspdf';
 
 interface GuidedLessonViewProps {
   subject: string;
   topic: string;
   profile: StudyProfile;
+  explanationStyle?: ExplanationStyle;
   onBack: () => void;
   onComplete: (score: number) => void;
+  initialLesson?: GuidedLesson; // For viewing saved lessons offline
 }
 
-const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, profile, onBack, onComplete }) => {
-  const [lesson, setLesson] = useState<GuidedLesson | null>(null);
-  const [loading, setLoading] = useState(true);
+const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ 
+  subject, 
+  topic, 
+  profile, 
+  explanationStyle = 'TECNICA',
+  onBack, 
+  onComplete,
+  initialLesson
+}) => {
+  const [lesson, setLesson] = useState<GuidedLesson | null>(initialLesson || null);
+  const [loading, setLoading] = useState(!initialLesson);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [displayedSteps, setDisplayedSteps] = useState<GuidedLessonStep[]>([]);
   const [isPaused, setIsPaused] = useState(false);
-  const [showQuiz, setShowQuiz] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Check if current lesson is already saved
+    const saved = localStorage.getItem('saved_guided_lessons');
+    if (saved) {
+      const parsed: SavedGuidedLesson[] = JSON.parse(saved);
+      const exists = parsed.some(l => l.topic === topic && l.subject === subject);
+      setIsSaved(exists);
+    }
+  }, [topic, subject]);
+
+  const toggleSaveLesson = () => {
+    if (!lesson) return;
+
+    const saved = localStorage.getItem('saved_guided_lessons');
+    let parsed: SavedGuidedLesson[] = saved ? JSON.parse(saved) : [];
+
+    if (isSaved) {
+      // Remove
+      parsed = parsed.filter(l => !(l.topic === topic && l.subject === subject));
+      setIsSaved(false);
+    } else {
+      // Add
+      const newSaved: SavedGuidedLesson = {
+        id: Math.random().toString(36).substr(2, 9),
+        subject,
+        topic,
+        lesson: { ...lesson, subject }, // Include subject in lesson object too
+        savedAt: Date.now()
+      };
+      parsed.push(newSaved);
+      setIsSaved(true);
+    }
+
+    localStorage.setItem('saved_guided_lessons', JSON.stringify(parsed));
+  };
+
+  const downloadPDF = () => {
+    if (!lesson) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const maxWidth = pageWidth - margin * 2;
+    let yPosition = 30;
+
+    // Title
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Aula Guiada: ${topic}`, margin, yPosition);
+    yPosition += 10;
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Assunto: ${subject}`, margin, yPosition);
+    yPosition += 20;
+
+    // Content
+    lesson.steps.forEach((step, index) => {
+      doc.setFontSize(12);
+      
+      // Handle page overflow
+      if (yPosition > doc.internal.pageSize.getHeight() - 40) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      const typeLabel = step.type === 'CONCEPT' ? 'CONCEITO: ' : 
+                        step.type === 'ANALOGY' ? 'ANALOGIA: ' : 
+                        step.type === 'REINFORCEMENT' ? 'REFORÇO: ' : '';
+      
+      if (typeLabel) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(typeLabel, margin, yPosition);
+        yPosition += 7;
+      }
+
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(step.content, maxWidth);
+      doc.text(lines, margin, yPosition);
+      yPosition += (lines.length * 7) + 10;
+    });
+
+    // Save PDF
+    doc.save(`Aula_Guiada_${topic.replace(/\s+/g, '_')}.pdf`);
+  };
+
+  useEffect(() => {
+    if (initialLesson) return;
+    
     const fetchLesson = async () => {
       try {
         setLoading(true);
-        const data = await generateGuidedLesson(subject, topic, profile);
+        const data = await generateGuidedLesson(subject, topic, profile, explanationStyle);
         setLesson(data);
         setError(null);
       } catch (err: any) {
@@ -40,10 +138,10 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
       }
     };
     fetchLesson();
-  }, [subject, topic, profile]);
+  }, [subject, topic, profile, explanationStyle, initialLesson]);
 
   useEffect(() => {
-    if (!lesson || isPaused || showQuiz) return;
+    if (!lesson || isPaused) return;
 
     if (currentStepIndex < lesson.steps.length) {
       const step = lesson.steps[currentStepIndex];
@@ -61,11 +159,8 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
       }, baseDelay + typePause);
 
       return () => clearTimeout(timer);
-    } else if (currentStepIndex === lesson.steps.length && lesson.steps.length > 0) {
-      const timer = setTimeout(() => setShowQuiz(true), 3000);
-      return () => clearTimeout(timer);
     }
-  }, [currentStepIndex, lesson, isPaused, showQuiz]);
+  }, [currentStepIndex, lesson, isPaused]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -101,30 +196,6 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
     );
   }
 
-  if (showQuiz && lesson?.quiz) {
-    return (
-      <QuizPlayer 
-        folder={{ 
-          id: 'guided', 
-          name: 'Aula Guiada', 
-          topic: lesson.topic, 
-          notebooks: [], 
-          createdAt: Date.now() 
-        }} 
-        notebook={{ 
-          id: 'guided-nb', 
-          name: lesson.topic, 
-          questions: lesson.quiz.map(q => ({ ...q, id: Math.random().toString(36).substr(2,9) })), 
-          createdAt: Date.now() 
-        }}
-        folders={[]}
-        onComplete={(score) => onComplete(score)}
-        onBack={() => setShowQuiz(false)}
-        onMoveQuestion={() => {}}
-      />
-    );
-  }
-
   return (
     <div className="fixed inset-0 z-[200] flex flex-col h-full bg-[#0A0F1E] text-slate-100 font-sans selection:bg-blue-500/30 overflow-hidden">
       {/* Header Imersivo */}
@@ -139,12 +210,28 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
           </div>
           <h1 className="text-lg font-black uppercase italic tracking-tighter text-white">{subject} • {topic}</h1>
         </div>
-        <button 
-          onClick={() => setIsPaused(!isPaused)}
-          className={`p-3 rounded-2xl transition-all shadow-xl active:scale-90 ${isPaused ? 'bg-orange-500 text-white animate-pulse' : 'bg-white/10 text-white/50 hover:text-white'}`}
-        >
-          {isPaused ? <Play className="w-7 h-7" /> : <Pause className="w-7 h-7" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={toggleSaveLesson}
+            className={`p-3 rounded-2xl transition-all active:scale-90 ${isSaved ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/50 hover:text-white hover:bg-white/20'}`}
+            title={isSaved ? "Salvo no App" : "Salvar no App (Offline)"}
+          >
+            {isSaved ? <BookmarkCheck className="w-7 h-7" /> : <Bookmark className="w-7 h-7" />}
+          </button>
+          <button 
+            onClick={downloadPDF}
+            className="p-3 bg-white/10 text-white/50 hover:text-white hover:bg-white/20 rounded-2xl transition-all active:scale-90"
+            title="Baixar em PDF"
+          >
+            <Download className="w-7 h-7" />
+          </button>
+          <button 
+            onClick={() => setIsPaused(!isPaused)}
+            className={`p-3 rounded-2xl transition-all shadow-xl active:scale-90 ${isPaused ? 'bg-orange-500 text-white animate-pulse' : 'bg-white/10 text-white/50 hover:text-white'}`}
+          >
+            {isPaused ? <Play className="w-7 h-7" /> : <Pause className="w-7 h-7" />}
+          </button>
+        </div>
       </header>
 
       {/* Área de Texto Autoscroll */}
@@ -221,13 +308,13 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
             </div>
             <div>
               <h3 className="text-4xl font-black uppercase italic tracking-tighter leading-none mb-4">Ciclo de Explicação Concluído</h3>
-              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Prepare seu cérebro para o desafio final.</p>
+              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Você concluiu esta jornada de aprendizado.</p>
             </div>
             <button
-              onClick={() => setShowQuiz(true)}
+              onClick={() => onComplete(5)} // Give a small reward for completion
               className="w-full bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-3xl font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/40 flex items-center justify-center gap-4 transition-all hover:scale-105 active:scale-95 group"
             >
-              INICIAR DESAFIO <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+              CONCLUIR AULA <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
             </button>
           </motion.div>
         )}
