@@ -58,6 +58,9 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
       topic: topic || 'Questões Manuais'
     }
   ]);
+  const [loading, setLoading] = useState(false);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [currentIdx, setCurrentIdx] = useState(0);
   const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState(false);
   const [correctedAnswer, setCorrectedAnswer] = useState<number>(0);
   const [correctedExplanation, setCorrectedExplanation] = useState('');
@@ -92,9 +95,6 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const [banca, setBanca] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [currentIdx, setCurrentIdx] = useState(0);
   const [flagged, setFlagged] = useState<number[]>([]);
   const [questionScratched, setQuestionScratched] = useState<number[]>([]);
   const [questionHighlighted, setQuestionHighlighted] = useState<number[]>([]);
