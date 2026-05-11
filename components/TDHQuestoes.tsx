@@ -1,7 +1,6 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen } from 'lucide-react';
 import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
 import LoadingFish from './LoadingFish';
@@ -58,43 +57,15 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
       topic: topic || 'Questões Manuais'
     }
   ]);
-  const [loading, setLoading] = useState(false);
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState(false);
-  const [correctedAnswer, setCorrectedAnswer] = useState<number>(0);
-  const [correctedExplanation, setCorrectedExplanation] = useState('');
-
-  const handleApplyCorrection = () => {
-    const newQuestions = [...questions];
-    const q = newQuestions[currentIdx];
-    
-    if (!q.isCorrected) {
-      q.originalExplanation = q.explanation;
-      q.originalCorrectAnswer = q.correctAnswer;
-    }
-    
-    q.explanation = correctedExplanation;
-    q.correctAnswer = correctedAnswer;
-    q.isCorrected = true;
-    
-    setQuestions(newQuestions);
-    setIsCorrectionModalOpen(false);
-  };
-
-  React.useEffect(() => {
-    if (isCorrectionModalOpen && questions[currentIdx]) {
-      setCorrectedAnswer(questions[currentIdx].correctAnswer);
-      setCorrectedExplanation(questions[currentIdx].explanation || '');
-    }
-  }, [isCorrectionModalOpen, currentIdx, questions]);
-
   const [pastedText, setPastedText] = useState('');
   const [pastedGabarito, setPastedGabarito] = useState('');
   const [batchStatus, setBatchStatus] = useState<{ current: number, total: number } | null>(null);
   const [banca, setBanca] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [currentIdx, setCurrentIdx] = useState(0);
   const [flagged, setFlagged] = useState<number[]>([]);
   const [questionScratched, setQuestionScratched] = useState<number[]>([]);
   const [questionHighlighted, setQuestionHighlighted] = useState<number[]>([]);
@@ -1082,26 +1053,10 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3 font-black italic text-blue-500">
-                         <span className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-sm shadow-sm">A</span>
-                         <h4 className="text-[10px] uppercase tracking-widest">MAPEAMENTO DA LÓGICA</h4>
-                      </div>
-                      <button 
-                        onClick={() => setIsCorrectionModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all active:scale-95 shadow-sm"
-                      >
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        INDICAR ERRO / CORRIGIR
-                      </button>
+                    <div className="flex items-center gap-3 mb-6 font-black italic text-blue-500">
+                       <span className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-sm shadow-sm">A</span>
+                       <h4 className="text-[10px] uppercase tracking-widest">MAPEAMENTO DA LÓGICA</h4>
                     </div>
-
-                    {currentQ.isCorrected && (
-                      <div className="mb-6 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-2xl">
-                        <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1">Questão Corrigida por Você</p>
-                        <p className="text-amber-600 text-xs font-bold italic">Esta explicação e o gabarito foram editados manualmente para correção.</p>
-                      </div>
-                    )}
 
                     {onTriggerGuidedLesson && (
                       <button 
@@ -1313,76 +1268,6 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
           onClose={() => setShowSaveModal(false)}
         />
       )}
-
-      {/* Modal de Correção de Questão */}
-      <AnimatePresence>
-        {isCorrectionModalOpen && (
-          <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsCorrectionModalOpen(false)}
-              className="absolute inset-0 bg-[#0A0F1E]/80 backdrop-blur-xl"
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl p-8 md:p-12 overflow-hidden"
-            >
-              <div className="flex items-center justify-between mb-10">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-200/50">
-                    <AlertCircle className="w-8 h-8" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-black italic uppercase tracking-tighter text-[#0A0F1E]">Corrigir Questão</h2>
-                    <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">A IA errou? Indique os dados corretos abaixo.</p>
-                  </div>
-                </div>
-                <button onClick={() => setIsCorrectionModalOpen(false)} className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="space-y-8">
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 block">Gabarito Correto</label>
-                  <div className="grid grid-cols-5 gap-3">
-                    {['A', 'B', 'C', 'D', 'E'].map((letter, idx) => (
-                      <button
-                        key={letter}
-                        onClick={() => setCorrectedAnswer(idx)}
-                        className={`py-4 rounded-2xl font-black text-xl transition-all border-2 ${correctedAnswer === idx ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-blue-200'}`}
-                      >
-                        {letter}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 block text-center">Explicação Correta (Markdown)</label>
-                  <textarea
-                    value={correctedExplanation}
-                    onChange={(e) => setCorrectedExplanation(e.target.value)}
-                    placeholder="Digite o passo a passo correto aqui..."
-                    className="w-full h-48 bg-slate-50 border-2 border-slate-100 rounded-3xl p-6 font-bold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner resize-none"
-                  />
-                </div>
-
-                <button
-                  onClick={handleApplyCorrection}
-                  className="w-full bg-gradient-to-r from-[#0A0F1E] to-[#1a2b4d] text-white py-6 rounded-[30px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/10 flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  APLICAR CORREÇÃO NA BASE <CheckCircle2 className="w-6 h-6" />
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Floating Action Buttons Sidebar */}
       {questions.length > 0 && isSubmitted && (

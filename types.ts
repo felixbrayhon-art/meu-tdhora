@@ -129,9 +129,6 @@ export interface QuizQuestion {
   userCommentary?: string;
   explanationImages?: string[];
   explanationImageSizes?: string[];
-  isCorrected?: boolean;
-  originalExplanation?: string;
-  originalCorrectAnswer?: number;
 }
 
 export interface Notebook {

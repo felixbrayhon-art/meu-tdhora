@@ -3,13 +3,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, 
   Maximize2, Minimize2, Move, Share2, Shuffle, LogOut,
-  Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen, AlertCircle, CheckCircle2
+  Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen
 } from 'lucide-react';
 import { QuizFolder, Notebook, QuizQuestion } from '../types';
 import MarkdownContent from './MarkdownContent';
 import { RichTextEditor } from './RichTextEditor';
 import { MoveToNotebookModal } from './MoveToNotebookModal';
-import { motion, AnimatePresence } from 'motion/react';
 
 interface QuizPlayerProps {
   folder: QuizFolder;
@@ -202,38 +201,6 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
   React.useEffect(() => {
     setUserCommentaryInput(questions[currentIndex]?.userCommentary || '');
   }, [currentIndex, questions]);
-
-  const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState(false);
-  const [correctedAnswer, setCorrectedAnswer] = useState<number>(0);
-  const [correctedExplanation, setCorrectedExplanation] = useState('');
-
-  const handleApplyCorrection = () => {
-    const qIdx = questions.findIndex(q => q.id === currentQ.id);
-    if (qIdx === -1) return;
-
-    const newQuestions = [...questions];
-    const q = newQuestions[qIdx];
-    
-    if (!q.isCorrected) {
-      q.originalExplanation = q.explanation;
-      q.originalCorrectAnswer = q.correctAnswer;
-    }
-    
-    q.explanation = correctedExplanation;
-    q.correctAnswer = correctedAnswer;
-    q.isCorrected = true;
-    
-    setQuestions(newQuestions);
-    onUpdateQuestions?.(newQuestions);
-    setIsCorrectionModalOpen(false);
-  };
-
-  React.useEffect(() => {
-    if (isCorrectionModalOpen && currentQ) {
-      setCorrectedAnswer(currentQ.correctAnswer);
-      setCorrectedExplanation(currentQ.explanation || '');
-    }
-  }, [isCorrectionModalOpen, currentQ]);
 
   const handleSaveUserCommentary = (overrideValue?: string) => {
     const valueToSave = overrideValue !== undefined ? overrideValue : userCommentaryInput;
@@ -681,26 +648,10 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                   </div>
                 )}
 
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center font-black text-sm italic shadow-lg shadow-blue-500/20">A</div>
-                    <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest">MAPEAMENTO DA LÓGICA DA QUESTÃO</h4>
-                  </div>
-                  <button 
-                    onClick={() => setIsCorrectionModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all active:scale-95 shadow-sm"
-                  >
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    INDICAR ERRO / CORRIGIR
-                  </button>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center font-black text-sm italic shadow-lg shadow-blue-500/20">A</div>
+                  <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest">MAPEAMENTO DA LÓGICA DA QUESTÃO</h4>
                 </div>
-
-                {currentQ.isCorrected && (
-                  <div className="mb-6 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-2xl">
-                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1">Questão Corrigida por Você</p>
-                    <p className="text-amber-600 text-xs font-bold italic">Esta explicação e o gabarito foram editados manualmente para correção.</p>
-                  </div>
-                )}
 
                 {onTriggerGuidedLesson && (
                   <button 
@@ -844,76 +795,6 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
             onClose={() => setShowMoveModal(false)}
           />
         )}
-
-        {/* Modal de Correção de Questão */}
-        <AnimatePresence>
-          {isCorrectionModalOpen && (
-            <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsCorrectionModalOpen(false)}
-                className="absolute inset-0 bg-[#0A0F1E]/80 backdrop-blur-xl"
-              />
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl p-8 md:p-12 overflow-hidden"
-              >
-                <div className="flex items-center justify-between mb-10">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-200/50">
-                      <AlertCircle className="w-8 h-8" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-black italic uppercase tracking-tighter text-[#0A0F1E]">Corrigir Questão</h2>
-                      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">A IA errou? Indique os dados corretos abaixo.</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setIsCorrectionModalOpen(false)} className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all">
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-
-                <div className="space-y-8">
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 block">Gabarito Correto</label>
-                    <div className="grid grid-cols-5 gap-3">
-                      {['A', 'B', 'C', 'D', 'E'].map((letter, idx) => (
-                        <button
-                          key={letter}
-                          onClick={() => setCorrectedAnswer(idx)}
-                          className={`py-4 rounded-2xl font-black text-xl transition-all border-2 ${correctedAnswer === idx ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-blue-200'}`}
-                        >
-                          {letter}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 block text-center">Explicação Correta (Markdown)</label>
-                    <textarea
-                      value={correctedExplanation}
-                      onChange={(e) => setCorrectedExplanation(e.target.value)}
-                      placeholder="Digite o passo a passo correto aqui..."
-                      className="w-full h-48 bg-slate-50 border-2 border-slate-100 rounded-3xl p-6 font-bold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner resize-none"
-                    />
-                  </div>
-
-                  <button
-                    onClick={handleApplyCorrection}
-                    className="w-full bg-gradient-to-r from-[#0A0F1E] to-[#1a2b4d] text-white py-6 rounded-[30px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/10 flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-95 transition-all"
-                  >
-                    APLICAR CORREÇÃO NA BASE <CheckCircle2 className="w-6 h-6" />
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
 
         {isNoteExpanded && (
           <div className="fixed inset-0 z-[1000] bg-slate-900/90 backdrop-blur-md p-6 md:p-12 flex flex-col">
