@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { AppView, TimerMode, Flashcard, FlashcardFolder, UserStats, QuizFolder, Notebook, QuizAttempt, StudyPlan, DailyHistory, StudySubject, StudySession, Activity, QuizQuestion, StudyProfile, FocusSettings, EditalConfig, SmartRevisionSystem, SmartRevisionItem, ErrorVaultItem, SocialState, StudyCycle, StudyCycleStep } from './types';
 import Header from './components/Header';
 import Hub from './components/Hub';
@@ -39,6 +39,7 @@ const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isStorageFull, setIsStorageFull] = useState(false);
   const [currentView, setCurrentView] = useState<AppView>('HUB');
   const [timerMode, setTimerMode] = useState<TimerMode>(TimerMode.POMODORO);
   const [showGlobalBar, setShowGlobalBar] = useState(true);
@@ -56,24 +57,48 @@ const App: React.FC = () => {
   const [globalTimerActive, setGlobalTimerActive] = useState(false);
   const [globalTimerSeconds, setGlobalTimerSeconds] = useState(1500);
 
+  const safeJsonParse = (key: string, defaultValue: any) => {
+    try {
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : defaultValue;
+    } catch (e) {
+      console.error(`Error parsing localStorage key "${key}":`, e);
+      return defaultValue;
+    }
+  };
+
+  const safeSetItem = (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      if (e instanceof DOMException && (
+        e.code === 22 || 
+        e.code === 1014 || 
+        e.name === 'QuotaExceededError' || 
+        e.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+      )) {
+        setIsStorageFull(true);
+        console.warn(`LocalStorage quota exceeded for key "${key}". Data not saved locally.`);
+      } else {
+        console.error(`Error saving to localStorage key "${key}":`, e);
+      }
+    }
+  };
+
   // States
   const [flashcards, setFlashcards] = useState<Flashcard[]>(() => {
-    const saved = localStorage.getItem('focus_flashcards');
-    const cards = saved ? JSON.parse(saved) : [];
+    const cards = safeJsonParse('focus_flashcards', []);
     // Migrate cards without folderId to 'default'
     return cards.map((c: any) => ({ ...c, folderId: c.folderId || 'default' }));
   });
   const [flashcardFolders, setFlashcardFolders] = useState<FlashcardFolder[]>(() => {
-    const saved = localStorage.getItem('focus_flashcard_folders');
-    return saved ? JSON.parse(saved) : [{ id: 'default', name: 'Geral', color: '#3B82F6', createdAt: Date.now() }];
+    return safeJsonParse('focus_flashcard_folders', [{ id: 'default', name: 'Geral', color: '#3B82F6', createdAt: Date.now() }]);
   });
   const [folders, setFolders] = useState<QuizFolder[]>(() => {
-    const saved = localStorage.getItem('focus_folders');
-    return saved ? JSON.parse(saved) : [];
+    return safeJsonParse('focus_folders', []);
   });
   const [attempts, setAttempts] = useState<QuizAttempt[]>(() => {
-    const saved = localStorage.getItem('focus_attempts');
-    return saved ? JSON.parse(saved) : [];
+    return safeJsonParse('focus_attempts', []);
   });
   
   const [activeNotebookInfo, setActiveNotebookInfo] = useState<{folderId: string, notebookId: string} | null>(null);
@@ -81,13 +106,11 @@ const App: React.FC = () => {
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [history, setHistory] = useState<DailyHistory>(() => {
-    const saved = localStorage.getItem('focus_history');
-    return saved ? JSON.parse(saved) : {};
+    return safeJsonParse('focus_history', {});
   });
   
   const [focusSettings, setFocusSettings] = useState<FocusSettings>(() => {
-    const saved = localStorage.getItem('focus_settings');
-    return saved ? JSON.parse(saved) : {
+    return safeJsonParse('focus_settings', {
       waterReminder: true,
       waterInterval: 45,
       medicationReminder: false,
@@ -95,21 +118,19 @@ const App: React.FC = () => {
       workTransition: true,
       workStartTime: '09:00',
       prepTime: 15
-    };
+    });
   });
 
   const [studyPlan, setStudyPlan] = useState<StudyPlan>(() => {
-    const saved = localStorage.getItem('focus_studyplan');
-    return saved ? JSON.parse(saved) : {
+    return safeJsonParse('focus_studyplan', {
       subjects: [],
       dailyGoalMinutes: 120,
       sessions: []
-    };
+    });
   });
 
   const [stats, setStats] = useState<UserStats>(() => {
-    const saved = localStorage.getItem('focus_stats');
-    return saved ? JSON.parse(saved) : {
+    return safeJsonParse('focus_stats', {
       name: 'Peixe Focado',
       avatarColor: '#FACC15',
       level: 1,
@@ -119,42 +140,37 @@ const App: React.FC = () => {
       totalDaysStudied: 0,
       studyProfile: undefined,
       explanationStyle: 'Explique de forma técnica e exaustiva com mapeamento lógico passo a passo.'
-    };
+    });
   });
 
   const [editalConfig, setEditalConfig] = useState<EditalConfig>(() => {
-    const saved = localStorage.getItem('focus_edital');
-    return saved ? JSON.parse(saved) : {
+    return safeJsonParse('focus_edital', {
       isActive: false,
       subjects: [],
       examDate: '',
       dailyHours: 4
-    };
+    });
   });
 
   const [smartSystem, setSmartSystem] = useState<SmartRevisionSystem>(() => {
-    const saved = localStorage.getItem('focus_smart_system');
-    return saved ? JSON.parse(saved) : { queue: [], vault: [] };
+    return safeJsonParse('focus_smart_system', { queue: [], vault: [] });
   });
 
   const [socialState, setSocialState] = useState<SocialState>(() => {
-    const saved = localStorage.getItem('focus_social_state');
-    return saved ? JSON.parse(saved) : {
+    return safeJsonParse('focus_social_state', {
       myFriends: [],
       pendingRequests: [],
       chats: {},
       myId: Math.random().toString(36).substr(2, 6).toUpperCase()
-    };
+    });
   });
 
   const [studyCycle, setStudyCycle] = useState<StudyCycle | null>(() => {
-    const saved = localStorage.getItem('focus_studycycle');
-    return saved ? JSON.parse(saved) : null;
+    return safeJsonParse('focus_studycycle', null);
   });
 
   const [isAIEnabled, setIsAIEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem('focus_ai_enabled');
-    return saved !== null ? JSON.parse(saved) : true;
+    return safeJsonParse('focus_ai_enabled', true);
   });
 
   const [strategicMode, setStrategicMode] = useState(false);
@@ -176,45 +192,55 @@ const App: React.FC = () => {
         setIsSyncing(true);
         try {
           // Sync Stats
-          const statsDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          const userRef = doc(db, 'users', firebaseUser.uid);
+          const statsDoc = await getDoc(userRef);
           if (statsDoc.exists()) {
             setStats(statsDoc.data() as UserStats);
           } else {
             // First time login, save current local stats to Firestore
-            await setDoc(doc(db, 'users', firebaseUser.uid), stats);
+            await setDoc(userRef, cleanData(stats));
           }
 
           // Sync Edital
-          const editalDoc = await getDoc(doc(doc(db, 'users', firebaseUser.uid), 'configs', 'edital'));
+          const editalRef = doc(db, 'users', firebaseUser.uid, 'configs', 'edital');
+          const editalDoc = await getDoc(editalRef);
           if (editalDoc.exists()) setEditalConfig(editalDoc.data() as EditalConfig);
 
-          // Sync Quiz Folders (simplified, just get one level for now)
-          const foldersSnap = await getDocs(collection(doc(db, 'users', firebaseUser.uid), 'quizFolders'));
+          // Sync Quiz Folders
+          const foldersRef = collection(db, 'users', firebaseUser.uid, 'quizFolders');
+          const foldersSnap = await getDocs(foldersRef);
           if (!foldersSnap.empty) {
             const cloudFolders: QuizFolder[] = [];
             for (const fDoc of foldersSnap.docs) {
-              const fData = fDoc.data() as QuizFolder;
+              const fData = fDoc.data() as any;
               // Get notebooks
-              const notebooksSnap = await getDocs(collection(fDoc.ref, 'notebooks'));
+              const notebooksSnap = await getDocs(collection(db, 'users', firebaseUser.uid, 'quizFolders', fDoc.id, 'notebooks'));
               const notebooks = notebooksSnap.docs.map(n => n.data() as Notebook);
-              cloudFolders.push({ ...fData, notebooks });
+              cloudFolders.push({ ...fData, id: fDoc.id, notebooks });
             }
             setFolders(cloudFolders);
           }
 
           // Sync Flashcards
-          const cardsSnap = await getDocs(collection(doc(db, 'users', firebaseUser.uid), 'flashcards'));
+          const cardsRef = collection(db, 'users', firebaseUser.uid, 'flashcards');
+          const cardsSnap = await getDocs(cardsRef);
           if (!cardsSnap.empty) {
-            setFlashcards(cardsSnap.docs.map(d => d.data() as Flashcard));
+            setFlashcards(cardsSnap.docs.map(d => ({ ...d.data(), id: d.id } as Flashcard)));
           }
 
         } catch (error) {
-          console.error("Error syncing with Firestore:", error);
+          try {
+            handleFirestoreError(error, OperationType.GET, 'users/initialSync');
+          } catch (e) {
+            console.error("Initial Sync Error (Logged & Caught):", e);
+          }
         } finally {
           setIsSyncing(false);
+          setIsInitializing(false);
         }
+      } else {
+        setIsInitializing(false);
       }
-      setIsInitializing(false);
     });
     return () => unsubscribe();
   }, []);
@@ -227,7 +253,9 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = () => auth.signOut();
+  const handleLogout = () => {
+    auth.signOut().catch(e => console.error("Logout failed", e));
+  };
 
   // Helper to save sub-items to Firestore
   const saveToFirestore = async (path: string, data: any) => {
@@ -247,61 +275,72 @@ const App: React.FC = () => {
       }));
     }
     if (user && !isInitializing && !isSyncing) {
-      saveToFirestore('configs/edital', editalConfig);
+      saveToFirestore('configs/edital', editalConfig).catch(e => {
+        // Log is already done by handleFirestoreError inside saveToFirestore
+        console.error("Background sync error (Edital):", e);
+      });
     }
-    localStorage.setItem('focus_edital', JSON.stringify(editalConfig));
+    safeSetItem('focus_edital', JSON.stringify(editalConfig));
   }, [editalConfig, user, isInitializing, isSyncing]);
 
   useEffect(() => {
     if (user && !isInitializing && !isSyncing) {
       const syncCards = async () => {
-        const batch = writeBatch(db);
-        for (const card of flashcards) {
-          const cardRef = doc(db, 'users', user.uid, 'flashcards', card.id);
-          batch.set(cardRef, cleanData(card));
+        try {
+          const batch = writeBatch(db);
+          for (const card of flashcards) {
+            const cardRef = doc(db, 'users', user.uid, 'flashcards', card.id);
+            batch.set(cardRef, cleanData(card));
+          }
+          await batch.commit();
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, 'users/flashcardsBatch');
         }
-        await batch.commit();
       };
-      syncCards().catch(e => console.error("Error syncing cards:", e));
+      syncCards().catch(e => console.error("Background sync error (Flashcards):", e));
     }
-    localStorage.setItem('focus_flashcards', JSON.stringify(flashcards));
+    safeSetItem('focus_flashcards', JSON.stringify(flashcards));
   }, [flashcards, user, isInitializing, isSyncing]);
 
   useEffect(() => {
-    localStorage.setItem('focus_flashcard_folders', JSON.stringify(flashcardFolders));
+    safeSetItem('focus_flashcard_folders', JSON.stringify(flashcardFolders));
   }, [flashcardFolders]);
 
   useEffect(() => {
     if (user && !isInitializing && !isSyncing) {
       const syncFolders = async () => {
-        const batch = writeBatch(db);
-        for (const folder of folders) {
-          const folderRef = doc(db, 'users', user.uid, 'quizFolders', folder.id);
-          const { notebooks, ...folderMeta } = folder;
-          batch.set(folderRef, cleanData(folderMeta));
-          
-          for (const notebook of notebooks) {
-            const notebookRef = doc(db, 'users', user.uid, 'quizFolders', folder.id, 'notebooks', notebook.id);
-            batch.set(notebookRef, cleanData(notebook));
+        try {
+          const batch = writeBatch(db);
+          for (const folder of folders) {
+            const folderRef = doc(db, 'users', user.uid, 'quizFolders', folder.id);
+            const { notebooks, ...folderMeta } = folder;
+            batch.set(folderRef, cleanData(folderMeta));
+            
+            for (const notebook of notebooks) {
+              const notebookRef = doc(db, 'users', user.uid, 'quizFolders', folder.id, 'notebooks', notebook.id);
+              batch.set(notebookRef, cleanData(notebook));
+            }
           }
+          await batch.commit();
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, 'users/quizFoldersBatch');
         }
-        await batch.commit();
       };
-      syncFolders().catch(e => console.error("Error syncing folders:", e));
+      syncFolders().catch(e => console.error("Background sync error (QuizFolders):", e));
     }
-    localStorage.setItem('focus_folders', JSON.stringify(folders));
+    safeSetItem('focus_folders', JSON.stringify(folders));
   }, [folders, user, isInitializing, isSyncing]);
 
   useEffect(() => {
-    localStorage.setItem('focus_attempts', JSON.stringify(attempts));
+    safeSetItem('focus_attempts', JSON.stringify(attempts));
   }, [attempts]);
 
   useEffect(() => {
-    localStorage.setItem('focus_history', JSON.stringify(history));
+    safeSetItem('focus_history', JSON.stringify(history));
   }, [history]);
 
   useEffect(() => {
-    localStorage.setItem('focus_settings', JSON.stringify(focusSettings));
+    safeSetItem('focus_settings', JSON.stringify(focusSettings));
   }, [focusSettings]);
 
   useEffect(() => {
@@ -309,30 +348,36 @@ const App: React.FC = () => {
     if (studyPlan && !studyPlan.schedule) {
       setStudyPlan(prev => ({ ...prev, schedule: [] }));
     }
-    localStorage.setItem('focus_studyplan', JSON.stringify(studyPlan));
+    safeSetItem('focus_studyplan', JSON.stringify(studyPlan));
   }, [studyPlan]);
 
   useEffect(() => {
     if (user && !isInitializing && !isSyncing) {
-      setDoc(doc(db, 'users', user.uid), cleanData(stats)).catch(e => handleFirestoreError(e, OperationType.WRITE, 'users/profile'));
+      setDoc(doc(db, 'users', user.uid), cleanData(stats)).catch(e => {
+        try {
+          handleFirestoreError(e, OperationType.WRITE, 'users/profile');
+        } catch (err) {
+          console.error("Background sync error (Profile):", err);
+        }
+      });
     }
-    localStorage.setItem('focus_stats', JSON.stringify(stats));
+    safeSetItem('focus_stats', JSON.stringify(stats));
   }, [stats, user, isInitializing, isSyncing]);
 
   useEffect(() => {
-    localStorage.setItem('focus_smart_system', JSON.stringify(smartSystem));
+    safeSetItem('focus_smart_system', JSON.stringify(smartSystem));
   }, [smartSystem]);
 
   useEffect(() => {
-    localStorage.setItem('focus_social_state', JSON.stringify(socialState));
+    safeSetItem('focus_social_state', JSON.stringify(socialState));
   }, [socialState]);
 
   useEffect(() => {
-    localStorage.setItem('focus_studycycle', JSON.stringify(studyCycle));
+    safeSetItem('focus_studycycle', JSON.stringify(studyCycle));
   }, [studyCycle]);
 
   useEffect(() => {
-    localStorage.setItem('focus_ai_enabled', JSON.stringify(isAIEnabled));
+    safeSetItem('focus_ai_enabled', JSON.stringify(isAIEnabled));
   }, [isAIEnabled]);
 
   // Due flashcards count
@@ -384,14 +429,29 @@ const App: React.FC = () => {
     setStats(prev => {
       const newXP = prev.xp + amount;
       const newLevel = Math.floor(newXP / 1000) + 1;
-      
-      if (newLevel > prev.level) {
-        handleManualPost(`Subiu para o nível ${newLevel}! O cardume está orgulhoso.`);
-      }
-      
       return { ...prev, xp: newXP, level: newLevel };
     });
   };
+
+  // Monitor for level up to post notification
+  useEffect(() => {
+    const lastLevel = safeJsonParse('focus_last_notified_level', 1);
+    if (stats.level > lastLevel) {
+      // Post notification WITHOUT giving XP to avoid potential recursion
+      const newActivity: Activity = {
+        id: Math.random().toString(36).substr(2, 9),
+        userName: stats.name,
+        avatarColor: stats.avatarColor,
+        subject: `Subiu para o nível ${stats.level}! O cardume está orgulhoso.`,
+        duration: 0,
+        type: 'STATUS',
+        timestamp: Date.now(),
+        bubbles: 0
+      };
+      setActivities(prev => [newActivity, ...prev]);
+      safeSetItem('focus_last_notified_level', stats.level.toString());
+    }
+  }, [stats.level, stats.name, stats.avatarColor]);
 
   const addCoins = (amount: number) => {
     setStats(prev => ({ ...prev, coins: prev.coins + amount }));
@@ -730,7 +790,11 @@ const App: React.FC = () => {
     setShowGlobalBar(false);
   };
 
-  if (isInitializing) return <SplashScreen onComplete={() => setIsInitializing(false)} />;
+  const finishInitialization = useCallback(() => {
+    setIsInitializing(false);
+  }, []);
+
+  if (isInitializing) return <SplashScreen onComplete={finishInitialization} />;
   if (!stats.studyProfile) return (
     <ProfileSelection onSelect={(p) => {
       const defaultStyles = {
@@ -792,6 +856,11 @@ const App: React.FC = () => {
 
           {showGlobalBar && (
             <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[150] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500">
+              {isStorageFull && !user && (
+                <div className="bg-red-500 text-white text-[10px] font-black uppercase tracking-widest py-1 px-4 rounded-t-xl mb-[-10px] mx-auto w-fit shadow-lg animate-bounce">
+                  ⚠️ Memória do Navegador Cheia! Entre com o Google para salvar na nuvem
+                </div>
+              )}
               <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl rounded-[35px] p-2 flex items-center justify-between gap-3 relative">
                 <button 
                   onClick={handleCloseGlobalBar}
@@ -955,8 +1024,8 @@ const App: React.FC = () => {
         )}
         {currentView === 'QUIZ_PLAYER' && activeNotebookInfo && (
            <QuizPlayer 
-             folder={folders.find(f => f.id === activeNotebookInfo.folderId)!} 
-             notebook={folders.find(f => f.id === activeNotebookInfo.folderId)!.notebooks.find(n => n.id === activeNotebookInfo.notebookId)!} 
+             folder={folders.find(f => f.id === activeNotebookInfo.folderId) as QuizFolder} 
+             notebook={folders.find(f => f.id === activeNotebookInfo.folderId)?.notebooks.find(n => n.id === activeNotebookInfo.notebookId) as Notebook} 
              folders={folders}
              onBack={() => setCurrentView('MATERIALS')} 
              onUpdateQuestions={(qs) => handleUpdateQuestions(activeNotebookInfo.folderId, activeNotebookInfo.notebookId, qs)}

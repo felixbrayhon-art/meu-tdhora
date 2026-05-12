@@ -22,6 +22,12 @@ interface QuizPlayerProps {
 }
 
 const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBack, onComplete, onUpdateQuestions, onMoveQuestion, onTriggerGuidedLesson }) => {
+  if (!notebook || !folder) {
+    console.error("QuizPlayer: Lost context (notebook or folder is null)");
+    onBack();
+    return null;
+  }
+
   const [questions, setQuestions] = useState<QuizQuestion[]>(notebook.questions);
   const initialQuestions = useRef([...notebook.questions]);
   const [currentIndex, setCurrentIndex] = useState(0);

@@ -12,16 +12,16 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const [showBrand, setShowBrand] = useState(false);
 
   useEffect(() => {
-    // Inicia o surgimento da marca logo após a barra de progresso (3s)
+    // Inicia o surgimento da marca logo após a barra de progresso (1.5s)
     const brandTimer = setTimeout(() => {
       setShowBrand(true);
-    }, 3100);
+    }, 1600);
 
     // Finaliza a splash screen após a animação da marca
     const exitTimer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(onComplete, 600); 
-    }, 5500);
+    }, 3500);
 
     return () => {
       clearTimeout(brandTimer);
@@ -53,7 +53,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.5em] opacity-60">Superando a memória de peixe</p>
 
             <div className="h-1 w-48 bg-gray-100 rounded-full overflow-hidden">
-               <div className="h-full bg-yellow-400 animate-[loading_3s_linear_forwards]"></div>
+               <div className="h-full bg-yellow-400 animate-[loading_1.5s_linear_forwards]"></div>
             </div>
           </div>
         </div>

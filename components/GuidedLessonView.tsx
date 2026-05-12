@@ -38,38 +38,54 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
 
   useEffect(() => {
     // Check if current lesson is already saved
-    const saved = localStorage.getItem('saved_guided_lessons');
-    if (saved) {
-      const parsed: SavedGuidedLesson[] = JSON.parse(saved);
-      const exists = parsed.some(l => l.topic === topic && l.subject === subject);
-      setIsSaved(exists);
+    try {
+      const saved = localStorage.getItem('saved_guided_lessons');
+      if (saved) {
+        const parsed: SavedGuidedLesson[] = JSON.parse(saved);
+        const exists = parsed.some(l => l.topic === topic && l.subject === subject);
+        setIsSaved(exists);
+      }
+    } catch (e) {
+      console.error("Error loading saved guided lessons:", e);
     }
   }, [topic, subject]);
 
   const toggleSaveLesson = () => {
     if (!lesson) return;
 
-    const saved = localStorage.getItem('saved_guided_lessons');
-    let parsed: SavedGuidedLesson[] = saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('saved_guided_lessons');
+      let parsed: SavedGuidedLesson[] = [];
+      
+      try {
+        parsed = saved ? JSON.parse(saved) : [];
+      } catch (e) {
+        console.error("Malformed saved_guided_lessons in localStorage, resetting.");
+        parsed = [];
+      }
 
-    if (isSaved) {
-      // Remove
-      parsed = parsed.filter(l => !(l.topic === topic && l.subject === subject));
-      setIsSaved(false);
-    } else {
-      // Add
-      const newSaved: SavedGuidedLesson = {
-        id: Math.random().toString(36).substr(2, 9),
-        subject,
-        topic,
-        lesson: { ...lesson, subject }, // Include subject in lesson object too
-        savedAt: Date.now()
-      };
-      parsed.push(newSaved);
-      setIsSaved(true);
+      if (isSaved) {
+        // Remove
+        parsed = parsed.filter(l => !(l.topic === topic && l.subject === subject));
+        setIsSaved(false);
+      } else {
+        // Add
+        const newSaved: SavedGuidedLesson = {
+          id: Math.random().toString(36).substr(2, 9),
+          subject,
+          topic,
+          lesson: { ...lesson, subject }, // Include subject in lesson object too
+          savedAt: Date.now()
+        };
+        parsed.push(newSaved);
+        setIsSaved(true);
+      }
+
+      localStorage.setItem('saved_guided_lessons', JSON.stringify(parsed));
+    } catch (e) {
+      console.error("Failed to toggle save lesson:", e);
+      alert("Não foi possível salvar a aula localmente (espaço insuficiente ou erro de sistema).");
     }
-
-    localStorage.setItem('saved_guided_lessons', JSON.stringify(parsed));
   };
 
   const downloadPDF = () => {

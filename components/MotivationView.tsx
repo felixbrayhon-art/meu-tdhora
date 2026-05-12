@@ -20,8 +20,12 @@ const MotivationView: React.FC = () => {
         setLoading(true);
         try {
             const content = await getDailyBibleMotivation();
-            localStorage.setItem('motivation_fetch_date', new Date().toISOString().split('T')[0]);
-            localStorage.setItem('motivation_content', content);
+            try {
+                localStorage.setItem('motivation_fetch_date', new Date().toISOString().split('T')[0]);
+                localStorage.setItem('motivation_content', content);
+            } catch (storageError) {
+                console.warn("Could not save daily motivation to localStorage", storageError);
+            }
             setMotivation(content);
         } catch (error) {
             console.error("Failed to fetch motivation", error);

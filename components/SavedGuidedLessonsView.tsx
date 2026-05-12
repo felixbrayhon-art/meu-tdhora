@@ -13,9 +13,14 @@ const SavedGuidedLessonsView: React.FC<SavedGuidedLessonsViewProps> = ({ onOpenL
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem('saved_guided_lessons');
-    if (saved) {
-      setSavedLessons(JSON.parse(saved));
+    try {
+      const saved = localStorage.getItem('saved_guided_lessons');
+      if (saved) {
+        setSavedLessons(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error("Error loading saved guided lessons:", e);
+      setSavedLessons([]);
     }
   }, []);
 
@@ -23,7 +28,11 @@ const SavedGuidedLessonsView: React.FC<SavedGuidedLessonsViewProps> = ({ onOpenL
     e.stopPropagation();
     const newLessons = savedLessons.filter(l => l.id !== id);
     setSavedLessons(newLessons);
-    localStorage.setItem('saved_guided_lessons', JSON.stringify(newLessons));
+    try {
+      localStorage.setItem('saved_guided_lessons', JSON.stringify(newLessons));
+    } catch (e) {
+      console.warn("Storage quota exceeded in SavedGuidedLessonsView", e);
+    }
   };
 
   const filteredLessons = savedLessons.filter(l => 

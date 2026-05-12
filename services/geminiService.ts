@@ -40,6 +40,55 @@ const handleAIError = (error: any) => {
   throw new AIError(errorMessage || "Erro inesperado ao chamar a API do Gemini. Verifique sua conexão.");
 };
 
+const safeAIJsonParse = (text: string) => {
+  if (!text) throw new AIError("A IA retornou uma resposta vazia.");
+  
+  try {
+    // Attempt standard parse
+    return JSON.parse(text);
+  } catch (e) {
+    console.warn("Standard JSON parse failed, trying extraction:", e);
+    
+    // If it fails, try to extract from code blocks
+    const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (match && match[1]) {
+      try {
+        return JSON.parse(match[1]);
+      } catch (e2) {
+        console.error("JSON parse failed even after extraction:", e2);
+      }
+    }
+    
+    // Last ditch: remove any non-json leading/trailing chars
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    const firstBracket = text.indexOf('[');
+    const lastBracket = text.lastIndexOf(']');
+    
+    let start = -1;
+    let end = -1;
+    
+    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+      start = firstBrace;
+      end = lastBrace;
+    } else if (firstBracket !== -1) {
+      start = firstBracket;
+      end = lastBracket;
+    }
+
+    if (start !== -1 && end !== -1 && end > start) {
+      const cleaned = text.substring(start, end + 1);
+      try {
+        return JSON.parse(cleaned);
+      } catch (e3) {
+         console.error("Deep cleanup JSON parse failed:", e3);
+      }
+    }
+    
+    throw new AIError("A IA não retornou um formato de dados válido (JSON corrompido). Tente gerar novamente.");
+  }
+};
+
 // Helper for calling AI with automatic retries for transient errors (503/500/429)
 const generateContentWithRetry = async (params: any, maxRetries = 5) => {
   let delay = 2000;
@@ -200,14 +249,9 @@ export const generateStudyContent = async (topic: string, technique: string, num
       }
     });
   
-    if (response.text) {
-      let text = response.text.trim();
-      if (text.startsWith('```json')) {
-        text = text.replace(/^```json/, '').replace(/```$/, '').trim();
-      } else if (text.startsWith('```')) {
-        text = text.replace(/^```/, '').replace(/```$/, '').trim();
-      }
-      return JSON.parse(text);
+    const text = response.text();
+    if (text) {
+      return safeAIJsonParse(text);
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error) {
@@ -263,7 +307,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
         }
       }
     });
-    return JSON.parse(response.text);
+    return safeAIJsonParse(response.text());
   } catch (error) {
     return handleAIError(error);
   }
@@ -366,15 +410,9 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
       }
     });
 
-    if (response.text) {
-      // Robust JSON extraction in case the model wraps the response in markdown blocks
-      let text = response.text.trim();
-      if (text.startsWith('```json')) {
-        text = text.replace(/^```json/, '').replace(/```$/, '').trim();
-      } else if (text.startsWith('```')) {
-        text = text.replace(/^```/, '').replace(/```$/, '').trim();
-      }
-      return JSON.parse(text);
+    const text = response.text();
+    if (text) {
+      return safeAIJsonParse(text);
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error: any) {
@@ -436,7 +474,7 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
         }
       }
     });
-    return JSON.parse(response.text);
+    return safeAIJsonParse(response.text());
   } catch (error) {
     return handleAIError(error);
   }
@@ -476,13 +514,7 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
       Retorne no formato JSON rigoroso.`,
     });
     if (response.text) {
-      let text = response.text.trim();
-      if (text.startsWith('```json')) {
-        text = text.replace(/^```json/, '').replace(/```$/, '').trim();
-      } else if (text.startsWith('```')) {
-        text = text.replace(/^```/, '').replace(/```$/, '').trim();
-      }
-      return JSON.parse(text);
+      return safeAIJsonParse(response.text());
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error) {
@@ -512,7 +544,7 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
         }
       }
     });
-    return JSON.parse(response.text);
+    return safeAIJsonParse(response.text());
   } catch (error) {
     return handleAIError(error);
   }
@@ -567,7 +599,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
         }
       }
     });
-    return JSON.parse(response.text);
+    return safeAIJsonParse(response.text());
   } catch (error) {
     return handleAIError(error);
   }
@@ -602,7 +634,7 @@ export const explainStuckTopic = async (topic: string, profile: StudyProfile = '
         }
       }
     });
-    return JSON.parse(response.text);
+    return safeAIJsonParse(response.text());
   } catch (error) {
     return handleAIError(error);
   }
@@ -685,7 +717,7 @@ export const optimizeStudyPlan = async (
         }
       }
     });
-    return JSON.parse(response.text);
+    return safeAIJsonParse(response.text());
   } catch (error) {
     return handleAIError(error);
   }
@@ -757,7 +789,7 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
         }
       }
     });
-    return JSON.parse(response.text);
+    return safeAIJsonParse(response.text());
   } catch (error) {
     return handleAIError(error);
   }
@@ -801,7 +833,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
         }
       }
     });
-    return JSON.parse(response.text);
+    return safeAIJsonParse(response.text());
   } catch (error) {
     return handleAIError(error);
   }
@@ -883,7 +915,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
         }
       }
     });
-    return JSON.parse(response.text);
+    return safeAIJsonParse(response.text());
   } catch (error) {
     return handleAIError(error);
   }
@@ -943,7 +975,7 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
         }
       }
     });
-    return JSON.parse(response.text);
+    return safeAIJsonParse(response.text());
   } catch (error) {
     return handleAIError(error);
   }
