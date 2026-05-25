@@ -763,14 +763,14 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                 
                 <h3 className="text-4xl font-black mb-4 uppercase italic tracking-tighter text-center">Geração <span className="text-orange-500">Mestre</span></h3>
                 <p className="text-gray-500 text-xs mb-12 text-center leading-relaxed font-black uppercase tracking-[0.2em] px-4">
-                  {strategicMode ? 'O peixe-ia vai vasculhar seu edital para criar os flashcards perfeitos.' : 'Defina o tema e a IA mergulhará fundo para trazer o conhecimento puro.'}
+                  {strategicMode ? (studyProfile === 'FACULDADE' ? 'O peixe-ia vai vasculhar sua grade curricular para criar os flashcards perfeitos.' : 'O peixe-ia vai vasculhar seu edital para criar os flashcards perfeitos.') : 'Defina o tema e a IA mergulhará fundo para trazer o conhecimento puro.'}
                 </p>
                 
                 <div className="space-y-8">
                    {strategicMode && editalConfig ? (
                      <div className="space-y-6">
                         <div className="space-y-3">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Matéria do Edital</label>
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>
                           <select 
                             value={selectedSubject}
                             onChange={(e) => { setSelectedSubject(e.target.value); setSelectedTopic(''); }}

@@ -1,20 +1,23 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { EditalSubject } from '../types';
+import { EditalSubject, StudyProfile } from '../types';
 
 interface MemoryHeatmapProps {
   subjects: EditalSubject[];
+  studyProfile?: StudyProfile;
 }
 
-const MemoryHeatmap: React.FC<MemoryHeatmapProps> = ({ subjects }) => {
+const MemoryHeatmap: React.FC<MemoryHeatmapProps> = ({ subjects, studyProfile = 'VESTIBULAR' }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {subjects.map((subject) => (
         <div key={subject.id} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm relative overflow-hidden group">
           <div className="flex justify-between items-start mb-4 relative z-10">
             <div>
-              <h4 className="font-black text-gray-400 text-[10px] uppercase tracking-[0.2em] mb-1 italic">Disciplina do Edital</h4>
+              <h4 className="font-black text-gray-400 text-[10px] uppercase tracking-[0.2em] mb-1 italic">
+                {studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Disciplina do Edital'}
+              </h4>
               <h3 className="font-black text-xl text-[#0F172A] leading-tight group-hover:text-blue-600 transition-colors uppercase tracking-tighter">{subject.name}</h3>
             </div>
             <div className={`p-2 rounded-xl flex items-center justify-center ${subject.heat > 50 ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>

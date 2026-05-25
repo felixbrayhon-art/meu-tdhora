@@ -124,7 +124,7 @@ const AIView: React.FC<AIViewProps> = ({
                 {strategicMode ? 'Mergulho' : 'Exploração'} <span className="text-blue-500">{strategicMode ? 'Estratégico' : 'Ilimitada'}</span>
               </h1>
               <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] opacity-60">
-                {strategicMode ? 'CONECTADO AO SEU EDITAL' : `GERANDO DOSSIÊ DE ALTA PERFORMANCE PARA ${studyProfile}`}
+                {strategicMode ? (studyProfile === 'FACULDADE' ? 'CONECTADO À SUA GRADE' : 'CONECTADO AO SEU EDITAL') : `GERANDO DOSSIÊ DE ALTA PERFORMANCE PARA ${studyProfile}`}
               </p>
             </div>
 
@@ -132,7 +132,7 @@ const AIView: React.FC<AIViewProps> = ({
               {strategicMode && editalConfig ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-6 italic">Matéria do Edital</label>
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-6 italic">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>
                     <select 
                       value={selectedSubject}
                       onChange={(e) => { setSelectedSubject(e.target.value); setSelectedTopic(''); }}

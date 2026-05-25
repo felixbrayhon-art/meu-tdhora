@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { EditalConfig, EditalSubject } from '../types';
+import { EditalConfig, EditalSubject, StudyProfile } from '../types';
 import { extractTopicsFromEdital } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
 import { BookOpen } from 'lucide-react';
 
 interface EditalViewProps {
+  studyProfile?: StudyProfile;
   config: EditalConfig;
   onUpdate: (config: EditalConfig) => void;
   onSelectTopic: (subject: string, topic: string, type: 'LESSON' | 'QUIZ' | 'FLASHCARDS' | 'GUIDED_LESSON') => void;
@@ -16,7 +17,7 @@ interface EditalViewProps {
   onTopicComplete?: (topic: string, subject: string, isCompleted: boolean) => void;
 }
 
-const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic, onBack, onDisable, onSmartRevision, onTopicComplete }) => {
+const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', config, onUpdate, onSelectTopic, onBack, onDisable, onSmartRevision, onTopicComplete }) => {
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [extractingSubjectIds, setExtractingSubjectIds] = useState<string[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<{subject: string, topic: string} | null>(null);
@@ -124,7 +125,11 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
             Voltar ao Hub
           </button>
           <div className="flex items-center gap-4">
-            <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none">MODO <span className="text-blue-600">EDITAL</span></h1>
+            {studyProfile === 'FACULDADE' ? (
+              <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none">GRADE <span className="text-blue-600">CURRICULAR</span></h1>
+            ) : (
+              <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none">MODO <span className="text-blue-600">EDITAL</span></h1>
+            )}
             <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest animate-pulse">Ativo</span>
           </div>
         </div>
@@ -146,7 +151,9 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
             </div>
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Dias para</p>
-              <p className="text-xs font-black uppercase italic leading-none mt-1">A Prova</p>
+              <p className="text-xs font-black uppercase italic leading-none mt-1">
+                {studyProfile === 'FACULDADE' ? 'Finais / Fim' : 'A Prova'}
+              </p>
             </div>
           </div>
           <button 
@@ -331,8 +338,12 @@ const EditalView: React.FC<EditalViewProps> = ({ config, onUpdate, onSelectTopic
             ) : (
               <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="border-b border-gray-100 pb-8 text-left">
-                  <h2 className="text-3xl font-black uppercase italic tracking-tighter text-blue-600">Visão Geral do Edital</h2>
-                  <p className="text-gray-400 font-bold text-xs mt-2 uppercase tracking-widest">Acompanhe seu progresso em todas as disciplinas</p>
+                  <h2 className="text-3xl font-black uppercase italic tracking-tighter text-blue-600">
+                    {studyProfile === 'FACULDADE' ? 'Visão Geral da Grade' : 'Visão Geral do Edital'}
+                  </h2>
+                  <p className="text-gray-400 font-bold text-xs mt-2 uppercase tracking-widest">
+                    {studyProfile === 'FACULDADE' ? 'Acompanhe seu progresso em todas as disciplinas do período' : 'Acompanhe seu progresso em todas as disciplinas'}
+                  </p>
                 </div>
 
                 <div className="space-y-12">

@@ -18,6 +18,8 @@ interface TDHQuestoesProps {
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
   explanationStyle?: ExplanationStyle;
+  questionProfileStyle?: string;
+  fontSizeMultiplier: number;
   onBatchComplete?: (topic: string, subject: string, total: number, correct: number, questions?: QuizQuestion[]) => void;
   onTriggerGuidedLesson?: (subject: string, topic: string) => void;
 }
@@ -32,6 +34,8 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   strategicMode,
   editalConfig,
   explanationStyle: initialStyle,
+  questionProfileStyle: initialQuestionStyle,
+  fontSizeMultiplier,
   onBatchComplete,
   onTriggerGuidedLesson
 }) => {
@@ -109,6 +113,10 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const [saved, setSaved] = useState(false);
   const [numQuestions, setNumQuestions] = useState(10);
   const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>(initialStyle || 'TECNICA');
+  const [questionProfileStyle, setQuestionProfileStyle] = useState<string>(initialQuestionStyle || '');
+  const [noteFontSize, setNoteFontSize] = useState(1.4);
+  const [localFontSize, setLocalFontSize] = useState(fontSizeMultiplier || 1);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveMode, setSaveMode] = useState<'ALL' | 'SINGLE'>('ALL');
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
@@ -133,6 +141,33 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
       userCommentary: valueToSave
     };
     setQuestions(newQuestions);
+  };
+
+  const copyQuestionToClipboard = (q: QuizQuestion) => {
+    if (!q) return;
+    const optionsText = (q.options || [])
+      .map((opt, idx) => `${String.fromCharCode(65 + idx)}) ${opt}`)
+      .join('\n');
+    
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = q.question;
+    const cleanQuestion = tempDiv.innerText || tempDiv.textContent || q.question;
+    
+    let plainText = `${cleanQuestion}\n\n${optionsText}`;
+    
+    if (q.explanation) {
+      const tempExp = document.createElement("div");
+      tempExp.innerHTML = q.explanation;
+      const cleanExp = tempExp.innerText || tempExp.textContent || q.explanation;
+      plainText += `\n\nEXPLICAÇÃO:\n${cleanExp}`;
+    }
+    
+    navigator.clipboard.writeText(plainText).then(() => {
+      setCopiedId(q.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }).catch(err => {
+      console.error('Erro ao copiar:', err);
+    });
   };
 
   const handleNext = () => {
@@ -182,7 +217,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     if (!targetTopic) setTopic(finalTopic);
     
     try {
-      const result = await generateExamQuestions(finalTopic, numQuestions, studyProfile, banca, explanationStyle);
+      const result = await generateExamQuestions(finalTopic, numQuestions, studyProfile, banca, explanationStyle, questionProfileStyle);
       const formatted = result.questions.map((q: any) => ({
         ...q,
         id: Math.random().toString(36).substr(2, 9)
@@ -242,7 +277,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
           await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
-        const result = await parsePastedQuestions(chunks[i], studyProfile, { current: i + 1, total: totalBatches }, pastedGabarito, explanationStyle);
+        const result = await parsePastedQuestions(chunks[i], studyProfile, { current: i + 1, total: totalBatches }, pastedGabarito, explanationStyle, questionProfileStyle);
         
         if (result.questions && Array.isArray(result.questions)) {
           const formatted = result.questions.map((q: any) => ({
@@ -490,7 +525,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
             message={batchStatus ? `Extraindo Bloco ${batchStatus.current} de ${batchStatus.total}` : "Arquitetando Simulado..."} 
             submessage={batchStatus 
               ? `A IA está processando seu texto em partes para não pular nenhuma questão.`
-              : `IA preparando questões focadas em ${studyProfile === 'CONCURSO' ? 'Concursos de Elite' : 'ENEM/Vestibular'}`
+              : `IA preparando questões focadas em ${studyProfile === 'CONCURSO' ? 'Concursos de Elite' : studyProfile === 'FACULDADE' ? 'Graduação / Faculdade' : 'ENEM/Vestibular'}`
             }
           />
           
@@ -538,7 +573,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                 </div>
                 <h1 className="text-4xl md:text-6xl font-black mb-4 tracking-tighter leading-none italic uppercase text-slate-800">TDH<span className="text-blue-600">{strategicMode ? 'estratégico' : 'questões'}</span></h1>
                 <p className="text-slate-400 text-lg mb-12 font-black uppercase tracking-widest text-[10px]">
-                  {strategicMode ? 'Alinhamento Automático ao Edital' : `Simulados ${studyProfile === 'CONCURSO' ? 'Elite' : 'Vestibular'} • Gabarito Comentado`}
+                  {strategicMode ? (studyProfile === 'FACULDADE' ? 'Alinhamento Automático à Grade Curricular' : 'Alinhamento Automático ao Edital') : `Simulados ${studyProfile === 'CONCURSO' ? 'Elite' : studyProfile === 'FACULDADE' ? 'Universitários' : 'Vestibular'} • Gabarito Comentado`}
                 </p>
                 
                 <div className="space-y-8">
@@ -547,7 +582,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                     <input 
                       value={topic}
                       onChange={(e) => setTopic(e.target.value)}
-                      placeholder={studyProfile === 'CONCURSO' ? "Ex: Atos Administrativos" : "Ex: Genética Mendeliana"}
+                      placeholder={studyProfile === 'CONCURSO' ? "Ex: Atos Administrativos" : studyProfile === 'FACULDADE' ? "Ex: Cálculo I ou Patologia Humana" : "Ex: Genética Mendeliana"}
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-[40px] px-10 py-6 text-xl focus:outline-none focus:border-blue-500 transition-all font-black text-center text-slate-700 placeholder:text-slate-300"
                     />
                   </div>
@@ -580,7 +615,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       {strategicMode && editalConfig ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-3 text-left">
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Matéria do Edital</label>
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>
                             <select 
                               value={selectedSubject}
                               onChange={(e) => { setSelectedSubject(e.target.value); setSelectedTopic(''); }}
@@ -868,9 +903,28 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
               <div className="mb-10 text-center md:text-left">
                 <div className="flex items-center justify-between mb-6">
                    <span className="text-[11px] font-black text-blue-500/50 uppercase tracking-[0.3em]">Questão {currentIdx + 1}</span>
-                   
-                   <div className="flex items-center gap-2">
-                     <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner mr-2">
+                    <div className="flex items-center gap-2">
+                     <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner mr-2 items-center">
+                        <div className="flex items-center gap-2 px-3 border-r border-slate-200 mr-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Texto</span>
+                          <input 
+                            type="range" 
+                            min="0.8" 
+                            max="2.5" 
+                            step="0.1" 
+                            value={localFontSize} 
+                            onChange={(e) => setLocalFontSize(parseFloat(e.target.value))}
+                            className="w-16 accent-blue-500 h-1"
+                            title="Aumentar/Diminuir letra da questão"
+                          />
+                        </div>
+                        <button 
+                          onClick={() => copyQuestionToClipboard(questions[currentIdx])}
+                          className={`p-2 rounded-lg transition-all active:scale-90 mr-1 ${copiedId === questions[currentIdx].id ? 'bg-green-500 text-white shadow-lg' : 'text-slate-300 hover:text-blue-500'}`}
+                          title="Copiar questão inteira"
+                        >
+                          {copiedId === questions[currentIdx].id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        </button>
                         <button 
                           onClick={() => handleSelectiveMark('highlight')}
                           className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentIdx) ? 'bg-yellow-100 text-yellow-600 shadow-sm border border-yellow-200' : 'text-slate-300 hover:text-blue-500'}`}
@@ -914,9 +968,12 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       </button>
                    </div>
                 </div>
+                <style>{`
+                  .question-container.markdown-body { font-size: ${17 * localFontSize}px !important; }
+                `}</style>
                 <div 
                   ref={questionTextRef}
-                  className={`text-[17px] md:text-[20px] font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 ${
+                  className={`font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 question-container ${
                     questionScratched.includes(currentIdx) ? 'text-slate-300 line-through grayscale blur-[0.5px] opacity-40 italic' : 
                     questionHighlighted.includes(currentIdx) ? 'text-slate-800 bg-yellow-100/50 p-6 rounded-2xl border-l-[6px] border-l-yellow-400' : 
                     'text-slate-700'
@@ -1030,6 +1087,18 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                               <p className="text-[9px] font-bold text-blue-500/60 uppercase tracking-tight">Refine seu conhecimento aqui</p>
                             </div>
                           </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tamanho</span>
+                            <input 
+                              type="range" 
+                              min="0.5" 
+                              max="6" 
+                              step="0.1" 
+                              value={noteFontSize} 
+                              onChange={(e) => setNoteFontSize(parseFloat(e.target.value))}
+                              className="w-24 accent-blue-500"
+                            />
+                          </div>
                           <button 
                             onClick={() => setIsNoteExpanded(true)}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-sm"
@@ -1040,7 +1109,36 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         </div>
                         
                         {userCommentaryInput ? (
-                          <div className="text-slate-600 text-[15px] font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2" dangerouslySetInnerHTML={{ __html: userCommentaryInput }} />
+                          <>
+                            <style>{`
+                              .note-container.markdown-body { 
+                                font-size: ${22 * fontSizeMultiplier * noteFontSize}px !important; 
+                                line-height: 1.6 !important;
+                                color: #334155 !important;
+                              }
+                              .note-container.markdown-body p, 
+                              .note-container.markdown-body li, 
+                              .note-container.markdown-body div, 
+                              .note-container.markdown-body span,
+                              .note-container.markdown-body label,
+                              .note-container.markdown-body section,
+                              .note-container.markdown-body article { 
+                                font-size: 1em !important; 
+                                line-height: inherit !important;
+                              }
+                              .note-container.markdown-body h1 { font-size: 2.2em !important; font-weight: 800 !important; margin-bottom: 0.5em !important; }
+                              .note-container.markdown-body h2 { font-size: 1.8em !important; font-weight: 700 !important; margin-bottom: 0.5em !important; }
+                              .note-container.markdown-body h3 { font-size: 1.5em !important; font-weight: 600 !important; margin-bottom: 0.5em !important; }
+                              .note-container.markdown-body code { font-size: 0.85em !important; background: #f1f5f9 !important; padding: 0.2em 0.4em !important; border-radius: 4px !important; }
+                              .note-container.markdown-body ul, .note-container.markdown-body ol { padding-left: 1.5em !important; margin-bottom: 1em !important; }
+                              .note-container.markdown-body li { margin-bottom: 0.5em !important; }
+                              .note-container.markdown-body strong { font-weight: 700 !important; color: #1e293b !important; }
+                            `}</style>
+                            <div 
+                              className="text-slate-600 font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2 note-container" 
+                              dangerouslySetInnerHTML={{ __html: userCommentaryInput }}
+                            />
+                          </>
                         ) : (
                           <div 
                             onClick={() => setIsNoteExpanded(true)}
@@ -1076,7 +1174,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       </button>
                     )}
 
-                    <MarkdownContent content={currentQ.explanation} />
+                    <MarkdownContent content={currentQ.explanation} fontSizeMultiplier={fontSizeMultiplier} />
 
                     {/* Imagens Adicionais do Usuário */}
                     {(currentQ.explanationImages && currentQ.explanationImages.length > 0) && (
@@ -1153,7 +1251,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         <p className="text-[11px] font-black text-white uppercase tracking-[0.5em] mb-6 flex items-center gap-4">
                           <span className="text-2xl animate-bounce">⚡</span> BIZU DE MEMÓRIA (REDE NEURAL)
                         </p>
-                        <MarkdownContent content={currentQ.memoryHint} isDark />
+                        <MarkdownContent content={currentQ.memoryHint} isDark fontSizeMultiplier={fontSizeMultiplier} />
                       </div>
                     )}
                   </div>
@@ -1246,6 +1344,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
             <RichTextEditor
               content={userCommentaryInput}
               onChange={setUserCommentaryInput}
+              fontSize={22 * fontSizeMultiplier * noteFontSize}
             />
           </div>
           

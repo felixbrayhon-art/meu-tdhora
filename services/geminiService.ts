@@ -141,6 +141,8 @@ const getTimeContext = () => {
 export const generateStudyContent = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Explique de forma técnica e objetiva com mapeamento lógico passo a passo.') => {
   const profileContext = profile === 'CONCURSO' 
     ? "Foco em editais públicos e lei seca. Linguagem técnica."
+    : profile === 'FACULDADE'
+    ? "Foco em disciplinas acadêmicas e ensino superior/graduação, conceitos complexos explicados com profundidade científica e rigor acadêmico."
     : "Foco em ENEM e grandes vestibulares. Linguagem didática.";
 
   try {
@@ -249,7 +251,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
       }
     });
   
-    const text = response.text();
+    const text = response.text;
     if (text) {
       return safeAIJsonParse(text);
     }
@@ -259,11 +261,14 @@ export const generateStudyContent = async (topic: string, technique: string, num
   }
 };
 
-export const generateExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
+export const generateExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => {
   const profileStyle = profile === 'CONCURSO'
     ? "estilo Concursos Públicos de alto nível (FCC/CESPE/FGV), complexas, baseadas em doutrina, jurisprudência e lei seca."
+    : profile === 'FACULDADE'
+    ? "estilo Provas Universitárias / Ensino Superior, com foco em raciocínio crítico acadêmico, teorias científicas e aplicação prática de conceitos de graduação."
     : "estilo ENEM/FUVEST, baseadas em interpretação, contextualização e conceitos fundamentais.";
 
+  const profileInstruction = questionProfileStyle ? `\nPERFIL ADICIONAL DAS QUESTÕES: ${questionProfileStyle}` : "";
   const bancaInstruction = banca ? ` A banca examinadora solicitada é a "${banca}". Siga rigorosamente o padrão de cobrança, a linguagem e os temas recorrentes dessa banca específica.` : "";
 
   try {
@@ -271,6 +276,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()} 
       Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E). 
+      ${profileInstruction}
       Não use emojis. Seja extremamente objetivo e rápido na resposta.
       
       INSTRUÇÃO PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES ("explanation"):
@@ -307,7 +313,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
         }
       }
     });
-    return safeAIJsonParse(response.text());
+    return safeAIJsonParse(response.text);
   } catch (error) {
     return handleAIError(error);
   }
@@ -333,9 +339,11 @@ export const identifyQuestionCount = async (text: string) => {
   }
 };
 
-export const parsePastedQuestions = async (pastedText: string, profile: StudyProfile = 'VESTIBULAR', batchInfo?: { current: number, total: number }, pastedGabarito?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
+export const parsePastedQuestions = async (pastedText: string, profile: StudyProfile = 'VESTIBULAR', batchInfo?: { current: number, total: number }, pastedGabarito?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => {
   const profileStyle = profile === 'CONCURSO'
     ? "estilo Concursos Públicos de alto nível"
+    : profile === 'FACULDADE'
+    ? "estilo Provas Universitárias acadêmicas"
     : "estilo ENEM/FUVEST";
 
   const batchPrompt = batchInfo 
@@ -377,6 +385,9 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
       ${explanationStyle}
       
       - memoryHint: Gatilho mental TDAH (mnemônico ou analogia visual) para nunca mais esquecer o conceito.
+      
+      PERFIL ADICIONAL DAS QUESTÕES:
+      ${questionProfileStyle}
 
       TEXTO PARA ANALISAR:
       """
@@ -410,7 +421,7 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
       }
     });
 
-    const text = response.text();
+    const text = response.text;
     if (text) {
       return safeAIJsonParse(text);
     }
@@ -423,6 +434,8 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
 export const chatWithFish = async (message: string, history: { role: string, parts: { text: string }[] }[], profile: StudyProfile = 'VESTIBULAR') => {
   const profileTone = profile === 'CONCURSO'
     ? "O usuário está estudando para concursos. Use referências a editais e carreira pública quando apropriado."
+    : profile === 'FACULDADE'
+    ? "O usuário está estudando para a faculdade/graduação escolar de nível superior. Use referências a provas de faculdade, artigos acadêmicos, TCC e rigor científico quando apropriado."
     : "O usuário está estudando para vestibulares/ENEM. Use referências a universidade e futuro acadêmico quando apropriado.";
 
   try {
@@ -474,7 +487,7 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
         }
       }
     });
-    return safeAIJsonParse(response.text());
+    return safeAIJsonParse(response.text);
   } catch (error) {
     return handleAIError(error);
   }
@@ -490,7 +503,7 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
       Erros cometidos: ${analysis.errorsFound.join(', ')}
       Pontos esquecidos: ${analysis.missedPoints.join(', ')}
       
-      Perfil do Estudante: ${profile}
+      Perfil do Estudante: ${profile === 'CONCURSO' ? 'Concurso' : profile === 'FACULDADE' ? 'Universitário/Faculdade' : 'Vestibular/ENEM'}
       
       TAREFA:
       Gere 5 questões de múltipla escolha (A, B, C, D, E) focadas PRINCIPALMENTE nos erros cometidos e pontos esquecidos (identificados acima).
@@ -514,7 +527,7 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
       Retorne no formato JSON rigoroso.`,
     });
     if (response.text) {
-      return safeAIJsonParse(response.text());
+      return safeAIJsonParse(response.text);
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error) {
@@ -544,7 +557,7 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
         }
       }
     });
-    return safeAIJsonParse(response.text());
+    return safeAIJsonParse(response.text);
   } catch (error) {
     return handleAIError(error);
   }
@@ -553,6 +566,8 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
 export const generateMicroThemeValidation = async (topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
   const profileStyle = profile === 'CONCURSO'
     ? "Foco em lei seca, doutrina e jurisprudência nível concurso."
+    : profile === 'FACULDADE'
+    ? "Foco em pesquisas acadêmicas, teorias complexas e termos específicos de nível superior universitário."
     : "Foco em conceitos fundamentais do ENEM/Vestibular.";
 
   try {
@@ -599,7 +614,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
         }
       }
     });
-    return safeAIJsonParse(response.text());
+    return safeAIJsonParse(response.text);
   } catch (error) {
     return handleAIError(error);
   }
@@ -634,7 +649,7 @@ export const explainStuckTopic = async (topic: string, profile: StudyProfile = '
         }
       }
     });
-    return safeAIJsonParse(response.text());
+    return safeAIJsonParse(response.text);
   } catch (error) {
     return handleAIError(error);
   }
@@ -646,11 +661,17 @@ export const optimizeStudyPlan = async (
   profile: StudyProfile = 'VESTIBULAR'
 ) => {
   const subjectsPrompt = edital.subjects.map(s => `- ${s.name} (ID: ${s.id}, Peso atual: ${currentSubjects.find(cs => cs.editalSubjectId === s.id)?.weight || 1})`).join('\n');
+  const profileLabel = profile === 'CONCURSO' 
+    ? 'Concursos de Elite' 
+    : profile === 'FACULDADE' 
+    ? 'Provas de Faculdade e Ensino Superior' 
+    : 'Vestibular e ENEM';
+
   try {
     const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
-      Você é um estrategista de estudos para ${profile}.
+      Você é um estrategista de estudos para ${profileLabel}.
       
       ENTRADA:
       - Data da Prova: ${edital.examDate}
@@ -717,7 +738,7 @@ export const optimizeStudyPlan = async (
         }
       }
     });
-    return safeAIJsonParse(response.text());
+    return safeAIJsonParse(response.text);
   } catch (error) {
     return handleAIError(error);
   }
@@ -789,7 +810,7 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
         }
       }
     });
-    return safeAIJsonParse(response.text());
+    return safeAIJsonParse(response.text);
   } catch (error) {
     return handleAIError(error);
   }
@@ -833,7 +854,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
         }
       }
     });
-    return safeAIJsonParse(response.text());
+    return safeAIJsonParse(response.text);
   } catch (error) {
     return handleAIError(error);
   }
@@ -915,7 +936,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
         }
       }
     });
-    return safeAIJsonParse(response.text());
+    return safeAIJsonParse(response.text);
   } catch (error) {
     return handleAIError(error);
   }
@@ -924,6 +945,8 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
 export const generateGuidedLesson = async (subject: string, topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
   const profileContext = profile === 'CONCURSO' 
     ? "Foco em editais públicos, doutrina e lei seca. Linguagem técnica mas narrativa."
+    : profile === 'FACULDADE'
+    ? "Foco em disciplinas de nível superior/graduação acadêmica. Linguagem estruturada, reflexiva e cientificamente aprofundada."
     : "Foco em ENEM e grandes vestibulares. Linguagem didática e interdisciplinar.";
 
   try {
@@ -975,7 +998,25 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
         }
       }
     });
-    return safeAIJsonParse(response.text());
+    return safeAIJsonParse(response.text);
+  } catch (error) {
+    return handleAIError(error);
+  }
+};
+
+export const getQuickExplanation = async (topic: string, context?: string, profile: StudyProfile = 'VESTIBULAR') => {
+  try {
+    const systemInstruction = `Você é um tutor especializado em TDAH altamente didático e focado em reter atenção. 
+Seu objetivo é explicar o fragmento de texto ou o assunto fornecido de forma direta, clara, usando metáforas visuais, bullet points e o mínimo de enrolação possível.`;
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: `Assunto: ${topic}\n\nContexto Adicional: ${context || 'Nenhum'}\n\nPor favor, explique isso de forma concisa e direta para um estudante com foco no perfil ${profile}. Use formatação Markdown.`,
+      config: {
+        systemInstruction,
+        temperature: 0.5,
+      }
+    });
+    return response.text || "Sem resposta da IA.";
   } catch (error) {
     return handleAIError(error);
   }

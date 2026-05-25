@@ -27,6 +27,7 @@ import GuidedLessonView from './components/GuidedLessonView';
 import PerformanceView from './components/PerformanceView';
 import Sidebar from './components/Sidebar';
 import SavedGuidedLessonsView from './components/SavedGuidedLessonsView';
+import { DriveReader } from './components/DriveReader';
 
 const LOFI_RELAX_URL = "https://stream.zeno.fm/0r0xa792kwzuv"; 
 const MPB_LOFI_URL = "https://stream.zeno.fm/f978v6v6h0huv";
@@ -986,6 +987,8 @@ const App: React.FC = () => {
             onSaveToNotebook={handleSaveToNotebook} 
             studyProfile={stats.studyProfile!} 
             explanationStyle={stats.explanationStyle}
+            questionProfileStyle={stats.questionProfileStyle}
+            fontSizeMultiplier={stats.fontSizeMultiplier || 1}
             prefill={prefillQuiz}
             onConsumedPrefill={() => setPrefillQuiz(null)}
             strategicMode={strategicMode}
@@ -1030,6 +1033,7 @@ const App: React.FC = () => {
              onBack={() => setCurrentView('MATERIALS')} 
              onUpdateQuestions={(qs) => handleUpdateQuestions(activeNotebookInfo.folderId, activeNotebookInfo.notebookId, qs)}
              onMoveQuestion={handleMoveQuestion}
+             initialFontSizeMultiplier={stats.fontSizeMultiplier || 1}
              onTriggerGuidedLesson={(subject, topic) => {
                setGuidedLessonData({ subject, topic });
                setCurrentView('GUIDED_LESSON');
@@ -1081,6 +1085,7 @@ const App: React.FC = () => {
         
         {currentView === 'EDITAL_SETUP' && (
           <EditalSetup 
+            studyProfile={stats.studyProfile!}
             onComplete={(c) => { setEditalConfig(c); setCurrentView('EDITAL_VIEW'); }} 
             onBack={() => setCurrentView('HUB')} 
           />
@@ -1088,6 +1093,7 @@ const App: React.FC = () => {
         
         {currentView === 'EDITAL_VIEW' && (
           <EditalView 
+            studyProfile={stats.studyProfile!}
             config={editalConfig} 
             onUpdate={setEditalConfig} 
             onBack={() => setCurrentView('HUB')}
@@ -1137,6 +1143,7 @@ const App: React.FC = () => {
             edital={editalConfig}
             currentCycle={studyCycle}
             onUpdateCycle={setStudyCycle}
+            studyProfile={stats.studyProfile}
             onStartSession={(step) => {
               setActiveSubjectId(step.subjectId);
               setTimerMode(TimerMode.POMODORO);
@@ -1210,6 +1217,18 @@ const App: React.FC = () => {
               setGuidedLessonData({ subject, topic, initialLesson: lesson });
               setCurrentView('GUIDED_LESSON');
             }}
+          />
+        )}
+        {currentView === 'DRIVE_READER' && (
+          <DriveReader 
+            onBack={() => setCurrentView('HUB')}
+            studyProfile={stats.studyProfile}
+            activeChannel={activeChannel}
+            setActiveChannel={setActiveChannel}
+            isPlayingRain={isPlayingRain}
+            setIsPlayingRain={setIsPlayingRain}
+            audioVolume={audioVolume}
+            setAudioVolume={setAudioVolume}
           />
         )}
         </main>

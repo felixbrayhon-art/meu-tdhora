@@ -1,6 +1,6 @@
 
-export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON' | 'PERFORMANCE' | 'SAVED_GUIDED_LESSONS';
-export type StudyProfile = 'VESTIBULAR' | 'CONCURSO';
+export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON' | 'PERFORMANCE' | 'SAVED_GUIDED_LESSONS' | 'DRIVE_READER';
+export type StudyProfile = 'VESTIBULAR' | 'CONCURSO' | 'FACULDADE';
 export type ExplanationStyle = string;
 
 export type GuidedLessonStepType = 'OPENING' | 'OVERVIEW' | 'NARRATIVE' | 'CONCEPT' | 'QUESTION_PAUSE' | 'REINFORCEMENT' | 'ANALOGY' | 'CLOSING_APPLICATION';
@@ -104,6 +104,8 @@ export interface UserStats {
   lastStudyDate?: string;
   studyProfile?: StudyProfile;
   explanationStyle?: ExplanationStyle;
+  questionProfileStyle?: string;
+  fontSizeMultiplier?: number; // 1, 1.25, 1.5
 }
 
 export interface Activity {
@@ -211,6 +213,7 @@ export interface EditalConfig {
   subjects: EditalSubject[];
   examDate: string;
   dailyHours: number;
+  period?: string; // added for college / academic period orientation
 }
 
 export interface SmartRevisionItem {

@@ -64,7 +64,11 @@ const Hub: React.FC<HubProps> = ({
     setTimeout(() => setCopyFeedback(false), 2000);
   };
 
-  const profileLabel = stats.studyProfile === 'CONCURSO' ? 'Foco: Concursos' : 'Foco: Vestibulares';
+  const profileLabel = stats.studyProfile === 'CONCURSO' 
+    ? 'Foco: Concursos' 
+    : stats.studyProfile === 'FACULDADE' 
+    ? 'Foco: Faculdade' 
+    : 'Foco: Vestibulares';
   
   const pendingRevisions = smartRevisionItems.filter(i => i.status === 'PENDING').length;
 
@@ -114,7 +118,7 @@ const Hub: React.FC<HubProps> = ({
         </button>
         <button onClick={() => setActiveTab('EDITAL')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white shadow-xl shadow-gray-200' : 'text-gray-400 hover:bg-gray-50'}`}>
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
-          EDITAL
+          {stats.studyProfile === 'FACULDADE' ? 'GRADE CURRICULAR' : 'EDITAL'}
         </button>
         <button onClick={() => setActiveTab('ORGANIZACAO')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'ORGANIZACAO' ? 'bg-yellow-400 text-white shadow-xl shadow-yellow-100' : 'text-gray-400 hover:bg-gray-50'}`}>
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
@@ -184,14 +188,29 @@ const Hub: React.FC<HubProps> = ({
                     <div className="mb-10 w-16 h-16 bg-white/10 text-blue-400 rounded-3xl flex items-center justify-center backdrop-blur-md border border-white/10 shadow-inner group-hover:bg-blue-500 group-hover:text-white transition-all">
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
                     </div>
-                    <h2 className="text-4xl font-black mb-4 italic uppercase tracking-tighter leading-none">ATIVAR MODO <span className="text-blue-500 group-hover:text-white transition-colors">edital</span></h2>
-                    <p className="text-gray-400 font-medium text-lg leading-relaxed mb-10 max-w-lg">
-                      Conecte seu conteúdo programático diretamente às funções de IA do app.
-                    </p>
-                    <div className="inline-flex items-center gap-4 bg-blue-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl shadow-blue-900/40 group-hover:bg-white group-hover:text-blue-600 transition-all">
-                       CONFIGURAR MEU EDITAL AGORA
-                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                    </div>
+                    {stats.studyProfile === 'FACULDADE' ? (
+                      <>
+                        <h2 className="text-4xl font-black mb-4 italic uppercase tracking-tighter leading-none">ATIVAR GRADE <span className="text-blue-500 group-hover:text-white transition-colors">curricular</span></h2>
+                        <p className="text-gray-400 font-medium text-lg leading-relaxed mb-10 max-w-lg">
+                          Conecte o conteúdo das suas disciplinas e o período acadêmico atual às funções de IA do app.
+                        </p>
+                        <div className="inline-flex items-center gap-4 bg-blue-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl shadow-blue-900/40 group-hover:bg-white group-hover:text-blue-600 transition-all">
+                           CONFIGURAR MINHA GRADE AGORA
+                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <h2 className="text-4xl font-black mb-4 italic uppercase tracking-tighter leading-none">ATIVAR MODO <span className="text-blue-500 group-hover:text-white transition-colors">edital</span></h2>
+                        <p className="text-gray-400 font-medium text-lg leading-relaxed mb-10 max-w-lg">
+                          Conecte seu conteúdo programático diretamente às funções de IA do app.
+                        </p>
+                        <div className="inline-flex items-center gap-4 bg-blue-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl shadow-blue-900/40 group-hover:bg-white group-hover:text-blue-600 transition-all">
+                           CONFIGURAR MEU EDITAL AGORA
+                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </button>
               </div>
@@ -210,8 +229,12 @@ const Hub: React.FC<HubProps> = ({
                           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </div>
                         <div className="text-left">
-                          <h3 className="text-2xl font-black italic uppercase tracking-tighter">MEU EDITAL - VISUALIZAR E EDITAR</h3>
-                          <p className="text-blue-400 font-bold text-[10px] uppercase tracking-widest mt-1">Gerencie seu conteúdo programático e progresso verticalizado</p>
+                          <h3 className="text-2xl font-black italic uppercase tracking-tighter">
+                            {stats.studyProfile === 'FACULDADE' ? 'MINHA GRADE CURRICULAR - VISUALIZAR E EDITAR' : 'MEU EDITAL - VISUALIZAR E EDITAR'}
+                          </h3>
+                          <p className="text-blue-400 font-bold text-[10px] uppercase tracking-widest mt-1">
+                            {stats.studyProfile === 'FACULDADE' ? 'Gerencie as disciplinas e o progresso do seu período' : 'Gerencie seu conteúdo programático e progresso verticalizado'}
+                          </p>
                         </div>
                       </div>
                       <div className="bg-blue-600 text-white p-4 rounded-2xl group-hover:bg-white group-hover:text-blue-600 transition-all">
@@ -223,26 +246,28 @@ const Hub: React.FC<HubProps> = ({
                 
                 {editalConfig.isActive && (
                   <div className="lg:col-span-3">
-                    <button 
-                      onClick={() => setView('STUDY_CYCLE')}
-                      className="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-blue-200"
-                    >
-                      <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform backdrop-blur-md">
-                          <svg className="w-8 h-8 font-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                        </div>
-                        <div className="text-left">
-                          <div className="flex items-center gap-2">
-                             <h3 className="text-2xl font-black italic uppercase tracking-tighter">MEU CICLO DE ESTUDO</h3>
-                             <span className="bg-white/20 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border border-white/10">INTERLIGADO</span>
-                          </div>
-                          <p className="text-blue-100 font-bold text-[10px] uppercase tracking-widest mt-1">Intercale matérias automaticamente com base nos pesos do seu edital</p>
-                        </div>
-                      </div>
-                      <div className="bg-white text-blue-600 p-4 rounded-2xl group-hover:bg-blue-800 group-hover:text-white transition-all shadow-lg">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                      </div>
-                    </button>
+                    						<button 
+							onClick={() => setView('STUDY_CYCLE')}
+							className="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-blue-200"
+						>
+							<div className="flex items-center gap-6">
+								<div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform backdrop-blur-md">
+									<svg className="w-8 h-8 font-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+								</div>
+								<div className="text-left">
+									<div className="flex items-center gap-2">
+										<h3 className="text-2xl font-black italic uppercase tracking-tighter">MEU CICLO DE ESTUDO</h3>
+										<span className="bg-white/20 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border border-white/10">INTERLIGADO</span>
+									</div>
+									<p className="text-blue-100 font-bold text-[10px] uppercase tracking-widest mt-1">
+										{stats.studyProfile === 'FACULDADE' ? 'Intercale matérias automaticamente com base nos pesos da sua grade curricular' : 'Intercale matérias automaticamente com base nos pesos do seu edital'}
+									</p>
+								</div>
+							</div>
+							<div className="bg-white text-blue-600 p-4 rounded-2xl group-hover:bg-blue-800 group-hover:text-white transition-all shadow-lg">
+								<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+							</div>
+						</button>
                   </div>
                 )}
 
@@ -260,7 +285,7 @@ const Hub: React.FC<HubProps> = ({
                   )}
                   <h2 className="text-2xl font-black mb-2 italic uppercase">FLASH<span className="text-blue-500">cards</span></h2>
                   <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
-                    {activeTab === 'EDITAL' ? 'Conectado ao Edital' : 'Revisão Espaçada'}
+                    {activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Conectado à Grade' : 'Conectado ao Edital') : 'Revisão Espaçada'}
                   </p>
                 </button>
 
@@ -273,7 +298,20 @@ const Hub: React.FC<HubProps> = ({
                   </div>
                   <h2 className="text-2xl font-black mb-2 italic uppercase">MEUS <span className="text-blue-500">materiais</span></h2>
                   <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
-                    {activeTab === 'EDITAL' ? 'Arquivo Estratégico' : 'Resumos & Cadernos'}
+                    {activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Arquivo da Grade' : 'Arquivo Estratégico') : 'Resumos & Cadernos'}
+                  </p>
+                </button>
+
+                <button 
+                  onClick={() => setView('DRIVE_READER')} 
+                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0B1528] text-white border-transparent' : 'bg-gradient-to-br from-[#0c1830] to-[#040914] text-white shadow-xl shadow-blue-900/10 border-0'}`}
+                >
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white shadow-md'}`}>
+                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.5L3 9l9 4.5m0-9l9 4.5m-9-4.5v15m0-15l9 4.5M3 9v6l9 4.5m9-10.5v6L12 21" /></svg>
+                  </div>
+                  <h2 className="text-2xl font-black mb-2 italic uppercase">BIBLIOTECA <span className="text-blue-400">drive</span></h2>
+                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-blue-200'}`}>
+                    Livros & PDFs do Drive
                   </p>
                 </button>
 
@@ -286,7 +324,7 @@ const Hub: React.FC<HubProps> = ({
                   </div>
                   <h2 className="text-2xl font-black mb-2 relative z-10 uppercase italic">TDH<span className="text-blue-500">questoes</span></h2>
                   <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
-                    {activeTab === 'EDITAL' ? 'Foco no Edital' : 'Batalha de Simulados'}
+                    {activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Foco na Grade' : 'Foco no Edital') : 'Batalha de Simulados'}
                   </p>
                 </button>
 
@@ -298,7 +336,7 @@ const Hub: React.FC<HubProps> = ({
                     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                   </div>
                   <h2 className="text-3xl font-black mb-2 italic uppercase leading-none">AULA DIRETA</h2>
-                  <p className="text-yellow-400/80 text-[10px] font-bold uppercase tracking-widest">{activeTab === 'EDITAL' ? 'Conteúdo do Edital' : 'IA Powered Bizu'}</p>
+                  <p className="text-yellow-400/80 text-[10px] font-bold uppercase tracking-widest">{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Conteúdo da Grade' : 'Conteúdo do Edital') : 'IA Powered Bizu'}</p>
                 </button>
 
                 <div 
@@ -393,7 +431,7 @@ const Hub: React.FC<HubProps> = ({
                            <span className="flex items-center gap-1 text-[8px] font-black text-orange-500 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-orange-500"></div> REVISAR</span>
                         </div>
                      </div>
-                     <MemoryHeatmap subjects={editalConfig.subjects} />
+                     <MemoryHeatmap subjects={editalConfig.subjects} studyProfile={stats.studyProfile} />
                   </div>
                 )}
               </>
@@ -458,7 +496,7 @@ const Hub: React.FC<HubProps> = ({
                    </div>
                    <h2 className="text-4xl font-black mb-4 italic uppercase tracking-tighter leading-none">REVISÃO <span className="text-indigo-400">inteligente</span></h2>
                    <p className="text-gray-400 font-medium text-lg leading-relaxed mb-10 max-w-lg">
-                      Acesse seu motor de repetição espaçada e valide o conteúdo do edital com a IA.
+                      {stats.studyProfile === 'FACULDADE' ? 'Acesse seu motor de repetição espaçada e valide o conteúdo da sua grade curricular com a IA.' : 'Acesse seu motor de repetição espaçada e valide o conteúdo do edital com a IA.'}
                    </p>
                    <div className="inline-flex items-center gap-4 bg-indigo-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl transition-all group-hover:bg-white group-hover:text-indigo-600">
                       ABRIR PAINEL DE REVISÃO

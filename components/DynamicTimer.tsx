@@ -255,7 +255,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
               {strategicMode && editalConfig && !isActive && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto w-full mb-8">
                   <div className="space-y-1 text-left">
-                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3">Matéria do Edital</label>
+                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>
                     <select 
                       value={selectedSubject}
                       onChange={(e) => { setSelectedSubject(e.target.value); setSelectedTopic(''); }}

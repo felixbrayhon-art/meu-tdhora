@@ -3,9 +3,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, 
   Maximize2, Minimize2, Move, Share2, Shuffle, LogOut,
-  Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen
+  Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen,
+  Copy, CheckCircle2
 } from 'lucide-react';
-import { QuizFolder, Notebook, QuizQuestion } from '../types';
+import { QuizFolder, Notebook, QuizQuestion, ExplanationStyle } from '../types';
 import MarkdownContent from './MarkdownContent';
 import { RichTextEditor } from './RichTextEditor';
 import { MoveToNotebookModal } from './MoveToNotebookModal';
@@ -19,9 +20,20 @@ interface QuizPlayerProps {
   onUpdateQuestions?: (questions: QuizQuestion[]) => void;
   onMoveQuestion: (questionId: string, sourceFolderId: string, sourceNotebookId: string, targetFolderId: string, targetNotebookId: string) => void;
   onTriggerGuidedLesson?: (subject: string, topic: string) => void;
+  initialFontSizeMultiplier?: number;
 }
 
-const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBack, onComplete, onUpdateQuestions, onMoveQuestion, onTriggerGuidedLesson }) => {
+const QuizPlayer: React.FC<QuizPlayerProps> = ({ 
+  folder, 
+  notebook, 
+  folders, 
+  onBack, 
+  onComplete, 
+  onUpdateQuestions, 
+  onMoveQuestion, 
+  onTriggerGuidedLesson,
+  initialFontSizeMultiplier = 1 
+}) => {
   if (!notebook || !folder) {
     console.error("QuizPlayer: Lost context (notebook or folder is null)");
     onBack();
@@ -44,6 +56,9 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
   const [showImageArea, setShowImageArea] = useState(false);
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [noteFontSize, setNoteFontSize] = useState(1.4);
+  const [questionFontSize, setQuestionFontSize] = useState(initialFontSizeMultiplier);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<Record<string, string[]>>({});
   const questionTextRef = useRef<HTMLDivElement>(null);
   const noteSectionRef = useRef<HTMLDivElement>(null);
@@ -167,6 +182,47 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
       };
       reader.readAsDataURL(file);
     }
+  };
+  
+  const copyQuestionToClipboard = (q: QuizQuestion) => {
+    if (!q) return;
+    const optionsText = q.options
+      .map((opt, idx) => `${String.fromCharCode(65 + idx)}) ${opt}`)
+      .join('\n');
+    
+    // Suporte para converter HTML em texto limpo
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = q.question;
+    const cleanQuestion = tempDiv.innerText || tempDiv.textContent || q.question;
+    
+    let plainText = `${cleanQuestion}\n\n${optionsText}`;
+    
+    if (q.explanation) {
+      const tempExp = document.createElement("div");
+      tempExp.innerHTML = q.explanation;
+      const cleanExp = tempExp.innerText || tempExp.textContent || q.explanation;
+      plainText += `\n\nEXPLICAÇÃO:\n${cleanExp}`;
+    }
+    
+    navigator.clipboard.writeText(plainText).then(() => {
+      setCopiedId(q.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }).catch(err => {
+      console.error('Erro ao copiar:', err);
+      // Fallback
+      const textArea = document.createElement("textarea");
+      textArea.value = plainText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopiedId(q.id);
+        setTimeout(() => setCopiedId(null), 2000);
+      } catch (e) {
+        console.error('Fallback copy failed', e);
+      }
+      document.body.removeChild(textArea);
+    });
   };
 
   const currentQ = questions[currentIndex];
@@ -419,7 +475,27 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                <span className="text-[11px] font-black text-blue-500/50 uppercase tracking-[0.3em]">Questão {currentIndex + 1}</span>
                
                <div className="flex items-center gap-2">
-                 <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner mr-2">
+                 <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner mr-2 items-center">
+                   <div className="flex items-center gap-2 px-3 border-r border-slate-200 mr-2">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Texto</span>
+                     <input 
+                       type="range" 
+                       min="0.8" 
+                       max="2.5" 
+                       step="0.1" 
+                       value={questionFontSize} 
+                       onChange={(e) => setQuestionFontSize(parseFloat(e.target.value))}
+                       className="w-16 accent-blue-500 h-1"
+                       title="Aumentar/Diminuir letra da questão"
+                     />
+                   </div>
+                    <button 
+                      onClick={() => copyQuestionToClipboard(currentQ)}
+                      className={`p-2 rounded-lg transition-all active:scale-90 mr-1 ${copiedId === currentQ.id ? 'bg-green-500 text-white shadow-lg' : 'text-slate-300 hover:text-blue-500'}`}
+                      title="Copiar questão inteira"
+                    >
+                      {copiedId === currentQ.id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </button>
                     <button 
                       onClick={() => handleSelectiveMark('highlight')}
                       className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentQ.id) ? 'bg-yellow-100 text-yellow-600 shadow-sm border border-yellow-200' : 'text-slate-300 hover:text-blue-500'}`}
@@ -455,9 +531,21 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                  </div>
                </div>
             </div>
+            <style>{`
+              .quiz-question-text.markdown-body { 
+                font-size: ${18 * questionFontSize}px !important; 
+                line-height: 1.6 !important;
+              }
+              .quiz-question-text.markdown-body p, 
+              .quiz-question-text.markdown-body li, 
+              .quiz-question-text.markdown-body div, 
+              .quiz-question-text.markdown-body span { 
+                font-size: 1em !important;
+              }
+            `}</style>
             <div 
               ref={questionTextRef}
-              className={`text-[17px] md:text-[20px] font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 p-8 md:p-12 rounded-[40px] shadow-inner relative z-10 ${
+              className={`quiz-question-text font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 p-8 md:p-12 rounded-[40px] shadow-inner relative z-10 ${
                 questionScratched.includes(currentQ.id) ? 'text-slate-300 bg-slate-100/50 grayscale blur-[0.5px] opacity-40 italic line-through' : 
                 questionHighlighted.includes(currentQ.id) ? 'text-slate-900 bg-yellow-50/80 border-l-[12px] border-l-yellow-400 border border-yellow-200/50' : 
                 'text-slate-800 bg-slate-50 border border-slate-100'
@@ -631,17 +719,61 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                           <p className="text-[9px] font-bold text-blue-500/60 uppercase tracking-tight">Refine seu conhecimento aqui</p>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => setIsNoteExpanded(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-sm"
-                      >
-                        <Maximize2 className="w-3.5 h-3.5" />
-                        ABRIR EDITOR
-                      </button>
+                      
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 mr-4">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tamanho</span>
+                          <input 
+                            type="range" 
+                            min="0.5" 
+                            max="6" 
+                            step="0.1" 
+                            value={noteFontSize} 
+                            onChange={(e) => setNoteFontSize(parseFloat(e.target.value))}
+                            className="w-20 accent-blue-500 h-1"
+                          />
+                        </div>
+                        <button 
+                          onClick={() => setIsNoteExpanded(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-sm"
+                        >
+                          <Maximize2 className="w-3.5 h-3.5" />
+                          ABRIR EDITOR
+                        </button>
+                      </div>
                     </div>
                     
                     {userCommentaryInput ? (
-                      <div className="text-slate-600 text-[15px] font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2" dangerouslySetInnerHTML={{ __html: userCommentaryInput }} />
+                      <>
+                        <style>{`
+                          .note-container.markdown-body { 
+                            font-size: ${22 * noteFontSize}px !important; 
+                            line-height: 1.6 !important;
+                            color: #334155 !important;
+                          }
+                          .note-container.markdown-body p, 
+                          .note-container.markdown-body li, 
+                          .note-container.markdown-body div, 
+                          .note-container.markdown-body span,
+                          .note-container.markdown-body label,
+                          .note-container.markdown-body section,
+                          .note-container.markdown-body article { 
+                            font-size: 1em !important; 
+                            line-height: inherit !important;
+                          }
+                          .note-container.markdown-body h1 { font-size: 2.2em !important; font-weight: 800 !important; margin-bottom: 0.5em !important; }
+                          .note-container.markdown-body h2 { font-size: 1.8em !important; font-weight: 700 !important; margin-bottom: 0.5em !important; }
+                          .note-container.markdown-body h3 { font-size: 1.5em !important; font-weight: 600 !important; margin-bottom: 0.5em !important; }
+                          .note-container.markdown-body code { font-size: 0.85em !important; background: #f1f5f9 !important; padding: 0.2em 0.4em !important; border-radius: 4px !important; }
+                          .note-container.markdown-body ul, .note-container.markdown-body ol { padding-left: 1.5em !important; margin-bottom: 1em !important; }
+                          .note-container.markdown-body li { margin-bottom: 0.5em !important; }
+                          .note-container.markdown-body strong { font-weight: 700 !important; color: #1e293b !important; }
+                        `}</style>
+                        <div 
+                          className="text-slate-600 font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2 note-container" 
+                          dangerouslySetInnerHTML={{ __html: userCommentaryInput }} 
+                        />
+                      </>
                     ) : (
                       <div 
                         onClick={() => setIsNoteExpanded(true)}
@@ -826,6 +958,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
               <RichTextEditor
                 content={userCommentaryInput}
                 onChange={setUserCommentaryInput}
+                fontSize={22 * noteFontSize}
               />
             </div>
             

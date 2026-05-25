@@ -190,7 +190,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({
     });
 
     onUpdatePlan({ ...plan, subjects: updatedSubjects as StudySubject[] });
-    alert("Todos os tópicos do edital foram vinculados às matérias do seu ciclo!");
+    alert(studyProfile === 'FACULDADE' ? "Todos os tópicos da grade curricular foram vinculados às matérias do seu ciclo!" : "Todos os tópicos do edital foram vinculados às matérias do seu ciclo!");
   };
 
   const startEdit = (sub: StudySubject) => {
@@ -243,7 +243,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({
 
       {activeTab === 'DASHBOARD' ? (
         <div className="space-y-6">
-          {isOptimizing && <LoadingFish message="IA analisando o edital e calculando seu cronograma..." />}
+          {isOptimizing && <LoadingFish message={studyProfile === 'FACULDADE' ? "IA analisando a grade curricular e calculando seu cronograma..." : "IA analisando o edital e calculando seu cronograma..."} />}
 
           {/* AI Banner */}
           <div className="bg-[#0A0F1E] p-8 rounded-[40px] text-white flex justify-between items-center group relative overflow-hidden">
@@ -475,7 +475,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({
                      onClick={syncAllTopicsWithEdital}
                      className="bg-blue-50 text-blue-600 px-6 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all"
                    >
-                     VINCULAR TÓPICOS DO EDITAL
+                     {studyProfile === 'FACULDADE' ? 'VINCULAR TÓPICOS DA GRADE' : 'VINCULAR TÓPICOS DO EDITAL'}
                    </button>
                 )}
                 {!isAdding && (
@@ -520,7 +520,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({
                 />
 
                 <div className="mb-8">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3">Vincular Matéria do Edital</span>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3">{studyProfile === 'FACULDADE' ? 'Vincular Disciplina da Grade Curricular' : 'Vincular Matéria do Edital'}</span>
                   <select 
                     value={formEditalId} 
                     onChange={(e) => {
@@ -533,7 +533,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({
                     }}
                     className="w-full bg-white rounded-2xl px-6 py-4 text-sm font-bold border border-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all shadow-sm"
                   >
-                    <option value="">(Manual - Sem Edital)</option>
+                    <option value="">{studyProfile === 'FACULDADE' ? '(Manual - Sem Grade Curricular)' : '(Manual - Sem Edital)'}</option>
                     {editalConfig.subjects.map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
@@ -616,13 +616,13 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({
                              {sub.targetTopics && sub.targetTopics.length > 0 ? (
                                <>
                                  <div className="flex justify-between items-center">
-                                    <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">TÓPICOS DO EDITAL</h5>
+                                    <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{studyProfile === 'FACULDADE' ? 'TÓPICOS DA GRADE CURRICULAR' : 'TÓPICOS DO EDITAL'}</h5>
                                     {sub.editalSubjectId && (
                                        <button 
                                           onClick={() => syncTopicsWithEdital(sub.id)}
                                           className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:underline"
                                        >
-                                         Sincronizar com Edital
+                                         {studyProfile === 'FACULDADE' ? 'Sincronizar com Grade' : 'Sincronizar com Edital'}
                                        </button>
                                     )}
                                  </div>
@@ -646,7 +646,9 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({
                                </>
                              ) : (
                                <div className="text-center py-10 bg-gray-50 rounded-[30px] border-2 border-dashed border-gray-100">
-                                  <p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest px-10">Nenhum tópico vinculado. Edite a matéria para vincular ao edital e carregar os tópicos.</p>
+                                  <p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest px-10">
+                                    {studyProfile === 'FACULDADE' ? 'Nenhum tópico vinculado. Edite a matéria para vincular à grade curricular e carregar os tópicos.' : 'Nenhum tópico vinculado. Edite a matéria para vincular ao edital e carregar os tópicos.'}
+                                  </p>
                                </div>
                              )}
                           </div>

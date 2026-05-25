@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { generateStudyCycle } from '../services/geminiService';
-import { EditalConfig, StudyCycle, StudyCycleStep } from '../types';
+import { EditalConfig, StudyCycle, StudyCycleStep, StudyProfile } from '../types';
 import LoadingFish from './LoadingFish';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -11,6 +11,7 @@ interface StudyCycleViewProps {
   currentCycle: StudyCycle | null;
   onUpdateCycle: (cycle: StudyCycle) => void;
   onStartSession: (step: StudyCycleStep) => void;
+  studyProfile?: StudyProfile;
 }
 
 const StudyCycleView: React.FC<StudyCycleViewProps> = ({
@@ -18,7 +19,8 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({
   edital,
   currentCycle,
   onUpdateCycle,
-  onStartSession
+  onStartSession,
+  studyProfile = 'VESTIBULAR'
 }) => {
   const [loading, setLoading] = useState(false);
   const [totalHours, setTotalHours] = useState(10);
@@ -26,7 +28,7 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({
 
   const handleGenerate = async () => {
     if (!edital.subjects.length) {
-      alert("Adicione matérias ao seu edital primeiro!");
+      alert(studyProfile === 'FACULDADE' ? "Adicione disciplinas à sua grade curricular primeiro!" : "Adicione matérias ao seu edital primeiro!");
       return;
     }
     setLoading(true);
@@ -93,7 +95,7 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({
   };
 
   if (loading) {
-    return <LoadingFish message="Algoritmo de Ciclo Neural ATIVADO..." submessage="Equilibrando matérias e pesos do seu edital para evitar o burnout." />;
+    return <LoadingFish message="Algoritmo de Ciclo Neural ATIVADO..." submessage={studyProfile === 'FACULDADE' ? "Equilibrando disciplinas e pesos da sua grade curricular para evitar o burnout." : "Equilibrando matérias e pesos do seu edital para evitar o burnout."} />;
   }
 
   return (
@@ -123,7 +125,11 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
           </div>
           <h2 className="text-2xl font-black mb-4">Você ainda não tem um ciclo ativo.</h2>
-          <p className="text-gray-400 mb-8 max-w-md mx-auto">Um ciclo de estudos intercala matérias para manter seu cérebro TDAH engajado e garante que você cubra todo o edital proporcionalmente aos pesos.</p>
+          <p className="text-gray-400 mb-8 max-w-md mx-auto">
+            {studyProfile === 'FACULDADE' 
+              ? 'Um ciclo de estudos intercala matérias para manter seu cérebro TDAH engajado e garante que você cubra toda a grade curricular proporcionalmente aos pesos.' 
+              : 'Um ciclo de estudos intercala matérias para manter seu cérebro TDAH engajado e garante que você cubra todo o edital proporcionalmente aos pesos.'}
+          </p>
           
           <div className="bg-gray-50 p-6 rounded-3xl mb-8">
             <div className="flex justify-between items-center mb-4">
@@ -252,7 +258,7 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({
             onClick={() => { if(confirm("Deseja gerar um NOVO ciclo? O atual será perdido.")) handleGenerate(); }}
             className="w-full py-4 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-blue-500 transition-colors"
           >
-            Regerar Ciclo com Novos Ajustes do Edital
+            {studyProfile === 'FACULDADE' ? 'Regerar Ciclo com Novos Ajustes da Grade Curricular' : 'Regerar Ciclo com Novos Ajustes do Edital'}
           </button>
         </div>
       )}

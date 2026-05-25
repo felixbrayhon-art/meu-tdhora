@@ -10,6 +10,7 @@ import { useState } from 'react';
 interface RichTextEditorProps {
   content: string;
   onChange: (html: string) => void;
+  fontSize?: number;
 }
 
 const TEXT_COLORS = [
@@ -31,7 +32,7 @@ const HIGHLIGHT_COLORS = [
   { name: 'Purple', color: '#c084fc' },
 ];
 
-export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
+export const RichTextEditor = ({ content, onChange, fontSize = 18 }: RichTextEditorProps) => {
   const [showColorMenu, setShowColorMenu] = useState<'text' | 'highlight' | null>(null);
 
   const editor = useEditor({
@@ -174,7 +175,8 @@ export const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
       <div className="flex-1 overflow-y-auto px-2 custom-scrollbar">
         <EditorContent 
           editor={editor} 
-          className="prose prose-slate max-w-none focus:outline-none min-h-[300px] text-lg font-medium selection:bg-blue-500/10" 
+          className="prose prose-slate max-w-none focus:outline-none min-h-[300px] font-medium selection:bg-blue-500/10" 
+          style={{ fontSize: `${fontSize}px` }}
         />
       </div>
 

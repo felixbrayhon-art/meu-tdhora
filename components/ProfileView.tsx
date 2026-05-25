@@ -28,12 +28,14 @@ const AVATAR_OPTIONS = [
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
   const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>(stats.explanationStyle || 'TECNICA');
+  const [questionProfileStyle, setQuestionProfileStyle] = useState(stats.questionProfileStyle || '');
+  const [fontSizeMultiplier, setFontSizeMultiplier] = useState(stats.fontSizeMultiplier || 1);
 
   const currentRank = getFishRank(stats.totalDaysStudied);
   const nextRank = FISH_RANKS.find(r => r.days > stats.totalDaysStudied);
 
   const handleSave = () => {
-    onUpdate({ ...stats, name, avatarColor: selectedColor, studyProfile: profile, explanationStyle });
+    onUpdate({ ...stats, name, avatarColor: selectedColor, studyProfile: profile, explanationStyle, questionProfileStyle, fontSizeMultiplier });
     onBack();
   };
 
@@ -78,16 +80,22 @@ const AVATAR_OPTIONS = [
 
             <div>
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Objetivo de Estudo</label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <button 
                   onClick={() => setProfile('VESTIBULAR')}
-                  className={`p-6 rounded-[25px] border-2 font-black text-xs uppercase tracking-widest transition-all ${profile === 'VESTIBULAR' ? 'bg-blue-500 border-blue-500 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                  className={`p-5 rounded-[22px] border-2 font-black text-[10px] uppercase tracking-widest transition-all ${profile === 'VESTIBULAR' ? 'bg-blue-500 border-blue-500 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}
                 >
                   VESTIBULAR / ENEM
                 </button>
                 <button 
+                  onClick={() => setProfile('FACULDADE')}
+                  className={`p-5 rounded-[22px] border-2 font-black text-[10px] uppercase tracking-widest transition-all ${profile === 'FACULDADE' ? 'bg-violet-600 border-violet-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                >
+                  FACULDADE / SUPERIOR
+                </button>
+                <button 
                   onClick={() => setProfile('CONCURSO')}
-                  className={`p-6 rounded-[25px] border-2 font-black text-xs uppercase tracking-widest transition-all ${profile === 'CONCURSO' ? 'bg-[#0A0F1E] border-[#0A0F1E] text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                  className={`p-5 rounded-[22px] border-2 font-black text-[10px] uppercase tracking-widest transition-all ${profile === 'CONCURSO' ? 'bg-[#0A0F1E] border-[#0A0F1E] text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}
                 >
                   CONCURSOS PÚBLICOS
                 </button>
@@ -124,6 +132,35 @@ const AVATAR_OPTIONS = [
                 <div className="absolute top-4 right-6 text-xl opacity-20 group-hover:opacity-100 transition-opacity">✨</div>
               </div>
               <p className="text-[9px] font-bold text-gray-300 mt-3 px-2 italic">A IA usará este comando para construir todas as explicações das questões. <span className="text-blue-400">Dica: prompts mais diretos resultam em gerações mais rápidas.</span></p>
+            </div>
+
+            <div className="group">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block group-hover:text-blue-500 transition-colors">PERFIL DAS QUESTÕES (PROMPT)</label>
+              <div className="relative">
+                <textarea
+                  value={questionProfileStyle}
+                  onChange={(e) => setQuestionProfileStyle(e.target.value)}
+                  placeholder="Ex: Quero questões focadas em casos práticos, com alternativas longas e difíceis."
+                  className="w-full bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-[30px] p-6 text-sm font-medium text-gray-600 outline-none transition-all min-h-[120px] resize-none shadow-inner"
+                />
+                <div className="absolute top-4 right-6 text-xl opacity-20 group-hover:opacity-100 transition-opacity">❓</div>
+              </div>
+              <p className="text-[9px] font-bold text-gray-300 mt-3 px-2 italic">A IA usará este comando para definir o perfil das questões geradas.</p>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Tamanho da Fonte (Acessibilidade)</label>
+              <div className="flex gap-4">
+                {[1, 1.25, 1.5].map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setFontSizeMultiplier(size)}
+                    className={`flex-1 p-4 rounded-[20px] border-2 font-black text-xs uppercase transition-all ${fontSizeMultiplier === size ? 'bg-blue-500 border-blue-500 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                  >
+                    {size === 1 ? 'Normal' : size === 1.25 ? 'Grande' : 'Gigante'}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
