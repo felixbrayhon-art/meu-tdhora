@@ -42,9 +42,15 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'LIST' | 'CALENDAR' | 'STRATEGY'>('LIST');
   const [viewDate, setViewDate] = useState(new Date());
 
+  // Interactive Question State
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean | null>(null);
+
   const startValidation = async (item: SmartRevisionItem) => {
     setLoading(true);
     setActiveItem(item);
+    setSelectedAnswer(null);
+    setIsAnswerCorrect(null);
     try {
       const data = await generateMicroThemeValidation(item.topic, profile, explanationStyle);
       setQuestions(data.questions);
@@ -62,6 +68,8 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
   const startVaultResolution = async (vItem: ErrorVaultItem) => {
     setLoading(true);
     setActiveVault(vItem);
+    setSelectedAnswer(null);
+    setIsAnswerCorrect(null);
     try {
       if (vItem.isStuck || (vItem.missedQuestions && vItem.missedQuestions.length > 0)) {
         if (vItem.missedQuestions && vItem.missedQuestions.length > 0) {
@@ -86,9 +94,20 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
     }
   };
 
-  const handleAnswer = (correct: boolean) => {
-    if (correct) setScore(prev => prev + 1);
-    
+  const handleSelectOption = (index: number) => {
+    if (selectedAnswer !== null) return;
+    const currentQ = questions[currentQIdx];
+    const correct = index === currentQ.correctAnswer;
+    setSelectedAnswer(index);
+    setIsAnswerCorrect(correct);
+    if (correct) {
+      setScore(prev => prev + 1);
+    }
+  };
+
+  const handleNextQuestion = () => {
+    setSelectedAnswer(null);
+    setIsAnswerCorrect(null);
     if (currentQIdx < questions.length - 1) {
       setCurrentQIdx(prev => prev + 1);
     } else {
@@ -104,6 +123,8 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
     setActiveItem(null);
     setQuestions([]);
     setShowResult(false);
+    setSelectedAnswer(null);
+    setIsAnswerCorrect(null);
   };
 
   const finishVault = () => {
@@ -119,6 +140,8 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
     setExplanation(null);
     setRecoveryPlan(null);
     setCurrentRecoveryFlashcards([]);
+    setSelectedAnswer(null);
+    setIsAnswerCorrect(null);
   };
 
   // Calendar Helpers
@@ -319,11 +342,13 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
     }
 
     const currentQ = questions[currentQIdx];
+    const hasAnswered = selectedAnswer !== null;
+
     return (
       <div className="max-w-3xl mx-auto py-12 px-6">
         <div className="flex justify-between items-center mb-10">
            <div className="flex items-center gap-3">
-              <span className="bg-yellow-400 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase italic">Vencendo Pequenas Batalhas</span>
+              <span className="bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase italic">Método: Revisão por Questões</span>
               <h4 className="font-black text-gray-400 uppercase text-xs tracking-widest">{activeItem?.topic || activeVault?.topic}</h4>
            </div>
            <div className="text-gray-300 font-black italic">{currentQIdx + 1}/{questions.length}</div>
@@ -333,21 +358,80 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
           key={currentQIdx}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-[40px] p-10 md:p-14 shadow-2xl shadow-blue-900/5 border border-gray-50"
+          className="bg-white rounded-[40px] p-10 md:p-14 shadow-2xl shadow-blue-900/5 border border-gray-50 space-y-8"
         >
-          <h2 className="text-2xl font-black text-[#0F172A] leading-tight mb-12">{currentQ.question}</h2>
+          <h2 className="text-2xl font-black text-[#0F172A] leading-tight">{currentQ.question}</h2>
           
           <div className="grid grid-cols-1 gap-4">
-            {currentQ.options.map((opt: string, idx: number) => (
-              <button 
-                key={idx}
-                onClick={() => handleAnswer(idx === currentQ.correctAnswer)}
-                className="w-full text-left p-6 rounded-[25px] border-2 border-gray-50 bg-gray-50/30 hover:bg-white hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/5 transition-all text-gray-700 font-bold text-lg"
-              >
-                {opt}
-              </button>
-            ))}
+            {currentQ.options.map((opt: string, idx: number) => {
+              const isCorrect = idx === currentQ.correctAnswer;
+              const isSelected = idx === selectedAnswer;
+              
+              let btnClass = "w-full text-left p-6 rounded-[25px] border-2 border-gray-50 bg-gray-50/30 font-bold text-lg transition-all text-gray-700 hover:bg-white hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/5";
+              
+              if (hasAnswered) {
+                if (isCorrect) {
+                  btnClass = "w-full text-left p-6 rounded-[25px] border-2 border-green-500 bg-green-50/60 font-bold text-lg text-green-900 shadow-md flex items-center justify-between";
+                } else if (isSelected) {
+                  btnClass = "w-full text-left p-6 rounded-[25px] border-2 border-red-500 bg-red-50/60 font-bold text-lg text-red-900 shadow-md flex items-center justify-between";
+                } else {
+                  btnClass = "w-full text-left p-6 rounded-[25px] border-2 border-gray-100 bg-gray-50/10 font-bold text-lg text-gray-300 opacity-45 cursor-not-allowed flex items-center justify-between";
+                }
+              }
+
+              return (
+                <button 
+                  key={idx}
+                  disabled={hasAnswered}
+                  onClick={() => handleSelectOption(idx)}
+                  className={btnClass}
+                >
+                  <span className="flex-1">{opt}</span>
+                  {hasAnswered && isCorrect && (
+                    <span className="text-green-600 font-black text-xl ml-3">✓</span>
+                  )}
+                  {hasAnswered && isSelected && !isCorrect && (
+                    <span className="text-red-600 font-black text-xl ml-3">✗</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
+
+          <AnimatePresence>
+            {hasAnswered && (
+              <motion.div 
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6 pt-6 border-t border-gray-100"
+              >
+                <div className={`p-6 rounded-[30px] border ${isAnswerCorrect ? 'bg-green-50/40 border-green-100 text-green-900' : 'bg-red-50/40 border-red-100 text-red-900'}`}>
+                  <h4 className="font-black text-sm uppercase tracking-wider mb-2 flex items-center gap-2">
+                    {isAnswerCorrect ? '🎉 Resposta Correta!' : '💡 Resposta Incorreta! Faz Parte do Aprendizado.'}
+                  </h4>
+                  <div className="text-sm font-semibold text-gray-600 leading-relaxed max-w-none">
+                    <MarkdownContent content={currentQ.explanation} />
+                  </div>
+                </div>
+
+                {currentQ.memoryHint && (
+                  <div className="bg-amber-50/60 border border-amber-100 p-6 rounded-[30px] text-amber-950">
+                    <h5 className="font-black text-xs uppercase tracking-wider mb-2 flex items-center gap-2 text-amber-700">
+                      ⚡ Bizu de Elite (Âncora TDAH):
+                    </h5>
+                    <p className="text-xs font-bold leading-relaxed">{currentQ.memoryHint}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleNextQuestion}
+                  className="w-full bg-[#0B1220] hover:bg-black text-white py-5 rounded-[22px] font-black text-xs uppercase tracking-wider shadow-lg transition-transform hover:scale-[1.01] active:scale-95 text-center flex items-center justify-center gap-2"
+                >
+                  {currentQIdx < questions.length - 1 ? 'Próxima Questão →' : 'Ver Resultado →'}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
     );
@@ -374,8 +458,8 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                    </div>
                    <div>
-                      <h1 className="text-4xl font-black italic tracking-tighter">REVISÃO INTELIGENTE</h1>
-                      <p className="text-gray-400 font-medium">Cronograma de repetição espaçada por IA.</p>
+                      <h1 className="text-4xl font-black italic tracking-tighter">REVISÃO ESPAÇADA (24/7/30)</h1>
+                      <p className="text-gray-400 font-medium">Ciclo neurocientífico calibrado pela regra 24h / 7 dias / 30 dias para fixação de provas.</p>
                    </div>
                 </div>
                 
@@ -428,7 +512,9 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
                               className="group bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-all text-left relative overflow-hidden"
                             >
                                <div className="flex justify-between items-start mb-4">
-                                  <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase italic">DIA {item.intervalLevel}</span>
+                                  <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase italic">
+                                    {item.intervalLevel === 1 ? '⚡ 1ª REVISÃO (24h)' : item.intervalLevel === 7 ? '📅 2ª REVISÃO (7 dias)' : item.intervalLevel === 30 ? '🧠 3ª REVISÃO (30 dias)' : `REVISÃO DIA ${item.intervalLevel}`}
+                                  </span>
                                   <div className="p-2 bg-gray-50 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                   </div>

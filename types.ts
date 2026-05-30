@@ -221,7 +221,7 @@ export interface SmartRevisionItem {
   topic: string;
   subjectName: string;
   scheduledDate: string; // YYYY-MM-DD
-  intervalLevel: 0 | 1 | 3 | 7 | 15;
+  intervalLevel: 0 | 1 | 3 | 7 | 15 | 30;
   status: 'PENDING' | 'DONE' | 'MISSED';
   createdAt: number;
 }

@@ -123,7 +123,7 @@ const ForgettingCurve: React.FC = () => {
                  <span className="text-[10px] font-black uppercase tracking-widest">A Meta</span>
                </div>
                <p className="text-sm font-bold text-gray-900/60 leading-relaxed">
-                 O objetivo do nosso ciclo 0-1-3-7-15 é mover a informação da Memória de Curto Prazo para a de Longo Prazo.
+                 O objetivo da nossa Regra de Revisão Espaçada 24/7/30 é mover as informações de aula e provas para a sua Memória de Longo Prazo de forma sólida.
                </p>
             </div>
           </div>

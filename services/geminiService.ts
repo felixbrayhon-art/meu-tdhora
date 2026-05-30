@@ -574,20 +574,20 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
     const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: `${getTimeContext()}
-      Gere uma VALIDAÇÃO DE MICRO-TEMA sobre "${topic}". 
+      Gere uma SESSÃO DE REVISÃO ESPAÇADA POR QUESTÕES (RECALL ATIVO) sobre o tópico "${topic}". 
       ${profileStyle}
       
       REQUISITOS:
-      - 3 Questões breves e inéditas.
-      - Foco na essência do conceito (micro-tema).
+      - 3 Questões inéditas, de alta qualidade para testar se o aluno realmente fixou o tópico na memória de longo prazo.
       - Múltipla escolha (A a D).
-      - Linguagem direta para cérebro TDAH.
+      - Linguagem direta e estimulante para o cérebro atípico (TDAH).
       
       INSTRUÇÕES PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES: ${explanationStyle}
+      - No campo "explanation", explique detalhadamente por que a alternativa correta é a certa e por que as outras são incorretas, de forma didática e técnica.
       
-      A Dica de Memorização ("memoryHint") DEVE ser um ensinamento de ALTO IMPACTO que esclarece o assunto de forma definitiva e profunda. Mostre um atalho mental ou uma explicação tão original que impedirá o usuário de errar questões semelhantes no futuro.
+      A Dica de Memorização ("memoryHint") DEVE ser um ensinamento de ALTO IMPACTO (Bizu de Elite TDAH) que esclarece o assunto de forma definitiva e profunda. Mostre um atalho mental ou uma analogia marcante que impeça o usuário de errar questões semelhantes no futuro.
       
-      Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada. Profundidade 10/10.
+      Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e rápida. Profundidade 10/10.
       
       Retorne em JSON:`,
       config: {
