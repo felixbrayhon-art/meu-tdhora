@@ -43,6 +43,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
   const [crossedOut, setCrossedOut] = useState<number[]>([]);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -63,23 +64,41 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
     };
   }, [isActive, seconds]);
 
+  // Generates the PRACTICE-phase questions from the evocation analysis.
+  // Used both by the normal auto-transition after EVOCATION and by the
+  // manual retry button shown when generation fails.
+  const generatePracticeQuestions = async () => {
+    setIsGeneratingQuestions(true);
+    setQuestionsError(null);
+
+    try {
+      let analysisForQuestions = evocationAnalysis;
+      if (!analysisForQuestions) {
+        // Auto-timeout path: the user never clicked "Finalizar e Analisar",
+        // so analyzeEvocation was never run and evocationAnalysis is still
+        // null. Run the same analysis flow used by the manual finish button
+        // before generating questions from it.
+        analysisForQuestions = await analyzeEvocation(evocationText, studyProfile);
+        setEvocationAnalysis(analysisForQuestions);
+      }
+      const questions = await generateQuestionsFromAnalysis(analysisForQuestions, studyProfile);
+      setPracticeQuestions(questions);
+    } catch (error: any) {
+      console.error("Erro ao gerar questões:", error);
+      setQuestionsError(error?.message || "Erro ao gerar as questões de prática. Tente novamente.");
+    } finally {
+      setIsGeneratingQuestions(false);
+    }
+  };
+
   const handlePhaseTransition = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    
+
     if (phase === 'EVOCATION') {
-      setIsGeneratingQuestions(true);
       setPhase('PRACTICE');
       setSeconds(1200); // 20 min
       setIsActive(true);
-      
-      try {
-        const questions = await generateQuestionsFromAnalysis(evocationAnalysis, studyProfile);
-        setPracticeQuestions(questions);
-      } catch (error) {
-        console.error("Erro ao gerar questões:", error);
-      } finally {
-        setIsGeneratingQuestions(false);
-      }
+      await generatePracticeQuestions();
     } else if (phase === 'PRACTICE') {
       setPhase('DETECTIVE');
       setSeconds(900); // 15 min
@@ -494,12 +513,24 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
                         </div>
                     </div>
                   ) : (
-                    <div className="bg-white/50 backdrop-blur-sm p-12 rounded-[40px] border border-dashed border-blue-200 text-center">
-                       <p className="text-gray-400 font-bold italic">
-                         {currentQuestionIndex >= practiceQuestions.length && practiceQuestions.length > 0 
-                           ? "Questões da IA concluídas! Continue praticando por conta própria ou encerre a fase." 
-                           : "Buscando questões no oceano de dados..."}
-                       </p>
+                    <div className="bg-white/50 backdrop-blur-sm p-12 rounded-[40px] border border-dashed border-blue-200 text-center space-y-4">
+                       {questionsError ? (
+                         <>
+                           <p className="text-red-500 font-bold italic">{questionsError}</p>
+                           <button
+                             onClick={generatePracticeQuestions}
+                             className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all"
+                           >
+                             Tentar Novamente
+                           </button>
+                         </>
+                       ) : (
+                         <p className="text-gray-400 font-bold italic">
+                           {currentQuestionIndex >= practiceQuestions.length && practiceQuestions.length > 0
+                             ? "Questões da IA concluídas! Continue praticando por conta própria ou encerre a fase."
+                             : "Buscando questões no oceano de dados..."}
+                         </p>
+                       )}
                     </div>
                   )}
                 </div>

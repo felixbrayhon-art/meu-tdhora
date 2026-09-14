@@ -2,6 +2,7 @@
 import React from 'react';
 import { UserStats, getFishRank } from '../types';
 import FishLogo from './FishLogo';
+import AvatarDisplay from './AvatarDisplay';
 
 interface HeaderProps {
   stats: UserStats;
@@ -71,12 +72,16 @@ const Header: React.FC<HeaderProps> = ({ stats, onProfileClick, onLogoClick, onR
         <div className="flex items-center gap-1.5 bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-full font-bold text-xs uppercase tracking-tighter">
           RITMO: {stats.streak}
         </div>
-        <button 
+        <button
           onClick={onProfileClick}
           className="w-10 h-10 rounded-full border-2 border-white overflow-hidden shadow-sm hover:ring-2 hover:ring-yellow-400 transition-all flex items-center justify-center"
           style={{ backgroundColor: stats.avatarColor }}
         >
-          <FishLogo iconOnly primaryColor="white" className="scale-50" days={stats.totalDaysStudied} />
+          {stats.characterId ? (
+            <AvatarDisplay characterId={stats.characterId} className="w-full h-full" />
+          ) : (
+            <FishLogo iconOnly primaryColor="white" className="scale-50" days={stats.totalDaysStudied} />
+          )}
         </button>
         
         <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border ${isAIEnabled ? 'bg-blue-500/5 border-blue-500/10' : 'bg-gray-100 border-gray-200 opacity-50'}`}>

@@ -60,6 +60,10 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
     } catch (error: any) {
       console.error(error);
       alert(error.message || "Erro ao carregar validação.");
+      // Reset back to the non-active render instead of leaving activeItem set
+      // with no questions/explanation/recoveryPlan populated, which would
+      // crash the render below on `questions[currentQIdx]`.
+      setActiveItem(null);
     } finally {
       setLoading(false);
     }
@@ -89,6 +93,10 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
     } catch (error: any) {
       console.error(error);
       alert(error.message || "Erro ao analisar ou resolver cofre de erros.");
+      // Same reasoning as startValidation: don't leave activeVault set with
+      // no questions/explanation/recoveryPlan populated, or the render below
+      // crashes on `questions[currentQIdx]`.
+      setActiveVault(null);
     } finally {
       setLoading(false);
     }
@@ -343,6 +351,23 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
 
     const currentQ = questions[currentQIdx];
     const hasAnswered = selectedAnswer !== null;
+
+    if (!currentQ) {
+      // Defensive guard: questions can be empty/out-of-range here if the AI
+      // response was malformed or partially failed. Render a safe fallback
+      // instead of throwing on `currentQ.question` / `currentQ.options` below.
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[50vh] px-6 text-center space-y-6">
+          <p className="text-gray-400 font-bold">Não foi possível carregar esta questão.</p>
+          <button
+            onClick={() => { setActiveItem(null); setActiveVault(null); setQuestions([]); }}
+            className="px-8 py-4 bg-[#0A0F1E] text-white rounded-2xl font-black uppercase text-xs tracking-widest"
+          >
+            Voltar
+          </button>
+        </div>
+      );
+    }
 
     return (
       <div className="max-w-3xl mx-auto py-12 px-6">

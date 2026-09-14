@@ -80,16 +80,25 @@ const AIView: React.FC<AIViewProps> = ({
     }
   };
 
-  const handleGenerateFlashcards = () => {
-    if (!result || !result.flashcards || result.flashcards.length === 0) return;
+  const handleGenerateFlashcards = async () => {
+    if (!result || !topic.trim()) return;
     setGeneratingCards(true);
-    
-    // Simulate thinking/generating for UX
-    setTimeout(() => {
-      onNewContent({ ...result, quiz: [] }); // Only send flashcards
-      setGeneratingCards(false);
+
+    try {
+      // Actually generate a fresh batch of study content for the current topic
+      // and take only the new flashcards from it (geminiService has no more
+      // targeted "flashcards only" export, so we reuse generateStudyContent).
+      const freshContent = await generateStudyContent(topic, "Dossiê Expandido", numQuestions, studyProfile, explanationStyle);
+      setResult((prev: any) => prev ? { ...prev, flashcards: freshContent.flashcards } : prev);
+      onNewContent({ ...freshContent, quiz: [] }); // Only send flashcards
       alert("Flashcards gerados e adicionados à sua revisão!");
-    }, 1500);
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.message || "Erro ao gerar flashcards. Tente novamente.";
+      alert(msg);
+    } finally {
+      setGeneratingCards(false);
+    }
   };
 
   const handleConfirmSave = (folderId: string, notebookName: string) => {

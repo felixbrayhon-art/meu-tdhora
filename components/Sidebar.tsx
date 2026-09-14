@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import FishLogo from './FishLogo';
+import AvatarDisplay from './AvatarDisplay';
 
 interface SidebarProps {
   currentView: AppView;
@@ -90,14 +91,18 @@ const Sidebar: React.FC<SidebarProps> = ({
           {isCollapsed ? (
             <FishLogo iconOnly days={stats.totalDaysStudied} className="scale-75 origin-center" />
           ) : (
-            <FishLogo days={stats.totalDaysStudied} className="scale-75 origin-left" />
+            <FishLogo days={stats.totalDaysStudied} className="scale-75 origin-left" darkBg />
           )}
         </button>
         
         <div className={`mt-8 flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5 overflow-hidden ${isCollapsed ? 'justify-center' : ''}`}>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: stats.avatarColor }}>
-            <FishLogo iconOnly primaryColor="white" className="scale-[0.4]" days={stats.totalDaysStudied} />
-          </div>
+          {stats.characterId ? (
+            <AvatarDisplay characterId={stats.characterId} className="w-10 h-10 rounded-full shrink-0" />
+          ) : (
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: stats.avatarColor }}>
+              <FishLogo iconOnly primaryColor="white" className="scale-[0.4]" days={stats.totalDaysStudied} />
+            </div>
+          )}
           {!isCollapsed && (
             <div className="overflow-hidden">
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 leading-none truncate">{stats.name}</p>

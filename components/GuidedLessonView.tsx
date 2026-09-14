@@ -35,6 +35,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastPushedStepIndexRef = useRef<number>(-1);
 
   useEffect(() => {
     // Check if current lesson is already saved
@@ -161,8 +162,14 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
 
     if (currentStepIndex < lesson.steps.length) {
       const step = lesson.steps[currentStepIndex];
-      
-      setDisplayedSteps(prev => [...prev, step]);
+
+      // Only append a step the first time we reach this index. Without this guard,
+      // toggling isPaused (e.g. clicking Resume) re-runs this effect for the SAME
+      // currentStepIndex and would push the current paragraph again, duplicating it.
+      if (lastPushedStepIndexRef.current !== currentStepIndex) {
+        setDisplayedSteps(prev => [...prev, step]);
+        lastPushedStepIndexRef.current = currentStepIndex;
+      }
 
       const words = step.content.split(' ').length;
       const baseDelay = Math.max(words * 120 + 2500, 4000); // TDAH friendly delay

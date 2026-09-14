@@ -96,6 +96,7 @@ export interface FlashcardFolder {
 export interface UserStats {
   name: string;
   avatarColor: string;
+  characterId?: string;
   level: number;
   xp: number;
   coins: number;

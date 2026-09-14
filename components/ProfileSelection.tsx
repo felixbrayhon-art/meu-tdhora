@@ -5,11 +5,21 @@ import FishLogo from './FishLogo';
 
 interface ProfileSelectionProps {
   onSelect: (profile: StudyProfile) => void;
+  onBack?: () => void;
 }
 
-const ProfileSelection: React.FC<ProfileSelectionProps> = ({ onSelect }) => {
+const ProfileSelection: React.FC<ProfileSelectionProps> = ({ onSelect, onBack }) => {
   return (
     <div className="fixed inset-0 z-[110] bg-[#FDFBF7] flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="absolute top-6 left-6 text-gray-400 font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
+          VOLTAR
+        </button>
+      )}
       <div className="max-w-4xl w-full text-center space-y-12">
         <div className="flex flex-col items-center space-y-4">
           <FishLogo className="scale-125 mb-4" />

@@ -6,11 +6,6 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Public test connection
-    match /test/connection {
-      allow read: if true;
-    }
-
     // HELPER FUNCTIONS
     function isSignedIn() {
       return request.auth != null;
@@ -65,9 +60,9 @@ service cloud.firestore {
       return data.keys().hasAll(['id', 'name', 'questions', 'createdAt']) &&
              data.id is string && data.id.size() <= 128 &&
              data.name is string && data.name.size() <= 200 &&
-             data.questions is list &&
+             data.questions is list && data.questions.size() <= 500 &&
              data.createdAt is number &&
-             (!('summary' in data) || data.summary is string);
+             (!('summary' in data) || (data.summary is string && data.summary.size() <= 20000));
     }
 
     // --- COLLECTION MATCHES ---

@@ -35,6 +35,21 @@ import {
   Laptop
 } from 'lucide-react';
 
+// Realtime Database (shared library) base URL + auth helper.
+// The DB rules require auth != null — every REST call must carry the signed-in
+// user's ID token, otherwise anyone with this URL (visible in the bundle) could
+// read/overwrite/delete the whole class's shared library.
+const RTDB_BASE_URL = 'https://gen-lang-client-0709783251-default-rtdb.firebaseio.com';
+
+async function rtdbUrl(pathWithJsonExt: string): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('Você precisa estar logado com o Google para acessar a biblioteca compartilhada.');
+  }
+  const token = await user.getIdToken();
+  return `${RTDB_BASE_URL}/${pathWithJsonExt}?auth=${token}`;
+}
+
 // IndexedDB core database config for persistent local PDFs
 const DB_NAME = 'tdah_reader_db';
 const STORE_NAME = 'pdf_files';
@@ -174,6 +189,18 @@ const saveBookPagesToDB = async (fileId: string, pages: UploadedBookPage[]): Pro
   });
 };
 
+const deleteBookPagesFromDB = async (fileId: string): Promise<void> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.delete(`pages_${fileId}`);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    request.onerror = () => reject(request.error);
+  });
+};
+
 interface DriveReaderProps {
   onBack: () => void;
   studyProfile?: StudyProfile;
@@ -303,17 +330,22 @@ export const DriveReader: React.FC<DriveReaderProps> = ({
   const [activePageIdx, setActivePageIdx] = useState<number>(-1);
   const [viewerMode, setViewerMode] = useState<'IFRAME_PDF' | 'IMAGE_PAGES'>('IMAGE_PAGES');
 
+  // Release any object URLs currently held by bookPagesList to avoid leaking memory.
+  const revokeBookPageUrls = (pages: LoadedBookPage[]) => {
+    pages.forEach((p) => {
+      if (p.url.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(p.url);
+        } catch (e) {}
+      }
+    });
+  };
+
   const loadBookPages = async (fileId: string) => {
     const stored = await getBookPagesFromDB(fileId);
     // Release existing object URLs of dynamic images to avoid memory leaks
     setBookPagesList((prev) => {
-      prev.forEach((p) => {
-        if (p.url.startsWith('blob:')) {
-          try {
-            URL.revokeObjectURL(p.url);
-          } catch (e) {}
-        }
-      });
+      revokeBookPageUrls(prev);
       return [];
     });
 
@@ -338,7 +370,10 @@ export const DriveReader: React.FC<DriveReaderProps> = ({
       // Set to IMAGE_PAGES as default so the user is welcomed with the direct, safe image render
       setViewerMode('IMAGE_PAGES');
     } else {
-      setBookPagesList([]);
+      setBookPagesList((prev) => {
+        revokeBookPageUrls(prev);
+        return [];
+      });
       setActivePageIdx(-1);
     }
   }, [selectedFile?.id]);
@@ -504,6 +539,7 @@ export const DriveReader: React.FC<DriveReaderProps> = ({
     if (window.confirm("Deseja realmente remover este PDF da sua biblioteca local? As notas salvas não serão excluídas.")) {
       try {
         await deleteFileFromDB(id);
+        await deleteBookPagesFromDB(id);
         await loadLocalFiles();
         if (selectedFile?.id === id) {
           setSelectedFile(null);
@@ -597,8 +633,8 @@ export const DriveReader: React.FC<DriveReaderProps> = ({
     setFirebaseStatusMsg(null);
     try {
       const rawPath = firebasePathInput.trim().replace(/^\/|\/$/g, '');
-      const dbUrl = `https://gen-lang-client-0709783251-default-rtdb.firebaseio.com/${rawPath ? rawPath + '.json' : '.json'}`;
-      
+      const dbUrl = await rtdbUrl(rawPath ? rawPath + '.json' : '.json');
+
       const res = await fetch(dbUrl);
       if (!res.ok) {
         throw new Error(`Erro HTTP: ${res.status}`);
@@ -640,8 +676,8 @@ export const DriveReader: React.FC<DriveReaderProps> = ({
     setFirebaseStatusMsg("Escrevendo PDF de Amostra no Firebase...");
     try {
       const rawPath = firebasePathInput.trim().replace(/^\/|\/$/g, '');
-      const writeUrl = `https://gen-lang-client-0709783251-default-rtdb.firebaseio.com/${rawPath ? rawPath : 'pdfs'}.json`;
-      
+      const writeUrl = await rtdbUrl(`${rawPath ? rawPath : 'pdfs'}.json`);
+
       const samplePayload = {
         "amostra_tdah": {
           "name": "Cartilha_de_Boas_Praticas_TDAH.pdf",
@@ -712,7 +748,7 @@ export const DriveReader: React.FC<DriveReaderProps> = ({
       setFirebaseStatusMsg("Gravando no Firebase Cloud... Por favor aguarde.");
       const cleanKey = targetLocalFile.name.replace(/[\.\$#\[\]\/]/g, '_').replace(/_+/g, '_').substring(0, 50) + '_' + Date.now();
       const rawPath = firebasePathInput.trim().replace(/^\/|\/$/g, '');
-      const finalUrl = `https://gen-lang-client-0709783251-default-rtdb.firebaseio.com/${rawPath ? rawPath : 'pdfs'}/${cleanKey}.json`;
+      const finalUrl = await rtdbUrl(`${rawPath ? rawPath : 'pdfs'}/${cleanKey}.json`);
 
       const payload = {
         name: targetLocalFile.name,
@@ -767,7 +803,7 @@ export const DriveReader: React.FC<DriveReaderProps> = ({
     try {
       const cleanKey = name.replace(/[\.\$#\[\]\/]/g, '_').replace(/_+/g, '_').substring(0, 50) + '_' + Date.now();
       const rawPath = firebasePathInput.trim().replace(/^\/|\/$/g, '');
-      const finalUrl = `https://gen-lang-client-0709783251-default-rtdb.firebaseio.com/${rawPath ? rawPath : 'pdfs'}/${cleanKey}.json`;
+      const finalUrl = await rtdbUrl(`${rawPath ? rawPath : 'pdfs'}/${cleanKey}.json`);
 
       const payload = {
         name: name.endsWith('.pdf') ? name : `${name}.pdf`,

@@ -8,14 +8,32 @@ interface FishLogoProps {
   secondaryColor?: string;
   iconOnly?: boolean;
   days?: number;
+  /** Set true when rendering on a dark background (e.g. the sidebar) — the "dark"-tone
+   * letters switch from black to white there, since solid black is invisible on navy. */
+  darkBg?: boolean;
 }
 
-const FishLogo: React.FC<FishLogoProps> = ({ 
-  className = "", 
-  primaryColor = "#EAB308", 
+// "ToDaHORA" wordmark: T-D-A-H spell the acronym (dark tone), o-O-R-A spell "ORA" (yellow) —
+// together the whole word reads "Toda hora" (PT-BR for "all the time"), sharing the H.
+// Solid flat colors, no outline/shadow — see the `darkBg` prop for background-adaptive contrast.
+const LOGO_LETTERS: { char: string; tone: 'dark' | 'light'; small?: boolean }[] = [
+  { char: 'T', tone: 'dark' },
+  { char: 'o', tone: 'light', small: true },
+  { char: 'D', tone: 'dark' },
+  { char: 'A', tone: 'dark' },
+  { char: 'H', tone: 'dark' },
+  { char: 'O', tone: 'light' },
+  { char: 'R', tone: 'light' },
+  { char: 'A', tone: 'light' },
+];
+
+const FishLogo: React.FC<FishLogoProps> = ({
+  className = "",
+  primaryColor = "#EAB308",
   secondaryColor = "#FACC15",
   iconOnly = false,
-  days = 0
+  days = 0,
+  darkBg = false
 }) => {
   const rank = getFishRank(days);
 
@@ -71,27 +89,16 @@ const FishLogo: React.FC<FishLogoProps> = ({
       </div>
 
       {!iconOnly && (
-        <div className="flex items-center group cursor-default">
-          <div className="relative flex items-center">
-            <span 
-              className="text-4xl font-[900] italic tracking-[-0.08em] uppercase transition-all duration-300 group-hover:tracking-[-0.04em]"
-              style={{ 
-                color: primaryColor,
-                textShadow: '0 2px 10px rgba(234, 179, 8, 0.2)'
-              }}
+        <div className="flex items-baseline group cursor-default">
+          {LOGO_LETTERS.map((letter, idx) => (
+            <span
+              key={idx}
+              className={`font-logo leading-none ${letter.small ? 'text-2xl' : 'text-4xl'}`}
+              style={{ color: letter.tone === 'dark' ? (darkBg ? '#FFFFFF' : '#0A0F1E') : '#EAB308' }}
             >
-              TDAH
+              {letter.char}
             </span>
-          </div>
-
-          <div className="flex flex-col items-start -ml-1.5 pt-1">
-            <div className="flex flex-col leading-[0.7] transform -skew-x-12 group-hover:skew-x-0 transition-transform duration-500">
-              <span className="text-lg font-[900] italic uppercase" style={{ color: secondaryColor }}>O</span>
-              <span className="text-[14px] font-[900] italic uppercase opacity-90 ml-0.5" style={{ color: secondaryColor }}>R</span>
-              <span className="text-[11px] font-[900] italic uppercase opacity-80 ml-1" style={{ color: secondaryColor }}>A</span>
-            </div>
-            <div className="h-1 w-0 group-hover:w-full bg-yellow-400/30 rounded-full transition-all duration-700 mt-1" />
-          </div>
+          ))}
         </div>
       )}
     </div>

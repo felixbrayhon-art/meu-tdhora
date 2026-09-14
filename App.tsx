@@ -14,7 +14,8 @@ import ProfileView from './components/ProfileView';
 import CommunityView from './components/CommunityView';
 import SplashScreen from './components/SplashScreen';
 import FishCompanion from './components/FishCompanion';
-import ProfileSelection from './components/ProfileSelection';
+import BuildTag from './components/BuildTag';
+import OnboardingFlow from './components/OnboardingFlow';
 import FocusModeView from './components/FocusModeView';
 import FishCatalog from './components/FishCatalog';
 import DynamicTimer from './components/DynamicTimer';
@@ -35,12 +36,19 @@ const RAIN_SOUND_URL = "https://www.soundjay.com/nature/rain-01.mp3";
 
 import { auth, googleProvider, signInWithPopup, onAuthStateChanged, db, handleFirestoreError, OperationType, FirebaseUser, cleanData } from './src/lib/firebase';
 import { doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
+import { CharacterProvider } from './contexts/CharacterContext';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
+  // Tracks whether the SplashScreen's own on-screen animation has finished — kept
+  // separate from `isInitializing` (which the Firestore-sync effects below key off of)
+  // so the splash stays visible for its full intended duration even when auth resolves
+  // almost instantly (e.g. a logged-out user), instead of being unmounted early.
+  const [splashDone, setSplashDone] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isStorageFull, setIsStorageFull] = useState(false);
+  const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<AppView>('HUB');
   const [timerMode, setTimerMode] = useState<TimerMode>(TimerMode.POMODORO);
   const [showGlobalBar, setShowGlobalBar] = useState(true);
@@ -105,7 +113,9 @@ const App: React.FC = () => {
   const [activeNotebookInfo, setActiveNotebookInfo] = useState<{folderId: string, notebookId: string} | null>(null);
   const [guidedLessonData, setGuidedLessonData] = useState<{ subject: string, topic: string, initialLesson?: any } | null>(null);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<Activity[]>(() => {
+    return safeJsonParse('focus_activities', []);
+  });
   const [history, setHistory] = useState<DailyHistory>(() => {
     return safeJsonParse('focus_history', {});
   });
@@ -212,10 +222,13 @@ const App: React.FC = () => {
           const statsDoc = await getDoc(userRef);
           if (statsDoc.exists()) {
             setStats(statsDoc.data() as UserStats);
-          } else {
-            // First time login, save current local stats to Firestore
-            await setDoc(userRef, cleanData(stats));
           }
+          // First-time login (no doc yet): intentionally don't write `stats` here —
+          // this effect's closure only ever sees the value from first render, so it
+          // would overwrite Firestore with stale pre-session data (e.g. XP earned
+          // before the user logged in). The stats-sync effect below (keyed on
+          // [stats, user, isInitializing, isSyncing]) fires right after isInitializing
+          // flips to false and writes the current, up-to-date stats instead.
 
           // Sync Edital
           const editalRef = doc(db, 'users', firebaseUser.uid, 'configs', 'edital');
@@ -234,14 +247,27 @@ const App: React.FC = () => {
               const notebooks = notebooksSnap.docs.map(n => n.data() as Notebook);
               cloudFolders.push({ ...fData, id: fDoc.id, notebooks });
             }
-            setFolders(cloudFolders);
+            // Merge instead of overwrite: cloud is the source of truth for folders
+            // that exist there, but any folder that only exists locally (created
+            // offline/unsynced before this login) must survive, not be discarded.
+            setFolders(prevFolders => {
+              const cloudIds = new Set(cloudFolders.map(f => f.id));
+              const localOnly = prevFolders.filter(f => !cloudIds.has(f.id));
+              return [...cloudFolders, ...localOnly];
+            });
           }
 
           // Sync Flashcards
           const cardsRef = collection(db, 'users', firebaseUser.uid, 'flashcards');
           const cardsSnap = await getDocs(cardsRef);
           if (!cardsSnap.empty) {
-            setFlashcards(cardsSnap.docs.map(d => ({ ...d.data(), id: d.id } as Flashcard)));
+            const cloudCards = cardsSnap.docs.map(d => ({ ...d.data(), id: d.id } as Flashcard));
+            // Same merge rationale as folders above: keep local-only unsynced cards.
+            setFlashcards(prevCards => {
+              const cloudIds = new Set(cloudCards.map(c => c.id));
+              const localOnly = prevCards.filter(c => !cloudIds.has(c.id));
+              return [...cloudCards, ...localOnly];
+            });
           }
 
         } catch (error) {
@@ -294,6 +320,7 @@ const App: React.FC = () => {
       saveToFirestore('configs/edital', editalConfig).catch(e => {
         // Log is already done by handleFirestoreError inside saveToFirestore
         console.error("Background sync error (Edital):", e);
+        setCloudSyncError('Não foi possível sincronizar seu edital com a nuvem. Suas alterações ficam salvas neste navegador, mas verifique sua conexão.');
       });
     }
     safeSetItem('focus_edital', JSON.stringify(editalConfig));
@@ -303,17 +330,30 @@ const App: React.FC = () => {
     if (user && !isInitializing && !isSyncing) {
       const syncCards = async () => {
         try {
+          const cardsRef = collection(db, 'users', user.uid, 'flashcards');
+          const existingSnap = await getDocs(cardsRef);
+          const localIds = new Set(flashcards.map(c => c.id));
           const batch = writeBatch(db);
           for (const card of flashcards) {
             const cardRef = doc(db, 'users', user.uid, 'flashcards', card.id);
             batch.set(cardRef, cleanData(card));
+          }
+          // Delete cards that exist in Firestore but were removed locally —
+          // otherwise a deleted flashcard resurrects on the next login/device.
+          for (const existingDoc of existingSnap.docs) {
+            if (!localIds.has(existingDoc.id)) {
+              batch.delete(existingDoc.ref);
+            }
           }
           await batch.commit();
         } catch (e) {
           handleFirestoreError(e, OperationType.WRITE, 'users/flashcardsBatch');
         }
       };
-      syncCards().catch(e => console.error("Background sync error (Flashcards):", e));
+      syncCards().catch(e => {
+        console.error("Background sync error (Flashcards):", e);
+        setCloudSyncError('Não foi possível sincronizar seus flashcards com a nuvem. Suas alterações ficam salvas neste navegador, mas verifique sua conexão.');
+      });
     }
     safeSetItem('focus_flashcards', JSON.stringify(flashcards));
   }, [flashcards, user, isInitializing, isSyncing]);
@@ -326,23 +366,54 @@ const App: React.FC = () => {
     if (user && !isInitializing && !isSyncing) {
       const syncFolders = async () => {
         try {
+          const foldersRef = collection(db, 'users', user.uid, 'quizFolders');
+          const existingFoldersSnap = await getDocs(foldersRef);
+          const localFolderIds = new Set(folders.map(f => f.id));
           const batch = writeBatch(db);
+
           for (const folder of folders) {
             const folderRef = doc(db, 'users', user.uid, 'quizFolders', folder.id);
             const { notebooks, ...folderMeta } = folder;
             batch.set(folderRef, cleanData(folderMeta));
-            
+
+            const notebooksRef = collection(db, 'users', user.uid, 'quizFolders', folder.id, 'notebooks');
+            const existingNotebooksSnap = await getDocs(notebooksRef);
+            const localNotebookIds = new Set(notebooks.map(n => n.id));
             for (const notebook of notebooks) {
               const notebookRef = doc(db, 'users', user.uid, 'quizFolders', folder.id, 'notebooks', notebook.id);
               batch.set(notebookRef, cleanData(notebook));
             }
+            // Delete notebooks removed locally from this folder.
+            for (const existingNotebookDoc of existingNotebooksSnap.docs) {
+              if (!localNotebookIds.has(existingNotebookDoc.id)) {
+                batch.delete(existingNotebookDoc.ref);
+              }
+            }
           }
+
+          // Delete folders (and their notebooks) removed locally — otherwise a
+          // deleted folder resurrects on the next login/device.
+          for (const existingFolderDoc of existingFoldersSnap.docs) {
+            if (!localFolderIds.has(existingFolderDoc.id)) {
+              batch.delete(existingFolderDoc.ref);
+              const orphanNotebooksSnap = await getDocs(
+                collection(db, 'users', user.uid, 'quizFolders', existingFolderDoc.id, 'notebooks')
+              );
+              for (const nb of orphanNotebooksSnap.docs) {
+                batch.delete(nb.ref);
+              }
+            }
+          }
+
           await batch.commit();
         } catch (e) {
           handleFirestoreError(e, OperationType.WRITE, 'users/quizFoldersBatch');
         }
       };
-      syncFolders().catch(e => console.error("Background sync error (QuizFolders):", e));
+      syncFolders().catch(e => {
+        console.error("Background sync error (QuizFolders):", e);
+        setCloudSyncError('Não foi possível sincronizar suas pastas de quiz com a nuvem. Suas alterações ficam salvas neste navegador, mas verifique sua conexão.');
+      });
     }
     safeSetItem('focus_folders', JSON.stringify(folders));
   }, [folders, user, isInitializing, isSyncing]);
@@ -350,6 +421,10 @@ const App: React.FC = () => {
   useEffect(() => {
     safeSetItem('focus_attempts', JSON.stringify(attempts));
   }, [attempts]);
+
+  useEffect(() => {
+    safeSetItem('focus_activities', JSON.stringify(activities));
+  }, [activities]);
 
   useEffect(() => {
     safeSetItem('focus_history', JSON.stringify(history));
@@ -374,6 +449,7 @@ const App: React.FC = () => {
           handleFirestoreError(e, OperationType.WRITE, 'users/profile');
         } catch (err) {
           console.error("Background sync error (Profile):", err);
+          setCloudSyncError('Não foi possível sincronizar seu progresso (XP/moedas) com a nuvem. Verifique sua conexão.');
         }
       });
     }
@@ -546,7 +622,7 @@ const App: React.FC = () => {
 
     setSmartSystem(prev => ({
       ...prev,
-      queue: [...prev.queue.filter(i => !(i.topic === topic && i.status === 'PENDING')), d1]
+      queue: [...prev.queue.filter(i => !(i.topic === topic && i.subjectName === subjectName && i.status === 'PENDING')), d1]
     }));
   };
 
@@ -602,7 +678,7 @@ const App: React.FC = () => {
 
   const logErrorToVault = (topic: string, subjectName: string, missedQuestions?: QuizQuestion[]) => {
     setSmartSystem(prev => {
-      const existing = prev.vault.find(v => v.topic === topic && !v.resolved);
+      const existing = prev.vault.find(v => v.topic === topic && v.subjectName === subjectName && !v.resolved);
       if (existing) {
         return {
           ...prev,
@@ -800,18 +876,26 @@ const App: React.FC = () => {
   };
 
   const finishInitialization = useCallback(() => {
-    setIsInitializing(false);
+    setSplashDone(true);
   }, []);
 
-  if (isInitializing) return <SplashScreen onComplete={finishInitialization} />;
+  if (isInitializing || !splashDone) return (
+    <>
+      <SplashScreen onComplete={finishInitialization} />
+      <BuildTag />
+    </>
+  );
   if (!stats.studyProfile) return (
-    <ProfileSelection onSelect={(p) => {
-      const defaultStyles = {
-        'VESTIBULAR': 'Explique de forma didática e interdisciplinar, como nos grandes vestibulares. Use analogias com a vida real e foque na base do conhecimento.',
-        'CONCURSO': 'Explique de forma exaustiva, técnica e analítica. Use cabeçalhos para Passo a Passo, Embasamento Legal, Por que a certa está certa e por que as outras estão erradas.'
-      };
-      setStats(prev => ({ ...prev, studyProfile: p, explanationStyle: defaultStyles[p] }));
-    }} />
+    <>
+      <OnboardingFlow onComplete={({ name, studyProfile, characterId }) => {
+        const defaultStyles = {
+          'VESTIBULAR': 'Explique de forma didática e interdisciplinar, como nos grandes vestibulares. Use analogias com a vida real e foque na base do conhecimento.',
+          'CONCURSO': 'Explique de forma exaustiva, técnica e analítica. Use cabeçalhos para Passo a Passo, Embasamento Legal, Por que a certa está certa e por que as outras estão erradas.'
+        };
+        setStats(prev => ({ ...prev, name, characterId, studyProfile, explanationStyle: defaultStyles[studyProfile] }));
+      }} />
+      <BuildTag />
+    </>
   );
 
   const formatMiniTime = (s: number) => {
@@ -821,9 +905,10 @@ const App: React.FC = () => {
   };
 
   return (
+    <CharacterProvider characterId={stats.characterId}>
     <div className="flex h-screen bg-[#FDFBF7] text-[#0A0F1E] overflow-hidden">
       <div className="hidden lg:block shrink-0">
-        <Sidebar 
+        <Sidebar
           currentView={currentView}
           setView={(v) => { 
             setCurrentView(v); 
@@ -847,8 +932,20 @@ const App: React.FC = () => {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        {cloudSyncError && (
+          <div className="shrink-0 z-[200] bg-red-500 text-white text-xs font-bold px-4 py-2 flex items-center justify-between gap-3">
+            <span>⚠️ {cloudSyncError}</span>
+            <button
+              onClick={() => setCloudSyncError(null)}
+              className="shrink-0 opacity-80 hover:opacity-100 font-black px-2"
+              title="Dispensar aviso"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <header className="shrink-0 z-50">
-          <Header 
+          <Header
             stats={stats} 
             onProfileClick={() => setCurrentView('PROFILE')} 
             onLogoClick={() => setCurrentView('HUB')} 
@@ -1149,7 +1246,9 @@ const App: React.FC = () => {
              onComplete={(score, total) => { 
                 setAttempts(prev => [...prev, { folderId: activeNotebookInfo.folderId, notebookId: activeNotebookInfo.notebookId, date: Date.now(), score, total }]); 
                 addXP(score * 50); 
-                const notebookName = folders.find(f => f.id === activeNotebookInfo.folderId)!.notebooks.find(n => n.id === activeNotebookInfo.notebookId)!.name;
+                // Optional-chained on purpose: the folder/notebook can have been deleted
+                // (locally or via a cloud sync) while the quiz was still in progress.
+                const notebookName = folders.find(f => f.id === activeNotebookInfo.folderId)?.notebooks.find(n => n.id === activeNotebookInfo.notebookId)?.name || 'Simulado';
                 handleManualPost(`Acertou ${score}/${total} no quiz "${notebookName}"!`);
                 const mappedSubject = getSubjectForTopic(notebookName);
                 if (mappedSubject) updateHeat(mappedSubject, score * 5);
@@ -1345,8 +1444,10 @@ const App: React.FC = () => {
       </div>
      </div>
 
-      <FishCompanion studyProfile={stats.studyProfile} />
+      <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} />
+      <BuildTag />
     </div>
+    </CharacterProvider>
   );
 };
 

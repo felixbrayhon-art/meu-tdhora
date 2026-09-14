@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { UserStats, StudyProfile, ExplanationStyle, FISH_RANKS, getFishRank } from '../types';
 import FishLogo from './FishLogo';
+import AvatarBuilder from './AvatarBuilder';
+import AvatarDisplay from './AvatarDisplay';
 
 interface ProfileViewProps {
   stats: UserStats;
@@ -26,6 +28,8 @@ const AVATAR_OPTIONS = [
   const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled, onLogout, isLoggedIn }) => {
   const [name, setName] = useState(stats.name);
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
+  const [characterId, setCharacterId] = useState<string | undefined>(stats.characterId);
+  const [showAvatarBuilder, setShowAvatarBuilder] = useState(false);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
   const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>(stats.explanationStyle || 'TECNICA');
   const [questionProfileStyle, setQuestionProfileStyle] = useState(stats.questionProfileStyle || '');
@@ -35,11 +39,12 @@ const AVATAR_OPTIONS = [
   const nextRank = FISH_RANKS.find(r => r.days > stats.totalDaysStudied);
 
   const handleSave = () => {
-    onUpdate({ ...stats, name, avatarColor: selectedColor, studyProfile: profile, explanationStyle, questionProfileStyle, fontSizeMultiplier });
+    onUpdate({ ...stats, name, avatarColor: selectedColor, characterId, studyProfile: profile, explanationStyle, questionProfileStyle, fontSizeMultiplier });
     onBack();
   };
 
   return (
+    <>
     <div className="max-w-4xl mx-auto py-10 animate-in fade-in slide-in-from-bottom-6 duration-500 px-4">
       <button onClick={onBack} className="mb-12 text-gray-400 font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
@@ -49,12 +54,24 @@ const AVATAR_OPTIONS = [
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-7 bg-white rounded-[50px] p-12 shadow-2xl border border-gray-100 h-fit">
           <div className="flex flex-col items-center mb-12">
-            <div 
-              className="w-32 h-32 rounded-[40px] flex items-center justify-center shadow-xl mb-6 transition-all duration-500 border-4 border-white"
-              style={{ backgroundColor: selectedColor }}
-            >
-              <FishLogo iconOnly primaryColor="white" className="scale-150" days={stats.totalDaysStudied} />
-            </div>
+            {characterId ? (
+              <button
+                onClick={() => setShowAvatarBuilder(true)}
+                className="relative group w-32 h-32 rounded-[40px] shadow-xl mb-6 transition-all duration-500 border-4 border-white overflow-hidden"
+              >
+                <AvatarDisplay characterId={characterId} className="w-full h-full" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 text-white text-[10px] font-black uppercase tracking-widest transition-opacity">Editar</span>
+                </div>
+              </button>
+            ) : (
+              <div
+                className="w-32 h-32 rounded-[40px] flex items-center justify-center shadow-xl mb-6 transition-all duration-500 border-4 border-white"
+                style={{ backgroundColor: selectedColor }}
+              >
+                <FishLogo iconOnly primaryColor="white" className="scale-150" days={stats.totalDaysStudied} />
+              </div>
+            )}
             <h2 className="text-3xl font-black italic tracking-tighter uppercase">MEU PERFIL</h2>
             <div className="flex flex-col items-center gap-1 mt-1">
               <p className="text-blue-500 font-black text-sm uppercase">{currentRank.label}</p>
@@ -100,6 +117,20 @@ const AVATAR_OPTIONS = [
                   CONCURSOS PÚBLICOS
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Meu Avatar</label>
+              <button
+                onClick={() => setShowAvatarBuilder(true)}
+                className="w-full flex items-center gap-4 bg-gray-50 hover:bg-yellow-50 border-2 border-transparent hover:border-yellow-400 rounded-3xl p-4 transition-all"
+              >
+                <AvatarDisplay characterId={characterId} className="w-16 h-16 rounded-2xl shrink-0" />
+                <div className="text-left">
+                  <p className="font-black text-sm">{characterId ? 'Trocar meu personagem' : 'Escolher meu personagem'}</p>
+                  <p className="text-xs text-gray-400 font-medium">Escolha entre os personagens disponíveis</p>
+                </div>
+              </button>
             </div>
 
             <div>
@@ -305,6 +336,17 @@ const AVATAR_OPTIONS = [
         </div>
       </div>
     </div>
+    {showAvatarBuilder && (
+      <AvatarBuilder
+        initialCharacterId={characterId}
+        onClose={() => setShowAvatarBuilder(false)}
+        onSave={(newCharacterId: string) => {
+          setCharacterId(newCharacterId);
+          setShowAvatarBuilder(false);
+        }}
+      />
+    )}
+    </>
   );
 };
 

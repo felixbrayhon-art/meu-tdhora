@@ -1,5 +1,6 @@
 
 import React, { useState, useRef } from 'react';
+import DOMPurify from 'dompurify';
 import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen } from 'lucide-react';
 import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
@@ -7,6 +8,45 @@ import LoadingFish from './LoadingFish';
 import SaveToFolderModal from './SaveToFolderModal';
 import MarkdownContent from './MarkdownContent';
 import { RichTextEditor } from './RichTextEditor';
+
+// Reindexes an array of per-question indices (e.g. flagged, questionScratched, questionHighlighted)
+// after the question at `removedIdx` is deleted from the questions array.
+const reindexListAfterDelete = (list: number[], removedIdx: number): number[] =>
+  list
+    .filter(i => i !== removedIdx)
+    .map(i => (i > removedIdx ? i - 1 : i));
+
+// Reindexes a Record<number, T> keyed by question index after the question at `removedIdx` is deleted.
+const reindexRecordAfterDelete = <T,>(record: Record<number, T>, removedIdx: number): Record<number, T> => {
+  const result: Record<number, T> = {};
+  Object.entries(record).forEach(([key, value]) => {
+    const idx = Number(key);
+    if (idx === removedIdx) return;
+    result[idx > removedIdx ? idx - 1 : idx] = value as T;
+  });
+  return result;
+};
+
+// Reindexes an array of per-question indices given a permutation, where newOrder[newIdx] = oldIdx.
+const reindexListForPermutation = (list: number[], newOrder: number[]): number[] => {
+  const oldToNew = new Map<number, number>();
+  newOrder.forEach((oldIdx, newIdx) => oldToNew.set(oldIdx, newIdx));
+  return list
+    .map(i => oldToNew.get(i))
+    .filter((i): i is number => i !== undefined);
+};
+
+// Reindexes a Record<number, T> keyed by question index given a permutation, where newOrder[newIdx] = oldIdx.
+const reindexRecordForPermutation = <T,>(record: Record<number, T>, newOrder: number[]): Record<number, T> => {
+  const oldToNew = new Map<number, number>();
+  newOrder.forEach((oldIdx, newIdx) => oldToNew.set(oldIdx, newIdx));
+  const result: Record<number, T> = {};
+  Object.entries(record).forEach(([key, value]) => {
+    const newIdx = oldToNew.get(Number(key));
+    if (newIdx !== undefined) result[newIdx] = value as T;
+  });
+  return result;
+};
 
 interface TDHQuestoesProps {
   onBack: () => void;
@@ -364,12 +404,23 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
 
   const handleDeleteQuestion = () => {
     if (confirm("Tem certeza que deseja excluir esta questão? Ela será removida apenas desta sessão.")) {
-      const newQuestions = questions.filter((_, idx) => idx !== currentIdx);
+      const deletedIdx = currentIdx;
+      const newQuestions = questions.filter((_, idx) => idx !== deletedIdx);
       if (newQuestions.length === 0) {
         setQuestions([]);
+        setUserAnswers({});
+        setFlagged([]);
+        setQuestionScratched([]);
+        setQuestionHighlighted([]);
+        setUndoStack({});
         return;
       }
       setQuestions(newQuestions);
+      setUserAnswers(prev => reindexRecordAfterDelete(prev, deletedIdx));
+      setFlagged(prev => reindexListAfterDelete(prev, deletedIdx));
+      setQuestionScratched(prev => reindexListAfterDelete(prev, deletedIdx));
+      setQuestionHighlighted(prev => reindexListAfterDelete(prev, deletedIdx));
+      setUndoStack(prev => reindexRecordAfterDelete(prev, deletedIdx));
       if (currentIdx >= newQuestions.length) {
         setCurrentIdx(newQuestions.length - 1);
       }
@@ -388,8 +439,19 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
 
   const handleShuffle = () => {
     if (confirm("Deseja embaralhar as questões deste simulado?")) {
-      const shuffled = [...questions].sort(() => Math.random() - 0.5);
+      // Fisher-Yates shuffle of indices: newOrder[newIdx] = oldIdx
+      const newOrder = questions.map((_, idx) => idx);
+      for (let i = newOrder.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newOrder[i], newOrder[j]] = [newOrder[j], newOrder[i]];
+      }
+      const shuffled = newOrder.map(oldIdx => questions[oldIdx]);
       setQuestions(shuffled);
+      setUserAnswers(prev => reindexRecordForPermutation(prev, newOrder));
+      setFlagged(prev => reindexListForPermutation(prev, newOrder));
+      setQuestionScratched(prev => reindexListForPermutation(prev, newOrder));
+      setQuestionHighlighted(prev => reindexListForPermutation(prev, newOrder));
+      setUndoStack(prev => reindexRecordForPermutation(prev, newOrder));
       setCurrentIdx(0);
       setTempSelectedOpt(null);
       setSelectedOpt(null);
@@ -978,7 +1040,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                     questionHighlighted.includes(currentIdx) ? 'text-slate-800 bg-yellow-100/50 p-6 rounded-2xl border-l-[6px] border-l-yellow-400' : 
                     'text-slate-700'
                   }`} 
-                  dangerouslySetInnerHTML={{ __html: currentQ.question }} 
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentQ.question) }}
                 />
               </div>
 
@@ -1136,7 +1198,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                             `}</style>
                             <div 
                               className="text-slate-600 font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2 note-container" 
-                              dangerouslySetInnerHTML={{ __html: userCommentaryInput }}
+                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userCommentaryInput) }}
                             />
                           </>
                         ) : (

@@ -1,7 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, 
+import DOMPurify from 'dompurify';
+import {
+  Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText,
   Maximize2, Minimize2, Move, Share2, Shuffle, LogOut,
   Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen,
   Copy, CheckCircle2
@@ -550,7 +551,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({
                 questionHighlighted.includes(currentQ.id) ? 'text-slate-900 bg-yellow-50/80 border-l-[12px] border-l-yellow-400 border border-yellow-200/50' : 
                 'text-slate-800 bg-slate-50 border border-slate-100'
               }`} 
-              dangerouslySetInnerHTML={{ __html: currentQ.question }} 
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentQ.question) }}
             />
           </div>
           
@@ -771,7 +772,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({
                         `}</style>
                         <div 
                           className="text-slate-600 font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2 note-container" 
-                          dangerouslySetInnerHTML={{ __html: userCommentaryInput }} 
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userCommentaryInput) }}
                         />
                       </>
                     ) : (

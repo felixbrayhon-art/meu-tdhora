@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getDailyBibleMotivation } from '../services/geminiService';
+import { useCharacterId } from '../contexts/CharacterContext';
+import { getPeaceSrc } from '../services/avatarService';
 
 const MotivationView: React.FC = () => {
     const [motivation, setMotivation] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const characterId = useCharacterId();
+    const peaceSrc = getPeaceSrc(characterId);
 
     useEffect(() => {
         const lastFetch = localStorage.getItem('motivation_fetch_date');
@@ -41,7 +45,18 @@ const MotivationView: React.FC = () => {
             {loading ? (
                 <p className="text-emerald-800 text-lg font-bold text-center">Carregando inspiração...</p>
             ) : (
-                <p className="text-emerald-800 text-lg font-bold text-center max-w-lg leading-relaxed">{motivation}</p>
+                <div className={`relative w-full flex flex-col items-center ${peaceSrc ? 'sm:flex-row sm:items-end sm:justify-center gap-2 sm:gap-0' : ''}`}>
+                    {peaceSrc && (
+                        <img
+                            src={peaceSrc}
+                            alt=""
+                            className="h-28 sm:h-40 object-contain drop-shadow-lg shrink-0 sm:-mr-4 sm:mb-2"
+                        />
+                    )}
+                    <div className="bg-white/70 rounded-[30px] px-6 py-5 shadow-sm max-w-lg">
+                        <p className="text-emerald-800 text-lg font-bold text-center leading-relaxed">{motivation}</p>
+                    </div>
+                </div>
             )}
         </div>
     );

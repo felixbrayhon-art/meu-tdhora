@@ -54,8 +54,11 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
+  // Full detail (including auth PII) stays local to this browser's console for debugging.
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  // The thrown error must never carry PII (email/uid/tenantId) — it can end up in
+  // crash reporters (Sentry, window.onerror, etc.) that ship it to a third party.
+  throw new Error(`Firestore ${operationType} failed${path ? ` at ${path}` : ''}: ${errInfo.error}`);
 }
 
 export function cleanData(obj: any): any {

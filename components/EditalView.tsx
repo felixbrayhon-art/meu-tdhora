@@ -20,6 +20,7 @@ interface EditalViewProps {
 const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', config, onUpdate, onSelectTopic, onBack, onDisable, onSmartRevision, onTopicComplete }) => {
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [extractingSubjectIds, setExtractingSubjectIds] = useState<string[]>([]);
+  const [failedSubjectIds, setFailedSubjectIds] = useState<string[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<{subject: string, topic: string} | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTopic, setEditingTopic] = useState<{ subjectId: string, oldTopic: string, newTopic: string } | null>(null);
@@ -30,27 +31,35 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
   const isExtracting = extractingSubjectIds.length > 0;
 
   useEffect(() => {
-    const subjectsToExtract = config.subjects.filter(s => s.content.trim() && s.topics.length === 0 && !extractingSubjectIds.includes(s.id));
+    const subjectsToExtract = config.subjects.filter(s => s.content.trim() && s.topics.length === 0 && !extractingSubjectIds.includes(s.id) && !failedSubjectIds.includes(s.id));
     if (subjectsToExtract.length > 0 && extractingSubjectIds.length < 2) {
       // Process up to 2 at a time for speed
       handleAutoExtract(subjectsToExtract[0]);
     }
-  }, [config.subjects, extractingSubjectIds]);
+  }, [config.subjects, extractingSubjectIds, failedSubjectIds]);
 
   const handleAutoExtract = async (subject: EditalSubject) => {
     setExtractingSubjectIds(prev => [...prev, subject.id]);
+    // Clear any previous failure flag for this subject while we retry it
+    setFailedSubjectIds(prev => prev.filter(id => id !== subject.id));
     try {
       const result = await extractTopicsFromEdital(subject.name, subject.content);
-      const updatedSubjects = config.subjects.map(s => 
+      const updatedSubjects = config.subjects.map(s =>
         s.id === subject.id ? { ...s, topics: result.topics } : s
       );
       onUpdate({ ...config, subjects: updatedSubjects });
     } catch (error) {
       console.error("Erro ao extrair tópicos:", error);
-      // We don't alert here to avoid spamming the user if multiple fail
+      // Mark as failed instead of silently retrying forever (avoids burning API quota).
+      // The auto-extract effect excludes failed subjects, so the user must explicitly retry.
+      setFailedSubjectIds(prev => prev.includes(subject.id) ? prev : [...prev, subject.id]);
     } finally {
       setExtractingSubjectIds(prev => prev.filter(id => id !== subject.id));
     }
+  };
+
+  const handleRetryExtraction = (subject: EditalSubject) => {
+    handleAutoExtract(subject);
   };
 
   const toggleTopicCompletion = (subjectId: string, topic: string) => {
@@ -198,6 +207,9 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
                       {extractingSubjectIds.includes(subject.id) && (
                         <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse shadow-sm shadow-yellow-400"></div>
                       )}
+                      {failedSubjectIds.includes(subject.id) && (
+                        <div title="Falha ao mapear tópicos" className="w-2 h-2 bg-red-500 rounded-full shadow-sm shadow-red-500"></div>
+                      )}
                     </div>
                     <span className={`text-[10px] tracking-widest shrink-0 ${activeSubjectId === subject.id ? 'text-blue-200' : 'text-gray-300'}`}>{completedCount}/{totalCount}</span>
                   </div>
@@ -328,7 +340,20 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
                   })}
                 </div>
 
-                {activeSubject.topics.length === 0 && !isExtracting && (
+                {activeSubject.topics.length === 0 && !extractingSubjectIds.includes(activeSubject.id) && failedSubjectIds.includes(activeSubject.id) && (
+                  <div className="flex flex-col items-center justify-center h-96 text-center space-y-4">
+                    <div className="text-5xl opacity-40">⚠️</div>
+                    <p className="text-red-400 font-bold max-w-xs">Não foi possível mapear os tópicos deste conteúdo automaticamente.</p>
+                    <button
+                      onClick={() => handleRetryExtraction(activeSubject)}
+                      className="bg-red-500 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-red-200"
+                    >
+                      Tentar Novamente
+                    </button>
+                  </div>
+                )}
+
+                {activeSubject.topics.length === 0 && !isExtracting && !failedSubjectIds.includes(activeSubject.id) && (
                   <div className="flex flex-col items-center justify-center h-96 text-center space-y-4">
                     <div className="text-5xl opacity-20">📖</div>
                     <p className="text-gray-400 font-bold max-w-xs">Aguardando mapeamento estratégico deste conteúdo...</p>

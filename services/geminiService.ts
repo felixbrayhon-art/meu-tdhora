@@ -6,8 +6,9 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || ''
 });
 
-const DEFAULT_MODEL = 'gemini-3-flash-preview';
-const PRO_MODEL = 'gemini-3.1-pro-preview'; // Improved precision for extraction tasks
+const DEFAULT_MODEL = 'gemini-3.8-flash'; // GA flash model: best balance of quality/cost for rich content generation
+const LITE_MODEL = 'gemini-3.5-flash-lite'; // Cheapest/fastest: trivial, low-latency calls (counting, short greetings)
+const PRO_MODEL = 'gemini-3.1-pro-preview'; // Highest precision for extraction tasks
 
 // Custom error class for API issues
 export class AIError extends Error {
@@ -322,7 +323,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
 export const identifyQuestionCount = async (text: string) => {
   try {
     const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
+      model: LITE_MODEL,
       contents: `Analise cuidadosamente o texto abaixo e conte quantas questões de múltipla escolha (com alternativas A, B, C...) existem nele. 
       Ignore blocos de explicação, comentários ou gabaritos que venham após as questões; conte apenas os enunciados das perguntas.
       Retorne APENAS um número inteiro representando o total de questões.
@@ -826,7 +827,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
 
   try {
     const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
+      model: LITE_MODEL,
       contents: `${getTimeContext()}
       Você é o Mentor Peixe, o guia TDAH do estudante.
       Seja breve, encorajador e estratégico.
@@ -863,7 +864,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
 export const getDailyBibleMotivation = async (): Promise<string> => {
   try {
     const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
+      model: LITE_MODEL,
       contents: [
         { role: 'user', parts: [{ text: `${getTimeContext()}
       Gere uma passagem curta e motivacional da Bíblia totalmente focada para um estudante com TDAH (foco, superação, ansiedade, perseverança).
@@ -893,7 +894,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
 
   try {
     const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
+      model: LITE_MODEL,
       contents: `${getTimeContext()}
       Você é um Engenheiro de Aprendizagem Especialista em Ciclos de Estudo para TDAH.
       Sua tarefa é criar um CICLO DE ESTUDO OTIMIZADO baseado nos dados do edital abaixo.

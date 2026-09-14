@@ -1,14 +1,17 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import FishLogo from './FishLogo';
 import { chatWithFish } from '../services/geminiService';
 import { StudyProfile } from '../types';
+import { getCharacterSrc, getCharacter } from '../services/avatarService';
 
 interface FishCompanionProps {
   studyProfile?: StudyProfile;
+  characterId?: string;
 }
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId }) => {
+  const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
+  const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model', text: string }[]>([]);
@@ -53,11 +56,11 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile }) => {
           {/* Header do Chat */}
           <div className="p-6 bg-yellow-400 text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-2xl backdrop-blur-sm">
-                <FishLogo iconOnly className="scale-75" primaryColor="white" />
+              <div className="w-10 h-10 rounded-2xl overflow-hidden shrink-0">
+                <img src={companionIconSrc} alt="" className="w-full h-full object-cover object-top" />
               </div>
               <div>
-                <h3 className="font-black italic text-lg leading-none">PEIXE AMIGO</h3>
+                <h3 className="font-black italic text-lg leading-none uppercase">{companionName}</h3>
                 <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1">
                   {studyProfile ? `MODO ${studyProfile}` : 'Sempre focado por você'}
                 </p>
@@ -122,7 +125,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile }) => {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Pergunte ao peixe..."
+                placeholder={`Pergunte ao ${companionName}...`}
                 className="flex-1 bg-transparent px-4 py-3 text-sm focus:outline-none font-medium"
               />
               <button 
@@ -139,24 +142,43 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile }) => {
         </div>
       )}
 
-      {/* Botão Flutuante (O Peixe) */}
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-20 h-20 rounded-[30px] shadow-2xl flex items-center justify-center transition-all duration-500 hover:scale-110 active:scale-95 group overflow-hidden ${
-          isOpen ? 'bg-black rotate-[360deg]' : 'bg-yellow-400 hover:bg-yellow-500'
-        }`}
-      >
-        {isOpen ? (
+      {/* Botão Flutuante (O Peixe / Personagem) */}
+      {isOpen ? (
+        <button
+          onClick={() => setIsOpen(false)}
+          className="w-20 h-20 rounded-[30px] shadow-2xl flex items-center justify-center transition-all duration-500 hover:scale-110 active:scale-95 bg-black rotate-[360deg]"
+        >
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
           </svg>
-        ) : (
-          <div className="relative flex items-center justify-center">
-            <FishLogo iconOnly primaryColor="white" className="scale-125 group-hover:animate-bounce" />
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-50 border-2 border-white rounded-full animate-pulse"></div>
+        </button>
+      ) : characterId ? (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="relative group flex items-end justify-center h-32 sm:h-40 w-24 sm:w-28 hover:scale-105 active:scale-95 transition-transform duration-300"
+        >
+          <img
+            src={companionIconSrc}
+            alt={`Pergunte ao ${companionName}`}
+            className="h-full object-contain drop-shadow-2xl"
+          />
+          <div className="absolute top-2 right-2 w-4 h-4 bg-orange-50 border-2 border-white rounded-full animate-pulse"></div>
+        </button>
+      ) : (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="w-20 h-20 rounded-[30px] shadow-2xl flex items-center justify-center transition-all duration-500 hover:scale-110 active:scale-95 group overflow-hidden bg-yellow-400 hover:bg-yellow-500"
+        >
+          <div className="relative flex items-center justify-center w-full h-full">
+            <img
+              src={companionIconSrc}
+              alt={`Pergunte ao ${companionName}`}
+              className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-300"
+            />
+            <div className="absolute top-1 right-1 w-4 h-4 bg-orange-50 border-2 border-white rounded-full animate-pulse"></div>
           </div>
-        )}
-      </button>
+        </button>
+      )}
     </div>
   );
 };
