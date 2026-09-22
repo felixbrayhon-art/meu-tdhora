@@ -37,6 +37,8 @@ export interface QuestionDraft {
   source: string;
   externalId: string;
   number: number;
+  importSubject?: string | null;
+  importYear?: number | null;
   questionType: QuestionType;
   subjectRaw: string | null;
   topicRaw: string | null;
@@ -55,6 +57,8 @@ export interface PublishedQuestion {
   id: string;
   source: string;
   externalId: string;
+  importSubject?: string | null;
+  importYear?: number | null;
   questionType: QuestionType;
   subjectRaw: string | null;
   topicRaw: string | null;
