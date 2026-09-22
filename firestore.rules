@@ -251,7 +251,7 @@ service cloud.firestore {
       // or rejected — but never create one; that's the push script's job.
       allow update: if isAdmin() && isValidQuestionDraft(incoming());
       allow delete: if isAdmin();
-      allow create: if false;
+      allow create: if false; // written only by the Admin SDK push script
     }
 
     function isValidPublishedQuestion(data) {
