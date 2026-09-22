@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { AppView, TimerMode, Flashcard, FlashcardFolder, UserStats, QuizFolder, Notebook, QuizAttempt, StudyPlan, DailyHistory, StudySubject, StudySession, Activity, QuizQuestion, StudyProfile, FocusSettings, EditalConfig, SmartRevisionSystem, SmartRevisionItem, ErrorVaultItem, SocialState, StudyCycle, StudyCycleStep } from './types';
+import { AppView, TimerMode, Flashcard, FlashcardFolder, UserStats, QuizFolder, Notebook, QuizAttempt, StudyPlan, DailyHistory, StudySubject, StudySession, Activity, QuizQuestion, StudyProfile, FocusSettings, EditalConfig, SmartRevisionSystem, SmartRevisionItem, ErrorVaultItem, SocialState, StudyCycle, StudyCycleStep, HandwrittenNote, NoteFolder } from './types';
 import Header from './components/Header';
 import Hub from './components/Hub';
 import TimerView from './components/TimerView';
@@ -18,6 +18,10 @@ import BuildTag from './components/BuildTag';
 import OnboardingFlow from './components/OnboardingFlow';
 import FocusModeView from './components/FocusModeView';
 import FishCatalog from './components/FishCatalog';
+import VadeMecumView from './components/VadeMecumView';
+import NotesView from './components/NotesView';
+import AdminQuestionReview from './components/AdminQuestionReview';
+import { checkIsAdmin } from './services/questionBankService';
 import DynamicTimer from './components/DynamicTimer';
 import EditalSetup from './components/EditalSetup';
 import EditalView from './components/EditalView';
@@ -34,9 +38,10 @@ const LOFI_RELAX_URL = "https://stream.zeno.fm/0r0xa792kwzuv";
 const MPB_LOFI_URL = "https://stream.zeno.fm/f978v6v6h0huv";
 const RAIN_SOUND_URL = "https://www.soundjay.com/nature/rain-01.mp3"; 
 
-import { auth, googleProvider, signInWithPopup, onAuthStateChanged, db, handleFirestoreError, OperationType, FirebaseUser, cleanData } from './src/lib/firebase';
+import { auth, googleProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, db, handleFirestoreError, OperationType, FirebaseUser, cleanData } from './src/lib/firebase';
 import { doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 import { CharacterProvider } from './contexts/CharacterContext';
+import { syncPublicProfile } from './services/socialService';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -46,6 +51,7 @@ const App: React.FC = () => {
   // almost instantly (e.g. a logged-out user), instead of being unmounted early.
   const [splashDone, setSplashDone] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isStorageFull, setIsStorageFull] = useState(false);
   const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
@@ -180,6 +186,14 @@ const App: React.FC = () => {
     return safeJsonParse('focus_studycycle', null);
   });
 
+  const [notes, setNotes] = useState<HandwrittenNote[]>(() => {
+    return safeJsonParse('focus_notes', []);
+  });
+
+  const [noteFolders, setNoteFolders] = useState<NoteFolder[]>(() => {
+    return safeJsonParse('focus_note_folders', []);
+  });
+
   const [isAIEnabled, setIsAIEnabled] = useState<boolean>(() => {
     return safeJsonParse('focus_ai_enabled', true);
   });
@@ -215,6 +229,9 @@ const App: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
+        // Independent of the rest of this sync — a failed/denied admin check
+        // shouldn't block the user's own data from loading.
+        checkIsAdmin(firebaseUser.uid).then(setIsAdmin).catch(() => setIsAdmin(false));
         setIsSyncing(true);
         try {
           // Sync Stats
@@ -281,6 +298,7 @@ const App: React.FC = () => {
           setIsInitializing(false);
         }
       } else {
+        setIsAdmin(false);
         setIsInitializing(false);
       }
     });
@@ -290,8 +308,19 @@ const App: React.FC = () => {
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Login failed", error);
+    } catch (error: any) {
+      // Popups get silently blocked by a lot of mobile/privacy-focused browsers
+      // (Brave, Safari, in-app webviews). Fall back to a full-page redirect,
+      // which onAuthStateChanged picks up automatically when the user returns.
+      if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/operation-not-supported-in-this-environment'].includes(error?.code)) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectError) {
+          console.error("Login failed (redirect)", redirectError);
+        }
+      } else {
+        console.error("Login failed", error);
+      }
     }
   };
 
@@ -465,8 +494,28 @@ const App: React.FC = () => {
   }, [socialState]);
 
   useEffect(() => {
+    if (!user) return;
+    syncPublicProfile(user.uid, {
+      name: stats.name,
+      avatarColor: stats.avatarColor,
+      characterId: stats.characterId,
+      level: stats.level,
+      xp: stats.xp,
+      status: globalTimerActive ? 'STUDYING' : 'ONLINE',
+    }).catch(() => {});
+  }, [user, stats.name, stats.avatarColor, stats.characterId, stats.level, stats.xp, globalTimerActive]);
+
+  useEffect(() => {
     safeSetItem('focus_studycycle', JSON.stringify(studyCycle));
   }, [studyCycle]);
+
+  useEffect(() => {
+    safeSetItem('focus_notes', JSON.stringify(notes));
+  }, [notes]);
+
+  useEffect(() => {
+    safeSetItem('focus_note_folders', JSON.stringify(noteFolders));
+  }, [noteFolders]);
 
   useEffect(() => {
     safeSetItem('focus_ai_enabled', JSON.stringify(isAIEnabled));
@@ -1126,9 +1175,14 @@ const App: React.FC = () => {
             attempts={attempts}
             folders={folders}
             smartSystem={smartSystem}
+            isAdmin={isAdmin}
           />
         )}
-        
+
+        {currentView === 'ADMIN_QUESTION_REVIEW' && user && (
+          <AdminQuestionReview uid={user.uid} onBack={() => setCurrentView('HUB')} />
+        )}
+
         {currentView === 'TIMER' && (
           <TimerView 
             isActive={globalTimerActive} 
@@ -1363,11 +1417,11 @@ const App: React.FC = () => {
         )}
 
         {currentView === 'SOCIAL_MODULE' && (
-          <SocialModule 
-            socialState={socialState}
-            onUpdateSocial={setSocialState}
+          <SocialModule
+            myUid={user?.uid}
             myStats={stats}
-            editalConfig={editalConfig}
+            isLoggedIn={!!user}
+            onLogin={handleLogin}
             isStudyMode={globalTimerActive}
             onBack={() => setCurrentView('HUB')}
           />
@@ -1388,6 +1442,25 @@ const App: React.FC = () => {
         )}
         {currentView === 'COMMUNITY' && <CommunityView activities={activities} onBack={() => setCurrentView('HUB')} onPostManual={handleManualPost} />}
         {currentView === 'FISH_CATALOG' && <FishCatalog onBack={() => setCurrentView('HUB')} />}
+        {currentView === 'VADE_MECUM' && <VadeMecumView onBack={() => setCurrentView('HUB')} />}
+        {currentView === 'NOTES' && (
+          <NotesView
+            notes={notes}
+            folders={noteFolders}
+            onSave={(note) => setNotes(prev => {
+              const exists = prev.some(n => n.id === note.id);
+              return exists ? prev.map(n => n.id === note.id ? note : n) : [...prev, note];
+            })}
+            onDelete={(id) => setNotes(prev => prev.filter(n => n.id !== id))}
+            onCreateFolder={(name, color) => setNoteFolders(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name, color, createdAt: Date.now() }])}
+            onDeleteFolder={(id) => {
+              setNoteFolders(prev => prev.filter(f => f.id !== id));
+              setNotes(prev => prev.map(n => n.folderId === id ? { ...n, folderId: undefined } : n));
+            }}
+            onRenameFolder={(id, name) => setNoteFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f))}
+            onBack={() => setCurrentView('HUB')}
+          />
+        )}
         {currentView === 'PERFORMANCE' && (
           <PerformanceView 
             attempts={attempts}

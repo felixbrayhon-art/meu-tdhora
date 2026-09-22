@@ -4,9 +4,42 @@ import { AppView, TimerMode, UserStats, HubCategory, EditalConfig, SmartRevision
 import MemoryHeatmap from './MemoryHeatmap';
 import { getProactiveAdvice } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, BarChart3, Bookmark } from 'lucide-react';
+import { BookOpen, BarChart3, Bookmark, Settings, Users, Newspaper, Layers, ClipboardList, Zap, FileText, Smile, Heart, Cloud, ArrowRight, PenLine, RotateCcw, Copy, Briefcase, Folder, Clock, Calendar, Bell, AlertTriangle, Scale } from './icons';
 import MotivationView from './MotivationView';
 import PerformanceView from './PerformanceView';
+import AvatarDisplay from './AvatarDisplay';
+import { getCharacterSrc } from '../services/avatarService';
+
+const hexToRgba = (hex: string, alpha: number): string => {
+  const clean = hex.replace('#', '');
+  const bigint = parseInt(clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+interface HeroIconButtonProps {
+  label: string;
+  icon: React.ElementType;
+  onClick: () => void;
+  badge?: number;
+  align?: 'left' | 'right';
+}
+
+const HeroIconButton: React.FC<HeroIconButtonProps> = ({ label, icon: Icon, onClick, badge, align = 'left' }) => (
+  <button onClick={onClick} className={`flex items-center gap-2 group ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+    <div className="relative w-11 h-11 md:w-12 md:h-12 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-white group-hover:scale-105 transition-all shrink-0">
+      <Icon className="w-5 h-5 md:w-6 md:h-6 text-[#0A0F1E]" />
+      {!!badge && badge > 0 && (
+        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
+    </div>
+    <span className="hidden lg:block text-[9px] font-black text-[#0A0F1E]/70 uppercase tracking-widest">{label}</span>
+  </button>
+);
 
 interface HubProps {
   setView: (view: AppView) => void;
@@ -28,6 +61,7 @@ interface HubProps {
   attempts: QuizAttempt[];
   folders: QuizFolder[];
   smartSystem: SmartRevisionSystem;
+  isAdmin?: boolean;
 }
 
 const Hub: React.FC<HubProps> = ({ 
@@ -49,7 +83,8 @@ const Hub: React.FC<HubProps> = ({
   isSyncing,
   attempts,
   folders,
-  smartSystem
+  smartSystem,
+  isAdmin
 }) => {
   const [activeTab, setActiveTab] = useState<HubCategory>('ESTUDO');
   const [copyFeedback, setCopyFeedback] = useState(false);
@@ -72,68 +107,158 @@ const Hub: React.FC<HubProps> = ({
   
   const pendingRevisions = smartRevisionItems.filter(i => i.status === 'PENDING').length;
 
+  const characterSrc = getCharacterSrc(stats.characterId, 'frente');
+  const xpProgress = (stats.xp % 1000) / 10;
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-        <div>
-          <h1 className="text-4xl font-extrabold text-[#0A0F1E] tracking-tight uppercase italic leading-none">MEU HUB DE FOCO</h1>
-          <div className="flex items-center gap-2 mt-3">
-            <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
-            <p className="text-yellow-600 font-black text-xs uppercase tracking-[0.2em]">{profileLabel}</p>
+      {/* Hero: game-hub style header */}
+      <div className="relative rounded-[40px] p-5 md:p-7 shadow-xl overflow-hidden">
+        {stats.heroScenario === 'solido' ? (
+          <div
+            className="absolute inset-0"
+            style={{
+              background: stats.heroTintColor
+                ? `linear-gradient(135deg, ${hexToRgba(stats.heroTintColor, 1)}, ${hexToRgba(stats.heroTintColor, 0.75)})`
+                : 'linear-gradient(135deg, #FDE68A, #FB923C)',
+            }}
+          />
+        ) : (
+          <>
+            <img src={`/hero-scenarios/${stats.heroScenario || 'quarto'}.png`} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background: stats.heroTintColor
+                  ? `linear-gradient(to top, ${hexToRgba(stats.heroTintColor, 0.4)}, ${hexToRgba(stats.heroTintColor, 0.05)} 60%, ${hexToRgba(stats.heroTintColor, 0.15)})`
+                  : 'linear-gradient(to top, rgba(0,0,0,0.1), transparent 60%, rgba(0,0,0,0.05))',
+              }}
+            />
+          </>
+        )}
+        {/* Top row: profile / level / coins+settings */}
+        <div className="flex items-center justify-between gap-2 mb-2 relative z-10">
+          <button onClick={() => setView('PROFILE')} className="flex items-center gap-2.5 bg-white/80 backdrop-blur-sm rounded-full pl-1.5 pr-4 py-1.5 shadow-sm hover:bg-white transition-colors max-w-[45%]">
+            <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white shrink-0 bg-white">
+              <AvatarDisplay characterId={stats.characterId} className="w-full h-full" />
+            </div>
+            <div className="text-left overflow-hidden">
+              <p className="text-[11px] font-black text-[#0A0F1E] leading-none truncate">{stats.name}</p>
+              <div className="w-16 md:w-20 h-1.5 bg-black/10 rounded-full overflow-hidden mt-1.5">
+                <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${xpProgress}%` }} />
+              </div>
+            </div>
+          </button>
+
+          <div className="hidden sm:flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-full pl-1.5 pr-4 py-1.5 shadow-sm">
+            <div className="w-7 h-7 rounded-full bg-purple-500 text-white text-[11px] font-black flex items-center justify-center shrink-0">{stats.level}</div>
+            <div className="w-16 md:w-20 h-1.5 bg-black/10 rounded-full overflow-hidden">
+              <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${xpProgress}%` }} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm rounded-full px-3 py-2 shadow-sm">
+              <span className="text-sm leading-none">🪙</span>
+              <span className="text-xs font-black text-[#0A0F1E]">{stats.coins}</span>
+            </div>
+            <button onClick={() => setView('PROFILE')} className="w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors">
+              <Settings className="w-4 h-4 text-[#0A0F1E]" />
+            </button>
           </div>
         </div>
-        
-        <div className="flex flex-col md:flex-row items-center gap-3">
+
+        <p className="text-[9px] font-black text-[#0A0F1E]/50 uppercase tracking-[0.2em] mb-3 relative z-10 px-1">{profileLabel}</p>
+
+        {/* Middle row: shortcuts | character | shortcuts */}
+        <div className="flex items-end justify-between gap-1 md:gap-4 relative z-10">
+          <div className="flex flex-col gap-3 md:gap-4">
+            <HeroIconButton label="Materiais" icon={ClipboardList} onClick={() => setView('MATERIALS')} />
+            <HeroIconButton label="Edital" icon={BookOpen} onClick={() => setView(editalConfig.isActive ? 'EDITAL_VIEW' : 'EDITAL_SETUP')} />
+            <HeroIconButton label="Flashcards" icon={Layers} onClick={() => setView('FLASHCARDS')} badge={flashcardCount} />
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-end relative py-2 min-w-0">
+            <button onClick={() => setView('PROFILE')} className="relative z-10 group" aria-label="Trocar personagem">
+              {characterSrc && (
+                <img src={characterSrc} alt={stats.name} className="h-44 sm:h-56 md:h-72 object-contain object-bottom drop-shadow-2xl group-hover:scale-105 transition-transform" />
+              )}
+              <span className="absolute -right-1 bottom-3 w-7 h-7 bg-white rounded-full shadow-md flex items-center justify-center text-orange-600 font-black text-lg leading-none group-hover:scale-110 transition-transform">+</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-3 md:gap-4 items-end">
+            <HeroIconButton label="Notícias" icon={Newspaper} onClick={() => setView('COMMUNITY')} align="right" />
+            <HeroIconButton label="Amigos" icon={Users} onClick={() => setView('SOCIAL_MODULE')} align="right" />
+          </div>
+        </div>
+
+        {/* Bottom row: event banner + play */}
+        <div className="flex flex-col sm:flex-row items-stretch gap-3 mt-4 relative z-10">
           {!user ? (
-            <button 
-              onClick={onLogin}
-              className="flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-2xl font-black text-sm hover:shadow-xl hover:bg-orange-600 transition-all shadow-lg animate-bounce"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
-              SALVAR NA NUVEM (GRÁTIS)
+            <button onClick={onLogin} className="flex-1 bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-3 flex items-center gap-3 text-left shadow-sm hover:bg-white transition-colors">
+              <div className="w-9 h-9 bg-orange-500 rounded-xl flex items-center justify-center text-white shrink-0">
+                <Cloud className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-[#0A0F1E] uppercase leading-tight">Salvar na nuvem</p>
+                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">Grátis, não perca seu progresso</p>
+              </div>
+            </button>
+          ) : pendingRevisions > 0 ? (
+            <button onClick={() => setView('SMART_REVISION')} className="flex-1 bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-3 flex items-center gap-3 text-left shadow-sm hover:bg-white transition-colors">
+              <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shrink-0">
+                <Zap className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-[#0A0F1E] uppercase leading-tight">Validação pendente</p>
+                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">{pendingRevisions} temas pra revisar hoje</p>
+              </div>
             </button>
           ) : (
-             <div className="bg-green-500/10 border border-green-500/20 px-6 py-3 rounded-2xl flex items-center gap-3">
-               <div className="w-2 h-2 rounded-full bg-green-500"></div>
-               <span className="text-green-700 font-black text-[10px] uppercase tracking-widest">Nuvem Sincronizada</span>
-               {isSyncing && <div className="animate-spin w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full"></div>}
-             </div>
+            <button onClick={() => setView('COMMUNITY')} className="flex-1 bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-3 flex items-center gap-3 text-left shadow-sm hover:bg-white transition-colors">
+              <div className="w-9 h-9 bg-black rounded-xl flex items-center justify-center text-white shrink-0">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-[#0A0F1E] uppercase leading-tight">Cardume Social</p>
+                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">Veja o progresso da comunidade</p>
+              </div>
+            </button>
           )}
-
-          <button 
-            onClick={() => setView('COMMUNITY')}
-            className="flex items-center gap-2 bg-black text-white px-6 py-3 rounded-2xl font-black text-sm hover:shadow-xl hover:bg-gray-800 transition-all shadow-lg"
+          <button
+            onClick={() => { setTimerMode(TimerMode.POMODORO); setView('TIMER'); }}
+            className="bg-[#0A0F1E] hover:bg-black text-white font-black uppercase italic tracking-widest text-sm px-10 py-4 rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-95 shrink-0"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            CARDUME SOCIAL
+            Estudar
           </button>
         </div>
       </div>
-      
+
 
       <div className="flex p-2 bg-white rounded-[30px] shadow-sm border border-gray-100 max-w-5xl overflow-x-auto no-scrollbar scroll-smooth">
         <button onClick={() => setActiveTab('ESTUDO')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'ESTUDO' ? 'bg-blue-500 text-white shadow-xl shadow-blue-100' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+          <BookOpen className="w-6 h-6" />
           ESTUDO
         </button>
         <button onClick={() => setActiveTab('EDITAL')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white shadow-xl shadow-gray-200' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
+          <FileText className="w-6 h-6" />
           {stats.studyProfile === 'FACULDADE' ? 'GRADE CURRICULAR' : 'EDITAL'}
         </button>
         <button onClick={() => setActiveTab('ORGANIZACAO')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'ORGANIZACAO' ? 'bg-yellow-400 text-white shadow-xl shadow-yellow-100' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+          <ClipboardList className="w-6 h-6" />
           ORGANIZAÇÃO
         </button>
         <button onClick={() => setActiveTab('RELAXE')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'RELAXE' ? 'bg-orange-500 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <Smile className="w-6 h-6" />
           RELAXE
         </button>
         <button onClick={() => setActiveTab('REVISAO')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'REVISAO' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          <Zap className="w-6 h-6" />
           REVISÃO IA
         </button>
         <button onClick={() => setActiveTab('MOTIVACAO')} className={`min-w-fit flex-1 py-4 px-6 rounded-[22px] flex items-center justify-center gap-3 font-black text-xs transition-all ${activeTab === 'MOTIVACAO' ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-100' : 'text-gray-400 hover:bg-gray-50'}`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+          <Heart className="w-6 h-6" />
           MOTIVAÇÃO
         </button>
         <button 
@@ -157,17 +282,17 @@ const Hub: React.FC<HubProps> = ({
                     <div className="bg-[#0A0F1E] rounded-[38px] p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
                        <div className="flex items-center gap-6">
                           <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                             <Zap className="w-10 h-10" />
                           </div>
                           <div className="text-left">
-                             <h3 className="text-2xl font-black italic uppercase tracking-tighter leading-tight">VALIDAÇÃO DE ONTEM</h3>
+                             <h3 className="font-logo text-2xl uppercase leading-tight">VALIDAÇÃO DE ONTEM</h3>
                              <p className="text-blue-400 font-bold text-xs uppercase tracking-widest mt-1">Você tem {pendingRevisions} temas para validar hoje</p>
                           </div>
                        </div>
                        
                        <div className="flex items-center gap-4 bg-blue-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest group-hover:bg-white group-hover:text-blue-600 transition-all">
                           COMEÇAR AGORA
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                          <ArrowRight className="w-6 h-6" />
                        </div>
                     </div>
                     
@@ -182,32 +307,32 @@ const Hub: React.FC<HubProps> = ({
               <div className="lg:col-span-3">
                 <button onClick={() => setView('EDITAL_SETUP')} className="w-full bg-[#0A0F1E] text-white p-8 rounded-[35px] text-left relative overflow-hidden group transition-all hover:scale-[1.01] hover:shadow-2xl animate-in zoom-in-95 duration-300 shadow-blue-900/40">
                   <div className="absolute top-0 right-0 p-8 opacity-10 scale-150 rotate-12 transition-transform group-hover:scale-[1.8] group-hover:rotate-0">
-                    <svg className="w-48 h-48" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    <Zap className="w-48 h-48" fill="currentColor" />
                   </div>
                   <div className="max-w-2xl relative z-10">
                     <div className="mb-10 w-16 h-16 bg-white/10 text-blue-400 rounded-3xl flex items-center justify-center backdrop-blur-md border border-white/10 shadow-inner group-hover:bg-blue-500 group-hover:text-white transition-all">
-                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
+                      <FileText className="w-10 h-10" />
                     </div>
                     {stats.studyProfile === 'FACULDADE' ? (
                       <>
-                        <h2 className="text-4xl font-black mb-4 italic uppercase tracking-tighter leading-none">ATIVAR GRADE <span className="text-blue-500 group-hover:text-white transition-colors">curricular</span></h2>
+                        <h2 className="font-logo text-4xl mb-4 uppercase leading-none">ATIVAR GRADE <span className="text-blue-500 group-hover:text-white transition-colors">curricular</span></h2>
                         <p className="text-gray-400 font-medium text-lg leading-relaxed mb-10 max-w-lg">
                           Conecte o conteúdo das suas disciplinas e o período acadêmico atual às funções de IA do app.
                         </p>
                         <div className="inline-flex items-center gap-4 bg-blue-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl shadow-blue-900/40 group-hover:bg-white group-hover:text-blue-600 transition-all">
                            CONFIGURAR MINHA GRADE AGORA
-                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                           <ArrowRight className="w-6 h-6" />
                         </div>
                       </>
                     ) : (
                       <>
-                        <h2 className="text-4xl font-black mb-4 italic uppercase tracking-tighter leading-none">ATIVAR MODO <span className="text-blue-500 group-hover:text-white transition-colors">edital</span></h2>
+                        <h2 className="font-logo text-4xl mb-4 uppercase leading-none">ATIVAR MODO <span className="text-blue-500 group-hover:text-white transition-colors">edital</span></h2>
                         <p className="text-gray-400 font-medium text-lg leading-relaxed mb-10 max-w-lg">
                           Conecte seu conteúdo programático diretamente às funções de IA do app.
                         </p>
                         <div className="inline-flex items-center gap-4 bg-blue-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl shadow-blue-900/40 group-hover:bg-white group-hover:text-blue-600 transition-all">
                            CONFIGURAR MEU EDITAL AGORA
-                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                           <ArrowRight className="w-6 h-6" />
                         </div>
                       </>
                     )}
@@ -226,10 +351,10 @@ const Hub: React.FC<HubProps> = ({
                     >
                       <div className="flex items-center gap-6">
                         <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                          <PenLine className="w-8 h-8" />
                         </div>
                         <div className="text-left">
-                          <h3 className="text-2xl font-black italic uppercase tracking-tighter">
+                          <h3 className="font-logo text-2xl uppercase">
                             {stats.studyProfile === 'FACULDADE' ? 'MINHA GRADE CURRICULAR - VISUALIZAR E EDITAR' : 'MEU EDITAL - VISUALIZAR E EDITAR'}
                           </h3>
                           <p className="text-blue-400 font-bold text-[10px] uppercase tracking-widest mt-1">
@@ -238,7 +363,7 @@ const Hub: React.FC<HubProps> = ({
                         </div>
                       </div>
                       <div className="bg-blue-600 text-white p-4 rounded-2xl group-hover:bg-white group-hover:text-blue-600 transition-all">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                        <ArrowRight className="w-6 h-6" />
                       </div>
                     </button>
                   </div>
@@ -252,11 +377,11 @@ const Hub: React.FC<HubProps> = ({
 						>
 							<div className="flex items-center gap-6">
 								<div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform backdrop-blur-md">
-									<svg className="w-8 h-8 font-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+									<RotateCcw className="w-8 h-8 font-black" />
 								</div>
 								<div className="text-left">
 									<div className="flex items-center gap-2">
-										<h3 className="text-2xl font-black italic uppercase tracking-tighter">MEU CICLO DE ESTUDO</h3>
+										<h3 className="font-logo text-2xl uppercase">MEU CICLO DE ESTUDO</h3>
 										<span className="bg-white/20 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border border-white/10">INTERLIGADO</span>
 									</div>
 									<p className="text-blue-100 font-bold text-[10px] uppercase tracking-widest mt-1">
@@ -265,7 +390,7 @@ const Hub: React.FC<HubProps> = ({
 								</div>
 							</div>
 							<div className="bg-white text-blue-600 p-4 rounded-2xl group-hover:bg-blue-800 group-hover:text-white transition-all shadow-lg">
-								<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+								<ArrowRight className="w-6 h-6" />
 							</div>
 						</button>
                   </div>
@@ -276,14 +401,14 @@ const Hub: React.FC<HubProps> = ({
                   className={`p-6 rounded-[30px] text-left transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-none' : 'bg-white border border-gray-100 shadow-sm'}`}
                 >
                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2v-2" /></svg>
+                    <Copy className="w-7 h-7" />
                   </div>
                   {activeTab === 'ESTUDO' && flashcardCount > 0 && (
                     <div className="absolute top-8 right-8 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full animate-bounce">
                       {flashcardCount} PENDENTES
                     </div>
                   )}
-                  <h2 className="text-2xl font-black mb-2 italic uppercase">FLASH<span className="text-blue-500">cards</span></h2>
+                  <h2 className="font-logo text-2xl mb-2 uppercase">FLASH<span className="text-blue-500">cards</span></h2>
                   <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
                     {activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Conectado à Grade' : 'Conectado ao Edital') : 'Revisão Espaçada'}
                   </p>
@@ -294,9 +419,9 @@ const Hub: React.FC<HubProps> = ({
                   className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-gray-100 shadow-sm'}`}
                 >
                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                    <Briefcase className="w-7 h-7" />
                   </div>
-                  <h2 className="text-2xl font-black mb-2 italic uppercase">MEUS <span className="text-blue-500">materiais</span></h2>
+                  <h2 className="font-logo text-2xl mb-2 uppercase">MEUS <span className="text-blue-500">materiais</span></h2>
                   <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
                     {activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Arquivo da Grade' : 'Arquivo Estratégico') : 'Resumos & Cadernos'}
                   </p>
@@ -307,22 +432,63 @@ const Hub: React.FC<HubProps> = ({
                   className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0B1528] text-white border-transparent' : 'bg-gradient-to-br from-[#0c1830] to-[#040914] text-white shadow-xl shadow-blue-900/10 border-0'}`}
                 >
                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white shadow-md'}`}>
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.5L3 9l9 4.5m0-9l9 4.5m-9-4.5v15m0-15l9 4.5M3 9v6l9 4.5m9-10.5v6L12 21" /></svg>
+                    <Folder className="w-7 h-7" />
                   </div>
-                  <h2 className="text-2xl font-black mb-2 italic uppercase">BIBLIOTECA <span className="text-blue-400">drive</span></h2>
+                  <h2 className="font-logo text-2xl mb-2 uppercase">BIBLIOTECA <span className="text-blue-400">drive</span></h2>
                   <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-blue-200'}`}>
                     Livros & PDFs do Drive
                   </p>
                 </button>
 
-                <button 
-                  onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('TDH_QUESTOES'); }} 
+                <button
+                  onClick={() => setView('VADE_MECUM')}
+                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-gray-100 shadow-sm'}`}
+                >
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-600'}`}>
+                    <Scale className="w-7 h-7" />
+                  </div>
+                  <h2 className="font-logo text-2xl mb-2 uppercase">VADE <span className="text-amber-500">MECUM</span></h2>
+                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-amber-400' : 'text-gray-400'}`}>
+                    Legislação Atualizada
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => setView('NOTES')}
+                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-gray-100 shadow-sm'}`}
+                >
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
+                    <PenLine className="w-7 h-7" />
+                  </div>
+                  <h2 className="font-logo text-2xl mb-2 uppercase">ANOTA<span className="text-blue-500">ções</span></h2>
+                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
+                    Escreva à mão
+                  </p>
+                </button>
+
+                {isAdmin && (
+                  <button
+                    onClick={() => setView('ADMIN_QUESTION_REVIEW')}
+                    className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-gray-100 shadow-sm'}`}
+                  >
+                    <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
+                      <ClipboardList className="w-7 h-7" />
+                    </div>
+                    <h2 className="font-logo text-2xl mb-2 uppercase">REVISÃO <span className="text-emerald-500">import.</span></h2>
+                    <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-emerald-400' : 'text-gray-400'}`}>
+                      Banco de questões (admin)
+                    </p>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => { if(activeTab === 'EDITAL') setStrategicMode(true); setView('TDH_QUESTOES'); }}
                   className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-gray-100 shadow-sm'}`}
                 >
                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z" /></svg>
+                    <FileText className="w-7 h-7" />
                   </div>
-                  <h2 className="text-2xl font-black mb-2 relative z-10 uppercase italic">TDH<span className="text-blue-500">questoes</span></h2>
+                  <h2 className="font-logo text-2xl mb-2 relative z-10 uppercase">TDH<span className="text-blue-500">questoes</span></h2>
                   <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
                     {activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Foco na Grade' : 'Foco no Edital') : 'Batalha de Simulados'}
                   </p>
@@ -333,9 +499,9 @@ const Hub: React.FC<HubProps> = ({
                   className={`text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-100 shadow-2xl ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-blue-900 to-black shadow-blue-900/40' : 'bg-gradient-to-br from-slate-900 to-black'}`}
                 >
                   <div className="mb-8 w-12 h-12 bg-white/10 text-yellow-400 rounded-2xl flex items-center justify-center backdrop-blur-md">
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    <Zap className="w-7 h-7" />
                   </div>
-                  <h2 className="text-3xl font-black mb-2 italic uppercase leading-none">AULA DIRETA</h2>
+                  <h2 className="font-logo text-3xl mb-2 uppercase leading-none">AULA DIRETA</h2>
                   <p className="text-yellow-400/80 text-[10px] font-bold uppercase tracking-widest">{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Conteúdo da Grade' : 'Conteúdo do Edital') : 'IA Powered Bizu'}</p>
                 </button>
 
@@ -345,7 +511,7 @@ const Hub: React.FC<HubProps> = ({
                   <div className="mb-6 w-12 h-12 bg-white/10 text-blue-400 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10">
                     <BookOpen className="w-7 h-7" />
                   </div>
-                  <h2 className="text-3xl font-black mb-2 italic uppercase leading-none">AULA <span className="text-blue-500">GUIADA</span></h2>
+                  <h2 className="font-logo text-3xl mb-2 uppercase leading-none">AULA <span className="text-blue-500">GUIADA</span></h2>
                   <p className="text-blue-400/80 text-[10px] font-bold uppercase tracking-widest mb-6">Narrativa Contínua (Active Recall)</p>
                   
                   <div className="flex flex-col gap-2 relative z-10">
@@ -381,7 +547,7 @@ const Hub: React.FC<HubProps> = ({
                         }}
                         className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-xl transition-all"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                        <ArrowRight className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
@@ -398,7 +564,7 @@ const Hub: React.FC<HubProps> = ({
                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
                     <Bookmark className="w-7 h-7" />
                   </div>
-                  <h2 className="text-2xl font-black mb-2 italic uppercase">AULAS <span className="text-blue-500">salvas</span></h2>
+                  <h2 className="font-logo text-2xl mb-2 uppercase">AULAS <span className="text-blue-500">salvas</span></h2>
                   <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-blue-400' : 'text-gray-400'}`}>
                     Biblioteca Offline
                   </p>
@@ -409,9 +575,9 @@ const Hub: React.FC<HubProps> = ({
                   className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-150 ${activeTab === 'EDITAL' ? 'bg-[#0A0F1E] text-white border-transparent' : 'bg-white border-orange-100'}`}
                 >
                   <div className={`mb-6 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-500'}`}>
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <Clock className="w-7 h-7" />
                   </div>
-                  <h2 className="text-3xl font-black mb-2 italic uppercase">BLOCO <span className="text-orange-500">IMUTÁVEL</span></h2>
+                  <h2 className="font-logo text-3xl mb-2 uppercase">BLOCO <span className="text-orange-500">IMUTÁVEL</span></h2>
                   <p className={`text-[10px] font-bold uppercase tracking-widest leading-tight ${activeTab === 'EDITAL' ? 'text-gray-400' : 'text-gray-400'}`}>
                     {activeTab === 'EDITAL' ? 'Foco Estratégico' : 'Timer Dinâmico 40min'}
                   </p>
@@ -425,7 +591,7 @@ const Hub: React.FC<HubProps> = ({
                 {activeTab === 'EDITAL' && (
                   <div className="lg:col-span-3 pt-12 space-y-8">
                      <div className="flex justify-between items-center">
-                        <h3 className="text-2xl font-black italic tracking-tighter uppercase">BARRA DE CALOR DA MEMÓRIA</h3>
+                        <h3 className="font-logo text-2xl uppercase">BARRA DE CALOR DA MEMÓRIA</h3>
                         <div className="flex gap-2">
                            <span className="flex items-center gap-1 text-[8px] font-black text-blue-500 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-blue-500"></div> VALIDADO</span>
                            <span className="flex items-center gap-1 text-[8px] font-black text-orange-500 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-orange-500"></div> REVISAR</span>
@@ -442,18 +608,18 @@ const Hub: React.FC<HubProps> = ({
         {activeTab === 'ORGANIZACAO' && (
           <>
             <button onClick={() => { setTimerMode(TimerMode.POMODORO); setView('TIMER'); }} className="bg-white p-6 rounded-[30px] text-left border border-gray-100 transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300">
-              <div className="mb-8 w-12 h-12 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center"><svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
-              <h2 className="text-2xl font-black mb-2 italic">POMODORO</h2>
+              <div className="mb-8 w-12 h-12 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center"><Clock className="w-7 h-7" /></div>
+              <h2 className="font-logo text-2xl mb-2">POMODORO</h2>
               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Gestão de Tempo</p>
             </button>
             <button onClick={() => setView('STUDY_PLAN')} className="bg-white p-6 rounded-[30px] text-left border border-gray-100 transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75">
-              <div className="mb-8 w-12 h-12 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center"><svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
-              <h2 className="text-2xl font-black mb-2 italic uppercase">CRONOGRAMA</h2>
+              <div className="mb-8 w-12 h-12 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center"><Calendar className="w-7 h-7" /></div>
+              <h2 className="font-logo text-2xl mb-2 uppercase">CRONOGRAMA</h2>
               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest text-[10px]">Ciclo de Estudo</p>
             </button>
             <button onClick={() => setView('FOCUS_MODE')} className="gradient-yellow text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 shadow-yellow-200">
-              <div className="mb-8 w-12 h-12 bg-white/20 text-white rounded-2xl flex items-center justify-center backdrop-blur-sm"><svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg></div>
-              <h2 className="text-2xl font-black mb-2 italic uppercase">MODO FOCO</h2>
+              <div className="mb-8 w-12 h-12 bg-white/20 text-white rounded-2xl flex items-center justify-center backdrop-blur-sm"><Bell className="w-7 h-7" /></div>
+              <h2 className="font-logo text-2xl mb-2 uppercase">MODO FOCO</h2>
               <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Saúde & Blindagem</p>
             </button>
           </>
@@ -463,7 +629,7 @@ const Hub: React.FC<HubProps> = ({
           <>
             <div className="bg-white rounded-[30px] p-8 border border-gray-100 flex flex-col justify-between shadow-sm relative overflow-hidden h-full animate-in zoom-in-95 duration-300 lg:col-span-2">
                <div>
-                  <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2 leading-none">AMBIENTE <span className="text-yellow-400">SONORO</span></h2>
+                  <h2 className="font-logo text-3xl uppercase mb-2 leading-none">AMBIENTE <span className="text-yellow-400">SONORO</span></h2>
                   <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-10">Controle o Lofi e os ruídos brancos</p>
                </div>
                <div className="grid grid-cols-2 gap-4">
@@ -471,14 +637,14 @@ const Hub: React.FC<HubProps> = ({
                     <span className="text-xs font-black uppercase tracking-widest italic">LOFI RELAX</span>
                   </button>
                   <button onClick={() => setIsPlayingRain(!isPlayingRain)} className={`p-6 rounded-[30px] flex items-center justify-center gap-4 transition-all border-4 ${isPlayingRain ? 'bg-blue-500 border-blue-500 text-white shadow-xl shadow-blue-100' : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'}`}>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                    <Cloud className="w-6 h-6" />
                   </button>
                </div>
             </div>
             
             <button onClick={() => { setTimerMode(TimerMode.EMERGENCY); setView('TIMER'); }} className="gradient-orange text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 h-full">
-              <div className="mb-8"><svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div>
-              <h2 className="text-2xl font-black leading-none uppercase italic">EMERGÊNCIA</h2>
+              <div className="mb-8"><AlertTriangle className="w-12 h-12" /></div>
+              <h2 className="font-logo text-2xl leading-none uppercase">EMERGÊNCIA</h2>
               <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest mt-2">Dê o primeiro passo agora</p>
             </button>
           </>
@@ -492,15 +658,15 @@ const Hub: React.FC<HubProps> = ({
              >
                 <div className="max-w-2xl relative z-10">
                    <div className="mb-10 w-16 h-16 bg-indigo-500 text-white rounded-3xl flex items-center justify-center shadow-xl">
-                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                      <Zap className="w-10 h-10" />
                    </div>
-                   <h2 className="text-4xl font-black mb-4 italic uppercase tracking-tighter leading-none">REVISÃO <span className="text-indigo-400">inteligente</span></h2>
+                   <h2 className="font-logo text-4xl mb-4 uppercase leading-none">REVISÃO <span className="text-indigo-400">inteligente</span></h2>
                    <p className="text-gray-400 font-medium text-lg leading-relaxed mb-10 max-w-lg">
                       {stats.studyProfile === 'FACULDADE' ? 'Acesse seu motor de repetição espaçada e valide o conteúdo da sua grade curricular com a IA.' : 'Acesse seu motor de repetição espaçada e valide o conteúdo do edital com a IA.'}
                    </p>
                    <div className="inline-flex items-center gap-4 bg-indigo-600 text-white px-8 py-4 rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl transition-all group-hover:bg-white group-hover:text-indigo-600">
                       ABRIR PAINEL DE REVISÃO
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                      <ArrowRight className="w-6 h-6" />
                    </div>
                 </div>
                 <div className="absolute top-0 right-0 p-8 opacity-10 scale-150 rotate-12 transition-transform group-hover:scale-[1.8] group-hover:rotate-0">

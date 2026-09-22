@@ -5,7 +5,7 @@ import { generateStudyContent } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
 import ReactMarkdown from 'react-markdown';
 import { RichTextEditor } from './RichTextEditor';
-import { ChevronLeft, Brain, Plus, Trash2, FolderPlus, Sparkles, Check, X, RotateCcw, HelpCircle, Layers, Maximize2, Minimize2 } from 'lucide-react';
+import { ChevronLeft, Brain, Plus, Trash2, FolderPlus, Sparkles, Check, X, RotateCcw, HelpCircle, Layers, Maximize2, Minimize2 } from './icons';
 
 interface FlashcardViewProps {
   flashcards: Flashcard[];
@@ -257,7 +257,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({
                     <ChevronLeft className="w-6 h-6 text-white/50 group-hover:text-white" />
                   </button>
                   <div>
-                    <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none">
+                    <h1 className="font-logo text-4xl uppercase leading-none">
                       Flash<span className="text-orange-500">Cards</span>
                     </h1>
                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">SISTEMA REPETIÇÃO ESPAÇADA (SRS)</p>

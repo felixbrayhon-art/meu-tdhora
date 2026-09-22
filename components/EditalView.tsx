@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { EditalConfig, EditalSubject, StudyProfile } from '../types';
 import { extractTopicsFromEdital } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
-import { BookOpen } from 'lucide-react';
+import { BookOpen } from './icons';
 
 interface EditalViewProps {
   studyProfile?: StudyProfile;
@@ -135,9 +135,9 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
           </button>
           <div className="flex items-center gap-4">
             {studyProfile === 'FACULDADE' ? (
-              <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none">GRADE <span className="text-blue-600">CURRICULAR</span></h1>
+              <h1 className="font-logo text-4xl uppercase leading-none">GRADE <span className="text-blue-600">CURRICULAR</span></h1>
             ) : (
-              <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none">MODO <span className="text-blue-600">EDITAL</span></h1>
+              <h1 className="font-logo text-4xl uppercase leading-none">MODO <span className="text-blue-600">EDITAL</span></h1>
             )}
             <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest animate-pulse">Ativo</span>
           </div>

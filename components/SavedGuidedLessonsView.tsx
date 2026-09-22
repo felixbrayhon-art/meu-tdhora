@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { BookOpen, Trash2, ChevronRight, Bookmark, Calendar, Clock, Search } from 'lucide-react';
+import { BookOpen, Trash2, ChevronRight, Bookmark, Calendar, Clock, Search } from './icons';
 import { SavedGuidedLesson } from '../types';
 
 interface SavedGuidedLessonsViewProps {

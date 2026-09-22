@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { generateStudyCycle } from '../services/geminiService';
 import { EditalConfig, StudyCycle, StudyCycleStep, StudyProfile } from '../types';
 import LoadingFish from './LoadingFish';
+import CharacterTip from './CharacterTip';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface StudyCycleViewProps {
@@ -115,9 +116,14 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </button>
           )}
-          <h1 className="text-3xl font-black italic uppercase tracking-tighter">Ciclo de <span className="text-blue-500">Estudo</span></h1>
+          <h1 className="font-logo text-3xl uppercase">Ciclo de <span className="text-blue-500">Estudo</span></h1>
         </div>
       </div>
+
+      <CharacterTip
+        id="study-cycle"
+        message="Ciclo de estudo é diferente de cronograma fixo: em vez de travar 'segunda é matemática', você estuda uma matéria até completar um bloco de tempo e passa pra próxima da lista, sempre na mesma ordem. Isso evita cansar de uma matéria só e garante que todas rodem proporcionalmente ao peso na prova."
+      />
 
       {!currentCycle ? (
         <div className="bg-white rounded-[40px] p-10 shadow-2xl border border-gray-100 text-center">

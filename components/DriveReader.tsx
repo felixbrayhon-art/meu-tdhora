@@ -3,37 +3,7 @@ import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../src/lib/firebase';
 import { getQuickExplanation } from '../services/geminiService';
 import { StudyProfile } from '../types';
-import { 
-  FolderOpen, 
-  Search, 
-  Loader2, 
-  ArrowLeft, 
-  BookOpen, 
-  Sparkles, 
-  Clock, 
-  Volume2, 
-  VolumeX, 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  FileText, 
-  Download, 
-  Plus, 
-  ArrowRight,
-  HelpCircle,
-  Dribbble,
-  Music,
-  Maximize2,
-  FileIcon,
-  Check,
-  Upload,
-  Trash2,
-  Share2,
-  Database,
-  CloudLightning,
-  Cloud,
-  Laptop
-} from 'lucide-react';
+import { FolderOpen, Search, Loader2, ArrowLeft, BookOpen, Sparkles, Clock, Volume2, VolumeX, Play, Pause, RotateCcw, FileText, Download, Plus, ArrowRight, HelpCircle, Maximize2, FileIcon, Check, Upload, Trash2, Share2, Database, Cloud, Laptop } from './icons';
 
 // Realtime Database (shared library) base URL + auth helper.
 // The DB rules require auth != null — every REST call must carry the signed-in

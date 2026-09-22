@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from './icons';
 import { generateStudyContent } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
 import MarkdownContent from './MarkdownContent';
@@ -129,7 +129,7 @@ const AIView: React.FC<AIViewProps> = ({
             </button>
             
             <div className="text-center mb-12">
-              <h1 className="text-6xl font-black mb-4 tracking-tighter italic uppercase text-white shadow-2xl">
+              <h1 className="font-logo text-6xl mb-4 uppercase text-white shadow-2xl">
                 {strategicMode ? 'Mergulho' : 'Exploração'} <span className="text-blue-500">{strategicMode ? 'Estratégico' : 'Ilimitada'}</span>
               </h1>
               <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] opacity-60">

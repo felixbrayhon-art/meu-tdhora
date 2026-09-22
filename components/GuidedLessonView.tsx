@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Play, Pause, RotateCcw, Brain, CheckCircle2, ChevronRight, BookOpen, Download, Bookmark, BookmarkCheck } from 'lucide-react';
+import { ChevronLeft, Play, Pause, RotateCcw, Brain, CheckCircle2, ChevronRight, BookOpen, Download, Bookmark, BookmarkCheck } from './icons';
 import { GuidedLesson, GuidedLessonStep, StudyProfile, ExplanationStyle, SavedGuidedLesson } from '../types';
 import { generateGuidedLesson } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
@@ -195,8 +195,8 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
   }, [displayedSteps]);
 
   if (loading) return (
-    <div className="fixed inset-0 z-[200] bg-[#0A0F1E] flex items-center justify-center">
-      <LoadingFish message={`Preparando aula sobre ${topic}...`} />
+    <div className="fixed inset-0 z-[200] bg-[#0A0F1E]">
+      <LoadingFish message={`Preparando aula sobre ${topic}...`} fullScreen />
     </div>
   );
   

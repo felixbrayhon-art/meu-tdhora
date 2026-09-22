@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, Compass, Zap, HelpCircle, Clock, Book, Trophy, Sparkles, AlertCircle, FileText } from 'lucide-react';
+import { Target, Compass, Zap, HelpCircle, Clock, Book, Trophy, Sparkles, AlertCircle, FileText } from './icons';
 
 interface FishInfo {
   id: string;

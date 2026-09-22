@@ -15,6 +15,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Admin status is a plain doc under /admins — existence, not content,
+    // is what matters. Docs here are never writable from the client; the
+    // first (and so far only) admin is created by hand in the Firebase
+    // console, not through the app.
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -63,6 +71,41 @@ service cloud.firestore {
              data.questions is list && data.questions.size() <= 500 &&
              data.createdAt is number &&
              (!('summary' in data) || (data.summary is string && data.summary.size() <= 20000));
+    }
+
+    function isValidPublicProfile(data) {
+      return data.keys().hasAll(['name', 'avatarColor', 'level', 'xp', 'status']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.avatarColor is string && data.avatarColor.size() <= 20 &&
+             data.level is number && data.xp is number &&
+             data.status is string &&
+             (!('characterId' in data) || data.characterId is string) &&
+             (!('lastActive' in data) || data.lastActive is number);
+    }
+
+    function isValidDirectoryEntry(data) {
+      return data.keys().hasAll(['uid']) && data.uid is string && data.uid == request.auth.uid;
+    }
+
+    function pairId(a, b) {
+      return a < b ? a + '_' + b : b + '_' + a;
+    }
+
+    function isValidFriendRequest(data) {
+      return data.keys().hasAll(['fromUid', 'toUid', 'fromName', 'fromAvatarColor', 'createdAt']) &&
+             data.fromUid is string && data.toUid is string &&
+             data.fromUid != data.toUid &&
+             data.fromName is string && data.fromName.size() <= 100 &&
+             data.fromAvatarColor is string && data.fromAvatarColor.size() <= 20 &&
+             data.createdAt is number;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['senderId', 'senderName', 'text', 'timestamp']) &&
+             data.senderId is string &&
+             data.senderName is string && data.senderName.size() <= 100 &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 2000 &&
+             data.timestamp is number;
     }
 
     // --- COLLECTION MATCHES ---
@@ -120,6 +163,113 @@ service cloud.firestore {
         allow get: if isOwner(userId);
         allow write: if isOwner(userId);
       }
+    }
+
+    // PUBLIC PROFILES — minimal info a friend needs to render a friend card.
+    // Only readable by uid (never listed), so a user must already know the
+    // uid (via a friendship or a directory-code lookup) to fetch it.
+    match /publicProfiles/{userId} {
+      allow get: if isSignedIn();
+      allow create, update: if isOwner(userId) && isValidPublicProfile(incoming());
+      allow delete: if isOwner(userId);
+    }
+
+    // FRIEND CODE DIRECTORY — code -> uid lookup so a friend can be added by
+    // a short shareable code instead of a raw uid. Immutable once created;
+    // never listable, so the directory can't be scraped.
+    match /userDirectory/{code} {
+      allow get: if isSignedIn();
+      allow create: if isSignedIn() && isValidDirectoryEntry(incoming());
+      allow update, delete: if false;
+    }
+
+    // FRIEND REQUESTS — doc id is `${fromUid}_${toUid}`.
+    match /friendRequests/{requestId} {
+      allow get: if isSignedIn() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == incoming().fromUid &&
+                     requestId == incoming().fromUid + '_' + incoming().toUid &&
+                     isValidFriendRequest(incoming());
+      allow delete: if isSignedIn() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+    }
+
+    // FRIENDSHIPS — doc id is the two uids sorted and joined with '_'.
+    match /friendships/{friendshipId} {
+      allow get: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() &&
+                     request.auth.uid in incoming().participants &&
+                     incoming().participants.size() == 2 &&
+                     friendshipId == pairId(incoming().participants[0], incoming().participants[1]);
+      allow delete: if isSignedIn() && request.auth.uid in resource.data.participants;
+    }
+
+    // DIRECT MESSAGES — chatId matches its friendship's id, so only the two
+    // participants of an existing friendship can ever exchange messages.
+    match /chats/{chatId}/messages/{messageId} {
+      allow list: if isSignedIn() && chatId.split('_').hasAny([request.auth.uid]);
+      allow get: if isSignedIn() && chatId.split('_').hasAny([request.auth.uid]);
+      allow create: if isSignedIn() && chatId.split('_').hasAny([request.auth.uid]) &&
+                     exists(/databases/$(database)/documents/friendships/$(chatId)) &&
+                     incoming().senderId == request.auth.uid &&
+                     isValidMessage(incoming());
+      allow update, delete: if false;
+    }
+
+    // --- QUESTION BANK IMPORT PIPELINE (admin-only) ---
+    // Populated by worker/scripts/push_drafts.py via the Admin SDK, which
+    // bypasses these rules entirely — they only govern what the admin
+    // review UI (running as a normal signed-in client) can do afterward.
+
+    // Existence-only doc; content (if any) is never trusted by these rules.
+    match /admins/{uid} {
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    match /imports/{importId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if false; // written only by the Admin SDK push script
+    }
+
+    function isValidQuestionDraft(data) {
+      return data.keys().hasAll(['importId', 'source', 'statement', 'alternatives', 'status']) &&
+             data.importId is string &&
+             data.source is string &&
+             data.statement is string && data.statement.size() <= 20000 &&
+             data.alternatives is list && data.alternatives.size() <= 10 &&
+             data.status is string &&
+             (!('correctLetter' in data) || data.correctLetter == null || data.correctLetter is string) &&
+             (!('explanation' in data) || data.explanation is string && data.explanation.size() <= 40000) &&
+             (!('subjectRaw' in data) || data.subjectRaw == null || data.subjectRaw is string) &&
+             (!('topicRaw' in data) || data.topicRaw == null || data.topicRaw is string);
+    }
+
+    match /question_drafts/{draftId} {
+      allow get, list: if isAdmin();
+      // Admin can edit a draft in place (review) and delete it once approved
+      // or rejected — but never create one; that's the push script's job.
+      allow update: if isAdmin() && isValidQuestionDraft(incoming());
+      allow delete: if isAdmin();
+      allow create: if false;
+    }
+
+    function isValidPublishedQuestion(data) {
+      return data.keys().hasAll(['source', 'statement', 'alternatives', 'approvedBy', 'approvedAt']) &&
+             data.source is string &&
+             data.statement is string && data.statement.size() <= 20000 &&
+             data.alternatives is list && data.alternatives.size() <= 10 &&
+             data.approvedBy == request.auth.uid &&
+             data.approvedAt is number;
+    }
+
+    // The published bank every signed-in student reads from. Only an admin
+    // can write — normally via "aprovar" in the review UI, which copies a
+    // draft here.
+    match /questions/{questionId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isAdmin() && isValidPublishedQuestion(incoming());
+      allow delete: if isAdmin();
     }
   }
 }

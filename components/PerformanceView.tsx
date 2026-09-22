@@ -27,23 +27,7 @@ import {
   PolarRadiusAxis,
   Radar
 } from 'recharts';
-import { 
-  Trophy, 
-  Target, 
-  TrendingUp, 
-  AlertCircle, 
-  CheckCircle2, 
-  XCircle,
-  BarChart3,
-  ChevronLeft,
-  Zap,
-  Brain,
-  History,
-  Plus,
-  Minus,
-  Settings2,
-  Filter
-} from 'lucide-react';
+import { Trophy, Target, TrendingUp, AlertCircle, CheckCircle2, XCircle, BarChart3, ChevronLeft, Zap, Brain, Plus, Minus, Settings2, Filter } from './icons';
 import { motion } from 'motion/react';
 
 interface PerformanceViewProps {

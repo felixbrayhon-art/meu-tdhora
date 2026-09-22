@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { QuizFolder } from '../types';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight } from './icons';
 
 interface MoveToNotebookModalProps {
   folders: QuizFolder[];

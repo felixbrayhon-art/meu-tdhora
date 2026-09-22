@@ -1,5 +1,145 @@
 
-export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON' | 'PERFORMANCE' | 'SAVED_GUIDED_LESSONS' | 'DRIVE_READER';
+export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON' | 'PERFORMANCE' | 'SAVED_GUIDED_LESSONS' | 'DRIVE_READER' | 'VADE_MECUM' | 'NOTES' | 'ADMIN_QUESTION_REVIEW';
+
+// --- Question bank import pipeline (admin-only) ---
+// Populated by worker/ (a local Python script, not a hosted service — see
+// worker/scripts/push_drafts.py) which parses a source PDF (e.g. a
+// FC Concursos export) and pushes the result here via the Admin SDK,
+// bypassing these client-facing types entirely on the way in. The app only
+// ever reads/writes these through the admin review UI.
+
+export type QuestionType = 'multipla_escolha' | 'certo_errado';
+export type QuestionDraftStatus = 'pending_review' | 'needs_attention' | 'approved' | 'rejected';
+
+export interface QuestionAlternative {
+  letter: string;
+  text: string;
+  isCorrect: boolean;
+  position: number;
+}
+
+export interface QuestionImportBatch {
+  id: string;
+  source: string; // e.g. 'fc_concursos'
+  title: string | null;
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+  generatedAt?: string | null;
+  bloco?: string | null;
+  totalQuestions: number;
+  importedAt: number;
+  importedBy: string; // uid of the admin who ran the push script
+}
+
+export interface QuestionDraft {
+  id: string;
+  importId: string;
+  source: string;
+  externalId: string;
+  number: number;
+  questionType: QuestionType;
+  subjectRaw: string | null;
+  topicRaw: string | null;
+  statement: string;
+  alternatives: QuestionAlternative[];
+  correctLetter: string | null;
+  explanation: string;
+  sourcePage: number;
+  contentHash: string;
+  status: QuestionDraftStatus;
+  warnings: string[];
+  possibleDuplicateOfId?: string;
+}
+
+export interface PublishedQuestion {
+  id: string;
+  source: string;
+  externalId: string;
+  questionType: QuestionType;
+  subjectRaw: string | null;
+  topicRaw: string | null;
+  statement: string;
+  alternatives: QuestionAlternative[];
+  correctLetter: string | null;
+  explanation: string;
+  contentHash: string;
+  approvedAt: number;
+  approvedBy: string;
+}
+
+export interface DrawPoint {
+  x: number;
+  y: number;
+  pressure: number;
+}
+
+export type NotePenType = 'pen' | 'monoline' | 'brush';
+export type NoteShapeType = 'line' | 'arrow' | 'rectangle' | 'circle' | 'polygon' | 'polyline';
+export type NoteElementKind = 'stroke' | 'shape' | 'text';
+
+export interface DrawStroke {
+  points: DrawPoint[];
+  color: string;
+  width: number;
+  isEraser?: boolean;
+  opacity?: number;
+  penType?: NotePenType;
+  /** True when the input device has no real pressure sensor (mouse/touch) — tells perfect-freehand to synthesize a pressure curve from point velocity instead of using the flat stored values. */
+  simulatePressure?: boolean;
+  /** When set, `points` holds just the 2 anchor points (start/end) that define this shape (or, for polygon/polyline, every vertex), and it's rendered parametrically instead of as freehand ink. */
+  shapeType?: NoteShapeType;
+  /** Discriminant for the element-renderer dispatch. Undefined/'stroke' = legacy freehand ink (backward compatible with notes saved before this field existed). */
+  kind?: NoteElementKind;
+  /** Only for kind:'text' — the typed text (may contain \n), anchored at points[0]. */
+  text?: string;
+  /** Only for kind:'text' — world-space font size in px (scales with zoom like everything else). */
+  fontSize?: number;
+}
+
+export type NotePaperStyle = 'dots' | 'lines' | 'grid' | 'blank';
+
+export interface HandwrittenNote {
+  id: string;
+  title: string;
+  folderId?: string;
+  /** @deprecated Only present on notes saved before the switch to Excalidraw — the current editor no longer reads or writes this. */
+  paperStyle?: NotePaperStyle;
+  /** @deprecated Only present on notes saved before the switch to Excalidraw. */
+  strokes?: DrawStroke[];
+  /** Excalidraw's own scene data (elements/appState/files), untyped here since it's opaque to the rest of the app — read back from ExcalidrawImperativeAPI on save, passed straight through as initialData on open. */
+  excalidrawElements?: unknown[];
+  excalidrawAppState?: Record<string, unknown>;
+  excalidrawFiles?: Record<string, unknown>;
+  thumbnail?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface NoteFolder {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: number;
+}
+
+export interface VadeMecumArticle {
+  numero: number;
+  titulo: string | null;
+  capitulo: string | null;
+  secao: string | null;
+  subsecao: string | null;
+  texto: string;
+}
+
+export interface VadeMecumLaw {
+  id: string;
+  name: string;
+  shortName: string;
+}
+
+export const VADE_MECUM_LAWS: VadeMecumLaw[] = [
+  { id: 'constituicao-federal', name: 'Constituição Federal de 1988', shortName: 'CF/88' },
+];
 export type StudyProfile = 'VESTIBULAR' | 'CONCURSO' | 'FACULDADE';
 export type ExplanationStyle = string;
 
@@ -107,6 +247,8 @@ export interface UserStats {
   explanationStyle?: ExplanationStyle;
   questionProfileStyle?: string;
   fontSizeMultiplier?: number; // 1, 1.25, 1.5
+  heroScenario?: 'quarto' | 'estudio' | 'biblioteca' | 'quarto-3d' | 'estudio-3d' | 'biblioteca-3d' | 'solido'; // cenário de fundo do card principal do Hub
+  heroTintColor?: string; // cor do degradê sobreposto ao cenário do card principal do Hub
 }
 
 export interface Activity {
@@ -258,15 +400,23 @@ export interface FriendSession {
 }
 
 export interface FriendProfile {
-  id: string;
+  id: string; // friend's Firebase uid
   name: string;
   avatarColor: string;
+  characterId?: string;
   level: number;
   xp: number;
   status: 'ONLINE' | 'STUDYING' | 'OFFLINE';
-  lastEditalProgress: { [subjectName: string]: number }; // Heat map from edital
-  currentSession?: FriendSession;
-  lastRevAt?: number; // Last revision done
+  lastActive?: number;
+}
+
+export interface FriendRequest {
+  id: string; // `${fromUid}_${toUid}`
+  fromUid: string;
+  toUid: string;
+  fromName: string;
+  fromAvatarColor: string;
+  createdAt: number;
 }
 
 export interface SocialState {

@@ -4,7 +4,7 @@ import { Underline } from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Highlight } from '@tiptap/extension-highlight';
-import { Bold, Italic, Underline as UnderlineIcon, Palette, Highlighter, Type, Eraser } from 'lucide-react';
+import { Bold, Italic, Underline as UnderlineIcon, Palette, Highlighter, Type, Eraser } from './icons';
 import { useState } from 'react';
 
 interface RichTextEditorProps {

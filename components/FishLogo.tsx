@@ -7,6 +7,8 @@ interface FishLogoProps {
   primaryColor?: string;
   secondaryColor?: string;
   iconOnly?: boolean;
+  /** Hide the fish icon and show only the "ToDaHORA" wordmark. */
+  hideIcon?: boolean;
   days?: number;
   /** Set true when rendering on a dark background (e.g. the sidebar) — the "dark"-tone
    * letters switch from black to white there, since solid black is invisible on navy. */
@@ -32,6 +34,7 @@ const FishLogo: React.FC<FishLogoProps> = ({
   primaryColor = "#EAB308",
   secondaryColor = "#FACC15",
   iconOnly = false,
+  hideIcon = false,
   days = 0,
   darkBg = false
 }) => {
@@ -77,16 +80,18 @@ const FishLogo: React.FC<FishLogoProps> = ({
 
   return (
     <div className={`flex items-center gap-2 select-none ${className}`}>
-      <div className="relative w-12 h-12 flex-shrink-0 group flex items-center justify-center">
-        <svg 
-          viewBox="0 0 100 60" 
-          className="w-full h-auto transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500 drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]"
-        >
-          {renderFishShape()}
-          <circle cx={rank.id === 'CAVALO' ? "50" : "28"} cy={rank.id === 'CAVALO' ? "12" : "27"} r="4" fill="white" />
-          <circle cx={rank.id === 'CAVALO' ? "51" : "29"} cy={rank.id === 'CAVALO' ? "12" : "27"} r="1.8" fill="#0A0F1E" />
-        </svg>
-      </div>
+      {!hideIcon && (
+        <div className="relative w-12 h-12 flex-shrink-0 group flex items-center justify-center">
+          <svg
+            viewBox="0 0 100 60"
+            className="w-full h-auto transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500 drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]"
+          >
+            {renderFishShape()}
+            <circle cx={rank.id === 'CAVALO' ? "50" : "28"} cy={rank.id === 'CAVALO' ? "12" : "27"} r="4" fill="white" />
+            <circle cx={rank.id === 'CAVALO' ? "51" : "29"} cy={rank.id === 'CAVALO' ? "12" : "27"} r="1.8" fill="#0A0F1E" />
+          </svg>
+        </div>
+      )}
 
       {!iconOnly && (
         <div className="flex items-baseline group cursor-default">

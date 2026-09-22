@@ -19,7 +19,7 @@ const NameStep: React.FC<NameStepProps> = ({ initialName, onNext }) => {
       <div className="max-w-md w-full text-center space-y-10">
         <div className="flex flex-col items-center space-y-4">
           <FishLogo className="scale-125 mb-4" />
-          <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter text-[#0A0F1E] uppercase">
+          <h1 className="font-logo text-4xl md:text-5xl text-[#0A0F1E] uppercase">
             Como podemos te <span className="text-yellow-400">chamar</span>?
           </h1>
           <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">

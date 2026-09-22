@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EditalConfig, EditalSubject, StudyProfile } from '../types';
 import LoadingFish from './LoadingFish';
+import CharacterTip from './CharacterTip';
 import { MEDICINA_CURRICULUM, MedicinaPeriod } from '../services/medicinaCurriculum';
-import { BookOpen, Sparkles, Plus, Trash2, HelpCircle, Calendar, Clock, SkipForward } from 'lucide-react';
+import { BookOpen, Sparkles, Plus, Trash2, HelpCircle, Calendar, Clock, SkipForward } from './icons';
 
 interface EditalSetupProps {
   studyProfile?: StudyProfile;
@@ -162,6 +163,13 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1 italic">Conexão total estratégica</p>
         </div>
       </div>
+
+      <CharacterTip
+        id="edital-setup"
+        message={studyProfile === 'FACULDADE'
+          ? "Vamos montar sua grade curricular! Liste as matérias de cada período (ou use um currículo pronto, se tiver), me diga a data da prova e quantas horas por dia você consegue estudar. No final eu monto um cronograma completo pra você."
+          : "Vamos montar seu edital! Liste as matérias que vão cair na prova, a data do exame e quantas horas por dia você consegue estudar. No final eu transformo tudo isso num cronograma estratégico, sem você precisar organizar nada na mão."}
+      />
 
       <div className="bg-white rounded-[50px] p-12 shadow-2xl border border-gray-100 relative overflow-hidden min-h-[500px]">
         {/* Progress Bar */}

@@ -26,3 +26,16 @@ dist-ssr
 .env.local
 .env.*.local
 .vercel
+.env*
+
+# worker: parser output/test PDFs contain real question content and PII
+# (student name/email from the source export) — never versioned.
+worker/__pycache__
+worker/**/__pycache__
+worker/*.json
+worker/**/*.json
+*.pdf
+
+# Admin SDK service account key — never versioned, wherever it's placed.
+*service-account*.json
+*firebase-adminsdk*.json

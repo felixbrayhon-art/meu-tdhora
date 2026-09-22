@@ -30,12 +30,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
   return (
     <div className={`fixed inset-0 z-[100] overflow-hidden transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <video
-        src="/splash-video.mp4"
-        autoPlay
-        muted
-        loop
-        playsInline
+      <img
+        src="/splash-cast-banner.jpg"
+        alt=""
         className="absolute inset-0 w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/40" />
@@ -48,7 +45,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               showBrand ? 'opacity-100 translate-y-0 scale-150' : 'opacity-0 translate-y-8 scale-125'
             }`}
           >
-            <FishLogo className="py-4" darkBg />
+            <FishLogo className="justify-center py-4" darkBg hideIcon />
           </div>
 
           <div className="space-y-6 w-full flex flex-col items-center">

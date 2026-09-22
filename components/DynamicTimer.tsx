@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Scissors } from 'lucide-react';
+import { Scissors } from './icons';
 import { analyzeEvocation, generateQuestionsFromAnalysis } from '../services/geminiService';
 import { StudyProfile, QuizQuestion, EditalConfig } from '../types';
 import LoadingFish from './LoadingFish';

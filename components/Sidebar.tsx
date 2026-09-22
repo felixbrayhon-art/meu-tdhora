@@ -7,28 +7,7 @@ import {
   UserStats, 
   getFishRank 
 } from '../types';
-import { 
-  Home, 
-  Timer, 
-  Layers, 
-  BookOpen, 
-  Brain, 
-  Settings, 
-  ChevronDown, 
-  ChevronRight, 
-  ChevronLeft,
-  Folder, 
-  FileText,
-  User,
-  Users,
-  Compass,
-  Trophy,
-  Plus,
-  PanelLeftClose,
-  PanelLeftOpen,
-  BarChart3,
-  Bookmark
-} from 'lucide-react';
+import { Home, Timer, Layers, BookOpen, Brain, Settings, ChevronDown, ChevronRight, ChevronLeft, Folder, FileText, User, Users, Compass, Trophy, Plus, PanelLeftClose, PanelLeftOpen, BarChart3, Bookmark } from './icons';
 import { motion, AnimatePresence } from 'motion/react';
 import FishLogo from './FishLogo';
 import AvatarDisplay from './AvatarDisplay';

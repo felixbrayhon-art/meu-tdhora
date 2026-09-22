@@ -5,6 +5,7 @@ import MarkdownContent from './MarkdownContent';
 import { SmartRevisionItem, ErrorVaultItem, StudyProfile, StudyPlan, ExplanationStyle } from '../types';
 import { generateMicroThemeValidation, explainStuckTopic, identifyAndProgramRecovery } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
+import CharacterTip from './CharacterTip';
 import ForgettingCurve from './ForgettingCurve';
 
 interface SmartRevisionViewProps {
@@ -203,7 +204,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
             
             <div className="relative z-10">
               <span className="bg-red-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest mb-6 inline-block italic">Dificuldade Identificada pela IA</span>
-              <h1 className="text-4xl font-black mb-2 uppercase italic leading-none">{activeVault?.topic}</h1>
+              <h1 className="font-logo text-4xl mb-2 uppercase leading-none">{activeVault?.topic}</h1>
               <p className="text-gray-400 text-lg mb-10 font-medium tracking-tight">O sistema analisou seus erros e detectou um padrão.</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -284,7 +285,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
             </div>
             
             <h2 className="text-yellow-400 font-black uppercase text-xs tracking-[0.3em] mb-4 italic">ASSUNTO TRAVADO - NOVA ABORDAGEM</h2>
-            <h1 className="text-4xl font-black mb-8 leading-none uppercase italic">{activeVault?.topic}</h1>
+            <h1 className="font-logo text-4xl mb-8 leading-none uppercase">{activeVault?.topic}</h1>
             
             <div className="space-y-8 relative z-10">
               <div className="bg-white/5 border border-white/10 p-8 rounded-3xl">
@@ -475,6 +476,11 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
          VOLTAR AO HUB
        </button>
 
+       <CharacterTip
+         id="smart-revision"
+         message="Aqui eu te lembro de revisar cada assunto em 3 momentos-chave (24h, 7 dias e 30 dias depois de aprender), porque é quando o cérebro mais esquece. Toda vez que você erra uma questão, ela também cai automaticamente no Cofre de Erros ali do lado — assim a gente sabe exatamente onde focar antes da prova."
+       />
+
        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
           <div className="lg:col-span-8 space-y-12">
              <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -483,7 +489,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                    </div>
                    <div>
-                      <h1 className="text-4xl font-black italic tracking-tighter">REVISÃO ESPAÇADA (24/7/30)</h1>
+                      <h1 className="font-logo text-4xl">REVISÃO ESPAÇADA (24/7/30)</h1>
                       <p className="text-gray-400 font-medium">Ciclo neurocientífico calibrado pela regra 24h / 7 dias / 30 dias para fixação de provas.</p>
                    </div>
                 </div>

@@ -1,12 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import DOMPurify from 'dompurify';
-import {
-  Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText,
-  Maximize2, Minimize2, Move, Share2, Shuffle, LogOut,
-  Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen,
-  Copy, CheckCircle2
-} from 'lucide-react';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, Maximize2, Minimize2, Move, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen, Copy, CheckCircle2 } from './icons';
 import { QuizFolder, Notebook, QuizQuestion, ExplanationStyle } from '../types';
 import MarkdownContent from './MarkdownContent';
 import { RichTextEditor } from './RichTextEditor';

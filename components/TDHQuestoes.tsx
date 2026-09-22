@@ -1,8 +1,9 @@
 
 import React, { useState, useRef } from 'react';
 import DOMPurify from 'dompurify';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen } from 'lucide-react';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen } from './icons';
 import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
+import { fetchEnemExams, fetchEnemQuestions, enemDisciplineLabel, EnemExamInfo } from '../services/enemService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
 import LoadingFish from './LoadingFish';
 import SaveToFolderModal from './SaveToFolderModal';
@@ -80,7 +81,12 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   onTriggerGuidedLesson
 }) => {
   const [topic, setTopic] = useState(prefill || '');
-  const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE' | 'MANUAL'>('AUTO');
+  const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE' | 'MANUAL' | 'ENEM'>('AUTO');
+  const [enemExams, setEnemExams] = useState<EnemExamInfo[]>([]);
+  const [enemYear, setEnemYear] = useState<number | null>(null);
+  const [enemDiscipline, setEnemDiscipline] = useState('');
+  const [enemCount, setEnemCount] = useState(10);
+  const [enemError, setEnemError] = useState<string | null>(null);
   const [manualInputType, setManualInputType] = useState<'FULL' | 'QUICK'>('FULL');
   const createEmptyManualQuestion = () => ({
     id: Math.random().toString(36).substr(2, 9),
@@ -268,6 +274,43 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     } catch (error: any) {
       console.error(error);
       alert(error.message || "Erro desconhecido ao gerar simulado. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (inputMode === 'ENEM' && enemExams.length === 0) {
+      fetchEnemExams()
+        .then(exams => {
+          setEnemExams(exams);
+          if (exams.length > 0) {
+            setEnemYear(exams[0].year);
+            setEnemDiscipline(exams[0].disciplines[0]?.value ?? '');
+          }
+        })
+        .catch(err => setEnemError(err.message || 'Não foi possível carregar as provas do ENEM.'));
+    }
+  }, [inputMode]);
+
+  const handleFetchEnem = async () => {
+    if (!enemYear || !enemDiscipline) return;
+    setLoading(true);
+    setEnemError(null);
+    setQuestions([]);
+    setCurrentIdx(0);
+    setShowCommentary(false);
+    setSaved(false);
+    setUserAnswers({});
+    setTopic(`ENEM ${enemYear} · ${enemDisciplineLabel(enemDiscipline)}`);
+
+    try {
+      const formatted = await fetchEnemQuestions(enemYear, enemDiscipline, enemCount);
+      setQuestions(formatted);
+      setTempSelectedOpt(null);
+      setIsSubmitted(false);
+    } catch (error: any) {
+      setEnemError(error.message || 'Erro ao buscar questões do ENEM.');
     } finally {
       setLoading(false);
     }
@@ -633,7 +676,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                 <div className="w-20 h-20 bg-blue-50 text-blue-500 border border-blue-100 rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-sm">
                   <Scissors className="w-8 h-8" />
                 </div>
-                <h1 className="text-4xl md:text-6xl font-black mb-4 tracking-tighter leading-none italic uppercase text-slate-800">TDH<span className="text-blue-600">{strategicMode ? 'estratégico' : 'questões'}</span></h1>
+                <h1 className="font-logo text-4xl md:text-6xl mb-4 leading-none uppercase text-slate-800">TDH<span className="text-blue-600">{strategicMode ? 'estratégico' : 'questões'}</span></h1>
                 <p className="text-slate-400 text-lg mb-12 font-black uppercase tracking-widest text-[10px]">
                   {strategicMode ? (studyProfile === 'FACULDADE' ? 'Alinhamento Automático à Grade Curricular' : 'Alinhamento Automático ao Edital') : `Simulados ${studyProfile === 'CONCURSO' ? 'Elite' : studyProfile === 'FACULDADE' ? 'Universitários' : 'Vestibular'} • Gabarito Comentado`}
                 </p>
@@ -663,11 +706,17 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       >
                         COLAR
                       </button>
-                      <button 
+                      <button
                         onClick={() => setInputMode('MANUAL')}
                         className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'MANUAL' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
                       >
                         MANUAL
+                      </button>
+                      <button
+                        onClick={() => setInputMode('ENEM')}
+                        className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'ENEM' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                        ENEM
                       </button>
                     </div>
                   )}
@@ -788,6 +837,77 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         PROCESSAR QUESTÕES
                         <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                       </button>
+                    </div>
+                  ) : inputMode === 'ENEM' ? (
+                    <div className="space-y-6 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
+                      <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 mb-2 font-medium text-blue-700 text-sm flex items-center gap-3">
+                        <BookOpen className="w-5 h-5 flex-shrink-0" />
+                        <span>Questões oficiais de provas reais do ENEM, direto do banco público enem.dev.</span>
+                      </div>
+
+                      {enemError && (
+                        <div className="bg-red-50 p-4 rounded-2xl border border-red-100 text-red-600 text-sm font-bold">{enemError}</div>
+                      )}
+
+                      {enemExams.length === 0 && !enemError ? (
+                        <p className="text-slate-400 text-sm font-bold text-center py-8">Carregando provas disponíveis...</p>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-3 text-left">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Ano da Prova</label>
+                              <select
+                                value={enemYear ?? ''}
+                                onChange={(e) => {
+                                  const year = Number(e.target.value);
+                                  setEnemYear(year);
+                                  const exam = enemExams.find(ex => ex.year === year);
+                                  setEnemDiscipline(exam?.disciplines[0]?.value ?? '');
+                                }}
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-slate-700"
+                              >
+                                {enemExams.map(ex => (
+                                  <option key={ex.year} value={ex.year}>{ex.title}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="space-y-3 text-left">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Matéria</label>
+                              <select
+                                value={enemDiscipline}
+                                onChange={(e) => setEnemDiscipline(e.target.value)}
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-slate-700"
+                              >
+                                {enemExams.find(ex => ex.year === enemYear)?.disciplines.map(d => (
+                                  <option key={d.value} value={d.value}>{d.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100">
+                            <div className="flex justify-between items-center mb-6">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Qtd. Questões</label>
+                              <span className="text-blue-600 font-black text-2xl tabular-nums">{enemCount}</span>
+                            </div>
+                            <input
+                              type="range" min="1" max="40"
+                              value={enemCount}
+                              onChange={(e) => setEnemCount(Number(e.target.value))}
+                              className="w-full h-1.5 bg-slate-200 rounded-full accent-blue-600 cursor-pointer"
+                            />
+                          </div>
+
+                          <button
+                            onClick={handleFetchEnem}
+                            disabled={!enemYear || !enemDiscipline}
+                            className="w-full bg-blue-600 text-white py-8 rounded-[40px] font-black text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed"
+                          >
+                            BUSCAR QUESTÕES DO ENEM
+                            <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-12 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">

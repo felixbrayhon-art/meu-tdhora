@@ -12,7 +12,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { Brain, Zap, Info, ShieldAlert } from 'lucide-react';
+import { Brain, Zap, Info, ShieldAlert } from './icons';
 import { motion } from 'motion/react';
 
 const data = [
