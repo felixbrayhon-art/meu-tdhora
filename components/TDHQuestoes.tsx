@@ -1,9 +1,10 @@
 
 import React, { useState, useRef } from 'react';
 import DOMPurify from 'dompurify';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen } from './icons';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, Database } from './icons';
 import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { fetchEnemExams, fetchEnemQuestions, enemDisciplineLabel, EnemExamInfo } from '../services/enemService';
+import { fetchBankQuestions, listBankImportSubjects, listBankTopicsForSubject } from '../services/questionBankService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
 import LoadingFish from './LoadingFish';
 import SaveToFolderModal from './SaveToFolderModal';
@@ -81,12 +82,20 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   onTriggerGuidedLesson
 }) => {
   const [topic, setTopic] = useState(prefill || '');
-  const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE' | 'MANUAL' | 'ENEM'>('AUTO');
+  const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE' | 'MANUAL' | 'ENEM' | 'CONCURSO'>('AUTO');
   const [enemExams, setEnemExams] = useState<EnemExamInfo[]>([]);
   const [enemYear, setEnemYear] = useState<number | null>(null);
   const [enemDiscipline, setEnemDiscipline] = useState('');
   const [enemCount, setEnemCount] = useState(10);
   const [enemError, setEnemError] = useState<string | null>(null);
+  const [bankSubjects, setBankSubjects] = useState<string[]>([]);
+  const [bankSubject, setBankSubject] = useState('');
+  const [bankTopics, setBankTopics] = useState<string[]>([]);
+  const [bankTopic, setBankTopic] = useState(''); // '' = qualquer assunto dentro da matéria
+  const [bankCount, setBankCount] = useState(10);
+  const [bankError, setBankError] = useState<string | null>(null);
+  const [bankLoadingSubjects, setBankLoadingSubjects] = useState(false);
+  const [bankLoadingTopics, setBankLoadingTopics] = useState(false);
   const [manualInputType, setManualInputType] = useState<'FULL' | 'QUICK'>('FULL');
   const createEmptyManualQuestion = () => ({
     id: Math.random().toString(36).substr(2, 9),
@@ -291,7 +300,55 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
         })
         .catch(err => setEnemError(err.message || 'Não foi possível carregar as provas do ENEM.'));
     }
+    if (inputMode === 'CONCURSO' && bankSubjects.length === 0 && !bankLoadingSubjects) {
+      setBankLoadingSubjects(true);
+      listBankImportSubjects()
+        .then(subjects => {
+          setBankSubjects(subjects);
+          if (subjects.length > 0) setBankSubject(subjects[0]);
+        })
+        .catch(err => setBankError(err.message || 'Não foi possível carregar as matérias do nosso banco.'))
+        .finally(() => setBankLoadingSubjects(false));
+    }
   }, [inputMode]);
+
+  // Segundo nível: só busca os assuntos depois que uma matéria (nível 1) foi escolhida.
+  React.useEffect(() => {
+    if (!bankSubject) {
+      setBankTopics([]);
+      setBankTopic('');
+      return;
+    }
+    setBankLoadingTopics(true);
+    setBankTopic('');
+    listBankTopicsForSubject(bankSubject)
+      .then(setBankTopics)
+      .catch(err => setBankError(err.message || 'Não foi possível carregar os assuntos dessa matéria.'))
+      .finally(() => setBankLoadingTopics(false));
+  }, [bankSubject]);
+
+  const handleFetchBank = async () => {
+    if (!bankSubject) return;
+    setLoading(true);
+    setBankError(null);
+    setQuestions([]);
+    setCurrentIdx(0);
+    setShowCommentary(false);
+    setSaved(false);
+    setUserAnswers({});
+    setTopic(bankTopic ? `${bankSubject} · ${bankTopic}` : bankSubject);
+
+    try {
+      const formatted = await fetchBankQuestions(bankSubject, bankTopic || null, bankCount);
+      setQuestions(formatted);
+      setTempSelectedOpt(null);
+      setIsSubmitted(false);
+    } catch (error: any) {
+      setBankError(error.message || 'Erro ao buscar questões do nosso banco.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFetchEnem = async () => {
     if (!enemYear || !enemDiscipline) return;
@@ -718,6 +775,12 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       >
                         ENEM
                       </button>
+                      <button
+                        onClick={() => setInputMode('CONCURSO')}
+                        className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'CONCURSO' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                        CONCURSO
+                      </button>
                     </div>
                   )}
 
@@ -909,10 +972,79 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         </>
                       )}
                     </div>
+                  ) : inputMode === 'CONCURSO' ? (
+                    <div className="space-y-6 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
+                      <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 mb-2 font-medium text-blue-700 text-sm flex items-center gap-3">
+                        <Database className="w-5 h-5 flex-shrink-0" />
+                        <span>Questões do nosso próprio banco, extraídas e revisadas de provas reais de concursos.</span>
+                      </div>
+
+                      {bankError && (
+                        <div className="bg-red-50 p-4 rounded-2xl border border-red-100 text-red-600 text-sm font-bold">{bankError}</div>
+                      )}
+
+                      {bankLoadingSubjects ? (
+                        <p className="text-slate-400 text-sm font-bold text-center py-8">Carregando matérias disponíveis...</p>
+                      ) : bankSubjects.length === 0 ? (
+                        !bankError && <p className="text-slate-400 text-sm font-bold text-center py-8">Ainda não há questões aprovadas no nosso banco.</p>
+                      ) : (
+                        <>
+                          <div className="space-y-3 text-left">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Matéria</label>
+                            <select
+                              value={bankSubject}
+                              onChange={(e) => setBankSubject(e.target.value)}
+                              className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-slate-700"
+                            >
+                              {bankSubjects.map(s => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-3 text-left animate-in fade-in slide-in-from-top-2 duration-300">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Assunto</label>
+                            <select
+                              value={bankTopic}
+                              onChange={(e) => setBankTopic(e.target.value)}
+                              disabled={bankLoadingTopics}
+                              className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-slate-700 disabled:opacity-40"
+                            >
+                              <option value="">{bankLoadingTopics ? 'Carregando assuntos...' : 'Todos os assuntos'}</option>
+                              {bankTopics.map(t => (
+                                <option key={t} value={t}>{t}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100">
+                            <div className="flex justify-between items-center mb-6">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Qtd. Questões</label>
+                              <span className="text-blue-600 font-black text-2xl tabular-nums">{bankCount}</span>
+                            </div>
+                            <input
+                              type="range" min="1" max="40"
+                              value={bankCount}
+                              onChange={(e) => setBankCount(Number(e.target.value))}
+                              className="w-full h-1.5 bg-slate-200 rounded-full accent-blue-600 cursor-pointer"
+                            />
+                          </div>
+
+                          <button
+                            onClick={handleFetchBank}
+                            disabled={!bankSubject}
+                            className="w-full bg-blue-600 text-white py-8 rounded-[40px] font-black text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed"
+                          >
+                            BUSCAR DO NOSSO BANCO
+                            <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-12 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
                        <div className="flex bg-slate-100 p-1 rounded-2xl w-fit mb-4 border border-slate-200 shadow-inner">
-                          <button 
+                          <button
                             onClick={() => setManualInputType('FULL')}
                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${manualInputType === 'FULL' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
                           >

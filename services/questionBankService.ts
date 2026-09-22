@@ -104,21 +104,41 @@ const mapBankQuestion = (q: PublishedQuestion): QuizQuestion => {
   };
 };
 
-export const listBankSubjects = async (): Promise<string[]> => {
+// Level 1: the main discipline chosen at import time (importSubject) —
+// "Direito Penal", "Direito Constitucional" etc.
+export const listBankImportSubjects = async (): Promise<string[]> => {
   const snap = await getDocs(collection(db, 'questions'));
   const subjects = new Set<string>();
   snap.docs.forEach(d => {
-    const subject = (d.data() as PublishedQuestion).subjectRaw;
+    const subject = (d.data() as PublishedQuestion).importSubject;
     if (subject) subjects.add(subject);
   });
   return [...subjects].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 };
 
-export const fetchBankQuestions = async (subject: string, count: number): Promise<QuizQuestion[]> => {
-  const snap = await getDocs(query(collection(db, 'questions'), where('subjectRaw', '==', subject)));
+// Level 2: FC Concursos' own (finer) classification within that discipline
+// (subjectRaw) — only fetched once a level-1 matéria has been chosen.
+export const listBankTopicsForSubject = async (importSubject: string): Promise<string[]> => {
+  const snap = await getDocs(query(collection(db, 'questions'), where('importSubject', '==', importSubject)));
+  const topics = new Set<string>();
+  snap.docs.forEach(d => {
+    const topic = (d.data() as PublishedQuestion).subjectRaw;
+    if (topic) topics.add(topic);
+  });
+  return [...topics].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+};
+
+export const fetchBankQuestions = async (
+  importSubject: string,
+  topic: string | null,
+  count: number
+): Promise<QuizQuestion[]> => {
+  const constraints = [where('importSubject', '==', importSubject)];
+  if (topic) constraints.push(where('subjectRaw', '==', topic));
+  const snap = await getDocs(query(collection(db, 'questions'), ...constraints));
   const all = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<PublishedQuestion, 'id'>) }));
   if (all.length === 0) {
-    throw new Error('Nenhuma questão encontrada para essa matéria no nosso banco ainda.');
+    throw new Error('Nenhuma questão encontrada para essa matéria/assunto no nosso banco ainda.');
   }
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count).map(mapBankQuestion);
