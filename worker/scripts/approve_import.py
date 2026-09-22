@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import firebase_admin  # noqa: E402
 from firebase_admin import credentials, firestore  # noqa: E402
 
+from lib.backup import write_backup  # noqa: E402
 from lib.publish import filter_not_yet_published, publish_drafts  # noqa: E402
 from lib.validation import validate_before_publish  # noqa: E402
 
@@ -23,7 +24,9 @@ gate; it does not skip the structural/import-field pre-publish validation.
 """
 
 
-def run_pipeline(db, import_id: str, approved_by: str, include_warnings: bool = False) -> dict:
+def run_pipeline(
+    db, import_id: str, approved_by: str, include_warnings: bool = False, backups_dir: Path | None = None
+) -> dict:
     import_ref = db.collection("imports").document(import_id)
     import_doc = import_ref.get()
     if not import_doc.exists:
@@ -41,12 +44,26 @@ def run_pipeline(db, import_id: str, approved_by: str, include_warnings: bool = 
             continue
         draft_docs.append((doc.id, draft))
 
-    result = {"published": 0, "alreadyExisting": 0, "skippedWarnings": skipped_warnings}
+    result = {"published": 0, "alreadyExisting": 0, "skippedWarnings": skipped_warnings, "backupPath": None}
 
     if not draft_docs:
         print("Nada para publicar (0 drafts elegíveis).")
         print(f"Ignoradas por warnings: {skipped_warnings}")
         return result
+
+    # Backup happens before the first write batch — including before
+    # pre-publish validation, exactly like import_batch.py --publish — and
+    # a failure here aborts the whole run: no imports.update, no
+    # publish_drafts, nothing touched in Firestore.
+    try:
+        backup_path = write_backup(
+            subject or "sem-materia", year or 0, import_id, [draft for _, draft in draft_docs], backups_dir
+        )
+    except Exception as exc:  # disk full, permission error, etc.
+        print(f"Falha ao criar backup — abortando publicação sem gravar nada: {exc}")
+        raise SystemExit(1)
+    result["backupPath"] = str(backup_path)
+    print(f"Backup: {backup_path}")
 
     pre_publish_errors: dict[str, list[str]] = {}
     for doc_id, draft in draft_docs:

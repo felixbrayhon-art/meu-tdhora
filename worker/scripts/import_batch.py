@@ -1,12 +1,8 @@
 from __future__ import annotations
 
 import argparse
-import json
-import re
 import sys
-import unicodedata
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -16,6 +12,7 @@ import firebase_admin  # noqa: E402
 from firebase_admin import credentials, firestore  # noqa: E402
 
 from lib.auth import resolve_uid  # noqa: E402
+from lib.backup import write_backup, write_json_report  # noqa: E402
 from lib.dedup import build_doc_id, dedup_internal, fetch_existing_keys, split_by_existing  # noqa: E402
 from lib.exclusion import excluded_summary, split_valid_and_excluded  # noqa: E402
 from lib.publish import filter_not_yet_published, publish_drafts  # noqa: E402
@@ -38,35 +35,13 @@ PARSERS = {"fc_concursos": fc_concursos}
 # per question (no DELETE involved yet), so this can stay generous.
 DRAFT_BATCH_LIMIT = 400
 
-BACKUPS_DIR = Path(__file__).resolve().parent.parent / "output" / "backups"
 EXCLUDED_DIR = Path(__file__).resolve().parent.parent / "output" / "excluded"
-
-
-def slugify(text: str) -> str:
-    normalized = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    slug = re.sub(r"[^a-zA-Z0-9]+", "-", normalized).strip("-").lower()
-    return slug or "sem-titulo"
-
-
-def _write_report(directory: Path, subject: str, year: int, import_id: str, questions: list[dict]) -> Path:
-    directory.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    # subject + year + importId + timestamp in the filename: never the same
-    # name twice, so an old report is never at risk of being overwritten.
-    filename = f"{slugify(subject)}-{year}-{import_id}-{timestamp}.json"
-    path = directory / filename
-    path.write_text(json.dumps(questions, ensure_ascii=False, indent=2), encoding="utf-8")
-    return path
-
-
-def write_backup(subject: str, year: int, import_id: str, questions: list[dict], backups_dir: Path | None = None) -> Path:
-    return _write_report(backups_dir or BACKUPS_DIR, subject, year, import_id, questions)
 
 
 def write_excluded_report(
     subject: str, year: int, import_id: str, questions: list[dict], excluded_dir: Path | None = None
 ) -> Path:
-    return _write_report(excluded_dir or EXCLUDED_DIR, subject, year, import_id, questions)
+    return write_json_report(excluded_dir or EXCLUDED_DIR, subject, year, import_id, questions)
 
 
 def prepare_questions(pdf_path: str, subject: str, year: int, source_name: str) -> tuple[object, list[dict]]:
