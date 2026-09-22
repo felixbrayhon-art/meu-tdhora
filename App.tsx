@@ -307,8 +307,12 @@ const App: React.FC = () => {
 
   const handleLogin = async () => {
     try {
+      console.log('🔐 Tentando login com popup...');
       await signInWithPopup(auth, googleProvider);
+      console.log('✅ Login OK!');
     } catch (error: any) {
+      console.error('❌ Erro no login:', error?.code, error?.message);
+      alert('Erro no login: ' + (error?.code || error?.message || 'desconhecido'));
       // Popups get silently blocked by a lot of mobile/privacy-focused browsers
       // (Brave, Safari, in-app webviews). Fall back to a full-page redirect,
       // which onAuthStateChanged picks up automatically when the user returns.
