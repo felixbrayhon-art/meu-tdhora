@@ -4,7 +4,7 @@ import DOMPurify from 'dompurify';
 import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, Database } from './icons';
 import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { fetchEnemExams, fetchEnemQuestions, enemDisciplineLabel, EnemExamInfo } from '../services/enemService';
-import { fetchBankQuestions, listBankImportSubjects, listBankTopicsForSubject } from '../services/questionBankService';
+import { BankFacetOption, fetchBankQuestions, listBankImportSubjects, listBankTopicsForSubject } from '../services/questionBankService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
 import LoadingFish from './LoadingFish';
 import SaveToFolderModal from './SaveToFolderModal';
@@ -88,9 +88,10 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const [enemDiscipline, setEnemDiscipline] = useState('');
   const [enemCount, setEnemCount] = useState(10);
   const [enemError, setEnemError] = useState<string | null>(null);
-  const [bankSubjects, setBankSubjects] = useState<string[]>([]);
+  const [bankSubjects, setBankSubjects] = useState<BankFacetOption[]>([]);
   const [bankSubject, setBankSubject] = useState('');
-  const [bankTopics, setBankTopics] = useState<string[]>([]);
+  const [bankTopics, setBankTopics] = useState<BankFacetOption[]>([]);
+  const [bankTopicsTotal, setBankTopicsTotal] = useState(0);
   const [bankTopic, setBankTopic] = useState(''); // '' = qualquer assunto dentro da matéria
   const [bankCount, setBankCount] = useState(10);
   const [bankError, setBankError] = useState<string | null>(null);
@@ -305,7 +306,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
       listBankImportSubjects()
         .then(subjects => {
           setBankSubjects(subjects);
-          if (subjects.length > 0) setBankSubject(subjects[0]);
+          if (subjects.length > 0) setBankSubject(subjects[0].value);
         })
         .catch(err => setBankError(err.message || 'Não foi possível carregar as matérias do nosso banco.'))
         .finally(() => setBankLoadingSubjects(false));
@@ -316,16 +317,33 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   React.useEffect(() => {
     if (!bankSubject) {
       setBankTopics([]);
+      setBankTopicsTotal(0);
       setBankTopic('');
       return;
     }
     setBankLoadingTopics(true);
     setBankTopic('');
     listBankTopicsForSubject(bankSubject)
-      .then(setBankTopics)
+      .then(({ total, topics }) => {
+        setBankTopicsTotal(total);
+        setBankTopics(topics);
+      })
       .catch(err => setBankError(err.message || 'Não foi possível carregar os assuntos dessa matéria.'))
       .finally(() => setBankLoadingTopics(false));
   }, [bankSubject]);
+
+  // Quantas questões existem de fato pra essa combinação matéria/assunto —
+  // usado pro aluno saber quantas ele consegue pedir/salvar, e pra travar o
+  // slider nesse teto em vez de deixar pedir mais do que existe.
+  const bankAvailableCount = bankTopic
+    ? (bankTopics.find(t => t.value === bankTopic)?.count ?? 0)
+    : bankTopicsTotal;
+
+  React.useEffect(() => {
+    if (bankAvailableCount > 0 && bankCount > bankAvailableCount) {
+      setBankCount(bankAvailableCount);
+    }
+  }, [bankAvailableCount]);
 
   const handleFetchBank = async () => {
     if (!bankSubject) return;
@@ -997,7 +1015,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                               className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-slate-700"
                             >
                               {bankSubjects.map(s => (
-                                <option key={s} value={s}>{s}</option>
+                                <option key={s.value} value={s.value}>{s.value} ({s.count})</option>
                               ))}
                             </select>
                           </div>
@@ -1010,29 +1028,35 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                               disabled={bankLoadingTopics}
                               className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-slate-700 disabled:opacity-40"
                             >
-                              <option value="">{bankLoadingTopics ? 'Carregando assuntos...' : 'Todos os assuntos'}</option>
+                              <option value="">
+                                {bankLoadingTopics ? 'Carregando assuntos...' : `Todos os assuntos (${bankTopicsTotal})`}
+                              </option>
                               {bankTopics.map(t => (
-                                <option key={t} value={t}>{t}</option>
+                                <option key={t.value} value={t.value}>{t.value} ({t.count})</option>
                               ))}
                             </select>
                           </div>
 
                           <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100">
-                            <div className="flex justify-between items-center mb-6">
+                            <div className="flex justify-between items-center mb-2">
                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Qtd. Questões</label>
                               <span className="text-blue-600 font-black text-2xl tabular-nums">{bankCount}</span>
                             </div>
+                            <p className="text-[11px] font-bold text-slate-400 mb-4">
+                              {bankLoadingTopics ? 'Verificando disponibilidade...' : `${bankAvailableCount} questão${bankAvailableCount === 1 ? '' : 'ões'} disponível${bankAvailableCount === 1 ? '' : 'is'} nessa seleção`}
+                            </p>
                             <input
-                              type="range" min="1" max="40"
+                              type="range" min="1" max={Math.max(1, bankAvailableCount)}
                               value={bankCount}
                               onChange={(e) => setBankCount(Number(e.target.value))}
-                              className="w-full h-1.5 bg-slate-200 rounded-full accent-blue-600 cursor-pointer"
+                              disabled={bankAvailableCount === 0}
+                              className="w-full h-1.5 bg-slate-200 rounded-full accent-blue-600 cursor-pointer disabled:opacity-40"
                             />
                           </div>
 
                           <button
                             onClick={handleFetchBank}
-                            disabled={!bankSubject}
+                            disabled={!bankSubject || bankAvailableCount === 0}
                             className="w-full bg-blue-600 text-white py-8 rounded-[40px] font-black text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed"
                           >
                             BUSCAR DO NOSSO BANCO

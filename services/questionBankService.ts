@@ -104,28 +104,49 @@ const mapBankQuestion = (q: PublishedQuestion): QuizQuestion => {
   };
 };
 
+// Value + how many published questions match it — shown to the student so
+// they know upfront how many questions they can actually pull/save for
+// that matéria/assunto, instead of finding out only after asking for more
+// than exists.
+export interface BankFacetOption {
+  value: string;
+  count: number;
+}
+
+export interface BankTopicFacets {
+  total: number;
+  topics: BankFacetOption[];
+}
+
 // Level 1: the main discipline chosen at import time (importSubject) —
 // "Direito Penal", "Direito Constitucional" etc.
-export const listBankImportSubjects = async (): Promise<string[]> => {
+export const listBankImportSubjects = async (): Promise<BankFacetOption[]> => {
   const snap = await getDocs(collection(db, 'questions'));
-  const subjects = new Set<string>();
+  const counts = new Map<string, number>();
   snap.docs.forEach(d => {
     const subject = (d.data() as PublishedQuestion).importSubject;
-    if (subject) subjects.add(subject);
+    if (subject) counts.set(subject, (counts.get(subject) ?? 0) + 1);
   });
-  return [...subjects].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
 };
 
 // Level 2: FC Concursos' own (finer) classification within that discipline
 // (subjectRaw) — only fetched once a level-1 matéria has been chosen.
-export const listBankTopicsForSubject = async (importSubject: string): Promise<string[]> => {
+// `total` is the count for "Todos os assuntos" (every question under this
+// matéria, including any with no subjectRaw at all).
+export const listBankTopicsForSubject = async (importSubject: string): Promise<BankTopicFacets> => {
   const snap = await getDocs(query(collection(db, 'questions'), where('importSubject', '==', importSubject)));
-  const topics = new Set<string>();
+  const counts = new Map<string, number>();
   snap.docs.forEach(d => {
     const topic = (d.data() as PublishedQuestion).subjectRaw;
-    if (topic) topics.add(topic);
+    if (topic) counts.set(topic, (counts.get(topic) ?? 0) + 1);
   });
-  return [...topics].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const topics = [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
+  return { total: snap.size, topics };
 };
 
 export const fetchBankQuestions = async (
