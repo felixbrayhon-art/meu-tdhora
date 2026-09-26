@@ -1,12 +1,15 @@
-import React from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, GraduationCap, Scale, Sparkles } from './icons';
+import React, { useRef, useState } from 'react';
+import { ArrowLeft, BookOpen, GraduationCap, Scale } from './icons';
 import { StudyProfile } from '../types';
 import FishLogo from './FishLogo';
 
 interface ProfileSelectionProps {
-  onSelect: (profile: StudyProfile) => void;
+  initialName?: string;
+  onNext: (name: string, profile: StudyProfile) => void;
   onBack?: () => void;
 }
+
+type Variant = 'olive' | 'terracotta' | 'dark';
 
 const PROFILE_OPTIONS: Array<{
   id: StudyProfile;
@@ -14,9 +17,8 @@ const PROFILE_OPTIONS: Array<{
   eyebrow: string;
   description: string;
   tags: string[];
-  cardClass: string;
-  iconClass: string;
   icon: React.ReactNode;
+  variant: Variant;
 }> = [
   {
     id: 'VESTIBULAR',
@@ -24,9 +26,8 @@ const PROFILE_OPTIONS: Array<{
     eyebrow: 'ENEM • FUVEST',
     description: 'Construa uma base forte para chegar mais preparado às grandes universidades.',
     tags: ['Base sólida', 'Interdisciplinar'],
-    cardClass: 'bg-[#EEF6FF] border-blue-100 hover:border-blue-300 hover:shadow-blue-100/80',
-    iconClass: 'bg-blue-600 text-white shadow-blue-200',
-    icon: <BookOpen className="w-7 h-7" strokeWidth={2.5} />,
+    icon: <BookOpen className="w-7 h-7" />,
+    variant: 'olive',
   },
   {
     id: 'FACULDADE',
@@ -34,9 +35,8 @@ const PROFILE_OPTIONS: Array<{
     eyebrow: 'GRADE • PROVAS',
     description: 'Organize suas disciplinas, trabalhos e provas com mais clareza durante o período.',
     tags: ['Disciplinas', 'Trabalhos'],
-    cardClass: 'bg-[#F7F1FF] border-violet-100 hover:border-violet-300 hover:shadow-violet-100/80',
-    iconClass: 'bg-violet-600 text-white shadow-violet-200',
-    icon: <GraduationCap className="w-7 h-7" strokeWidth={2.5} />,
+    icon: <GraduationCap className="w-7 h-7" />,
+    variant: 'terracotta',
   },
   {
     id: 'CONCURSO',
@@ -44,88 +44,143 @@ const PROFILE_OPTIONS: Array<{
     eyebrow: 'EDITAL • CARREIRA',
     description: 'Estude com estratégia para dominar o edital, a jurisprudência e as questões complexas.',
     tags: ['Plano de prova', 'Alta performance'],
-    cardClass: 'bg-[#101728] border-[#26334D] hover:border-yellow-400 hover:shadow-yellow-900/30',
-    iconClass: 'bg-yellow-400 text-[#0A0F1E] shadow-yellow-900/30',
-    icon: <Scale className="w-7 h-7" strokeWidth={2.5} />,
+    icon: <Scale className="w-7 h-7" />,
+    variant: 'dark',
   },
 ];
 
-const ProfileSelection: React.FC<ProfileSelectionProps> = ({ onSelect, onBack }) => {
+const ACCENTS: Record<Variant, { text: string; iconBg: string; chipBg: string }> = {
+  olive: { text: '#446B4E', iconBg: 'rgba(138,154,123,0.20)', chipBg: 'rgba(138,154,123,0.18)' },
+  terracotta: { text: '#C96C4A', iconBg: 'rgba(201,108,74,0.16)', chipBg: 'rgba(217,139,123,0.20)' },
+  dark: { text: '#D8A53A', iconBg: 'rgba(216,165,58,0.22)', chipBg: 'rgba(216,165,58,0.22)' },
+};
+
+const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext, onBack }) => {
+  const [name, setName] = useState(initialName ?? '');
+  const [nameError, setNameError] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePick = (profile: StudyProfile) => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setNameError(true);
+      nameInputRef.current?.focus();
+      nameInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    onNext(trimmed, profile);
+  };
+
   return (
-    <div className="fixed inset-0 z-[110] bg-[#F8F4EA] flex flex-col overflow-hidden animate-in fade-in duration-700">
-      <div className="absolute inset-0 pointer-events-none opacity-70 bg-[radial-gradient(circle_at_12%_10%,rgba(250,204,21,0.18),transparent_24%),radial-gradient(circle_at_92%_88%,rgba(96,165,250,0.14),transparent_28%)]" />
-      <div className="absolute -right-16 top-28 w-48 h-48 rounded-full border-[26px] border-white/50 pointer-events-none" />
-      <div className="absolute -left-24 bottom-8 w-64 h-64 rounded-full border-[36px] border-white/40 pointer-events-none" />
+    <div
+      className="fixed inset-0 z-[110] flex flex-col overflow-hidden animate-in fade-in duration-700"
+      style={{
+        background: 'radial-gradient(120% 90% at 25% 0%, #FBF7F0 0%, #F4EBDD 55%, #E8DDCC 100%)',
+        fontFamily: "'Manrope', sans-serif",
+      }}
+    >
+      {/* almost-invisible geometric module background */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
+        <defs>
+          <pattern id="profileSelectModules" width="64" height="64" patternUnits="userSpaceOnUse">
+            <rect x="8" y="8" width="48" height="48" rx="10" fill="none" stroke="#473c33" strokeWidth="1" strokeOpacity="0.05" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#profileSelectModules)" />
+      </svg>
 
       <header className="relative z-10 flex items-center justify-between px-5 md:px-10 pt-5 md:pt-7 pb-3 shrink-0">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 px-3 py-2 rounded-2xl text-[#0A0F1E]/55 hover:text-[#0A0F1E] hover:bg-white/70 transition-all"
-        >
-          <ArrowLeft className="w-4 h-4" strokeWidth={3} />
-          <span className="text-[10px] font-black uppercase tracking-[0.16em]">Voltar</span>
-        </button>
-        <div className="flex items-center gap-2 bg-white/65 border border-white rounded-full px-3 py-2 shadow-sm">
-          <span className="w-2 h-2 rounded-full bg-yellow-400" />
-          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-[#0A0F1E]/55">Passo 2 de 3</span>
+        {onBack ? (
+          <button onClick={onBack} className="flex items-center gap-2 px-3 py-2 rounded-2xl text-[#725442]/70 hover:text-[#473c33] hover:bg-white/70 transition-all">
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-[11px] font-medium uppercase tracking-[0.06em]">Voltar</span>
+          </button>
+        ) : <span />}
+        <div className="flex items-center gap-2 bg-[#E8DDCC] rounded-full px-4 py-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#725442]">Passo 1 de 2</span>
         </div>
       </header>
 
       <main className="relative z-10 flex-1 min-h-0 overflow-y-auto px-5 md:px-10 py-5 md:py-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col items-center text-center mb-8 md:mb-10">
-            <div className="mb-4 p-3 rounded-[22px] bg-white/75 border border-white shadow-sm">
+            <div className="mb-4">
               <FishLogo className="scale-90" />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-600 mb-3">Personalize sua jornada</p>
-            <h1 className="font-logo text-4xl md:text-6xl text-[#0A0F1E] uppercase leading-[0.95]">
-              O que você quer <span className="text-yellow-400">estudar</span>?
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#725442] mb-3">Personalize sua jornada</p>
+
+            <h1 className="font-logo font-medium text-2xl md:text-3xl text-[#473c33] leading-[1.1]">
+              Como podemos te chamar?
             </h1>
-            <p className="max-w-xl text-[#0A0F1E]/50 font-bold text-xs md:text-sm leading-relaxed mt-4">
-              Escolha um objetivo para ajustarmos o conteúdo, as questões e o tom da IA ao seu momento.
+            <input
+              ref={nameInputRef}
+              value={name}
+              onChange={(e) => { setName(e.target.value); if (e.target.value.trim()) setNameError(false); }}
+              placeholder="Digite seu apelido..."
+              className="w-full max-w-xs mt-4 bg-[#FBF7F0] border-2 rounded-2xl px-5 py-3.5 text-base font-semibold text-center text-[#473c33] placeholder:text-[#725442]/40 focus:outline-none transition-all"
+              style={{ borderColor: nameError ? '#A94432' : '#E8DDCC' }}
+            />
+            {nameError && (
+              <p className="text-[11px] font-semibold mt-2" style={{ color: '#A94432' }}>Digite seu apelido antes de continuar</p>
+            )}
+
+            <h1 className="font-logo font-bold text-4xl md:text-6xl text-[#473c33] leading-[1.05] mt-10">
+              O que você quer estudar?
+            </h1>
+            <p className="max-w-xl text-[#725442] text-sm md:text-base leading-relaxed mt-4">
+              Sua escolha ajusta o conteúdo, as questões e o tom da IA em todo o app.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 max-w-5xl mx-auto">
-            {PROFILE_OPTIONS.map(option => {
-              const darkCard = option.id === 'CONCURSO';
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-7 max-w-5xl mx-auto">
+            {PROFILE_OPTIONS.map((option) => {
+              const dark = option.variant === 'dark';
+              const accent = ACCENTS[option.variant];
               return (
                 <button
                   key={option.id}
-                  onClick={() => onSelect(option.id)}
-                  className={`group relative min-h-[260px] md:min-h-[310px] rounded-[30px] border p-5 md:p-6 text-left flex flex-col justify-between overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(30,41,59,0.14)] ${option.cardClass}`}
+                  onClick={() => handlePick(option.id)}
+                  className="group relative min-h-[280px] md:min-h-[340px] rounded-[32px] p-6 md:p-8 text-left flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                  style={{
+                    background: dark ? '#2E4A54' : '#FBF7F0',
+                    border: dark ? 'none' : '1px solid #E8DDCC',
+                    boxShadow: dark ? '0 24px 48px -28px rgba(46,74,84,0.45)' : '0 24px 48px -28px rgba(74,53,42,0.22)',
+                  }}
                 >
-                  <div className="absolute -right-9 -top-9 w-32 h-32 rounded-full border-[18px] border-white/40 group-hover:scale-110 transition-transform duration-500" />
-                  <div className="relative">
-                    <div className="flex items-start justify-between gap-3 mb-7">
-                      <div className={`w-14 h-14 rounded-[19px] flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-105 group-hover:rotate-2 ${option.iconClass}`}>
-                        {option.icon}
-                      </div>
-                      <Sparkles className={`w-4 h-4 ${darkCard ? 'text-yellow-400/60' : 'text-[#0A0F1E]/20'}`} />
-                    </div>
-                    <p className={`text-[9px] font-black uppercase tracking-[0.2em] mb-2 ${darkCard ? 'text-yellow-400/75' : 'text-[#0A0F1E]/40'}`}>{option.eyebrow}</p>
-                    <h2 className={`text-2xl md:text-[28px] font-black italic tracking-[-0.04em] uppercase ${darkCard ? 'text-white' : 'text-[#0A0F1E]'}`}>{option.title}</h2>
-                    <p className={`text-xs font-bold leading-relaxed mt-3 ${darkCard ? 'text-white/55' : 'text-[#0A0F1E]/52'}`}>{option.description}</p>
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
+                    style={{ background: accent.iconBg, color: accent.text }}
+                  >
+                    {option.icon}
                   </div>
-                  <div className="relative flex items-center justify-between gap-3 mt-6">
-                    <div className="flex flex-wrap gap-1.5">
-                      {option.tags.map(tag => (
-                        <span key={tag} className={`text-[9px] font-black uppercase tracking-wide rounded-full px-2.5 py-1.5 ${darkCard ? 'bg-white/10 text-white/65' : 'bg-white/70 text-[#0A0F1E]/50'}`}>{tag}</span>
-                      ))}
-                    </div>
-                    <span className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all group-hover:translate-x-1 ${darkCard ? 'bg-white/10 text-white' : 'bg-white text-[#0A0F1E]'}`}>
-                      <ArrowRight className="w-4 h-4" strokeWidth={3} />
-                    </span>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.1em] mt-4" style={{ color: dark ? '#D8A53A' : accent.text }}>
+                    {option.eyebrow}
+                  </p>
+                  <h2 className="font-logo font-medium text-2xl md:text-[26px] mt-1.5" style={{ color: dark ? '#FBF7F0' : '#473c33' }}>
+                    {option.title}
+                  </h2>
+                  <p className="text-[13.5px] leading-relaxed mt-3 flex-grow" style={{ color: dark ? 'rgba(251,247,240,0.72)' : '#725442' }}>
+                    {option.description}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {option.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[11px] font-semibold rounded-full px-3.5 py-1.5"
+                        style={{ background: dark ? 'rgba(216,165,58,0.22)' : accent.chipBg, color: dark ? '#D8A53A' : accent.text }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
                   </div>
                 </button>
               );
             })}
           </div>
 
-          <div className="flex items-center justify-center gap-2 mt-8 md:mt-10 pb-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-            <p className="text-[9px] font-black text-[#0A0F1E]/30 uppercase tracking-[0.22em]">Você poderá mudar isso a qualquer momento no perfil</p>
-          </div>
+          <p className="text-center text-xs font-medium mt-8 md:mt-10 pb-3" style={{ color: 'rgba(74,53,42,0.55)' }}>
+            Você poderá alterar isso depois, no seu perfil.
+          </p>
         </div>
       </main>
     </div>

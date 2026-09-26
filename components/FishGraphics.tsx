@@ -22,5 +22,5 @@ export const FishSilhouette = ({ className = "", color = "currentColor" }) => (
   </svg>
 );
 
-export const OrangeFish = ({ className = "" }) => <FishSilhouette className={className} color="#F97316" />;
+export const OrangeFish = ({ className = "" }) => <FishSilhouette className={className} color="#f97316" />;
 export const BlueFish = ({ className = "" }) => <FishSilhouette className={className} color="#3B82F6" />;

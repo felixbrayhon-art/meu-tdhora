@@ -24,8 +24,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_COLOR: Record<string, string> = {
   pending_review: 'bg-gray-100 text-gray-600',
-  needs_attention: 'bg-amber-100 text-amber-700',
-  approved: 'bg-green-100 text-green-700',
+  needs_attention: 'bg-[#fee6d5] text-[#ff832a]',
+  approved: 'bg-[#e9efda] text-[#98b847]',
   rejected: 'bg-red-100 text-red-600',
 };
 
@@ -91,7 +91,7 @@ const DraftEditor: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-[1200] bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-6">
+    <div className="fixed inset-0 z-[1200] bg-[#473c33]/40 flex items-end sm:items-center justify-center p-0 sm:p-6">
       <div className="bg-white w-full sm:max-w-2xl sm:rounded-[28px] max-h-[92vh] flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
           <div>
@@ -105,7 +105,7 @@ const DraftEditor: React.FC<{
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           {duplicates.length > 0 && (
-            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-800">
+            <div className="flex items-start gap-2 bg-[#fff1e8] border border-[#fed6ba] rounded-2xl px-4 py-3 text-sm text-[#ec6300]">
               <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <span>Esta questão provavelmente já está cadastrada ({duplicates.length} correspondência{duplicates.length > 1 ? 's' : ''} no banco publicado).</span>
             </div>
@@ -123,27 +123,27 @@ const DraftEditor: React.FC<{
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-black uppercase tracking-wide text-gray-400">Matéria</label>
-              <input value={subjectRaw} onChange={e => setSubjectRaw(e.target.value)} className="w-full mt-1 bg-gray-50 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-300" />
+              <input value={subjectRaw} onChange={e => setSubjectRaw(e.target.value)} className="w-full mt-1 bg-gray-50 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#fec8a2]" />
             </div>
             <div>
               <label className="text-[10px] font-black uppercase tracking-wide text-gray-400">Assunto</label>
-              <input value={topicRaw} onChange={e => setTopicRaw(e.target.value)} className="w-full mt-1 bg-gray-50 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-300" />
+              <input value={topicRaw} onChange={e => setTopicRaw(e.target.value)} className="w-full mt-1 bg-gray-50 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#fec8a2]" />
             </div>
           </div>
 
           <div>
             <label className="text-[10px] font-black uppercase tracking-wide text-gray-400">Enunciado</label>
-            <textarea value={statement} onChange={e => setStatement(e.target.value)} rows={5} className="w-full mt-1 bg-gray-50 rounded-2xl px-4 py-3 text-sm text-gray-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-300" />
+            <textarea value={statement} onChange={e => setStatement(e.target.value)} rows={5} className="w-full mt-1 bg-gray-50 rounded-2xl px-4 py-3 text-sm text-gray-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#fec8a2]" />
           </div>
 
           <div>
             <label className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1 block">Alternativas — marque a correta</label>
             <div className="space-y-2">
               {alternatives.map((alt, idx) => (
-                <div key={alt.letter} className={`flex items-start gap-3 rounded-2xl border px-3 py-2.5 ${correctLetter === alt.letter ? 'border-amber-300 bg-amber-50' : 'border-gray-100'}`}>
+                <div key={alt.letter} className={`flex items-start gap-3 rounded-2xl border px-3 py-2.5 ${correctLetter === alt.letter ? 'border-[#fec8a2] bg-[#fff1e8]' : 'border-gray-100'}`}>
                   <button
                     onClick={() => setCorrectLetter(alt.letter)}
-                    className={`mt-0.5 w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center font-black text-xs ${correctLetter === alt.letter ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-500'}`}
+                    className={`mt-0.5 w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center font-black text-xs ${correctLetter === alt.letter ? 'bg-[#fdad74] text-white' : 'bg-gray-100 text-gray-500'}`}
                   >
                     {alt.letter}
                   </button>
@@ -164,7 +164,7 @@ const DraftEditor: React.FC<{
 
           <div>
             <label className="text-[10px] font-black uppercase tracking-wide text-gray-400">Explicação</label>
-            <textarea value={explanation} onChange={e => setExplanation(e.target.value)} rows={6} className="w-full mt-1 bg-gray-50 rounded-2xl px-4 py-3 text-sm text-gray-700 leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-300" />
+            <textarea value={explanation} onChange={e => setExplanation(e.target.value)} rows={6} className="w-full mt-1 bg-gray-50 rounded-2xl px-4 py-3 text-sm text-gray-700 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#fec8a2]" />
           </div>
         </div>
 
@@ -175,7 +175,7 @@ const DraftEditor: React.FC<{
           <button disabled={busy} onClick={handleSave} className="flex-1 px-4 py-3 rounded-xl bg-gray-100 text-gray-700 font-black text-xs uppercase tracking-wide hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
             <Save className="w-4 h-4" /> Salvar alteração
           </button>
-          <button disabled={busy || !correctLetter} onClick={handleApprove} className="flex-1 px-4 py-3 rounded-xl bg-amber-500 text-white font-black text-xs uppercase tracking-wide hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+          <button disabled={busy || !correctLetter} onClick={handleApprove} className="flex-1 px-4 py-3 rounded-xl bg-[#fdad74] text-white font-black text-xs uppercase tracking-wide hover:bg-[#fda769] transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
             <Check className="w-4 h-4" /> Aprovar
           </button>
         </div>
@@ -230,7 +230,7 @@ const AdminQuestionReview: React.FC<AdminQuestionReviewProps> = ({ uid, onBack }
         </button>
         <div>
           <h2 className="font-logo text-2xl text-gray-900 flex items-center gap-2">
-            <ClipboardList className="w-6 h-6 text-amber-500" />
+            <ClipboardList className="w-6 h-6 text-[#fdad74]" />
             {selectedImport ? selectedImport.title ?? 'Importação' : 'Revisão de importações'}
           </h2>
           <p className="text-gray-400 text-xs font-bold uppercase tracking-wide mt-0.5">
@@ -253,7 +253,7 @@ const AdminQuestionReview: React.FC<AdminQuestionReviewProps> = ({ uid, onBack }
         {!loading && !selectedImport && (
           <div className="space-y-2">
             {imports.map(batch => (
-              <button key={batch.id} onClick={() => openImport(batch)} className="w-full flex items-center justify-between gap-3 bg-white rounded-2xl border border-gray-100 px-5 py-4 hover:shadow-md hover:border-amber-200 transition-all text-left">
+              <button key={batch.id} onClick={() => openImport(batch)} className="w-full flex items-center justify-between gap-3 bg-white rounded-2xl border border-gray-100 px-5 py-4 hover:shadow-md hover:border-[#fed6ba] transition-all text-left">
                 <div className="min-w-0">
                   <p className="font-black text-gray-900 truncate">{batch.title ?? batch.source}</p>
                   <p className="text-xs text-gray-400 font-bold uppercase tracking-wide mt-0.5">{batch.source} · {batch.totalQuestions} questões</p>
@@ -267,7 +267,7 @@ const AdminQuestionReview: React.FC<AdminQuestionReviewProps> = ({ uid, onBack }
         {!loading && selectedImport && (
           <div className="space-y-2">
             {drafts.map(d => (
-              <button key={d.id} onClick={() => setEditingDraft(d)} className="w-full flex items-center gap-3 bg-white rounded-2xl border border-gray-100 px-5 py-3.5 hover:shadow-md hover:border-amber-200 transition-all text-left">
+              <button key={d.id} onClick={() => setEditingDraft(d)} className="w-full flex items-center gap-3 bg-white rounded-2xl border border-gray-100 px-5 py-3.5 hover:shadow-md hover:border-[#fed6ba] transition-all text-left">
                 <span className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center font-black text-xs text-gray-500 flex-shrink-0">{d.number}</span>
                 <p className="flex-1 min-w-0 text-sm text-gray-700 truncate">{d.statement}</p>
                 <span className={`text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full flex-shrink-0 flex items-center gap-1 ${STATUS_COLOR[d.status] ?? 'bg-gray-100 text-gray-600'}`}>

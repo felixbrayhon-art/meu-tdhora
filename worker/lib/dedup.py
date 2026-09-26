@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import hashlib
 import re
+import unicodedata
 
-# Extracted from worker/scripts/push_drafts.py so import_batch.py can reuse
-# the exact same existence-check/ID logic without duplicating it.
-# push_drafts.py's own internal-dedup loop is intentionally left as-is
-# (imports sanitize_doc_id/fetch_existing_keys from here, but keeps its own
-# behavior) — see push_drafts.py for why.
 
-DEDUP_FIELDS = ["source", "externalId", "contentHash"]
+# Campos mínimos necessários para reconstruir a impressão digital forte
+# de uma questão já armazenada no Firestore.
+DEDUP_FIELDS = [
+    "source",
+    "externalId",
+    "statement",
+    "alternatives",
+]
 
 
 def sanitize_doc_id(raw: str) -> str:
@@ -19,65 +23,174 @@ def build_doc_id(source: str, external_id: str) -> str:
     return sanitize_doc_id(f"{source}_{external_id}")
 
 
-# Full-collection scan rather than per-question queries: no composite index
-# to set up, and it correctly catches drafts/questions created before
-# deterministic doc IDs were introduced (their doc ID won't match
-# `source_externalId`, but the fields still do). This reads O(existing bank
-# size) on every run — fine at hundreds/thousands of questions.
-# TODO: once `questions` grows into the hundreds of thousands, replace this
-# with a dedicated dedup-index collection (e.g. `dedup_keys/{source_externalId}`
-# and `content_hashes/{hash}`, each a tiny doc) so existence checks become
-# O(1) lookups instead of a full scan. Not needed at the current scale.
-def fetch_existing_keys(db) -> tuple[set[tuple[str, str]], set[str]]:
+def _normalize(text: str) -> str:
+    text = text or ""
+
+    normalized = (
+        unicodedata.normalize("NFKD", text)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+
+    return re.sub(
+        r"\s+",
+        " ",
+        normalized,
+    ).strip().lower()
+
+
+def question_fingerprint(q: dict) -> str:
+    """
+    Fingerprint forte para deduplicação.
+
+    Não usa apenas o enunciado, porque enunciados genéricos como
+    "Assinale a alternativa correta:" podem existir em diversas questões
+    completamente diferentes.
+
+    A impressão digital considera:
+      - enunciado;
+      - texto de todas as alternativas.
+
+    As alternativas são ordenadas pelo texto para detectar a mesma questão
+    mesmo quando uma fonte muda a ordem A/B/C/D/E.
+    """
+
+    statement = _normalize(
+        q.get("statement") or ""
+    )
+
+    alternative_texts = []
+
+    for alternative in q.get("alternatives") or []:
+        if isinstance(alternative, dict):
+            alternative_texts.append(
+                _normalize(
+                    alternative.get("text") or ""
+                )
+            )
+
+    alternative_texts.sort()
+
+    canonical = (
+        statement
+        + "\n"
+        + "\n".join(alternative_texts)
+    )
+
+    return hashlib.sha256(
+        canonical.encode("utf-8")
+    ).hexdigest()
+
+
+def fetch_existing_keys(
+    db,
+) -> tuple[set[tuple[str, str]], set[str]]:
+    """
+    Retorna:
+      1. pares (source, externalId);
+      2. fingerprints fortes do conteúdo já existente.
+
+    Verifica tanto questions quanto question_drafts.
+    """
+
     pairs: set[tuple[str, str]] = set()
-    hashes: set[str] = set()
-    for collection_name in ("questions", "question_drafts"):
-        for doc in db.collection(collection_name).select(DEDUP_FIELDS).stream():
+    fingerprints: set[str] = set()
+
+    for collection_name in (
+        "questions",
+        "question_drafts",
+    ):
+        for doc in (
+            db.collection(collection_name)
+            .select(DEDUP_FIELDS)
+            .stream()
+        ):
             data = doc.to_dict() or {}
+
             source = data.get("source")
             external_id = data.get("externalId")
+
             if source and external_id:
-                pairs.add((source, external_id))
-            content_hash = data.get("contentHash")
-            if content_hash:
-                hashes.add(content_hash)
-    return pairs, hashes
+                pairs.add(
+                    (source, external_id)
+                )
+
+            if (
+                data.get("statement")
+                and data.get("alternatives")
+            ):
+                fingerprints.add(
+                    question_fingerprint(data)
+                )
+
+    return pairs, fingerprints
 
 
-def dedup_internal(questions: list[dict]) -> tuple[list[dict], int]:
-    """Removes duplicates WITHIN a single batch, by (source, externalId) and
-    by contentHash — order-preserving, first occurrence wins. This is
-    stricter than push_drafts.py's own within-batch check (which only looks
-    at source+externalId), because import_batch.py explicitly needs to
-    catch same-content questions that somehow got different externalIds.
+def dedup_internal(
+    questions: list[dict],
+) -> tuple[list[dict], int]:
     """
+    Remove duplicatas dentro de um mesmo lote.
+
+    Considera:
+      - source + externalId;
+      - fingerprint forte de enunciado + alternativas.
+    """
+
     seen_pairs: set[tuple[str, str]] = set()
-    seen_hashes: set[str] = set()
+    seen_fingerprints: set[str] = set()
+
     unique: list[dict] = []
     removed = 0
+
     for q in questions:
-        key = (q["source"], q["externalId"])
-        content_hash = q["contentHash"]
-        if key in seen_pairs or content_hash in seen_hashes:
+        key = (
+            q["source"],
+            q["externalId"],
+        )
+
+        fingerprint = question_fingerprint(q)
+
+        if (
+            key in seen_pairs
+            or fingerprint in seen_fingerprints
+        ):
             removed += 1
             continue
+
         seen_pairs.add(key)
-        seen_hashes.add(content_hash)
+        seen_fingerprints.add(fingerprint)
         unique.append(q)
+
     return unique, removed
 
 
 def split_by_existing(
-    questions: list[dict], existing_pairs: set[tuple[str, str]], existing_hashes: set[str]
+    questions: list[dict],
+    existing_pairs: set[tuple[str, str]],
+    existing_fingerprints: set[str],
 ) -> tuple[list[dict], int]:
-    """Splits an already internally-deduped list into (new_questions, existing_count)
-    by checking against keys already present in Firestore."""
+    """
+    Separa questões novas das que já existem no Firestore.
+    """
+
     new_questions: list[dict] = []
     existing_count = 0
+
     for q in questions:
-        key = (q["source"], q["externalId"])
-        if key in existing_pairs or q["contentHash"] in existing_hashes:
+        key = (
+            q["source"],
+            q["externalId"],
+        )
+
+        fingerprint = question_fingerprint(q)
+
+        if (
+            key in existing_pairs
+            or fingerprint in existing_fingerprints
+        ):
             existing_count += 1
         else:
             new_questions.append(q)
+
     return new_questions, existing_count

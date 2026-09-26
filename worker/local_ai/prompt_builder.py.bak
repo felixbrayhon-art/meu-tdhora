@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+# The mandatory anti-hallucination framing, verbatim per spec. The model
+# is never the legal source — it only narrates over the (already correct)
+# gabarito and the provisions handed to it by worker/legal_base/search.py.
+SYSTEM_RULES = """O gabarito oficial já foi fornecido e não deve ser reavaliado.
+
+A explicação deve ser estritamente fundamentada em:
+1. fatos expressamente descritos no ENUNCIADO;
+2. o rótulo da ALTERNATIVA CORRETA;
+3. o texto literal das FONTES JURÍDICAS FORNECIDAS.
+
+A alternativa correta NÃO autoriza criar doutrina, requisitos, classificações ou distinções que não apareçam nas fontes.
+
+É proibido completar lacunas com conhecimento próprio do modelo.
+
+Não invente nem acrescente:
+- definições doutrinárias;
+- requisitos;
+- classificações;
+- diferenças entre institutos;
+- consequências jurídicas;
+- graus de gravidade;
+- jurisprudência;
+- súmula;
+- artigo;
+- lei;
+- exceção;
+- curiosidade.
+
+Se uma informação necessária a um tópico não estiver expressamente sustentada pelas fontes fornecidas, escreva exatamente:
+"Fonte fornecida insuficiente para afirmar com segurança."
+
+Não transforme uma ausência de elemento em exclusão de responsabilidade penal, atipicidade, absolvição ou qualquer outra consequência se a fonte não disser isso.
+
+Não use as keywords de recuperação como fonte jurídica.
+
+Responda exclusivamente em português do Brasil."""
+
+STRUCTURE_TOPICS = [
+    "SITUAÇÃO PRÁTICA / CASO",
+    "CONCEITO",
+    "CLASSIFICAÇÃO, GÊNERO E ESPÉCIES",
+    "BASE LEGAL / FUNDAMENTO",
+    "REQUISITOS",
+    "PEGADINHAS — ATENÇÃO!",
+    "ANÁLISE DO CASO PRÁTICO / QUESTÃO",
+    "NÃO CONFUNDA",
+    "RESUMO PARA A PROVA",
+    "CURIOSIDADES SOBRE O ASSUNTO",
+]
+
+
+@dataclass
+class QuestionInput:
+    statement: str
+    alternatives: list[tuple[str, str]]  # [(letter, text), ...]
+    correct_letter: str
+    subject: str | None = None
+
+
+def _format_alternatives(alternatives: list[tuple[str, str]]) -> str:
+    return "\n".join(f"{letter}) {text}" for letter, text in alternatives)
+
+
+def _format_sources(sources: list[dict]) -> str:
+    if not sources:
+        return "(Nenhuma fonte jurídica local foi encontrada para esta questão.)"
+    blocks = []
+    for s in sources:
+        blocks.append(f"- {s['referencia']}: \"{s['texto']}\" (fonte: {s['fonte']})")
+    return "\n".join(blocks)
+
+
+def build_explanation_prompt(question: QuestionInput, sources: list[dict]) -> str:
+    """Builds the full prompt sent to the local Ollama model. Structure and
+    anti-hallucination rules are fixed/mandatory (see module docstring) —
+    only the question, alternatives, gabarito and retrieved sources vary.
+    """
+    correct_text = next((t for letter, t in question.alternatives if letter == question.correct_letter), "")
+
+    topics_block = "\n".join(f"{i}. {topic}" for i, topic in enumerate(STRUCTURE_TOPICS, start=1))
+
+    return f"""{SYSTEM_RULES}
+
+REGRAS DE GERAÇÃO POR TÓPICO:
+- SITUAÇÃO PRÁTICA / CASO: apenas reformule os fatos do enunciado.
+- CONCEITO: só defina o instituto se a fonte fornecida trouxer a definição.
+- CLASSIFICAÇÃO, GÊNERO E ESPÉCIES: não acrescente espécies ou classificações ausentes das fontes.
+- BASE LEGAL / FUNDAMENTO: cite somente as fontes fornecidas.
+- REQUISITOS: liste apenas requisitos literalmente sustentados pelas fontes.
+- PEGADINHAS — ATENÇÃO!: só faça contrastes diretamente sustentados pelas fontes.
+- ANÁLISE DO CASO: confronte os fatos do enunciado com o texto das fontes.
+- NÃO CONFUNDA: não crie distinções doutrinárias ausentes das fontes.
+- RESUMO PARA A PROVA: resuma apenas o que já foi sustentado.
+- CURIOSIDADES: se a fonte não trouxer curiosidade expressa, responda com a frase de insuficiência.
+
+Quando um tópico não puder ser preenchido integralmente com essas bases, escreva exatamente:
+"Fonte fornecida insuficiente para afirmar com segurança."
+
+=== QUESTÃO ===
+Matéria: {question.subject or "não informada"}
+Enunciado: {question.statement}
+
+Alternativas:
+{_format_alternatives(question.alternatives)}
+
+Gabarito oficial (já correto, não reavalie): {question.correct_letter}) {correct_text}
+
+=== FONTES JURÍDICAS FORNECIDAS (base factual — não use nada além disso) ===
+{_format_sources(sources)}
+
+=== TAREFA ===
+Gere uma explicação estruturada exatamente nesta ordem de tópicos:
+{topics_block}
+
+Responda em português do Brasil, usando os números dos tópicos acima como cabeçalhos."""

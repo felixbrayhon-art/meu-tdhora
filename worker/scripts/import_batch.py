@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 import uuid
+from collections import Counter
 from pathlib import Path
 from typing import Callable
 
@@ -17,7 +18,7 @@ from lib.dedup import build_doc_id, dedup_internal, fetch_existing_keys, split_b
 from lib.exclusion import excluded_summary, split_valid_and_excluded  # noqa: E402
 from lib.publish import filter_not_yet_published, publish_drafts  # noqa: E402
 from lib.validation import validate_before_publish, validate_question_structure  # noqa: E402
-from parsers import fc_concursos  # noqa: E402
+from parsers import direto_ao_ponto, fc_concursos  # noqa: E402
 
 """
 Policy: a question with any warning (parser-level or the structural checks
@@ -29,7 +30,7 @@ report under worker/output/excluded/ — the only place its full content is
 kept once it's dropped.
 """
 
-PARSERS = {"fc_concursos": fc_concursos}
+PARSERS = {"fc_concursos": fc_concursos, "direto_ao_ponto": direto_ao_ponto}
 
 # Batched writes are capped at 500 ops; question_drafts creation is a SET
 # per question (no DELETE involved yet), so this can stay generous.
@@ -52,7 +53,11 @@ def prepare_questions(pdf_path: str, subject: str, year: int, source_name: str) 
     for pq in parsed_questions:
         q = pq.to_dict()
         q["importSubject"] = subject
-        q["importYear"] = year
+        # `--year` is the batch/material year label. Sources that extract a
+        # real per-question exam year (e.g. direto_ao_ponto's "2023 CESPE")
+        # take precedence over it for `importYear`; fc_concursos never sets
+        # `exam_year`, so this is unchanged for it (always the batch year).
+        q["importYear"] = pq.exam_year if pq.exam_year is not None else year
         # Structural problems (variable alternative count, correctLetter/
         # isCorrect consistency, missing text) are additive to whatever
         # warnings the parser itself already attached. Any warning at all
@@ -116,6 +121,46 @@ def print_summary(
     print("=" * 40)
 
 
+def print_source_breakdown(
+    questions: list[dict], valid_questions: list[dict], excluded_count: int, internal_duplicates: int
+) -> None:
+    """Extra breakdown for sources that carry per-question exam metadata
+    (examYear/examBoard — currently only direto_ao_ponto). No-op for
+    fc_concursos, whose questions never set these fields.
+    """
+    has_exam_metadata = any(q.get("examYear") is not None or q.get("examBoard") for q in questions)
+    if not has_exam_metadata:
+        return
+
+    in_range = [q for q in questions if q.get("examYear") is not None and 2021 <= q["examYear"] <= 2026]
+
+    print()
+    print("-" * 40)
+    print("DETALHAMENTO (ano/banca)")
+    print("-" * 40)
+    print(f"Detectadas: {len(questions)}")
+    print(f">=2021 (dentro do intervalo permitido): {len(in_range)}")
+    print(f"Válidas: {len(valid_questions)}")
+    print(f"Excluídas: {excluded_count}")
+    print(f"Duplicadas internas: {internal_duplicates}")
+
+    by_year = Counter(q["examYear"] for q in valid_questions if q.get("examYear") is not None)
+    print("Por ano:")
+    for exam_year in sorted(by_year):
+        print(f"  {exam_year}: {by_year[exam_year]}")
+
+    by_board = Counter(q["examBoard"] for q in valid_questions if q.get("examBoard"))
+    print("Por banca:")
+    for board, count in sorted(by_board.items(), key=lambda kv: (-kv[1], kv[0])):
+        print(f"  {board}: {count}")
+
+    with_explanation = sum(1 for q in valid_questions if (q.get("explanation") or "").strip())
+    without_explanation = len(valid_questions) - with_explanation
+    print(f"Com explicação: {with_explanation}")
+    print(f"Sem explicação: {without_explanation}")
+    print("-" * 40)
+
+
 def run_pipeline(
     pdf_path: str,
     subject: str,
@@ -171,6 +216,7 @@ def run_pipeline(
             import_id=None, backup_path=None, excluded_report_path=None, published_count=None, failures=None,
             status="DRY-RUN — nada foi gravado",
         )
+        print_source_breakdown(questions, valid_questions, len(excluded_questions), internal_duplicates)
         return result
 
     if not new_questions and not excluded_questions:
@@ -182,6 +228,7 @@ def run_pipeline(
             import_id=None, backup_path=None, excluded_report_path=None, published_count=None, failures=None,
             status="CONCLUÍDO — nada novo para importar",
         )
+        print_source_breakdown(questions, valid_questions, len(excluded_questions), internal_duplicates)
         return result
 
     resolved_uid = resolve_imported_by()
@@ -224,6 +271,7 @@ def run_pipeline(
             published_count=None, failures=None,
             status="CONCLUÍDO — nenhuma questão nova (só exclusões registradas)",
         )
+        print_source_breakdown(questions, valid_questions, len(excluded_questions), internal_duplicates)
         return result
 
     draft_docs = [(build_doc_id(q["source"], q["externalId"]), {**q, "importId": import_id}) for q in new_questions]
@@ -301,27 +349,33 @@ def run_pipeline(
         published_count=published_count, failures=failures,
         status=status,
     )
+    print_source_breakdown(questions, valid_questions, len(excluded_questions), internal_duplicates)
     return result
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Importa um PDF de questões, exclui inválidas, deduplica e (opcionalmente) publica.")
-    parser.add_argument("pdf_path")
+    parser.add_argument("pdf_path", nargs="?", default=None, help="Caminho do PDF (ou use --pdf)")
+    parser.add_argument("--pdf", dest="pdf_path_flag", default=None, help="Alias para o caminho do PDF")
     parser.add_argument("--subject", required=True, help="Disciplina principal do lote (importSubject)")
-    parser.add_argument("--year", required=True, type=int, help="Ano do lote (importYear)")
+    parser.add_argument("--year", required=True, type=int, help="Ano/versão do material do lote (fallback de importYear quando o parser não extrai um ano por questão)")
     parser.add_argument("--credentials", required=True, help="Caminho do service-account.json (Admin SDK)")
     parser.add_argument("--imported-by-uid", default=None)
     parser.add_argument("--imported-by-email", default=None)
-    parser.add_argument("--source", default="fc_concursos", choices=PARSERS.keys())
+    parser.add_argument("--source", "--parser", dest="source", default="fc_concursos", choices=PARSERS.keys())
     parser.add_argument("--dry-run", action="store_true", help="Só analisa, exclui e deduplica, não grava nada")
     parser.add_argument("--publish", action="store_true", help="Publica automaticamente as questões válidas")
     args = parser.parse_args()
+
+    pdf_path = args.pdf_path or args.pdf_path_flag
+    if not pdf_path:
+        parser.error("informe o caminho do PDF como argumento posicional ou via --pdf")
 
     app = firebase_admin.initialize_app(credentials.Certificate(args.credentials))
     db = firestore.client()
 
     run_pipeline(
-        args.pdf_path,
+        pdf_path,
         args.subject,
         args.year,
         db,

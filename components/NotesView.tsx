@@ -38,7 +38,7 @@ const estimateNoteSize = (note: HandwrittenNote): number => {
 const formatDate = (ts: number): string =>
   new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-const FOLDER_COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6', '#EC4899'];
+const FOLDER_COLORS = ['#f59e0b', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6', '#EC4899'];
 
 // Excalidraw has no built-in notebook-paper backgrounds, so these render as a
 // CSS layer behind its (transparent) canvas instead. Line thickness is a %
@@ -268,7 +268,7 @@ const NoteEditor: React.FC<{
         <button
           data-testid="color-panel-toggle"
           onClick={() => setShowColorPanel(v => !v)}
-          className={`p-2.5 rounded-xl transition-colors flex-shrink-0 ${showColorPanel ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+          className={`p-2.5 rounded-xl transition-colors flex-shrink-0 ${showColorPanel ? 'bg-[#fdad74] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
           title="Cores, espessura e opções do traço"
         >
           <Palette className="w-5 h-5" />
@@ -288,7 +288,7 @@ const NoteEditor: React.FC<{
                   <button
                     key={p.id}
                     onClick={() => { setPaperStyle(p.id); setShowPaperMenu(false); }}
-                    className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-colors text-center ${paperStyle === p.id ? 'bg-amber-50 ring-2 ring-amber-400' : 'hover:bg-gray-50'}`}
+                    className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-colors text-center ${paperStyle === p.id ? 'bg-[#fff1e8] ring-2 ring-[#fdb887]' : 'hover:bg-gray-50'}`}
                   >
                     <span
                       className="w-full h-12 rounded-xl border border-gray-200"
@@ -314,7 +314,7 @@ const NoteEditor: React.FC<{
         </select>
         <button
           onClick={handleSaveAndClose}
-          className="px-6 py-3 bg-amber-500 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-amber-600 transition-colors flex-shrink-0"
+          className="px-6 py-3 bg-[#fdad74] text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#fda769] transition-colors flex-shrink-0"
         >
           Salvar
         </button>
@@ -443,8 +443,8 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
   const currentFolder = folders.find(f => f.id === openFolderId);
 
   return (
-    <div className="flex-1 w-full flex flex-col bg-[#0B0F1A] h-full" style={{ overflowY: 'auto' }}>
-      <div className="px-6 md:px-10 pt-8 pb-5 flex-shrink-0 sticky top-0 z-30 bg-[#0B0F1A]/95 backdrop-blur border-b border-white/5">
+    <div className="flex-1 w-full flex flex-col bg-[#473c33] h-full" style={{ overflowY: 'auto' }}>
+      <div className="px-6 md:px-10 pt-8 pb-5 flex-shrink-0 sticky top-0 z-30 bg-[#473c33]/95 backdrop-blur border-b border-white/5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -455,7 +455,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
             </button>
             <div className="min-w-0">
               <h2 className="font-logo text-2xl md:text-3xl text-white truncate flex items-center gap-2">
-                {openFolderId === null && <PenLine className="w-6 h-6 text-amber-400 flex-shrink-0" />}
+                {openFolderId === null && <PenLine className="w-6 h-6 text-[#fdb887] flex-shrink-0" />}
                 {openFolderId === null ? 'Minhas anotações' : openFolderId === NONE_FOLDER ? 'Sem pasta' : currentFolder?.name}
               </h2>
               <p className="text-gray-500 text-xs font-bold uppercase tracking-wide mt-0.5 truncate">
@@ -487,7 +487,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
                   <CheckSquare className="w-5 h-5" />
                 </button>
                 <div className="relative">
-                  <button onClick={() => setShowCreateMenu(v => !v)} className="px-4 py-2.5 rounded-xl bg-amber-500 text-[#0B0F1A] hover:bg-amber-400 transition-colors font-black text-xs uppercase tracking-wide flex items-center gap-1.5">
+                  <button onClick={() => setShowCreateMenu(v => !v)} className="px-4 py-2.5 rounded-xl bg-[#fdad74] text-[#473c33] hover:bg-[#fdb887] transition-colors font-black text-xs uppercase tracking-wide flex items-center gap-1.5">
                     <Plus className="w-4 h-4" /> Criar
                   </button>
                   {showCreateMenu && (
@@ -498,14 +498,14 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
                           onClick={() => { setShowCreateMenu(false); createNote(openFolderId !== null && openFolderId !== NONE_FOLDER ? openFolderId : undefined); }}
                           className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-gray-200 hover:bg-white/5 text-sm font-bold text-left"
                         >
-                          <PenLine className="w-4 h-4 text-amber-400" /> Nova anotação
+                          <PenLine className="w-4 h-4 text-[#fdb887]" /> Nova anotação
                         </button>
                         {openFolderId === null && (
                           <button
                             onClick={() => { setShowCreateMenu(false); setCreatingFolder(true); }}
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-gray-200 hover:bg-white/5 text-sm font-bold text-left"
                           >
-                            <FolderPlus className="w-4 h-4 text-amber-400" /> Nova pasta
+                            <FolderPlus className="w-4 h-4 text-[#fdb887]" /> Nova pasta
                           </button>
                         )}
                       </div>
@@ -537,7 +537,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
               placeholder="Nome da pasta"
               className="flex-1 min-w-0 bg-transparent text-sm font-bold text-white placeholder:text-gray-500 focus:outline-none"
             />
-            <button onClick={confirmCreateFolder} className="text-green-400 flex-shrink-0"><Check className="w-5 h-5" /></button>
+            <button onClick={confirmCreateFolder} className="text-[#bcce8d] flex-shrink-0"><Check className="w-5 h-5" /></button>
             <button onClick={() => { setCreatingFolder(false); setNewFolderName(''); }} className="text-gray-500 flex-shrink-0"><X className="w-5 h-5" /></button>
           </div>
         )}
@@ -561,7 +561,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
                       }}
                       className="flex-1 min-w-0 bg-transparent text-[15px] font-bold text-white focus:outline-none"
                     />
-                    <button onClick={() => { onRenameFolder?.(f.id, renameValue.trim() || f.name); setRenamingFolderId(null); }} className="text-green-400 flex-shrink-0"><Check className="w-5 h-5" /></button>
+                    <button onClick={() => { onRenameFolder?.(f.id, renameValue.trim() || f.name); setRenamingFolderId(null); }} className="text-[#bcce8d] flex-shrink-0"><Check className="w-5 h-5" /></button>
                     <button onClick={() => setRenamingFolderId(null)} className="text-gray-500 flex-shrink-0"><X className="w-5 h-5" /></button>
                   </div>
                 ) : (
@@ -570,8 +570,8 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 active:bg-white/10 transition-colors text-left"
                   >
                     {selectionMode && (
-                      <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${selectedIds.has(f.id) ? 'bg-amber-500 border-amber-500' : 'border-gray-600'}`}>
-                        {selectedIds.has(f.id) && <Check className="w-3.5 h-3.5 text-[#0B0F1A]" />}
+                      <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${selectedIds.has(f.id) ? 'bg-[#fdad74] border-[#fdad74]' : 'border-gray-600'}`}>
+                        {selectedIds.has(f.id) && <Check className="w-3.5 h-3.5 text-[#473c33]" />}
                       </span>
                     )}
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: f.color + '22' }}>
@@ -646,7 +646,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
               <div key={note.id} className="relative group">
                 <button
                   onClick={() => (selectionMode ? toggleSelected(note.id) : setEditingNote(note))}
-                  className={`w-full aspect-[3/4] rounded-[20px] border overflow-hidden transition-all flex flex-col bg-[#151A2A] ${selectedIds.has(note.id) ? 'border-amber-400 ring-2 ring-amber-400/40' : 'border-white/10 hover:border-white/20'}`}
+                  className={`w-full aspect-[3/4] rounded-[20px] border overflow-hidden transition-all flex flex-col bg-[#151A2A] ${selectedIds.has(note.id) ? 'border-[#fdb887] ring-2 ring-[#fdb887]/40' : 'border-white/10 hover:border-white/20'}`}
                 >
                   {note.thumbnail ? (
                     <img src={note.thumbnail} alt="" className="w-full flex-1 object-cover object-top bg-white" />
@@ -659,13 +659,13 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
                   </div>
                 </button>
                 {selectionMode ? (
-                  <span className={`absolute top-2 left-2 w-5 h-5 rounded-md border-2 flex items-center justify-center pointer-events-none ${selectedIds.has(note.id) ? 'bg-amber-500 border-amber-500' : 'border-white bg-black/40'}`}>
-                    {selectedIds.has(note.id) && <Check className="w-3.5 h-3.5 text-[#0B0F1A]" />}
+                  <span className={`absolute top-2 left-2 w-5 h-5 rounded-md border-2 flex items-center justify-center pointer-events-none ${selectedIds.has(note.id) ? 'bg-[#fdad74] border-[#fdad74]' : 'border-white bg-[#473c33]/40'}`}>
+                    {selectedIds.has(note.id) && <Check className="w-3.5 h-3.5 text-[#473c33]" />}
                   </span>
                 ) : (
                   <button
                     onClick={() => onDelete(note.id)}
-                    className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-gray-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                    className="absolute top-2 right-2 p-2 bg-[#473c33]/50 rounded-full text-gray-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -675,7 +675,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
 
             <button
               onClick={() => createNote(openFolderId !== NONE_FOLDER ? openFolderId : undefined)}
-              className="aspect-[3/4] rounded-[20px] border-2 border-dashed border-white/15 flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-amber-400/50 hover:text-amber-400 transition-colors"
+              className="aspect-[3/4] rounded-[20px] border-2 border-dashed border-white/15 flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-[#fdb887]/50 hover:text-[#fdb887] transition-colors"
             >
               <Plus className="w-8 h-8" />
               <span className="font-black uppercase tracking-widest text-[10px]">Nova anotação</span>

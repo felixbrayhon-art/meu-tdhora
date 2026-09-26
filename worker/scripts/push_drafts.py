@@ -13,7 +13,7 @@ from firebase_admin import credentials, firestore
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from lib.auth import resolve_uid  # noqa: E402
-from lib.dedup import fetch_existing_keys, sanitize_doc_id  # noqa: E402
+from lib.dedup import fetch_existing_keys, question_fingerprint, sanitize_doc_id  # noqa: E402
 from lib.exclusion import excluded_summary, split_valid_and_excluded  # noqa: E402
 from lib.validation import validate_question_structure  # noqa: E402
 
@@ -31,6 +31,46 @@ def _slugify(text: str) -> str:
     normalized = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", normalized).strip("-").lower()
     return slug or "sem-titulo"
+
+
+def derive_batch_subject_year(questions: list[dict]) -> tuple[str | None, int | None, list[str]]:
+    """Derives the `imports` doc's own importSubject/importYear from the
+    questions actually becoming drafts (`new_questions` — the same set
+    approve_import.py compares its stored importSubject/importYear
+    against). Previously these two fields were never written on `imports`
+    at all, even when every draft agreed on the same value, which made
+    approve_import.py's comparison fail against None and block a
+    perfectly consistent batch (see PR notes / worker/output/backups —
+    this happened for real on the 198-question Direito Administrativo
+    2026 batch and had to be fixed by hand in Firestore).
+
+    Returns (subject, year, warnings). A batch that genuinely mixes more
+    than one subject or year (e.g. a multi-concurso simulado PDF) gets
+    None for that field rather than an arbitrary guess — `warnings`
+    explains why, so the operator sees it in the printed summary instead
+    of silently getting an import doc that doesn't describe its own
+    drafts.
+    """
+    warnings: list[str] = []
+
+    subjects = {q.get("importSubject") for q in questions if q.get("importSubject")}
+    years = {q.get("importYear") for q in questions if q.get("importYear")}
+
+    subject = next(iter(subjects)) if len(subjects) == 1 else None
+    if len(subjects) > 1:
+        warnings.append(
+            f"lote mistura {len(subjects)} importSubject diferentes ({sorted(subjects)}) — "
+            "imports.importSubject gravado como null"
+        )
+
+    year = next(iter(years)) if len(years) == 1 else None
+    if len(years) > 1:
+        warnings.append(
+            f"lote mistura {len(years)} importYear diferentes ({sorted(years)}) — "
+            "imports.importYear gravado como null"
+        )
+
+    return subject, year, warnings
 
 
 def write_excluded_report(title: str, import_id: str, questions: list[dict], excluded_dir: Path | None = None) -> Path:
@@ -62,17 +102,29 @@ def push(db, payload: dict, imported_by: str, excluded_dir: Path | None = None) 
     valid_questions, excluded_questions = split_valid_and_excluded(questions)
     excluded_info = excluded_summary(excluded_questions)
 
-    existing_pairs, existing_hashes = fetch_existing_keys(db)
-    seen_in_batch: set[tuple[str, str]] = set()
+    existing_pairs, existing_fingerprints = fetch_existing_keys(db)
+
+    seen_pairs: set[tuple[str, str]] = set()
+    seen_fingerprints: set[str] = set()
 
     new_questions = []
     duplicate_count = 0
+
     for q in valid_questions:
         key = (q["source"], q["externalId"])
-        if key in existing_pairs or q["contentHash"] in existing_hashes or key in seen_in_batch:
+        fingerprint = question_fingerprint(q)
+
+        if (
+            key in existing_pairs
+            or fingerprint in existing_fingerprints
+            or key in seen_pairs
+            or fingerprint in seen_fingerprints
+        ):
             duplicate_count += 1
             continue
-        seen_in_batch.add(key)
+
+        seen_pairs.add(key)
+        seen_fingerprints.add(fingerprint)
         new_questions.append(q)
 
     import_id = str(uuid.uuid4())
@@ -80,6 +132,8 @@ def push(db, payload: dict, imported_by: str, excluded_dir: Path | None = None) 
     excluded_report_path = None
     if excluded_questions:
         excluded_report_path = write_excluded_report(meta.get("title") or "import", import_id, excluded_questions, excluded_dir)
+
+    import_subject, import_year, subject_year_warnings = derive_batch_subject_year(new_questions)
 
     db.collection("imports").document(import_id).set(
         {
@@ -89,6 +143,10 @@ def push(db, payload: dict, imported_by: str, excluded_dir: Path | None = None) 
             "ownerEmail": meta.get("ownerEmail"),
             "generatedAt": meta.get("generatedAt"),
             "bloco": meta.get("bloco"),
+            # approve_import.py compares these against the drafts it's
+            # about to publish — see derive_batch_subject_year's docstring.
+            "importSubject": import_subject,
+            "importYear": import_year,
             "totalQuestions": len(raw_questions),
             "excludedQuestions": len(excluded_questions),
             "excluded": excluded_info,
@@ -122,6 +180,9 @@ def push(db, payload: dict, imported_by: str, excluded_dir: Path | None = None) 
         "duplicates": duplicate_count,
         "new": len(new_questions),
         "excludedReportPath": excluded_report_path,
+        "importSubject": import_subject,
+        "importYear": import_year,
+        "subjectYearWarnings": subject_year_warnings,
     }
 
 
@@ -145,6 +206,9 @@ def main() -> None:
     print(f"Excluídas (warnings/needs_attention/estrutural): {result['excluded']}")
     print(f"Duplicadas ignoradas: {result['duplicates']}")
     print(f"Novas importadas: {result['new']}")
+    print(f"importSubject: {result['importSubject']!r} / importYear: {result['importYear']!r}")
+    for warning in result["subjectYearWarnings"]:
+        print(f"AVISO: {warning}")
     if result["excludedReportPath"]:
         print(f"Relatório de excluídas: {result['excludedReportPath']}")
     if result["new"]:

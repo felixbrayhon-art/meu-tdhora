@@ -42,7 +42,7 @@ const CharacterRevealScreen: React.FC<CharacterRevealScreenProps> = ({
 
   return (
     <div
-      className={`fixed inset-0 z-[1300] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br ${bgGradient} px-6 ${isVideoReveal ? 'text-[#0A0F1E]' : 'text-white'}`}
+      className={`fixed inset-0 z-[1300] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br ${bgGradient} px-6 ${isVideoReveal ? 'text-[#473c33]' : 'text-white'}`}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(122,244,241,0.28),transparent_45%)]" />
       <div className={`pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full border-[38px] ${isVideoReveal ? 'border-white/25' : 'border-white/10'}`} />

@@ -12,7 +12,7 @@ const formatStamp = (iso: string) => {
 };
 
 const BuildTag: React.FC = () => (
-  <div className="fixed bottom-1 left-1 z-[9999] px-2 py-0.5 rounded-md bg-black/40 text-white/70 text-[9px] font-mono tracking-tight pointer-events-none select-none">
+  <div className="fixed bottom-1 left-1 z-[9999] px-2 py-0.5 rounded-md bg-[#473c33]/40 text-white/70 text-[9px] font-mono tracking-tight pointer-events-none select-none">
     build {formatStamp(__BUILD_STAMP__)}
   </div>
 );

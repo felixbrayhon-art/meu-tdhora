@@ -31,8 +31,8 @@ const LOGO_LETTERS: { char: string; tone: 'dark' | 'light'; small?: boolean }[] 
 
 const FishLogo: React.FC<FishLogoProps> = ({
   className = "",
-  primaryColor = "#EAB308",
-  secondaryColor = "#FACC15",
+  primaryColor = "#eab308",
+  secondaryColor = "#facc15",
   iconOnly = false,
   hideIcon = false,
   days = 0,
@@ -88,7 +88,7 @@ const FishLogo: React.FC<FishLogoProps> = ({
           >
             {renderFishShape()}
             <circle cx={rank.id === 'CAVALO' ? "50" : "28"} cy={rank.id === 'CAVALO' ? "12" : "27"} r="4" fill="white" />
-            <circle cx={rank.id === 'CAVALO' ? "51" : "29"} cy={rank.id === 'CAVALO' ? "12" : "27"} r="1.8" fill="#0A0F1E" />
+            <circle cx={rank.id === 'CAVALO' ? "51" : "29"} cy={rank.id === 'CAVALO' ? "12" : "27"} r="1.8" fill="#473c33" />
           </svg>
         </div>
       )}
@@ -99,7 +99,7 @@ const FishLogo: React.FC<FishLogoProps> = ({
             <span
               key={idx}
               className={`font-logo leading-none ${letter.small ? 'text-2xl' : 'text-4xl'}`}
-              style={{ color: letter.tone === 'dark' ? (darkBg ? '#FFFFFF' : '#0A0F1E') : '#EAB308' }}
+              style={{ color: letter.tone === 'dark' ? (darkBg ? '#FFFFFF' : '#473c33') : '#eab308' }}
             >
               {letter.char}
             </span>

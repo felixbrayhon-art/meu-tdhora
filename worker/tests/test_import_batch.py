@@ -24,6 +24,23 @@ def test_import_subject_and_year_preserved_on_drafts(monkeypatch):
     assert draft["topicRaw"] == "Assunto de Teste"
 
 
+def test_per_question_exam_year_overrides_batch_year(monkeypatch):
+    # direto_ao_ponto (and any future source with real per-question years)
+    # should have importYear reflect the question's own extracted year, not
+    # the --year batch/material label — fc_concursos never sets exam_year,
+    # so its importYear stays exactly the batch year (see the test above).
+    q = make_parsed_question(external_id="1", letters="AB", correct="A", exam_year=2023)
+    monkeypatch.setitem(import_batch.PARSERS, "fc_concursos", FakeSourceModule([q]))
+
+    db = FakeFirestoreClient()
+    import_batch.run_pipeline("fake.pdf", "Direito Penal", 2026, db, lambda: "uid-test")
+
+    drafts = db.dump("question_drafts")
+    draft = next(iter(drafts.values()))
+    assert draft["importYear"] == 2023
+    assert draft["importSubject"] == "Direito Penal"
+
+
 def test_dry_run_writes_nothing(monkeypatch):
     q = make_parsed_question(external_id="1", letters="ABCD", correct="B")
     monkeypatch.setitem(import_batch.PARSERS, "fc_concursos", FakeSourceModule([q]))

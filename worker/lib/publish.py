@@ -23,6 +23,14 @@ def build_published_fields(draft: dict, approved_by: str) -> dict:
         "contentHash": draft["contentHash"],
         "approvedAt": firestore.SERVER_TIMESTAMP,
         "approvedBy": approved_by,
+        # Previously dropped here even when the draft had them (e.g. every
+        # worker/scripts/import_gran_pdf.py draft) — see
+        # worker/scripts/backfill_gran_cursos_exam_metadata.py for the
+        # one-off repair this caused.
+        "examBoard": draft.get("examBoard"),
+        "organization": draft.get("organization"),
+        "position": draft.get("position"),
+        "examYear": draft.get("examYear"),
     }
 
 

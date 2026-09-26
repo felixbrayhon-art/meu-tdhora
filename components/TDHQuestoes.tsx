@@ -1,22 +1,19 @@
-
 import React, { useState, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, Database } from './icons';
 import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { fetchEnemExams, fetchEnemQuestions, enemDisciplineLabel, EnemExamInfo } from '../services/enemService';
-import { BankFacetOption, fetchBankQuestions, listBankImportSubjects, listBankTopicsForSubject } from '../services/questionBankService';
+import { BankFacetOption, fetchBankQuestions, fetchExamQuestions, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamYears } from '../services/questionBankService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
 import LoadingFish from './LoadingFish';
+import FilterDropdown from './FilterDropdown';
 import SaveToFolderModal from './SaveToFolderModal';
 import MarkdownContent from './MarkdownContent';
 import { RichTextEditor } from './RichTextEditor';
 
 // Reindexes an array of per-question indices (e.g. flagged, questionScratched, questionHighlighted)
 // after the question at `removedIdx` is deleted from the questions array.
-const reindexListAfterDelete = (list: number[], removedIdx: number): number[] =>
-  list
-    .filter(i => i !== removedIdx)
-    .map(i => (i > removedIdx ? i - 1 : i));
+const reindexListAfterDelete = (list: number[], removedIdx: number): number[] => list.filter((i) => i !== removedIdx).map((i) => (i > removedIdx ? i - 1 : i));
 
 // Reindexes a Record<number, T> keyed by question index after the question at `removedIdx` is deleted.
 const reindexRecordAfterDelete = <T,>(record: Record<number, T>, removedIdx: number): Record<number, T> => {
@@ -33,9 +30,7 @@ const reindexRecordAfterDelete = <T,>(record: Record<number, T>, removedIdx: num
 const reindexListForPermutation = (list: number[], newOrder: number[]): number[] => {
   const oldToNew = new Map<number, number>();
   newOrder.forEach((oldIdx, newIdx) => oldToNew.set(oldIdx, newIdx));
-  return list
-    .map(i => oldToNew.get(i))
-    .filter((i): i is number => i !== undefined);
+  return list.map((i) => oldToNew.get(i)).filter((i): i is number => i !== undefined);
 };
 
 // Reindexes a Record<number, T> keyed by question index given a permutation, where newOrder[newIdx] = oldIdx.
@@ -66,21 +61,7 @@ interface TDHQuestoesProps {
   onTriggerGuidedLesson?: (subject: string, topic: string) => void;
 }
 
-const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ 
-  onBack, 
-  onSaveToNotebook, 
-  folders, 
-  studyProfile, 
-  prefill, 
-  onConsumedPrefill,
-  strategicMode,
-  editalConfig,
-  explanationStyle: initialStyle,
-  questionProfileStyle: initialQuestionStyle,
-  fontSizeMultiplier,
-  onBatchComplete,
-  onTriggerGuidedLesson
-}) => {
+const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, explanationStyle: initialStyle, questionProfileStyle: initialQuestionStyle, fontSizeMultiplier, onBatchComplete, onTriggerGuidedLesson }) => {
   const [topic, setTopic] = useState(prefill || '');
   const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE' | 'MANUAL' | 'ENEM' | 'CONCURSO'>('AUTO');
   const [enemExams, setEnemExams] = useState<EnemExamInfo[]>([]);
@@ -97,6 +78,25 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const [bankError, setBankError] = useState<string | null>(null);
   const [bankLoadingSubjects, setBankLoadingSubjects] = useState(false);
   const [bankLoadingTopics, setBankLoadingTopics] = useState(false);
+  // Segundo caminho de filtro dentro do CONCURSO, paralelo ao de matéria/
+  // assunto acima: banca/órgão/cargo/ano, para provas oficiais
+  // descobertas automaticamente (worker/exam_discovery) que não têm
+  // matéria classificada por questão.
+  const [bankFilterMode, setBankFilterMode] = useState<'MATERIA' | 'PROVA'>('MATERIA');
+  const [examBoards, setExamBoards] = useState<BankFacetOption[]>([]);
+  const [examBoard, setExamBoard] = useState('');
+  const [examInstitutions, setExamInstitutions] = useState<BankFacetOption[]>([]);
+  const [examInstitution, setExamInstitution] = useState('');
+  const [examPositions, setExamPositions] = useState<BankFacetOption[]>([]);
+  const [examPosition, setExamPosition] = useState('');
+  const [examYears, setExamYears] = useState<BankFacetOption[]>([]);
+  const [examYear, setExamYear] = useState('');
+  const [examCount, setExamCount] = useState(10);
+  const [examError, setExamError] = useState<string | null>(null);
+  const [examLoadingBoards, setExamLoadingBoards] = useState(false);
+  const [examLoadingInstitutions, setExamLoadingInstitutions] = useState(false);
+  const [examLoadingPositions, setExamLoadingPositions] = useState(false);
+  const [examLoadingYears, setExamLoadingYears] = useState(false);
   const [manualInputType, setManualInputType] = useState<'FULL' | 'QUICK'>('FULL');
   const createEmptyManualQuestion = () => ({
     id: Math.random().toString(36).substr(2, 9),
@@ -104,7 +104,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     options: ['', '', '', '', ''],
     correctAnswer: 0,
     explanation: '',
-    topic: topic || 'Questões Manuais'
+    topic: topic || 'Questões Manuais',
   });
 
   const [manualQuestionsList, setManualQuestionsList] = useState<QuizQuestion[]>([
@@ -114,12 +114,15 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
       options: ['', '', '', '', ''],
       correctAnswer: 0,
       explanation: '',
-      topic: topic || 'Questões Manuais'
-    }
+      topic: topic || 'Questões Manuais',
+    },
   ]);
   const [pastedText, setPastedText] = useState('');
   const [pastedGabarito, setPastedGabarito] = useState('');
-  const [batchStatus, setBatchStatus] = useState<{ current: number, total: number } | null>(null);
+  const [batchStatus, setBatchStatus] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
   const [banca, setBanca] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
@@ -135,9 +138,9 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const saveToUndo = (idx: number, content: string) => {
-    setUndoStack(prev => ({
+    setUndoStack((prev) => ({
       ...prev,
-      [idx]: [...(prev[idx] || []), content].slice(-10)
+      [idx]: [...(prev[idx] || []), content].slice(-10),
     }));
   };
 
@@ -148,15 +151,15 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     const previousContent = qHistory[qHistory.length - 1];
     const newHistory = qHistory.slice(0, -1);
 
-    setUndoStack(prev => ({
+    setUndoStack((prev) => ({
       ...prev,
-      [currentIdx]: newHistory
+      [currentIdx]: newHistory,
     }));
 
     const newQuestions = [...questions];
     newQuestions[currentIdx].question = previousContent;
     setQuestions(newQuestions);
-    
+
     if (questionTextRef.current) {
       questionTextRef.current.innerHTML = previousContent;
     }
@@ -194,36 +197,37 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     const newQuestions = [...questions];
     newQuestions[currentIdx] = {
       ...newQuestions[currentIdx],
-      userCommentary: valueToSave
+      userCommentary: valueToSave,
     };
     setQuestions(newQuestions);
   };
 
   const copyQuestionToClipboard = (q: QuizQuestion) => {
     if (!q) return;
-    const optionsText = (q.options || [])
-      .map((opt, idx) => `${String.fromCharCode(65 + idx)}) ${opt}`)
-      .join('\n');
-    
-    const tempDiv = document.createElement("div");
+    const optionsText = (q.options || []).map((opt, idx) => `${String.fromCharCode(65 + idx)}) ${opt}`).join('\n');
+
+    const tempDiv = document.createElement('div');
     tempDiv.innerHTML = q.question;
     const cleanQuestion = tempDiv.innerText || tempDiv.textContent || q.question;
-    
+
     let plainText = `${cleanQuestion}\n\n${optionsText}`;
-    
+
     if (q.explanation) {
-      const tempExp = document.createElement("div");
+      const tempExp = document.createElement('div');
       tempExp.innerHTML = q.explanation;
       const cleanExp = tempExp.innerText || tempExp.textContent || q.explanation;
       plainText += `\n\nEXPLICAÇÃO:\n${cleanExp}`;
     }
-    
-    navigator.clipboard.writeText(plainText).then(() => {
-      setCopiedId(q.id);
-      setTimeout(() => setCopiedId(null), 2000);
-    }).catch(err => {
-      console.error('Erro ao copiar:', err);
-    });
+
+    navigator.clipboard
+      .writeText(plainText)
+      .then(() => {
+        setCopiedId(q.id);
+        setTimeout(() => setCopiedId(null), 2000);
+      })
+      .catch((err) => {
+        console.error('Erro ao copiar:', err);
+      });
   };
 
   const handleNext = () => {
@@ -271,19 +275,19 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     setSaved(false);
     setUserAnswers({});
     if (!targetTopic) setTopic(finalTopic);
-    
+
     try {
       const result = await generateExamQuestions(finalTopic, numQuestions, studyProfile, banca, explanationStyle, questionProfileStyle);
       const formatted = result.questions.map((q: any) => ({
         ...q,
-        id: Math.random().toString(36).substr(2, 9)
+        id: Math.random().toString(36).substr(2, 9),
       }));
       setQuestions(formatted);
       setTempSelectedOpt(null);
       setIsSubmitted(false);
     } catch (error: any) {
       console.error(error);
-      alert(error.message || "Erro desconhecido ao gerar simulado. Tente novamente.");
+      alert(error.message || 'Erro desconhecido ao gerar simulado. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -292,23 +296,23 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   React.useEffect(() => {
     if (inputMode === 'ENEM' && enemExams.length === 0) {
       fetchEnemExams()
-        .then(exams => {
+        .then((exams) => {
           setEnemExams(exams);
           if (exams.length > 0) {
             setEnemYear(exams[0].year);
             setEnemDiscipline(exams[0].disciplines[0]?.value ?? '');
           }
         })
-        .catch(err => setEnemError(err.message || 'Não foi possível carregar as provas do ENEM.'));
+        .catch((err) => setEnemError(err.message || 'Não foi possível carregar as provas do ENEM.'));
     }
     if (inputMode === 'CONCURSO' && bankSubjects.length === 0 && !bankLoadingSubjects) {
       setBankLoadingSubjects(true);
       listBankImportSubjects()
-        .then(subjects => {
+        .then((subjects) => {
           setBankSubjects(subjects);
           if (subjects.length > 0) setBankSubject(subjects[0].value);
         })
-        .catch(err => setBankError(err.message || 'Não foi possível carregar as matérias do nosso banco.'))
+        .catch((err) => setBankError(err.message || 'Não foi possível carregar as matérias do nosso banco.'))
         .finally(() => setBankLoadingSubjects(false));
     }
   }, [inputMode]);
@@ -328,22 +332,110 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
         setBankTopicsTotal(total);
         setBankTopics(topics);
       })
-      .catch(err => setBankError(err.message || 'Não foi possível carregar os assuntos dessa matéria.'))
+      .catch((err) => setBankError(err.message || 'Não foi possível carregar os assuntos dessa matéria.'))
       .finally(() => setBankLoadingTopics(false));
   }, [bankSubject]);
 
   // Quantas questões existem de fato pra essa combinação matéria/assunto —
   // usado pro aluno saber quantas ele consegue pedir/salvar, e pra travar o
   // slider nesse teto em vez de deixar pedir mais do que existe.
-  const bankAvailableCount = bankTopic
-    ? (bankTopics.find(t => t.value === bankTopic)?.count ?? 0)
-    : bankTopicsTotal;
+  const bankAvailableCount = bankTopic ? (bankTopics.find((t) => t.value === bankTopic)?.count ?? 0) : bankTopicsTotal;
 
   React.useEffect(() => {
     if (bankAvailableCount > 0 && bankCount > bankAvailableCount) {
       setBankCount(bankAvailableCount);
     }
   }, [bankAvailableCount]);
+
+  // --- Cascata banca -> órgão (institution) -> cargo (position) -> ano ---
+  React.useEffect(() => {
+    if (inputMode === 'CONCURSO' && bankFilterMode === 'PROVA' && examBoards.length === 0 && !examLoadingBoards) {
+      setExamLoadingBoards(true);
+      listExamBoards()
+        .then((boards) => {
+          setExamBoards(boards);
+          if (boards.length > 0) setExamBoard(boards[0].value);
+        })
+        .catch((err) => setExamError(err.message || 'Não foi possível carregar as bancas disponíveis.'))
+        .finally(() => setExamLoadingBoards(false));
+    }
+  }, [inputMode, bankFilterMode]);
+
+  React.useEffect(() => {
+    if (!examBoard) {
+      setExamInstitutions([]);
+      setExamInstitution('');
+      return;
+    }
+    setExamLoadingInstitutions(true);
+    setExamInstitution('');
+    listExamInstitutions(examBoard)
+      .then(setExamInstitutions)
+      .catch((err) => setExamError(err.message || 'Não foi possível carregar os órgãos dessa banca.'))
+      .finally(() => setExamLoadingInstitutions(false));
+  }, [examBoard]);
+
+  React.useEffect(() => {
+    if (!examBoard || !examInstitution) {
+      setExamPositions([]);
+      setExamPosition('');
+      return;
+    }
+    setExamLoadingPositions(true);
+    setExamPosition('');
+    listExamPositions(examBoard, examInstitution)
+      .then(setExamPositions)
+      .catch((err) => setExamError(err.message || 'Não foi possível carregar os cargos desse órgão.'))
+      .finally(() => setExamLoadingPositions(false));
+  }, [examBoard, examInstitution]);
+
+  React.useEffect(() => {
+    if (!examBoard || !examInstitution || !examPosition) {
+      setExamYears([]);
+      setExamYear('');
+      return;
+    }
+    setExamLoadingYears(true);
+    setExamYear('');
+    listExamYears(examBoard, examInstitution, examPosition)
+      .then((years) => {
+        setExamYears(years);
+        if (years.length > 0) setExamYear(years[0].value);
+      })
+      .catch((err) => setExamError(err.message || 'Não foi possível carregar os anos dessa prova.'))
+      .finally(() => setExamLoadingYears(false));
+  }, [examBoard, examInstitution, examPosition]);
+
+  const examAvailableCount = examYear ? (examYears.find((y) => y.value === examYear)?.count ?? 0) : 0;
+
+  React.useEffect(() => {
+    if (examAvailableCount > 0 && examCount > examAvailableCount) {
+      setExamCount(examAvailableCount);
+    }
+  }, [examAvailableCount]);
+
+  const handleFetchExamBank = async () => {
+    if (!examBoard || !examInstitution || !examPosition || !examYear) return;
+    setLoading(true);
+    setExamError(null);
+    setQuestions([]);
+    setCurrentIdx(0);
+    setShowCommentary(false);
+    setSaved(false);
+    setUserAnswers({});
+    setTopic(`${examBoard} · ${examInstitution} · ${examPosition} · ${examYear}`);
+
+    try {
+      const formatted = await fetchExamQuestions(examBoard, examInstitution, examPosition, Number(examYear), examCount);
+      setQuestions(formatted);
+      setTempSelectedOpt(null);
+      setIsSubmitted(false);
+    } catch (error: any) {
+      setExamError(error.message || 'Erro ao buscar questões do nosso banco.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFetchBank = async () => {
     if (!bankSubject) return;
@@ -399,48 +491,48 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     setShowCommentary(false);
     setSaved(false);
     setUserAnswers({});
-    
+
     try {
       // Step 1: Split text into physical chunks to avoid context window issues and improve precision
       // We aim for larger chunks for Pro model (~40,000 characters)
       const chunkSize = 40000;
       const chunks: string[] = [];
       let remainingText = pastedText;
-      
+
       while (remainingText.length > 0) {
         if (remainingText.length <= chunkSize) {
           chunks.push(remainingText);
           break;
         }
-        
+
         let splitPoint = remainingText.lastIndexOf('\n\n', chunkSize);
         if (splitPoint === -1) splitPoint = remainingText.lastIndexOf('\n', chunkSize);
         if (splitPoint === -1) splitPoint = chunkSize;
-        
+
         chunks.push(remainingText.substring(0, splitPoint));
         remainingText = remainingText.substring(splitPoint).trim();
       }
 
       const totalBatches = chunks.length;
       let allQuestions: any[] = [];
-      
+
       // Step 2: Extract in blocks
       for (let i = 0; i < totalBatches; i++) {
         setBatchStatus({ current: i + 1, total: totalBatches });
         console.log(`Processando bloco ${i + 1} de ${totalBatches}...`);
-        
+
         // Delay estratégico para não estourar a cota
         if (i > 0) {
           console.log(`Aguardando 1.5s para evitar bloqueio de cota...`);
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise((resolve) => setTimeout(resolve, 1500));
         }
 
         const result = await parsePastedQuestions(chunks[i], studyProfile, { current: i + 1, total: totalBatches }, pastedGabarito, explanationStyle, questionProfileStyle);
-        
+
         if (result.questions && Array.isArray(result.questions)) {
           const formatted = result.questions.map((q: any) => ({
             ...q,
-            id: Math.random().toString(36).substr(2, 9)
+            id: Math.random().toString(36).substr(2, 9),
           }));
           allQuestions = [...allQuestions, ...formatted];
           console.log(`Bloco ${i + 1} concluído. Total de questões extraídas até agora: ${allQuestions.length}`);
@@ -452,14 +544,14 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
           console.warn(`Bloco ${i + 1} retornou 0 questões.`);
         }
       }
-      
-      if (allQuestions.length === 0) throw new Error("Não conseguimos extrair nenhuma questão do texto.");
-      
-      setTopic("Questões do Texto Colado");
+
+      if (allQuestions.length === 0) throw new Error('Não conseguimos extrair nenhuma questão do texto.');
+
+      setTopic('Questões do Texto Colado');
       setBatchStatus(null);
     } catch (error: any) {
       console.error(error);
-      alert(error.message || "Erro ao processar texto. Verifique o formato e tente novamente.");
+      alert(error.message || 'Erro ao processar texto. Verifique o formato e tente novamente.');
     } finally {
       setLoading(false);
       setBatchStatus(null);
@@ -469,59 +561,55 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const handleAnswerSelection = (idx: number) => {
     if (isSubmitted) return;
     setTempSelectedOpt(idx);
-    setCrossedOut(prev => prev.filter(i => i !== idx)); // Un-cross if selected
+    setCrossedOut((prev) => prev.filter((i) => i !== idx)); // Un-cross if selected
   };
 
   const handleSubmitAnswer = () => {
     if (tempSelectedOpt === null || isSubmitted) return;
     setSelectedOpt(tempSelectedOpt);
     setIsSubmitted(true);
-    setUserAnswers(prev => ({ ...prev, [currentIdx]: tempSelectedOpt }));
+    setUserAnswers((prev) => ({ ...prev, [currentIdx]: tempSelectedOpt }));
   };
 
   const handleDoubleClick = (idx: number) => {
     if (isSubmitted) return;
     if (tempSelectedOpt === idx) setTempSelectedOpt(null);
-    setCrossedOut(prev => 
-      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
-    );
+    setCrossedOut((prev) => (prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]));
   };
 
   const toggleFlag = () => {
-    setFlagged(prev => 
-      prev.includes(currentIdx) ? prev.filter(i => i !== currentIdx) : [...prev, currentIdx]
-    );
+    setFlagged((prev) => (prev.includes(currentIdx) ? prev.filter((i) => i !== currentIdx) : [...prev, currentIdx]));
   };
 
   const addManualQuestion = () => {
-    setManualQuestionsList(prev => [...prev, createEmptyManualQuestion()]);
+    setManualQuestionsList((prev) => [...prev, createEmptyManualQuestion()]);
   };
 
   const updateManualQuestion = (idx: number, field: string, value: any) => {
-    setManualQuestionsList(prev => {
-        const newList = [...prev];
-        newList[idx] = { ...newList[idx], [field]: value };
-        return newList;
+    setManualQuestionsList((prev) => {
+      const newList = [...prev];
+      newList[idx] = { ...newList[idx], [field]: value };
+      return newList;
     });
   };
 
   const startManualSimulado = () => {
-    const finalQuestions = manualQuestionsList.filter(q => q.question.trim().length > 0);
-    
+    const finalQuestions = manualQuestionsList.filter((q) => q.question.trim().length > 0);
+
     if (finalQuestions.length === 0) {
-        alert("Preencha pelo menos uma questão.");
-        return;
+      alert('Preencha pelo menos uma questão.');
+      return;
     }
 
     setQuestions(finalQuestions);
-    setTopic(topic || "Simulado Manual");
+    setTopic(topic || 'Simulado Manual');
     setCurrentIdx(0);
     setTempSelectedOpt(null);
     setIsSubmitted(false);
   };
 
   const handleDeleteQuestion = () => {
-    if (confirm("Tem certeza que deseja excluir esta questão? Ela será removida apenas desta sessão.")) {
+    if (confirm('Tem certeza que deseja excluir esta questão? Ela será removida apenas desta sessão.')) {
       const deletedIdx = currentIdx;
       const newQuestions = questions.filter((_, idx) => idx !== deletedIdx);
       if (newQuestions.length === 0) {
@@ -534,11 +622,11 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
         return;
       }
       setQuestions(newQuestions);
-      setUserAnswers(prev => reindexRecordAfterDelete(prev, deletedIdx));
-      setFlagged(prev => reindexListAfterDelete(prev, deletedIdx));
-      setQuestionScratched(prev => reindexListAfterDelete(prev, deletedIdx));
-      setQuestionHighlighted(prev => reindexListAfterDelete(prev, deletedIdx));
-      setUndoStack(prev => reindexRecordAfterDelete(prev, deletedIdx));
+      setUserAnswers((prev) => reindexRecordAfterDelete(prev, deletedIdx));
+      setFlagged((prev) => reindexListAfterDelete(prev, deletedIdx));
+      setQuestionScratched((prev) => reindexListAfterDelete(prev, deletedIdx));
+      setQuestionHighlighted((prev) => reindexListAfterDelete(prev, deletedIdx));
+      setUndoStack((prev) => reindexRecordAfterDelete(prev, deletedIdx));
       if (currentIdx >= newQuestions.length) {
         setCurrentIdx(newQuestions.length - 1);
       }
@@ -551,25 +639,31 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   const handleFinish = () => {
     const total = questions.length;
     const correct = questions.filter((q, i) => userAnswers[i] === q.correctAnswer).length;
-    onBatchComplete?.(topic, selectedSubject, total, correct, questions.map((q, i) => ({ ...q, userAnswer: userAnswers[i] })));
+    onBatchComplete?.(
+      topic,
+      selectedSubject,
+      total,
+      correct,
+      questions.map((q, i) => ({ ...q, userAnswer: userAnswers[i] })),
+    );
     onBack();
   };
 
   const handleShuffle = () => {
-    if (confirm("Deseja embaralhar as questões deste simulado?")) {
+    if (confirm('Deseja embaralhar as questões deste simulado?')) {
       // Fisher-Yates shuffle of indices: newOrder[newIdx] = oldIdx
       const newOrder = questions.map((_, idx) => idx);
       for (let i = newOrder.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [newOrder[i], newOrder[j]] = [newOrder[j], newOrder[i]];
       }
-      const shuffled = newOrder.map(oldIdx => questions[oldIdx]);
+      const shuffled = newOrder.map((oldIdx) => questions[oldIdx]);
       setQuestions(shuffled);
-      setUserAnswers(prev => reindexRecordForPermutation(prev, newOrder));
-      setFlagged(prev => reindexListForPermutation(prev, newOrder));
-      setQuestionScratched(prev => reindexListForPermutation(prev, newOrder));
-      setQuestionHighlighted(prev => reindexListForPermutation(prev, newOrder));
-      setUndoStack(prev => reindexRecordForPermutation(prev, newOrder));
+      setUserAnswers((prev) => reindexRecordForPermutation(prev, newOrder));
+      setFlagged((prev) => reindexListForPermutation(prev, newOrder));
+      setQuestionScratched((prev) => reindexListForPermutation(prev, newOrder));
+      setQuestionHighlighted((prev) => reindexListForPermutation(prev, newOrder));
+      setUndoStack((prev) => reindexRecordForPermutation(prev, newOrder));
       setCurrentIdx(0);
       setTempSelectedOpt(null);
       setSelectedOpt(null);
@@ -588,15 +682,15 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
 
     const range = selection.getRangeAt(0);
     const container = questionTextRef.current;
-    
+
     if (container && (container.contains(range.commonAncestorContainer) || container === range.commonAncestorContainer)) {
       const span = document.createElement('span');
       if (type === 'strike') {
         span.className = 'line-through decoration-red-500/30 decoration-2 text-slate-400 opacity-80';
       } else {
-        span.className = 'bg-yellow-200/60 rounded-sm px-0.5 text-slate-900 border-b border-yellow-300';
+        span.className = 'bg-[#ffe6b9]/60 rounded-sm px-0.5 text-slate-900 border-b border-[#fedda1]';
       }
-      
+
       try {
         saveToUndo(currentIdx, container.innerHTML);
         if (range.startContainer === range.endContainer) {
@@ -610,7 +704,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
         newQuestions[currentIdx].question = container.innerHTML;
         setQuestions(newQuestions);
       } catch (e) {
-        console.warn("Selection failed", e);
+        console.warn('Selection failed', e);
       }
       selection.removeAllRanges();
     }
@@ -618,19 +712,19 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
 
   const toggleQuestionScratch = () => {
     if (questionScratched.includes(currentIdx)) {
-      setQuestionScratched(questionScratched.filter(i => i !== currentIdx));
+      setQuestionScratched(questionScratched.filter((i) => i !== currentIdx));
     } else {
       setQuestionScratched([...questionScratched, currentIdx]);
-      setQuestionHighlighted(questionHighlighted.filter(i => i !== currentIdx));
+      setQuestionHighlighted(questionHighlighted.filter((i) => i !== currentIdx));
     }
   };
 
   const toggleQuestionHighlight = () => {
     if (questionHighlighted.includes(currentIdx)) {
-      setQuestionHighlighted(questionHighlighted.filter(i => i !== currentIdx));
+      setQuestionHighlighted(questionHighlighted.filter((i) => i !== currentIdx));
     } else {
       setQuestionHighlighted([...questionHighlighted, currentIdx]);
-      setQuestionScratched(questionScratched.filter(i => i !== currentIdx));
+      setQuestionScratched(questionScratched.filter((i) => i !== currentIdx));
     }
   };
 
@@ -640,7 +734,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     const currentImages = newQuestions[currentIdx].explanationImages || [];
     newQuestions[currentIdx] = {
       ...newQuestions[currentIdx],
-      explanationImages: [...currentImages, imageUrl]
+      explanationImages: [...currentImages, imageUrl],
     };
     setQuestions(newQuestions);
   };
@@ -652,7 +746,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     currentImages.splice(imgIdx, 1);
     newQuestions[currentIdx] = {
       ...newQuestions[currentIdx],
-      explanationImages: currentImages
+      explanationImages: currentImages,
     };
     setQuestions(newQuestions);
   };
@@ -678,7 +772,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
     currentSizes[imgIdx] = size;
     newQuestions[currentIdx] = {
       ...newQuestions[currentIdx],
-      explanationImageSizes: currentSizes
+      explanationImageSizes: currentSizes,
     };
     setQuestions(newQuestions);
   };
@@ -699,30 +793,27 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[200] bg-[#0A0F1E] flex flex-col items-center justify-center p-6">
+      <div className="fixed inset-0 z-[200] bg-[#473c33] flex flex-col items-center justify-center p-6">
         <div className="bg-white rounded-[50px] p-12 md:p-20 shadow-2xl flex flex-col items-center max-w-xl w-full">
-          <LoadingFish 
-            message={batchStatus ? `Extraindo Bloco ${batchStatus.current} de ${batchStatus.total}` : "Arquitetando Simulado..."} 
-            submessage={batchStatus 
-              ? `A IA está processando seu texto em partes para não pular nenhuma questão.`
-              : `IA preparando questões focadas em ${studyProfile === 'CONCURSO' ? 'Concursos de Elite' : studyProfile === 'FACULDADE' ? 'Graduação / Faculdade' : 'ENEM/Vestibular'}`
-            }
-          />
-          
+          <LoadingFish message={batchStatus ? `Extraindo Bloco ${batchStatus.current} de ${batchStatus.total}` : 'Arquitetando Simulado...'} submessage={batchStatus ? `A IA está processando seu texto em partes para não pular nenhuma questão.` : `IA preparando questões focadas em ${studyProfile === 'CONCURSO' ? 'Concursos de Elite' : studyProfile === 'FACULDADE' ? 'Graduação / Faculdade' : 'ENEM/Vestibular'}`} />
+
           {batchStatus && (
             <div className="mt-8 w-full">
               <div className="flex justify-between mb-2">
-                <span className="text-[#0A0F1E] font-black text-[10px] tracking-widest uppercase">Análise de Conteúdo</span>
-                <span className="text-[#0A0F1E] font-black text-[10px]">{Math.round((batchStatus.current / batchStatus.total) * 100)}%</span>
+                <span className="text-[#473c33] font-black text-[10px] tracking-widest uppercase">Análise de Conteúdo</span>
+                <span className="text-[#473c33] font-black text-[10px]">{Math.round((batchStatus.current / batchStatus.total) * 100)}%</span>
               </div>
               <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-orange-500 transition-all duration-1000 ease-out" 
-                  style={{ width: `${(batchStatus.current / batchStatus.total) * 100}%` }}
+                <div
+                  className="h-full bg-[#fdad74] transition-all duration-1000 ease-out"
+                  style={{
+                    width: `${(batchStatus.current / batchStatus.total) * 100}%`,
+                  }}
                 ></div>
               </div>
               <p className="mt-6 text-center text-gray-400 font-bold text-[9px] uppercase tracking-[0.2em] leading-relaxed max-w-xs mx-auto">
-                Estamos processando em lotes de segurança.<br/>
+                Estamos processando em lotes de segurança.
+                <br />
                 Isso evita erros de memória da IA e garante a extração de 100% das perguntas coladas.
               </p>
             </div>
@@ -733,7 +824,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#f8fafc] text-[#1e293b] selection:bg-blue-500/30 overflow-y-auto font-sans">
+    <div className="fixed inset-0 z-[200] bg-[#f8fafc] text-[#1e293b] selection:bg-[#fec868]/30 overflow-y-auto font-sans">
       <div className="w-full max-w-5xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
         {!questions.length ? (
           <div className="py-10">
@@ -741,62 +832,43 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
               <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
               ABANDONAR SIMULADO
             </button>
-            
+
             <div className="bg-white rounded-[50px] p-12 md:p-20 border border-slate-200 relative overflow-hidden shadow-sm">
-              <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none text-blue-500">
-                 <FileText className="w-64 h-64" />
+              <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none text-[#fec868]">
+                <FileText className="w-64 h-64" />
               </div>
-              
+
               <div className="relative z-10 text-center max-w-2xl mx-auto">
-                <div className="w-20 h-20 bg-blue-50 text-blue-500 border border-blue-100 rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-sm">
+                <div className="w-20 h-20 bg-[#fec868]/10 text-[#fec868] border border-[#fec868]/15 rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-sm">
                   <Scissors className="w-8 h-8" />
                 </div>
-                <h1 className="font-logo text-4xl md:text-6xl mb-4 leading-none uppercase text-slate-800">TDH<span className="text-blue-600">{strategicMode ? 'estratégico' : 'questões'}</span></h1>
-                <p className="text-slate-400 text-lg mb-12 font-black uppercase tracking-widest text-[10px]">
-                  {strategicMode ? (studyProfile === 'FACULDADE' ? 'Alinhamento Automático à Grade Curricular' : 'Alinhamento Automático ao Edital') : `Simulados ${studyProfile === 'CONCURSO' ? 'Elite' : studyProfile === 'FACULDADE' ? 'Universitários' : 'Vestibular'} • Gabarito Comentado`}
-                </p>
-                
+                <h1 className="font-logo text-4xl md:text-6xl mb-4 leading-none uppercase text-slate-800">
+                  TDH
+                  <span className="text-[#fec868]">{strategicMode ? 'estratégico' : 'questões'}</span>
+                </h1>
+                <p className="text-slate-400 text-lg mb-12 font-black uppercase tracking-widest text-[10px]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Alinhamento Automático à Grade Curricular' : 'Alinhamento Automático ao Edital') : `Simulados ${studyProfile === 'CONCURSO' ? 'Elite' : studyProfile === 'FACULDADE' ? 'Universitários' : 'Vestibular'} • Gabarito Comentado`}</p>
+
                 <div className="space-y-8">
                   <div className="space-y-3 text-left max-w-2xl mx-auto">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-6 italic">O que vamos treinar hoje?</label>
-                    <input 
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                      placeholder={studyProfile === 'CONCURSO' ? "Ex: Atos Administrativos" : studyProfile === 'FACULDADE' ? "Ex: Cálculo I ou Patologia Humana" : "Ex: Genética Mendeliana"}
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-[40px] px-10 py-6 text-xl focus:outline-none focus:border-blue-500 transition-all font-black text-center text-slate-700 placeholder:text-slate-300"
-                    />
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-6 ">O que vamos treinar hoje?</label>
+                    <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={studyProfile === 'CONCURSO' ? 'Ex: Atos Administrativos' : studyProfile === 'FACULDADE' ? 'Ex: Cálculo I ou Patologia Humana' : 'Ex: Genética Mendeliana'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-[40px] px-10 py-6 text-xl focus:outline-none focus:border-[#fec868] transition-all font-black text-center text-slate-700 placeholder:text-slate-300" />
                   </div>
 
                   {!strategicMode && (
                     <div className="flex bg-slate-50 p-1.5 rounded-[24px] mx-auto max-w-sm mb-8 border border-slate-100">
-                      <button 
-                        onClick={() => setInputMode('AUTO')}
-                        className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${inputMode === 'AUTO' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
+                      <button onClick={() => setInputMode('AUTO')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${inputMode === 'AUTO' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
                         IA
                       </button>
-                      <button 
-                        onClick={() => setInputMode('PASTE')}
-                        className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'PASTE' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
+                      <button onClick={() => setInputMode('PASTE')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'PASTE' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
                         COLAR
                       </button>
-                      <button
-                        onClick={() => setInputMode('MANUAL')}
-                        className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'MANUAL' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
+                      <button onClick={() => setInputMode('MANUAL')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'MANUAL' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
                         MANUAL
                       </button>
-                      <button
-                        onClick={() => setInputMode('ENEM')}
-                        className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'ENEM' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
+                      <button onClick={() => setInputMode('ENEM')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'ENEM' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
                         ENEM
                       </button>
-                      <button
-                        onClick={() => setInputMode('CONCURSO')}
-                        className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'CONCURSO' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
+                      <button onClick={() => setInputMode('CONCURSO')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'CONCURSO' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
                         CONCURSO
                       </button>
                     </div>
@@ -808,127 +880,101 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-3 text-left">
                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>
-                            <select 
+                            <select
                               value={selectedSubject}
-                              onChange={(e) => { setSelectedSubject(e.target.value); setSelectedTopic(''); }}
-                              className="w-full bg-white/5 border-2 border-white/10 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-orange-500 transition-all font-bold appearance-none cursor-pointer text-white"
+                              onChange={(e) => {
+                                setSelectedSubject(e.target.value);
+                                setSelectedTopic('');
+                              }}
+                              className="w-full bg-white/5 border-2 border-white/10 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fdad74] transition-all font-bold appearance-none cursor-pointer text-white"
                             >
-                              <option value="" className="bg-[#0A0F1E]">Selecionar Matéria...</option>
+                              <option value="" className="bg-[#473c33]">
+                                Selecionar Matéria...
+                              </option>
                               {editalConfig.subjects.map((s, i) => (
-                                 <option key={i} value={s.name} className="bg-[#0A0F1E]">{s.name}</option>
+                                <option key={i} value={s.name} className="bg-[#473c33]">
+                                  {s.name}
+                                </option>
                               ))}
                             </select>
                           </div>
                           <div className="space-y-3 text-left">
                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Assunto Específico</label>
-                            <select 
-                              value={selectedTopic}
-                              onChange={(e) => setSelectedTopic(e.target.value)}
-                              disabled={!selectedSubject}
-                              className="w-full bg-white/5 border-2 border-white/10 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-orange-500 transition-all font-bold appearance-none cursor-pointer disabled:opacity-20 text-white"
-                            >
-                              <option value="" className="bg-[#0A0F1E]">Selecionar Assunto...</option>
-                              {editalConfig.subjects.find(s => s.name === selectedSubject)?.topics.map((t, i) => (
-                                <option key={i} value={t} className="bg-[#0A0F1E]">{t}</option>
-                              ))}
+                            <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)} disabled={!selectedSubject} className="w-full bg-white/5 border-2 border-white/10 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fdad74] transition-all font-bold appearance-none cursor-pointer disabled:opacity-20 text-white">
+                              <option value="" className="bg-[#473c33]">
+                                Selecionar Assunto...
+                              </option>
+                              {editalConfig.subjects
+                                .find((s) => s.name === selectedSubject)
+                                ?.topics.map((t, i) => (
+                                  <option key={i} value={t} className="bg-[#473c33]">
+                                    {t}
+                                  </option>
+                                ))}
                             </select>
                           </div>
                         </div>
                       ) : null}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100 focus-within:border-blue-500/50 transition-all">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3 italic">Banca Examinadora</label>
-                          <input 
-                            value={banca}
-                            onChange={(e) => setBanca(e.target.value)}
-                            placeholder="Ex: FCC, FGV, CESPE..."
-                            className="w-full bg-transparent border-none text-xl focus:outline-none font-black text-slate-700 placeholder:text-slate-300"
-                          />
+                        <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100 focus-within:border-[#fec868]/50 transition-all">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3 ">Banca Examinadora</label>
+                          <input value={banca} onChange={(e) => setBanca(e.target.value)} placeholder="Ex: FCC, FGV, CESPE..." className="w-full bg-transparent border-none text-xl focus:outline-none font-black text-slate-700 placeholder:text-slate-300" />
                         </div>
                         <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100">
                           <div className="flex justify-between items-center mb-6">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Qtd. Questões</label>
-                            <span className="text-blue-600 font-black text-2xl tabular-nums">{numQuestions}</span>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ">Qtd. Questões</label>
+                            <span className="text-[#fec868] font-black text-2xl tabular-nums">{numQuestions}</span>
                           </div>
-                          <input 
-                            type="range" min="1" max="50" 
-                            value={numQuestions}
-                            onChange={(e) => setNumQuestions(Number(e.target.value))}
-                            className="w-full h-1.5 bg-slate-200 rounded-full accent-blue-600 cursor-pointer"
-                          />
+                          <input type="range" min="1" max="50" value={numQuestions} onChange={(e) => setNumQuestions(Number(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer" />
                         </div>
                       </div>
 
                       <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100 mb-4 group">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4 italic text-center md:text-left group-hover:text-blue-600 transition-colors">ESTILO DO mapeamento da lógica (PROMPT)</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4 text-center md:text-left group-hover:text-[#fec868] transition-colors">ESTILO DO mapeamento da lógica (PROMPT)</label>
                         <div className="relative">
-                          <textarea
-                            value={explanationStyle}
-                            onChange={(e) => setExplanationStyle(e.target.value)}
-                            placeholder="Ex: Use mnemônicos engraçados, explique de forma simples e termine com um desafio mental."
-                            className="w-full bg-white border-2 border-slate-100 focus:border-blue-500 rounded-[25px] p-6 text-sm font-medium text-slate-600 outline-none transition-all min-h-[100px] resize-none shadow-sm"
-                          />
+                          <textarea value={explanationStyle} onChange={(e) => setExplanationStyle(e.target.value)} placeholder="Ex: Use mnemônicos engraçados, explique de forma simples e termine com um desafio mental." className="w-full bg-white border-2 border-slate-100 focus:border-[#fec868] rounded-[25px] p-6 text-sm font-medium text-slate-600 outline-none transition-all min-h-[100px] resize-none shadow-sm" />
                           <div className="absolute top-4 right-6 text-lg opacity-20">✍️</div>
                         </div>
-                        <p className="text-[9px] font-bold text-slate-300 mt-4 italic text-center md:text-left">Dica: Quanto mais curto o comando, mais rápido a IA responde.</p>
+                        <p className="text-[9px] font-bold text-slate-300 mt-4 text-center md:text-left">Dica: Quanto mais curto o comando, mais rápido a IA responde.</p>
                       </div>
 
-                      <button 
-                        onClick={() => handleGenerate()}
-                        className="w-full bg-blue-600 text-white py-8 rounded-[40px] font-black text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/10 flex items-center justify-center gap-4 active:scale-95 group mt-8"
-                      >
+                      <button onClick={() => handleGenerate()} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8">
                         CONFIGURAR SIMULADO
                         <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                       </button>
                     </>
                   ) : inputMode === 'PASTE' ? (
                     <div className="space-y-6 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
-                      <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 mb-6 font-medium text-blue-700 text-sm flex items-center gap-3">
-                        <Brain className="w-5 h-5 flex-shrink-0" /> 
+                      <div className="bg-[#fec868]/10 p-6 rounded-3xl border border-[#fec868]/15 mb-6 font-medium text-[#ffb22a] text-sm flex items-center gap-3">
+                        <Brain className="w-5 h-5 flex-shrink-0" />
                         <span>A IA vai ler as questões, identificar a resposta certa (se não tiver gabarito) e criar a explicação detalhada para você!</span>
                       </div>
                       <div className="space-y-3">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Cole as questões aqui</label>
-                        <textarea
-                          value={pastedText}
-                          onChange={(e) => setPastedText(e.target.value)}
-                          placeholder="Cole aqui o texto de uma prova, pdf ou site contendo as questões e alternativas..."
-                          className="w-full bg-slate-50 border-2 border-slate-100 rounded-[30px] p-8 text-lg focus:outline-none focus:border-blue-500 transition-all font-medium text-slate-700 placeholder:text-slate-300 min-h-[300px] resize-y shadow-inner"
-                        />
+                        <textarea value={pastedText} onChange={(e) => setPastedText(e.target.value)} placeholder="Cole aqui o texto de uma prova, pdf ou site contendo as questões e alternativas..." className="w-full bg-slate-50 border-2 border-slate-100 rounded-[30px] p-8 text-lg focus:outline-none focus:border-[#fec868] transition-all font-medium text-slate-700 placeholder:text-slate-300 min-h-[300px] resize-y shadow-inner" />
                       </div>
-                      
+
                       <div className="space-y-3 animate-in fade-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center justify-between px-4">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Gabarito (Opcional)</label>
                         </div>
-                        <textarea
-                          value={pastedGabarito}
-                          onChange={(e) => setPastedGabarito(e.target.value)}
-                          placeholder="Ex: 1-A, 2-C, 3-E... ou cole o gabarito oficial completo aqui."
-                          className="w-full bg-slate-50 border-2 border-slate-100 rounded-[30px] p-8 text-lg focus:outline-none focus:border-blue-500 transition-all font-medium text-slate-700 placeholder:text-slate-300 min-h-[150px] resize-y shadow-inner"
-                        />
+                        <textarea value={pastedGabarito} onChange={(e) => setPastedGabarito(e.target.value)} placeholder="Ex: 1-A, 2-C, 3-E... ou cole o gabarito oficial completo aqui." className="w-full bg-slate-50 border-2 border-slate-100 rounded-[30px] p-8 text-lg focus:outline-none focus:border-[#fec868] transition-all font-medium text-slate-700 placeholder:text-slate-300 min-h-[150px] resize-y shadow-inner" />
                       </div>
 
-                      <button 
-                        onClick={() => handleParsePasted()}
-                        disabled={!pastedText.trim()}
-                        className="w-full bg-blue-600 text-white py-8 rounded-[40px] font-black text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed"
-                      >
+                      <button onClick={() => handleParsePasted()} disabled={!pastedText.trim()} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
                         PROCESSAR QUESTÕES
                         <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                       </button>
                     </div>
                   ) : inputMode === 'ENEM' ? (
                     <div className="space-y-6 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
-                      <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 mb-2 font-medium text-blue-700 text-sm flex items-center gap-3">
+                      <div className="bg-[#fec868]/10 p-6 rounded-3xl border border-[#fec868]/15 mb-2 font-medium text-[#ffb22a] text-sm flex items-center gap-3">
                         <BookOpen className="w-5 h-5 flex-shrink-0" />
                         <span>Questões oficiais de provas reais do ENEM, direto do banco público enem.dev.</span>
                       </div>
 
-                      {enemError && (
-                        <div className="bg-red-50 p-4 rounded-2xl border border-red-100 text-red-600 text-sm font-bold">{enemError}</div>
-                      )}
+                      {enemError && <div className="bg-red-50 p-4 rounded-2xl border border-red-100 text-red-600 text-sm font-bold">{enemError}</div>}
 
                       {enemExams.length === 0 && !enemError ? (
                         <p className="text-slate-400 text-sm font-bold text-center py-8">Carregando provas disponíveis...</p>
@@ -942,48 +988,41 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                                 onChange={(e) => {
                                   const year = Number(e.target.value);
                                   setEnemYear(year);
-                                  const exam = enemExams.find(ex => ex.year === year);
+                                  const exam = enemExams.find((ex) => ex.year === year);
                                   setEnemDiscipline(exam?.disciplines[0]?.value ?? '');
                                 }}
-                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-slate-700"
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fec868] transition-all font-bold appearance-none cursor-pointer text-slate-700"
                               >
-                                {enemExams.map(ex => (
-                                  <option key={ex.year} value={ex.year}>{ex.title}</option>
+                                {enemExams.map((ex) => (
+                                  <option key={ex.year} value={ex.year}>
+                                    {ex.title}
+                                  </option>
                                 ))}
                               </select>
                             </div>
                             <div className="space-y-3 text-left">
                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Matéria</label>
-                              <select
-                                value={enemDiscipline}
-                                onChange={(e) => setEnemDiscipline(e.target.value)}
-                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-slate-700"
-                              >
-                                {enemExams.find(ex => ex.year === enemYear)?.disciplines.map(d => (
-                                  <option key={d.value} value={d.value}>{d.label}</option>
-                                ))}
+                              <select value={enemDiscipline} onChange={(e) => setEnemDiscipline(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fec868] transition-all font-bold appearance-none cursor-pointer text-slate-700">
+                                {enemExams
+                                  .find((ex) => ex.year === enemYear)
+                                  ?.disciplines.map((d) => (
+                                    <option key={d.value} value={d.value}>
+                                      {d.label}
+                                    </option>
+                                  ))}
                               </select>
                             </div>
                           </div>
 
                           <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100">
                             <div className="flex justify-between items-center mb-6">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Qtd. Questões</label>
-                              <span className="text-blue-600 font-black text-2xl tabular-nums">{enemCount}</span>
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ">Qtd. Questões</label>
+                              <span className="text-[#fec868] font-black text-2xl tabular-nums">{enemCount}</span>
                             </div>
-                            <input
-                              type="range" min="1" max="40"
-                              value={enemCount}
-                              onChange={(e) => setEnemCount(Number(e.target.value))}
-                              className="w-full h-1.5 bg-slate-200 rounded-full accent-blue-600 cursor-pointer"
-                            />
+                            <input type="range" min="1" max="40" value={enemCount} onChange={(e) => setEnemCount(Number(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer" />
                           </div>
 
-                          <button
-                            onClick={handleFetchEnem}
-                            disabled={!enemYear || !enemDiscipline}
-                            className="w-full bg-blue-600 text-white py-8 rounded-[40px] font-black text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed"
-                          >
+                          <button onClick={handleFetchEnem} disabled={!enemYear || !enemDiscipline} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
                             BUSCAR QUESTÕES DO ENEM
                             <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                           </button>
@@ -992,16 +1031,69 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                     </div>
                   ) : inputMode === 'CONCURSO' ? (
                     <div className="space-y-6 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
-                      <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 mb-2 font-medium text-blue-700 text-sm flex items-center gap-3">
+                      <div className="bg-[#fec868]/10 p-6 rounded-3xl border border-[#fec868]/15 mb-2 font-medium text-[#ffb22a] text-sm flex items-center gap-3">
                         <Database className="w-5 h-5 flex-shrink-0" />
                         <span>Questões do nosso próprio banco, extraídas e revisadas de provas reais de concursos.</span>
                       </div>
 
-                      {bankError && (
-                        <div className="bg-red-50 p-4 rounded-2xl border border-red-100 text-red-600 text-sm font-bold">{bankError}</div>
+                      <div className="flex bg-slate-100 p-1 rounded-2xl w-fit border border-slate-200 shadow-inner">
+                        <button onClick={() => setBankFilterMode('MATERIA')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${bankFilterMode === 'MATERIA' ? 'bg-white text-[#fec868] shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}>
+                          Por Matéria
+                        </button>
+                        <button onClick={() => setBankFilterMode('PROVA')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${bankFilterMode === 'PROVA' ? 'bg-white text-[#fec868] shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}>
+                          Por Prova Oficial
+                        </button>
+                      </div>
+
+                      {bankFilterMode === 'PROVA' ? (
+                        <>
+                          {examError && <div className="bg-red-50 p-4 rounded-2xl border border-red-100 text-red-600 text-sm font-bold">{examError}</div>}
+
+                          {examLoadingBoards ? (
+                            <p className="text-slate-400 text-sm font-bold text-center py-8">Carregando bancas disponíveis...</p>
+                          ) : examBoards.length === 0 ? (
+                            !examError && <p className="text-slate-400 text-sm font-bold text-center py-8">Ainda não há provas oficiais aprovadas no nosso banco.</p>
+                          ) : (
+                            <>
+                              <FilterDropdown label="Banca" placeholder="Selecionar banca..." value={examBoard} options={examBoards} onChange={setExamBoard} />
+
+                              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                <FilterDropdown label="Órgão" placeholder="Selecionar órgão..." value={examInstitution} options={examInstitutions} onChange={setExamInstitution} loading={examLoadingInstitutions} loadingLabel="Carregando órgãos..." />
+                              </div>
+
+                              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                <FilterDropdown label="Cargo" placeholder="Selecionar cargo..." value={examPosition} options={examPositions} onChange={setExamPosition} loading={examLoadingPositions} loadingLabel="Carregando cargos..." />
+                              </div>
+
+                              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                <FilterDropdown label="Ano" placeholder="Selecionar ano..." value={examYear} options={examYears} onChange={setExamYear} loading={examLoadingYears} loadingLabel="Carregando anos..." />
+                              </div>
+
+                              <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100">
+                                <div className="flex justify-between items-center mb-2">
+                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ">Qtd. Questões</label>
+                                  <span className="text-[#fec868] font-black text-2xl tabular-nums">{examCount}</span>
+                                </div>
+                                <p className="text-[11px] font-bold text-slate-400 mb-4">
+                                  {examAvailableCount} questão
+                                  {examAvailableCount === 1 ? '' : 'ões'} disponível
+                                  {examAvailableCount === 1 ? '' : 'is'} nessa prova
+                                </p>
+                                <input type="range" min="1" max={Math.max(1, examAvailableCount)} value={examCount} onChange={(e) => setExamCount(Number(e.target.value))} disabled={examAvailableCount === 0} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer disabled:opacity-40" />
+                              </div>
+
+                              <button onClick={handleFetchExamBank} disabled={!examBoard || !examInstitution || !examPosition || !examYear || examAvailableCount === 0} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
+                                BUSCAR DO NOSSO BANCO
+                                <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                              </button>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        bankError && <div className="bg-red-50 p-4 rounded-2xl border border-red-100 text-red-600 text-sm font-bold">{bankError}</div>
                       )}
 
-                      {bankLoadingSubjects ? (
+                      {bankFilterMode === 'PROVA' ? null : bankLoadingSubjects ? (
                         <p className="text-slate-400 text-sm font-bold text-center py-8">Carregando matérias disponíveis...</p>
                       ) : bankSubjects.length === 0 ? (
                         !bankError && <p className="text-slate-400 text-sm font-bold text-center py-8">Ainda não há questões aprovadas no nosso banco.</p>
@@ -1009,56 +1101,37 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                         <>
                           <div className="space-y-3 text-left">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Matéria</label>
-                            <select
-                              value={bankSubject}
-                              onChange={(e) => setBankSubject(e.target.value)}
-                              className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-slate-700"
-                            >
-                              {bankSubjects.map(s => (
-                                <option key={s.value} value={s.value}>{s.value} ({s.count})</option>
+                            <select value={bankSubject} onChange={(e) => setBankSubject(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fec868] transition-all font-bold appearance-none cursor-pointer text-slate-700">
+                              {bankSubjects.map((s) => (
+                                <option key={s.value} value={s.value}>
+                                  {s.value} ({s.count})
+                                </option>
                               ))}
                             </select>
                           </div>
 
                           <div className="space-y-3 text-left animate-in fade-in slide-in-from-top-2 duration-300">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Assunto</label>
-                            <select
-                              value={bankTopic}
-                              onChange={(e) => setBankTopic(e.target.value)}
-                              disabled={bankLoadingTopics}
-                              className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-blue-500 transition-all font-bold appearance-none cursor-pointer text-slate-700 disabled:opacity-40"
-                            >
-                              <option value="">
-                                {bankLoadingTopics ? 'Carregando assuntos...' : `Todos os assuntos (${bankTopicsTotal})`}
-                              </option>
-                              {bankTopics.map(t => (
-                                <option key={t.value} value={t.value}>{t.value} ({t.count})</option>
+                            <select value={bankTopic} onChange={(e) => setBankTopic(e.target.value)} disabled={bankLoadingTopics} className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fec868] transition-all font-bold appearance-none cursor-pointer text-slate-700 disabled:opacity-40">
+                              <option value="">{bankLoadingTopics ? 'Carregando assuntos...' : `Todos os assuntos (${bankTopicsTotal})`}</option>
+                              {bankTopics.map((t) => (
+                                <option key={t.value} value={t.value}>
+                                  {t.value} ({t.count})
+                                </option>
                               ))}
                             </select>
                           </div>
 
                           <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100">
                             <div className="flex justify-between items-center mb-2">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Qtd. Questões</label>
-                              <span className="text-blue-600 font-black text-2xl tabular-nums">{bankCount}</span>
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ">Qtd. Questões</label>
+                              <span className="text-[#fec868] font-black text-2xl tabular-nums">{bankCount}</span>
                             </div>
-                            <p className="text-[11px] font-bold text-slate-400 mb-4">
-                              {bankLoadingTopics ? 'Verificando disponibilidade...' : `${bankAvailableCount} questão${bankAvailableCount === 1 ? '' : 'ões'} disponível${bankAvailableCount === 1 ? '' : 'is'} nessa seleção`}
-                            </p>
-                            <input
-                              type="range" min="1" max={Math.max(1, bankAvailableCount)}
-                              value={bankCount}
-                              onChange={(e) => setBankCount(Number(e.target.value))}
-                              disabled={bankAvailableCount === 0}
-                              className="w-full h-1.5 bg-slate-200 rounded-full accent-blue-600 cursor-pointer disabled:opacity-40"
-                            />
+                            <p className="text-[11px] font-bold text-slate-400 mb-4">{bankLoadingTopics ? 'Verificando disponibilidade...' : `${bankAvailableCount} questão${bankAvailableCount === 1 ? '' : 'ões'} disponível${bankAvailableCount === 1 ? '' : 'is'} nessa seleção`}</p>
+                            <input type="range" min="1" max={Math.max(1, bankAvailableCount)} value={bankCount} onChange={(e) => setBankCount(Number(e.target.value))} disabled={bankAvailableCount === 0} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer disabled:opacity-40" />
                           </div>
 
-                          <button
-                            onClick={handleFetchBank}
-                            disabled={!bankSubject || bankAvailableCount === 0}
-                            className="w-full bg-blue-600 text-white py-8 rounded-[40px] font-black text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed"
-                          >
+                          <button onClick={handleFetchBank} disabled={!bankSubject || bankAvailableCount === 0} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
                             BUSCAR DO NOSSO BANCO
                             <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                           </button>
@@ -1067,123 +1140,95 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                     </div>
                   ) : (
                     <div className="space-y-12 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
-                       <div className="flex bg-slate-100 p-1 rounded-2xl w-fit mb-4 border border-slate-200 shadow-inner">
-                          <button
-                            onClick={() => setManualInputType('FULL')}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${manualInputType === 'FULL' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
-                          >
-                            Completo
-                          </button>
-                          <button 
-                            onClick={() => setManualInputType('QUICK')}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${manualInputType === 'QUICK' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
-                          >
-                            Modo Rápido
-                          </button>
-                       </div>
+                      <div className="flex bg-slate-100 p-1 rounded-2xl w-fit mb-4 border border-slate-200 shadow-inner">
+                        <button onClick={() => setManualInputType('FULL')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${manualInputType === 'FULL' ? 'bg-white text-[#fec868] shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}>
+                          Completo
+                        </button>
+                        <button onClick={() => setManualInputType('QUICK')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${manualInputType === 'QUICK' ? 'bg-white text-[#fec868] shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}>
+                          Modo Rápido
+                        </button>
+                      </div>
 
-                       <div className="space-y-16">
-                          {manualQuestionsList.map((mq, qIdx) => (
-                            <div key={mq.id} className="bg-white p-8 md:p-12 rounded-[45px] border border-slate-100 shadow-sm relative group animate-in zoom-in-95 duration-300">
-                               <div className="absolute -top-4 -left-4 w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black italic shadow-lg z-10">
-                                 {qIdx + 1}
-                               </div>
-                               
-                               {manualQuestionsList.length > 1 && (
-                                 <button 
-                                   onClick={() => setManualQuestionsList(prev => prev.filter((_, i) => i !== qIdx))}
-                                   className="absolute top-8 right-8 p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
-                                 >
-                                   <Trash2 className="w-5 h-5" />
-                                 </button>
-                               )}
+                      <div className="space-y-16">
+                        {manualQuestionsList.map((mq, qIdx) => (
+                          <div key={mq.id} className="bg-white p-8 md:p-12 rounded-[45px] border border-slate-100 shadow-sm relative group animate-in zoom-in-95 duration-300">
+                            <div className="absolute -top-4 -left-4 w-12 h-12 bg-[#fec868] text-white rounded-2xl flex items-center justify-center font-black shadow-lg z-10">{qIdx + 1}</div>
 
-                               <div className="space-y-8">
-                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">
-                                      {manualInputType === 'QUICK' ? 'Pergunta + Alternativas (Tudo aqui)' : 'Enunciado da Questão'}
-                                    </label>
-                                    <div className="bg-slate-50 rounded-[30px] border-2 border-slate-100 focus-within:border-blue-500 transition-all overflow-hidden shadow-inner">
-                                      <RichTextEditor 
-                                        content={mq.question}
-                                        onChange={html => updateManualQuestion(qIdx, 'question', html)}
-                                      />
+                            {manualQuestionsList.length > 1 && (
+                              <button onClick={() => setManualQuestionsList((prev) => prev.filter((_, i) => i !== qIdx))} className="absolute top-8 right-8 p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            )}
+
+                            <div className="space-y-8">
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">{manualInputType === 'QUICK' ? 'Pergunta + Alternativas (Tudo aqui)' : 'Enunciado da Questão'}</label>
+                                <div className="bg-slate-50 rounded-[30px] border-2 border-slate-100 focus-within:border-[#fec868] transition-all overflow-hidden shadow-inner">
+                                  <RichTextEditor content={mq.question} onChange={(html) => updateManualQuestion(qIdx, 'question', html)} />
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Gabarito</label>
+                                {manualInputType === 'QUICK' ? (
+                                  <div className="flex gap-4 items-center bg-slate-50 p-6 rounded-[30px] border border-slate-100 justify-between shadow-inner">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qual a letra correta?</span>
+                                    <div className="flex gap-3">
+                                      {[0, 1, 2, 3, 4].map((idx) => (
+                                        <button key={idx} onClick={() => updateManualQuestion(qIdx, 'correctAnswer', idx)} className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black transition-all active:scale-90 ${mq.correctAnswer === idx ? 'bg-[#fec868] border-[#fec868] text-white shadow-lg' : 'border-slate-200 text-slate-300 hover:border-slate-300 shadow-sm bg-white'}`}>
+                                          {String.fromCharCode(65 + idx)}
+                                        </button>
+                                      ))}
                                     </div>
-                                 </div>
-
-                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Gabarito</label>
-                                    {manualInputType === 'QUICK' ? (
-                                      <div className="flex gap-4 items-center bg-slate-50 p-6 rounded-[30px] border border-slate-100 justify-between shadow-inner">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qual a letra correta?</span>
-                                        <div className="flex gap-3">
-                                          {[0, 1, 2, 3, 4].map(idx => (
-                                            <button
-                                              key={idx}
-                                              onClick={() => updateManualQuestion(qIdx, 'correctAnswer', idx)}
-                                              className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black transition-all active:scale-90 ${mq.correctAnswer === idx ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'border-slate-200 text-slate-300 hover:border-slate-300 shadow-sm bg-white'}`}
-                                            >
-                                              {String.fromCharCode(65 + idx)}
-                                            </button>
-                                          ))}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3">
+                                    {mq.options.map((opt, i) => (
+                                      <div key={i} className="flex gap-4 items-center group/opt">
+                                        <div onClick={() => updateManualQuestion(qIdx, 'correctAnswer', i)} className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black transition-all cursor-pointer select-none ${mq.correctAnswer === i ? 'bg-[#abc270] border-[#abc270] text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-300 group-hover/opt:border-slate-200'}`}>
+                                          {String.fromCharCode(65 + i)}
                                         </div>
+                                        <input
+                                          value={opt}
+                                          onChange={(e) => {
+                                            const newOptions = [...mq.options];
+                                            newOptions[i] = e.target.value;
+                                            updateManualQuestion(qIdx, 'options', newOptions);
+                                          }}
+                                          className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 focus:outline-none focus:border-[#fec868] transition-all font-bold text-sm text-slate-700 shadow-sm"
+                                          placeholder={`Alternativa ${String.fromCharCode(65 + i)}`}
+                                        />
                                       </div>
-                                    ) : (
-                                      <div className="space-y-3">
-                                        {mq.options.map((opt, i) => (
-                                            <div key={i} className="flex gap-4 items-center group/opt">
-                                                <div 
-                                                  onClick={() => updateManualQuestion(qIdx, 'correctAnswer', i)}
-                                                  className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-black transition-all cursor-pointer select-none ${mq.correctAnswer === i ? 'bg-green-500 border-green-500 text-white shadow-md' : 'bg-slate-50 border-slate-100 text-slate-300 group-hover/opt:border-slate-200'}`}
-                                                >
-                                                  {String.fromCharCode(65 + i)}
-                                                </div>
-                                                <input 
-                                                  value={opt}
-                                                  onChange={e => {
-                                                      const newOptions = [...mq.options];
-                                                      newOptions[i] = e.target.value;
-                                                      updateManualQuestion(qIdx, 'options', newOptions);
-                                                  }}
-                                                  className="flex-1 bg-white border border-slate-100 rounded-2xl px-6 py-4 focus:outline-none focus:border-blue-500 transition-all font-bold text-sm text-slate-700 shadow-sm"
-                                                  placeholder={`Alternativa ${String.fromCharCode(65 + i)}`}
-                                                />
-                                            </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                 </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
 
-                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Explicação / Resolução (Opcional)</label>
-                                    <div className="bg-slate-50 rounded-[30px] border-2 border-slate-100 focus-within:border-blue-500 transition-all overflow-hidden shadow-inner">
-                                      <RichTextEditor 
-                                        content={mq.explanation}
-                                        onChange={html => updateManualQuestion(qIdx, 'explanation', html)}
-                                      />
-                                    </div>
-                                 </div>
-                               </div>
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Explicação / Resolução (Opcional)</label>
+                                <div className="bg-slate-50 rounded-[30px] border-2 border-slate-100 focus-within:border-[#fec868] transition-all overflow-hidden shadow-inner">
+                                  <RichTextEditor content={mq.explanation} onChange={(html) => updateManualQuestion(qIdx, 'explanation', html)} />
+                                </div>
+                              </div>
                             </div>
-                          ))}
-                       </div>
+                          </div>
+                        ))}
+                      </div>
 
-                       <div className="flex flex-col md:flex-row gap-6 pt-10 sticky bottom-0 bg-[#f8fafc]/90 backdrop-blur-md p-6 border-t border-slate-100 rounded-t-[40px] z-30">
-                          <button 
-                            onClick={addManualQuestion}
-                            className="flex-1 bg-white border-2 border-blue-100 text-blue-600 py-6 rounded-[30px] font-black uppercase tracking-widest text-xs hover:bg-blue-50 active:scale-95 transition-all shadow-xl shadow-blue-500/5 flex items-center justify-center gap-3"
-                          >
-                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
-                             ADICIONAR NOVA CAIXA
-                          </button>
-                          <button 
-                            onClick={startManualSimulado}
-                            className="flex-[2] bg-[#0A0F1E] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"
-                          >
-                             INICIAR SIMULADO ({manualQuestionsList.filter(q => q.question.trim().length > 0).length} PRONTAS)
-                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                          </button>
-                       </div>
+                      <div className="flex flex-col md:flex-row gap-6 pt-10 sticky bottom-0 bg-[#f8fafc]/90 backdrop-blur-md p-6 border-t border-slate-100 rounded-t-[40px] z-30">
+                        <button onClick={addManualQuestion} className="flex-1 bg-white border-2 border-[#fec868]/15 text-[#fec868] py-6 rounded-[30px] font-black uppercase tracking-widest text-xs hover:bg-[#fec868]/10 active:scale-95 transition-all shadow-xl shadow-[#fec868]/5 flex items-center justify-center gap-3">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
+                          </svg>
+                          ADICIONAR NOVA CAIXA
+                        </button>
+                        <button onClick={startManualSimulado} className="flex-[2] bg-[#473c33] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3">
+                          INICIAR SIMULADO ({manualQuestionsList.filter((q) => q.question.trim().length > 0).length} PRONTAS)
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1195,41 +1240,44 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
             {/* Header Mini Imersivo */}
             <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm sticky top-0 z-30">
               <div className="flex items-center gap-6">
-                <button onClick={() => { handleFinish(); setQuestions([]); }} className="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all group active:scale-90">
-                  <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-blue-500" />
+                <button
+                  onClick={() => {
+                    handleFinish();
+                    setQuestions([]);
+                  }}
+                  className="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all group active:scale-90"
+                >
+                  <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-[#fec868]" />
                 </button>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                    <h4 className="font-black text-sm tracking-widest uppercase italic text-slate-800">{topic}</h4>
+                    <span className="w-2 h-2 rounded-full bg-[#fec868] animate-pulse"></span>
+                    <h4 className="font-black text-sm tracking-widest uppercase text-slate-800">{topic}</h4>
                   </div>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Questão {currentIdx + 1} de {questions.length} • EM ANDAMENTO</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    Questão {currentIdx + 1} de {questions.length} • EM ANDAMENTO
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1 mr-4">
-                   <button className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-500 rounded-xl transition-all border border-slate-100">
-                     <Share2 className="w-4 h-4" />
-                   </button>
-                   <button 
-                     onClick={handlePrev}
-                     disabled={currentIdx === 0}
-                     className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-500 rounded-xl transition-all border border-slate-100 disabled:opacity-30"
-                   >
-                     <ChevronLeft className="w-4 h-4" />
-                   </button>
-                   <button 
-                     onClick={handleNext}
-                     disabled={currentIdx === questions.length - 1}
-                     className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-500 rounded-xl transition-all border border-slate-100 disabled:opacity-30"
-                   >
-                     <ChevronRight className="w-4 h-4" />
-                   </button>
+                  <button className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#fec868] rounded-xl transition-all border border-slate-100">
+                    <Share2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={handlePrev} disabled={currentIdx === 0} className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#fec868] rounded-xl transition-all border border-slate-100 disabled:opacity-30">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button onClick={handleNext} disabled={currentIdx === questions.length - 1} className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#fec868] rounded-xl transition-all border border-slate-100 disabled:opacity-30">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
-                <button 
-                  onClick={() => { handleSaveUserCommentary(); setShowSaveModal(true); }}
+                <button
+                  onClick={() => {
+                    handleSaveUserCommentary();
+                    setShowSaveModal(true);
+                  }}
                   disabled={saved}
-                  className={`px-8 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-3 transition-all active:scale-90 shadow-sm ${saved ? 'bg-green-500 text-white' : 'bg-slate-50 text-slate-400 hover:text-blue-500 border border-slate-100'}`}
+                  className={`px-8 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-3 transition-all active:scale-90 shadow-sm ${saved ? 'bg-[#abc270] text-white' : 'bg-slate-50 text-slate-400 hover:text-[#fec868] border border-slate-100'}`}
                 >
                   {saved ? 'CONSOLIDADO!' : 'SALVAR CADERNO'}
                   {!saved && <Save className="w-4 h-4" />}
@@ -1240,173 +1288,120 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
             <div className="bg-white rounded-[40px] p-8 md:p-16 shadow-sm border border-slate-200/60 relative overflow-hidden transition-all hover:shadow-md">
               <div className="mb-10 text-center md:text-left">
                 <div className="flex items-center justify-between mb-6">
-                   <span className="text-[11px] font-black text-blue-500/50 uppercase tracking-[0.3em]">Questão {currentIdx + 1}</span>
-                    <div className="flex items-center gap-2">
-                     <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner mr-2 items-center">
-                        <div className="flex items-center gap-2 px-3 border-r border-slate-200 mr-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Texto</span>
-                          <input 
-                            type="range" 
-                            min="0.8" 
-                            max="2.5" 
-                            step="0.1" 
-                            value={localFontSize} 
-                            onChange={(e) => setLocalFontSize(parseFloat(e.target.value))}
-                            className="w-16 accent-blue-500 h-1"
-                            title="Aumentar/Diminuir letra da questão"
-                          />
-                        </div>
-                        <button 
-                          onClick={() => copyQuestionToClipboard(questions[currentIdx])}
-                          className={`p-2 rounded-lg transition-all active:scale-90 mr-1 ${copiedId === questions[currentIdx].id ? 'bg-green-500 text-white shadow-lg' : 'text-slate-300 hover:text-blue-500'}`}
-                          title="Copiar questão inteira"
-                        >
-                          {copiedId === questions[currentIdx].id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                        <button 
-                          onClick={() => handleSelectiveMark('highlight')}
-                          className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentIdx) ? 'bg-yellow-100 text-yellow-600 shadow-sm border border-yellow-200' : 'text-slate-300 hover:text-blue-500'}`}
-                          title="Destacar (Selecione texto ou clique para todo enunciado)"
-                        >
-                          <Highlighter className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleSelectiveMark('strike')}
-                          className={`p-2 rounded-lg transition-all active:scale-90 ${questionScratched.includes(currentIdx) ? 'bg-slate-200 text-slate-600 shadow-sm' : 'text-slate-300 hover:text-blue-500'}`}
-                          title="Taxar (Selecione texto ou clique para todo enunciado)"
-                        >
-                          <PenLine className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setQuestionScratched(questionScratched.filter(i => i !== currentIdx));
-                            setQuestionHighlighted(questionHighlighted.filter(i => i !== currentIdx));
-                          }}
-                          className="p-2 text-slate-300 hover:text-red-500 transition-all active:scale-90"
-                          title="Limpar Marcações"
-                        >
-                          <Eraser className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={handleUndo}
-                          disabled={!(undoStack[currentIdx] && undoStack[currentIdx].length > 0)}
-                          className="p-2 text-slate-300 hover:text-orange-500 disabled:opacity-20 transition-all active:scale-90"
-                          title="Desfazer Marcação"
-                        >
-                          <Undo2 className="w-4 h-4" />
-                        </button>
-                     </div>
-
-                     <button 
-                        onClick={toggleFlag}
-                        className={`p-2.5 rounded-xl transition-all active:scale-95 flex-shrink-0 ${flagged.includes(currentIdx) ? 'bg-blue-500 text-white shadow-lg' : 'bg-slate-50 text-slate-300 hover:text-blue-500 hover:bg-blue-50'}`}
-                        title="Marcar para análise"
-                      >
-                        <Flag className={`w-4 h-4 ${flagged.includes(currentIdx) ? 'fill-current' : ''}`} />
+                  <span className="text-[11px] font-black text-[#fec868]/50 uppercase tracking-[0.3em]">Questão {currentIdx + 1}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner mr-2 items-center">
+                      <div className="flex items-center gap-2 px-3 border-r border-slate-200 mr-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Texto</span>
+                        <input type="range" min="0.8" max="2.5" step="0.1" value={localFontSize} onChange={(e) => setLocalFontSize(parseFloat(e.target.value))} className="w-16 accent-[#fec868] h-1" title="Aumentar/Diminuir letra da questão" />
+                      </div>
+                      <button onClick={() => copyQuestionToClipboard(questions[currentIdx])} className={`p-2 rounded-lg transition-all active:scale-90 mr-1 ${copiedId === questions[currentIdx].id ? 'bg-[#abc270] text-white shadow-lg' : 'text-slate-300 hover:text-[#fec868]'}`} title="Copiar questão inteira">
+                        {copiedId === questions[currentIdx].id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       </button>
-                   </div>
+                      <button onClick={() => handleSelectiveMark('highlight')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentIdx) ? 'bg-[#fff0d5] text-[#fec868] shadow-sm border border-[#ffe6b9]' : 'text-slate-300 hover:text-[#fec868]'}`} title="Destacar (Selecione texto ou clique para todo enunciado)">
+                        <Highlighter className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleSelectiveMark('strike')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionScratched.includes(currentIdx) ? 'bg-slate-200 text-slate-600 shadow-sm' : 'text-slate-300 hover:text-[#fec868]'}`} title="Taxar (Selecione texto ou clique para todo enunciado)">
+                        <PenLine className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setQuestionScratched(questionScratched.filter((i) => i !== currentIdx));
+                          setQuestionHighlighted(questionHighlighted.filter((i) => i !== currentIdx));
+                        }}
+                        className="p-2 text-slate-300 hover:text-red-500 transition-all active:scale-90"
+                        title="Limpar Marcações"
+                      >
+                        <Eraser className="w-4 h-4" />
+                      </button>
+                      <button onClick={handleUndo} disabled={!(undoStack[currentIdx] && undoStack[currentIdx].length > 0)} className="p-2 text-slate-300 hover:text-[#fdad74] disabled:opacity-20 transition-all active:scale-90" title="Desfazer Marcação">
+                        <Undo2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <button onClick={toggleFlag} className={`p-2.5 rounded-xl transition-all active:scale-95 flex-shrink-0 ${flagged.includes(currentIdx) ? 'bg-[#fec868] text-white shadow-lg' : 'bg-slate-50 text-slate-300 hover:text-[#fec868] hover:bg-[#fec868]/10'}`} title="Marcar para análise">
+                      <Flag className={`w-4 h-4 ${flagged.includes(currentIdx) ? 'fill-current' : ''}`} />
+                    </button>
+                  </div>
                 </div>
                 <style>{`
-                  .question-container.markdown-body { font-size: ${17 * localFontSize}px !important; }
-                `}</style>
-                <div 
+ .question-container.markdown-body { font-size: ${17 * localFontSize}px !important; }
+ `}</style>
+                <div
                   ref={questionTextRef}
-                  className={`font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 question-container ${
-                    questionScratched.includes(currentIdx) ? 'text-slate-300 line-through grayscale blur-[0.5px] opacity-40 italic' : 
-                    questionHighlighted.includes(currentIdx) ? 'text-slate-800 bg-yellow-100/50 p-6 rounded-2xl border-l-[6px] border-l-yellow-400' : 
-                    'text-slate-700'
-                  }`} 
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentQ.question) }}
+                  className={`font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 question-container ${questionScratched.includes(currentIdx) ? 'text-slate-300 line-through grayscale blur-[0.5px] opacity-40 ' : questionHighlighted.includes(currentIdx) ? 'text-slate-800 bg-[#fff0d5]/50 p-6 rounded-2xl border-l-[6px] border-l-yellow-400' : 'text-slate-700'}`}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(currentQ.question),
+                  }}
                 />
               </div>
 
-              <div className={currentQ.options.every(o => !o.trim()) ? "flex flex-wrap justify-center gap-4 mb-10" : "grid grid-cols-1 gap-4 mb-10"}>
-                  {currentQ.options.map((opt, idx) => {
-                    const isCorrect = idx === currentQ.correctAnswer;
-                    const isSelected = tempSelectedOpt === idx;
-                    const isCrossedOut = crossedOut.includes(idx);
-                    const isFinalSelected = selectedOpt === idx;
-                    const isQuickMode = currentQ.options.every(o => !o.trim());
-                    
-                    let cardClass = "bg-white border border-slate-100 hover:border-blue-200 hover:bg-slate-50/50 text-slate-600 shadow-sm";
-                    let circleClass = "border-slate-100 text-slate-300 group-hover:border-blue-500/50 group-hover:text-blue-500";
-                    let textClass = "text-slate-600";
-                    
-                    if (isSelected && !isSubmitted) {
-                      cardClass = "border-blue-200 bg-blue-50/20 text-slate-900 shadow-md border-l-[4px] border-l-blue-500 ring-4 ring-blue-500/5";
-                      circleClass = "bg-blue-100 border-blue-500 text-blue-600";
+              <div className={currentQ.options.every((o) => !o.trim()) ? 'flex flex-wrap justify-center gap-4 mb-10' : 'grid grid-cols-1 gap-4 mb-10'}>
+                {currentQ.options.map((opt, idx) => {
+                  const isCorrect = idx === currentQ.correctAnswer;
+                  const isSelected = tempSelectedOpt === idx;
+                  const isCrossedOut = crossedOut.includes(idx);
+                  const isFinalSelected = selectedOpt === idx;
+                  const isQuickMode = currentQ.options.every((o) => !o.trim());
+
+                  let cardClass = 'bg-white border border-slate-100 hover:border-[#fec868]/25 hover:bg-slate-50/50 text-slate-600 shadow-sm';
+                  let circleClass = 'border-slate-100 text-slate-300 group-hover:border-[#fec868]/50 group-hover:text-[#fec868]';
+                  let textClass = 'text-slate-600';
+
+                  if (isSelected && !isSubmitted) {
+                    cardClass = 'border-[#fec868]/25 bg-[#fec868]/10/20 text-slate-900 shadow-md border-l-[4px] border-l-blue-500 ring-4 ring-[#fec868]/5';
+                    circleClass = 'bg-[#fec868]/15 border-[#fec868] text-[#fec868]';
+                  }
+
+                  if (isCrossedOut && !isSubmitted) {
+                    cardClass = 'border-transparent bg-slate-50/50 opacity-40';
+                    textClass = 'text-slate-300 line-through grayscale';
+                  }
+
+                  if (isSubmitted) {
+                    if (isCorrect) {
+                      cardClass = 'bg-[#abc270]/10 border-[#abc270]/25 text-[#596b2a] border-l-[4px] border-l-green-500';
+                      circleClass = 'bg-[#abc270] border-[#abc270] text-white';
+                      textClass = 'text-[#596b2a] font-bold';
+                    } else if (isFinalSelected) {
+                      cardClass = 'bg-red-50 border-red-200 text-red-700 border-l-[4px] border-l-red-500';
+                      circleClass = 'bg-red-500 border-red-500 text-white';
+                      textClass = 'text-red-700 font-bold';
+                    } else {
+                      cardClass = 'opacity-40 bg-slate-50 border-transparent grayscale';
                     }
+                  }
 
-                    if (isCrossedOut && !isSubmitted) {
-                      cardClass = "border-transparent bg-slate-50/50 opacity-40";
-                      textClass = "text-slate-300 line-through grayscale";
-                    }
-
-                    if (isSubmitted) {
-                      if (isCorrect) {
-                        cardClass = "bg-green-50 border-green-200 text-green-700 border-l-[4px] border-l-green-500";
-                        circleClass = "bg-green-500 border-green-500 text-white";
-                        textClass = "text-green-700 font-bold";
-                      } else if (isFinalSelected) {
-                        cardClass = "bg-red-50 border-red-200 text-red-700 border-l-[4px] border-l-red-500";
-                        circleClass = "bg-red-500 border-red-500 text-white";
-                        textClass = "text-red-700 font-bold";
-                      } else {
-                        cardClass = "opacity-40 bg-slate-50 border-transparent grayscale";
-                      }
-                    }
-
-                    return (
-                      <div key={idx} className="relative group">
-                        <div 
-                          onClick={() => handleAnswerSelection(idx)}
-                          onDoubleClick={() => handleDoubleClick(idx)}
-                          className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-6 rounded-[25px] flex items-center gap-6'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] ${cardClass} relative overflow-hidden`}
-                          role="button"
-                          aria-disabled={isSubmitted}
-                          tabIndex={0}
-                        >
-                          <div className={`flex items-center flex-1 ${isQuickMode ? 'justify-center' : 'gap-6'}`}>
-                            <span className={`${isQuickMode ? 'w-10 h-10 rounded-xl' : 'w-12 h-12 rounded-full'} border flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-all ${circleClass}`}>
-                              {String.fromCharCode(65 + idx)}
-                            </span>
-                            {!isQuickMode && <span className={`text-[16px] leading-snug transition-colors ${textClass}`}>{opt}</span>}
-                          </div>
-
-                          {!isSubmitted && !isQuickMode && (
-                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-200'}`}>
-                               {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}
-                             </div>
-                          )}
+                  return (
+                    <div key={idx} className="relative group">
+                      <div onClick={() => handleAnswerSelection(idx)} onDoubleClick={() => handleDoubleClick(idx)} className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-6 rounded-[25px] flex items-center gap-6'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] ${cardClass} relative overflow-hidden`} role="button" aria-disabled={isSubmitted} tabIndex={0}>
+                        <div className={`flex items-center flex-1 ${isQuickMode ? 'justify-center' : 'gap-6'}`}>
+                          <span className={`${isQuickMode ? 'w-10 h-10 rounded-xl' : 'w-12 h-12 rounded-full'} border flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-all ${circleClass}`}>{String.fromCharCode(65 + idx)}</span>
+                          {!isQuickMode && <span className={`text-[16px] leading-snug transition-colors ${textClass}`}>{opt}</span>}
                         </div>
+
+                        {!isSubmitted && !isQuickMode && <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-[#fec868] bg-[#fec868]' : 'border-slate-200'}`}>{isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}</div>}
                       </div>
-                    );
-                  })}
+                    </div>
+                  );
+                })}
               </div>
 
               {!isSubmitted ? (
                 <div className="flex justify-center md:justify-start">
-                  <button 
-                    onClick={handleSubmitAnswer}
-                    disabled={tempSelectedOpt === null}
-                    className="bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-white/5 disabled:text-white/20 disabled:cursor-not-allowed text-white font-bold px-10 py-3.5 rounded-xl uppercase text-[11px] tracking-wider transition-all active:scale-95 shadow-lg shadow-green-900/10"
-                  >
+                  <button onClick={handleSubmitAnswer} disabled={tempSelectedOpt === null} className="bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-white/5 disabled:text-white/20 disabled:cursor-not-allowed text-white font-bold px-10 py-3.5 rounded-xl uppercase text-[11px] tracking-wider transition-all active:scale-95 shadow-lg shadow-[#3c481c]/10">
                     CONFERIR RESPOSTA
                   </button>
                 </div>
               ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-5 duration-500">
-                  <div className={`p-8 rounded-[40px] mb-10 border ${selectedOpt === currentQ.correctAnswer ? 'bg-green-50 border-green-100 shadow-sm' : 'bg-red-50 border-red-100 shadow-sm'}`}>
+                  <div className={`p-8 rounded-[40px] mb-10 border ${selectedOpt === currentQ.correctAnswer ? 'bg-[#abc270]/10 border-[#abc270]/15 shadow-sm' : 'bg-red-50 border-red-100 shadow-sm'}`}>
                     <div className="flex items-center gap-6">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg ${selectedOpt === currentQ.correctAnswer ? 'bg-green-500' : 'bg-red-500'}`}>
-                        {selectedOpt === currentQ.correctAnswer ? '✓' : '✗'}
-                      </div>
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg ${selectedOpt === currentQ.correctAnswer ? 'bg-[#abc270]' : 'bg-red-500'}`}>{selectedOpt === currentQ.correctAnswer ? '✓' : '✗'}</div>
                       <div>
-                        <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedOpt === currentQ.correctAnswer ? 'text-green-600' : 'text-red-600'}`}>
-                          {selectedOpt === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}
-                        </p>
+                        <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedOpt === currentQ.correctAnswer ? 'text-[#abc270]' : 'text-red-600'}`}>{selectedOpt === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}</p>
                         <p className="text-slate-800 text-[17px] font-bold">
-                          Gabarito: <span className="text-blue-600">{String.fromCharCode(65 + currentQ.correctAnswer)}</span>
+                          Gabarito: <span className="text-[#fec868]">{String.fromCharCode(65 + currentQ.correctAnswer)}</span>
                         </p>
                       </div>
                     </div>
@@ -1417,95 +1412,80 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                       <div ref={noteSectionRef} className="bg-white border border-slate-100 p-6 md:p-8 rounded-[35px] mb-8 relative shadow-sm group hover:shadow-md transition-all">
                         <div className="flex items-center justify-between mb-6">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+                            <div className="w-10 h-10 bg-[#fec868]/10 text-[#fec868] rounded-xl flex items-center justify-center shadow-sm">
                               <FileText className="w-5 h-5" />
                             </div>
                             <div>
                               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">SUA NOTA ESTRATÉGICA</h4>
-                              <p className="text-[9px] font-bold text-blue-500/60 uppercase tracking-tight">Refine seu conhecimento aqui</p>
+                              <p className="text-[9px] font-bold text-[#fec868]/60 uppercase tracking-tight">Refine seu conhecimento aqui</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tamanho</span>
-                            <input 
-                              type="range" 
-                              min="0.5" 
-                              max="6" 
-                              step="0.1" 
-                              value={noteFontSize} 
-                              onChange={(e) => setNoteFontSize(parseFloat(e.target.value))}
-                              className="w-24 accent-blue-500"
-                            />
+                            <input type="range" min="0.5" max="6" step="0.1" value={noteFontSize} onChange={(e) => setNoteFontSize(parseFloat(e.target.value))} className="w-24 accent-[#fec868]" />
                           </div>
-                          <button 
-                            onClick={() => setIsNoteExpanded(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-sm"
-                          >
+                          <button onClick={() => setIsNoteExpanded(true)} className="flex items-center gap-2 px-4 py-2 bg-[#fec868]/10 text-[#fec868] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#fec868] hover:text-white transition-all active:scale-95 shadow-sm">
                             <Maximize2 className="w-3.5 h-3.5" />
                             ABRIR EDITOR
                           </button>
                         </div>
-                        
+
                         {userCommentaryInput ? (
                           <>
                             <style>{`
-                              .note-container.markdown-body { 
-                                font-size: ${22 * fontSizeMultiplier * noteFontSize}px !important; 
-                                line-height: 1.6 !important;
-                                color: #334155 !important;
-                              }
-                              .note-container.markdown-body p, 
-                              .note-container.markdown-body li, 
-                              .note-container.markdown-body div, 
-                              .note-container.markdown-body span,
-                              .note-container.markdown-body label,
-                              .note-container.markdown-body section,
-                              .note-container.markdown-body article { 
-                                font-size: 1em !important; 
-                                line-height: inherit !important;
-                              }
-                              .note-container.markdown-body h1 { font-size: 2.2em !important; font-weight: 800 !important; margin-bottom: 0.5em !important; }
-                              .note-container.markdown-body h2 { font-size: 1.8em !important; font-weight: 700 !important; margin-bottom: 0.5em !important; }
-                              .note-container.markdown-body h3 { font-size: 1.5em !important; font-weight: 600 !important; margin-bottom: 0.5em !important; }
-                              .note-container.markdown-body code { font-size: 0.85em !important; background: #f1f5f9 !important; padding: 0.2em 0.4em !important; border-radius: 4px !important; }
-                              .note-container.markdown-body ul, .note-container.markdown-body ol { padding-left: 1.5em !important; margin-bottom: 1em !important; }
-                              .note-container.markdown-body li { margin-bottom: 0.5em !important; }
-                              .note-container.markdown-body strong { font-weight: 700 !important; color: #1e293b !important; }
-                            `}</style>
-                            <div 
-                              className="text-slate-600 font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2 note-container" 
-                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userCommentaryInput) }}
+ .note-container.markdown-body { 
+ font-size: ${22 * fontSizeMultiplier * noteFontSize}px !important; 
+ line-height: 1.6 !important;
+ color: #334155 !important;
+ }
+ .note-container.markdown-body p, 
+ .note-container.markdown-body li, 
+ .note-container.markdown-body div, 
+ .note-container.markdown-body span,
+ .note-container.markdown-body label,
+ .note-container.markdown-body section,
+ .note-container.markdown-body article { 
+ font-size: 1em !important; 
+ line-height: inherit !important;
+ }
+ .note-container.markdown-body h1 { font-size: 2.2em !important; font-weight: 800 !important; margin-bottom: 0.5em !important; }
+ .note-container.markdown-body h2 { font-size: 1.8em !important; font-weight: 700 !important; margin-bottom: 0.5em !important; }
+ .note-container.markdown-body h3 { font-size: 1.5em !important; font-weight: 600 !important; margin-bottom: 0.5em !important; }
+ .note-container.markdown-body code { font-size: 0.85em !important; background: #f1f5f9 !important; padding: 0.2em 0.4em !important; border-radius: 4px !important; }
+ .note-container.markdown-body ul, .note-container.markdown-body ol { padding-left: 1.5em !important; margin-bottom: 1em !important; }
+ .note-container.markdown-body li { margin-bottom: 0.5em !important; }
+ .note-container.markdown-body strong { font-weight: 700 !important; color: #1e293b !important; }
+ `}</style>
+                            <div
+                              className="text-slate-600 font-medium space-y-4 markdown-body prose prose-slate max-w-none border-l-4 border-slate-100 pl-6 py-2 note-container"
+                              dangerouslySetInnerHTML={{
+                                __html: DOMPurify.sanitize(userCommentaryInput),
+                              }}
                             />
                           </>
                         ) : (
-                          <div 
-                            onClick={() => setIsNoteExpanded(true)}
-                            className="cursor-pointer py-10 border-2 border-dashed border-slate-100 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-300 hover:text-blue-500 hover:border-blue-200 transition-all"
-                          >
-                             <Brain className="w-8 h-8 opacity-20" />
-                             <p className="font-bold text-xs italic tracking-tight">Nenhuma anotação estratégica ainda. Clique para adicionar.</p>
+                          <div onClick={() => setIsNoteExpanded(true)} className="cursor-pointer py-10 border-2 border-dashed border-slate-100 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-300 hover:text-[#fec868] hover:border-[#fec868]/25 transition-all">
+                            <Brain className="w-8 h-8 opacity-20" />
+                            <p className="font-bold text-xs tracking-tight">Nenhuma anotação estratégica ainda. Clique para adicionar.</p>
                           </div>
                         )}
                       </div>
                     )}
 
-                    <div className="flex items-center gap-3 mb-6 font-black italic text-blue-500">
-                       <span className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-sm shadow-sm">A</span>
-                       <h4 className="text-[10px] uppercase tracking-widest">MAPEAMENTO DA LÓGICA</h4>
+                    <div className="flex items-center gap-3 mb-6 font-black text-[#fec868]">
+                      <span className="w-8 h-8 bg-[#fec868]/10 rounded-lg flex items-center justify-center text-sm shadow-sm">A</span>
+                      <h4 className="text-[10px] uppercase tracking-widest">MAPEAMENTO DA LÓGICA</h4>
                     </div>
 
                     {onTriggerGuidedLesson && (
-                      <button 
-                        onClick={() => onTriggerGuidedLesson(selectedSubject || 'Geral', currentQ.topic || topic)}
-                        className="w-full mb-8 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-xl shadow-blue-500/20 active:scale-95"
-                      >
+                      <button onClick={() => onTriggerGuidedLesson(selectedSubject || 'Geral', currentQ.topic || topic)} className="w-full mb-8 bg-gradient-to-r from-[#fec868] to-[#ffb22a] text-white p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-xl shadow-[#fec868]/20 active:scale-95">
                         <div className="flex items-center gap-4 text-left">
                           <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
                             <BookOpen className="w-6 h-6" />
                           </div>
                           <div>
                             <p className="text-[9px] font-black uppercase tracking-widest opacity-70">Sentiu dificuldade?</p>
-                            <h4 className="font-black text-sm uppercase italic">ACIONAR AULA GUIADA SOBRE ESSE ASSUNTO</h4>
+                            <h4 className="font-black text-sm uppercase ">ACIONAR AULA GUIADA SOBRE ESSE ASSUNTO</h4>
                           </div>
                         </div>
                         <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
@@ -1515,38 +1495,32 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                     <MarkdownContent content={currentQ.explanation} fontSizeMultiplier={fontSizeMultiplier} />
 
                     {/* Imagens Adicionais do Usuário */}
-                    {(currentQ.explanationImages && currentQ.explanationImages.length > 0) && (
+                    {currentQ.explanationImages && currentQ.explanationImages.length > 0 && (
                       <div className="flex flex-col gap-8 mt-10">
                         {currentQ.explanationImages.map((img, i) => {
                           const currentSize = currentQ.explanationImageSizes?.[i] || 'md';
-                          const sizeClasses = {
-                            'sm': 'max-w-[200px]',
-                            'md': 'max-w-md',
-                            'lg': 'max-w-2xl',
-                            'full': 'max-w-full'
-                          }[currentSize as 'sm' | 'md' | 'lg' | 'full'] || 'max-w-md';
+                          const sizeClasses =
+                            {
+                              sm: 'max-w-[200px]',
+                              md: 'max-w-md',
+                              lg: 'max-w-2xl',
+                              full: 'max-w-full',
+                            }[currentSize as 'sm' | 'md' | 'lg' | 'full'] || 'max-w-md';
 
                           return (
-                            <div key={i} className={`relative group rounded-[35px] overflow-hidden border-2 border-slate-100 shadow-sm transition-all hover:shadow-xl hover:border-blue-200 mx-auto ${sizeClasses}`}>
+                            <div key={i} className={`relative group rounded-[35px] overflow-hidden border-2 border-slate-100 shadow-sm transition-all hover:shadow-xl hover:border-[#fec868]/25 mx-auto ${sizeClasses}`}>
                               <img src={img} alt={`Complemento Visual ${i}`} className="w-full h-auto object-contain bg-white min-h-[100px]" />
-                              
+
                               {/* Overlay de Ações */}
-                              <div className="absolute inset-x-0 bottom-0 bg-slate-900/60 backdrop-blur-sm p-4 translate-y-full group-hover:translate-y-0 transition-all flex items-center justify-between">
+                              <div className="absolute inset-x-0 bottom-0 bg-[#473c33]/60 backdrop-blur-sm p-4 translate-y-full group-hover:translate-y-0 transition-all flex items-center justify-between">
                                 <div className="flex gap-2">
-                                  {['sm', 'md', 'lg', 'full'].map(s => (
-                                    <button
-                                      key={s}
-                                      onClick={() => handleUpdateImageSize(i, s)}
-                                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${currentSize === s ? 'bg-blue-500 text-white shadow-lg' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
-                                    >
+                                  {['sm', 'md', 'lg', 'full'].map((s) => (
+                                    <button key={s} onClick={() => handleUpdateImageSize(i, s)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${currentSize === s ? 'bg-[#fec868] text-white shadow-lg' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}>
                                       {s}
                                     </button>
                                   ))}
                                 </div>
-                                <button 
-                                  onClick={() => handleRemoveExplanationImage(i)}
-                                  className="p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-xl transition-all active:scale-90"
-                                >
+                                <button onClick={() => handleRemoveExplanationImage(i)} className="p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-xl transition-all active:scale-90">
                                   <X className="w-4 h-4" />
                                 </button>
                               </div>
@@ -1559,32 +1533,21 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                     {/* Botão de Adição de Mídia */}
                     {showImageArea && (
                       <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-6">
-                        <label className="flex items-center gap-3 px-10 py-5 bg-white border-2 border-dashed border-blue-100 hover:border-blue-300 text-blue-400 hover:text-blue-600 rounded-[30px] cursor-pointer transition-all active:scale-95 shadow-sm group">
+                        <label className="flex items-center gap-3 px-10 py-5 bg-white border-2 border-dashed border-[#fec868]/15 hover:border-[#fec868]/35 text-[#fec868]/70 hover:text-[#fec868] rounded-[30px] cursor-pointer transition-all active:scale-95 shadow-sm group">
                           <ImageIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
                           <span className="text-[10px] font-black uppercase tracking-[0.2em]">ANEXAR COMPLEMENTO VISUAL</span>
-                          <input 
-                            ref={imageInputRef}
-                            type="file" 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={handleImageUpload}
-                          />
+                          <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                         </label>
-                        <button 
-                          onClick={handleSaveSingleQuestion}
-                          className="flex items-center gap-3 px-10 py-5 bg-blue-600 text-white rounded-[30px] transition-all active:scale-95 shadow-xl shadow-blue-500/20 hover:bg-blue-700 group"
-                        >
+                        <button onClick={handleSaveSingleQuestion} className="flex items-center gap-3 px-10 py-5 bg-[#fec868] text-white rounded-[30px] transition-all active:scale-95 shadow-xl shadow-[#fec868]/20 hover:bg-[#ffb22a] group">
                           <Save className="w-5 h-5 group-hover:scale-110 transition-transform" />
                           <span className="text-[10px] font-black uppercase tracking-[0.2em]">SALVAR ESTA QUESTÃO</span>
                         </button>
                       </div>
                     )}
-                    {(showImageArea || (currentQ.explanationImages && currentQ.explanationImages.length > 0)) && (
-                      <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest italic text-center mt-4">Aumente sua retenção com imagens, mapas mentais ou prints.</p>
-                    )}
+                    {(showImageArea || (currentQ.explanationImages && currentQ.explanationImages.length > 0)) && <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest text-center mt-4">Aumente sua retenção com imagens, mapas mentais ou prints.</p>}
 
                     {currentQ.memoryHint && (
-                      <div className="bg-blue-600 p-10 rounded-[45px] border border-blue-500/10 shadow-2xl shadow-blue-900/20 relative overflow-hidden mt-12 group transition-all hover:shadow-blue-900/30">
+                      <div className="bg-[#fec868] p-10 rounded-[45px] border border-[#fec868]/10 shadow-2xl relative overflow-hidden mt-12 group transition-all hover:">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
                         <p className="text-[11px] font-black text-white uppercase tracking-[0.5em] mb-6 flex items-center gap-4">
                           <span className="text-2xl animate-bounce">⚡</span> BIZU DE MEMÓRIA (REDE NEURAL)
@@ -1595,10 +1558,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between mb-10">
-                    <button 
-                      onClick={() => setIsSubmitted(false)}
-                      className="text-slate-400 hover:text-blue-500 font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95"
-                    >
+                    <button onClick={() => setIsSubmitted(false)} className="text-slate-400 hover:text-[#fec868] font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95">
                       <ChevronLeft className="w-4 h-4" /> REVISAR RESPOSTA
                     </button>
                   </div>
@@ -1607,29 +1567,21 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
             </div>
 
             <div className="flex flex-col md:flex-row items-center justify-center gap-6 mt-16 scale-110">
-               <div className="flex items-center justify-center gap-3">
-                <button 
-                  onClick={handlePrev}
-                  disabled={currentIdx === 0}
-                  className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-xl shadow-sm transition-all disabled:opacity-20 active:scale-95"
-                >
+              <div className="flex items-center justify-center gap-3">
+                <button onClick={handlePrev} disabled={currentIdx === 0} className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-[#fec868] rounded-xl shadow-sm transition-all disabled:opacity-20 active:scale-95">
                   <ChevronLeft className="w-6 h-6" />
                 </button>
-                <button 
-                  onClick={handleNext}
-                  disabled={currentIdx === questions.length - 1}
-                  className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-xl shadow-sm transition-all disabled:opacity-20 active:scale-95"
-                >
+                <button onClick={handleNext} disabled={currentIdx === questions.length - 1} className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-[#fec868] rounded-xl shadow-sm transition-all disabled:opacity-20 active:scale-95">
                   <ChevronRight className="w-6 h-6" />
                 </button>
-                <button 
-                  onClick={handleShuffle}
-                  className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-xl shadow-sm transition-all active:scale-95"
-                >
+                <button onClick={handleShuffle} className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-[#fec868] rounded-xl shadow-sm transition-all active:scale-95">
                   <Shuffle className="w-6 h-6" />
                 </button>
-                <button 
-                  onClick={() => { handleFinish(); setQuestions([]); }}
+                <button
+                  onClick={() => {
+                    handleFinish();
+                    setQuestions([]);
+                  }}
                   className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-red-500 rounded-xl shadow-sm transition-all active:scale-95"
                 >
                   <LogOut className="w-6 h-6" />
@@ -1644,34 +1596,39 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
       {questions.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-slate-100 z-[210] shadow-2xl">
           <div className="max-w-3xl mx-auto space-y-3">
-             <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
-               <span>PROGRESSO ATUAL</span>
-               <span className="text-blue-600">{Math.round(((currentIdx + 1) / questions.length) * 100)}%</span>
-             </div>
-             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-               <div 
-                 className="h-full bg-blue-500 transition-all duration-700"
-                 style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }}
-               />
-             </div>
+            <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
+              <span>PROGRESSO ATUAL</span>
+              <span className="text-[#fec868]">{Math.round(((currentIdx + 1) / questions.length) * 100)}%</span>
+            </div>
+            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#fec868] transition-all duration-700"
+                style={{
+                  width: `${((currentIdx + 1) / questions.length) * 100}%`,
+                }}
+              />
+            </div>
           </div>
         </div>
       )}
 
       {isNoteExpanded && (
-        <div className="fixed inset-0 z-[1000] bg-slate-900/90 backdrop-blur-md p-6 md:p-12 flex flex-col">
+        <div className="fixed inset-0 z-[1000] bg-[#473c33]/90 backdrop-blur-md p-6 md:p-12 flex flex-col">
           <div className="flex items-center justify-between mb-8 max-w-5xl mx-auto w-full">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-xl">
+              <div className="w-12 h-12 bg-[#fec868] rounded-2xl flex items-center justify-center text-white shadow-xl">
                 <FileText className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white tracking-tight uppercase italic">MODO EDIÇÃO</h2>
+                <h2 className="text-2xl font-black text-white tracking-tight uppercase ">MODO EDIÇÃO</h2>
                 <p className="text-white/40 text-[10px] font-black tracking-[0.3em] uppercase">Refine sua anotação estratégica</p>
               </div>
             </div>
-            <button 
-              onClick={() => { handleSaveUserCommentary(); setIsNoteExpanded(false); }}
+            <button
+              onClick={() => {
+                handleSaveUserCommentary();
+                setIsNoteExpanded(false);
+              }}
               className="p-4 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all active:scale-90"
             >
               <Minimize2 className="w-4 h-4" />
@@ -1679,90 +1636,74 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
           </div>
 
           <div className="flex-1 max-w-5xl mx-auto w-full bg-white rounded-[40px] p-8 md:p-12 shadow-2xl overflow-hidden">
-            <RichTextEditor
-              content={userCommentaryInput}
-              onChange={setUserCommentaryInput}
-              fontSize={22 * fontSizeMultiplier * noteFontSize}
-            />
+            <RichTextEditor content={userCommentaryInput} onChange={setUserCommentaryInput} fontSize={22 * fontSizeMultiplier * noteFontSize} />
           </div>
-          
+
           <div className="mt-8 flex justify-center">
-             <button 
-               onClick={() => { handleSaveUserCommentary(); setIsNoteExpanded(false); }}
-               className="px-12 py-5 bg-blue-600 text-white font-black uppercase text-[11px] tracking-widest rounded-full hover:bg-blue-700 transition-all shadow-2xl active:scale-95"
-             >
-               CONCLUIR E SALVAR
-             </button>
+            <button
+              onClick={() => {
+                handleSaveUserCommentary();
+                setIsNoteExpanded(false);
+              }}
+              className="px-12 py-5 bg-[#fec868] text-white font-black uppercase text-[11px] tracking-widest rounded-full hover:bg-[#ffb22a] transition-all shadow-2xl active:scale-95"
+            >
+              CONCLUIR E SALVAR
+            </button>
           </div>
         </div>
       )}
 
-      {showSaveModal && (
-        <SaveToFolderModal 
-          folders={folders}
-          suggestedName={saveMode === 'SINGLE' ? (currentQ.topic || topic) : topic}
-          onConfirm={handleConfirmSave}
-          onClose={() => setShowSaveModal(false)}
-        />
-      )}
+      {showSaveModal && <SaveToFolderModal folders={folders} suggestedName={saveMode === 'SINGLE' ? currentQ.topic || topic : topic} onConfirm={handleConfirmSave} onClose={() => setShowSaveModal(false)} />}
 
       {/* Floating Action Buttons Sidebar */}
       {questions.length > 0 && isSubmitted && (
         <div className="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-[250] items-center">
           <div className="flex flex-col bg-white/100 backdrop-blur-xl p-2.5 rounded-full border border-slate-200 shadow-2xl gap-3">
-            <button 
+            <button
               onClick={() => {
                 setShowNoteSection(!showNoteSection);
                 if (!showNoteSection) {
                   setTimeout(() => {
-                    noteSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    noteSectionRef.current?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'center',
+                    });
                     setIsNoteExpanded(true);
                   }, 100);
                 }
               }}
-              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative ${showNoteSection ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-100 hover:border-blue-200'}`}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative ${showNoteSection ? 'bg-[#fec868] text-white' : 'bg-white text-slate-600 border border-slate-100 hover:border-[#fec868]/25'}`}
               title="Alternar Nota Estratégica"
             >
               <MessageSquarePlus className="w-6 h-6" />
-              <div className="absolute right-full mr-4 px-3 py-1.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">
-                {showNoteSection ? 'Ocultar Nota' : 'Nota Estratégica'}
-              </div>
+              <div className="absolute right-full mr-4 px-3 py-1.5 bg-[#473c33] text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">{showNoteSection ? 'Ocultar Nota' : 'Nota Estratégica'}</div>
             </button>
-            <button 
+            <button
               onClick={() => {
                 setShowImageArea(!showImageArea);
                 if (!showImageArea) {
                   setTimeout(() => {
-                    imageInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    imageInputRef.current?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'center',
+                    });
                   }, 100);
                 }
               }}
-              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative ${showImageArea ? 'bg-blue-600 text-white border-transparent' : 'bg-white border border-slate-100 text-slate-600 hover:border-blue-200'}`}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative ${showImageArea ? 'bg-[#fec868] text-white border-transparent' : 'bg-white border border-slate-100 text-slate-600 hover:border-[#fec868]/25'}`}
               title="Alternar Anexo de Imagem"
             >
               <ImageIcon className="w-6 h-6" />
-              <div className="absolute right-full mr-4 px-3 py-1.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">
-                {showImageArea ? 'Ocultar Imagem' : 'Anexar Imagem'}
-              </div>
+              <div className="absolute right-full mr-4 px-3 py-1.5 bg-[#473c33] text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">{showImageArea ? 'Ocultar Imagem' : 'Anexar Imagem'}</div>
             </button>
             {onTriggerGuidedLesson && (
-              <button 
-                onClick={() => onTriggerGuidedLesson(selectedSubject || 'Geral', currentQ.topic || topic)}
-                className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative border border-white/20"
-                title="Aula Guiada sobre este assunto"
-              >
+              <button onClick={() => onTriggerGuidedLesson(selectedSubject || 'Geral', currentQ.topic || topic)} className="w-14 h-14 bg-gradient-to-br from-[#fec868] to-[#fec868] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative border border-white/20" title="Aula Guiada sobre este assunto">
                 <BookOpen className="w-6 h-6" />
-                <div className="absolute right-full mr-4 px-3 py-1.5 bg-indigo-800 text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">
-                  Aula Guiada
-                </div>
+                <div className="absolute right-full mr-4 px-3 py-1.5 bg-[#ac6e00] text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">Aula Guiada</div>
               </button>
             )}
             <div className="w-full h-px bg-slate-100 my-1"></div>
-            <button 
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="w-14 h-14 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all"
-              title="Voltar ao Topo"
-            >
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="w-14 h-14 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all" title="Voltar ao Topo">
               <HelpCircle className="w-5 h-5 rotate-180" />
             </button>
           </div>
@@ -1770,7 +1711,6 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({
       )}
     </div>
   );
-
 };
 
 export default TDHQuestoes;

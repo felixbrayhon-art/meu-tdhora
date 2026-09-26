@@ -1,0 +1,587 @@
+from __future__ import annotations
+
+import json
+import re
+
+from .prompt_builder import QuestionInput, SYSTEM_RULES
+
+
+INSUFFICIENT = "Fonte fornecida insuficiente para afirmar com segurança."
+
+# Internal source IDs (S1, S2, ...) exist only to link an `evidenceQuotes`
+# entry back to the evidence list — they must never appear inside the
+# student-facing `text`. Word-boundary-anchored so it only catches the
+# literal ID token (never a real citation like "art. 5º" or a coincidental
+# "s1" inside some other word).
+RE_SOURCE_ID_LEAK = re.compile(r"(?<![A-Za-z0-9])S\d+(?![A-Za-z0-9])")
+
+# Deterministic, best-effort removal of the common ways a leaked ID shows
+# up in prose. Applied BEFORE the RE_SOURCE_ID_LEAK re-check in
+# process_structured_explanation: if a leak survives this, the section is
+# safe-downgraded rather than shipped with a mangled sentence or a visible
+# internal ID.
+_LEAK_REMOVAL_PATTERNS = [
+    re.compile(r"\s*\(\s*S\d+\s*\)", re.IGNORECASE),  # "(S1)"
+    re.compile(r",?\s*conforme\s+(?:a\s+)?S\d+\b", re.IGNORECASE),  # "conforme S1" / "conforme a S2"
+    re.compile(r",?\s*fonte\s+S\d+\b", re.IGNORECASE),  # "fonte S3"
+    re.compile(r",\s*S\d+\b"),  # ", S2"
+]
+
+SECTIONS = {
+    "practicalCase": "SITUAÇÃO PRÁTICA / CASO",
+    "concept": "CONCEITO",
+    "classification": "CLASSIFICAÇÃO, GÊNERO E ESPÉCIES",
+    "legalBasis": "BASE LEGAL / FUNDAMENTO",
+    "requirements": "REQUISITOS",
+    "traps": "PEGADINHAS — ATENÇÃO!",
+    "caseAnalysis": "ANÁLISE DO CASO PRÁTICO / QUESTÃO",
+    "dontConfuse": "NÃO CONFUNDA",
+    "examSummary": "RESUMO PARA A PROVA",
+    "curiosities": "CURIOSIDADES SOBRE O ASSUNTO",
+}
+
+# A single 10-section call routinely took 150-320s locally, and some
+# generations exceeded the 600s Ollama timeout outright (observed on Q45).
+# Splitting the same request into two independent, stateless calls — each
+# asking for only half the topics — halves the OUTPUT each call has to
+# produce (the actual bottleneck for local decode, not prompt size), which
+# cuts per-call latency and timeout risk, at the cost of repeating the
+# sources/rules block (cheap prefill) in both calls. Each group is
+# generated and validated independently, then combined by
+# merge_processed_explanations.
+SECTION_GROUPS: tuple[tuple[str, ...], ...] = (
+    ("practicalCase", "concept", "classification", "legalBasis", "requirements"),
+    ("traps", "caseAnalysis", "dontConfuse", "examSummary", "curiosities"),
+)
+assert set().union(*SECTION_GROUPS) == set(SECTIONS), "SECTION_GROUPS must cover exactly all SECTIONS"
+
+_TOPIC_RULES = {
+    "practicalCase": """practicalCase:
+- reformule apenas os fatos expressamente existentes no enunciado, em 2 a 4 frases;
+- não invente fatos;
+- não precisa de evidenceQuotes.""",
+
+    "concept": """concept:
+- explique o conceito jurídico central de forma objetiva;
+- use as fontes como base prioritária;
+- se a fonte for limitada, pode complementar com conhecimento jurídico confiável;
+- não invente dispositivo legal ou entendimento jurisprudencial.""",
+
+    "classification": """classification:
+- informe apenas a classificação juridicamente pertinente;
+- evite classificações especulativas ou desnecessárias;
+- conhecimento jurídico complementar é permitido quando não contradiz as fontes.""",
+
+    "legalBasis": """legalBasis:
+- priorize artigo, lei, súmula ou fundamento presente nas fontes fornecidas;
+- nunca invente número de artigo, lei, súmula, precedente ou referência normativa;
+- se a fonte trouxer o fundamento, use-o com precisão.""",
+
+    "requirements": """requirements:
+- explique os requisitos relevantes para a questão;
+- não transforme hipóteses alternativas em requisitos cumulativos;
+- se a fonte disser "A ou B", não escreva que A e B são ambos necessários;
+- preserve alternativas legais relevantes;
+- é permitido complementar a explicação quando a fonte for limitada, desde que não haja contradição.""",
+
+    "traps": """traps:
+- explique as pegadinhas relevantes da questão em 2 a 3 frases;
+- pode usar conhecimento jurídico complementar confiável;
+- não crie exceções, prazos, penas ou dispositivos inexistentes.""",
+
+    "caseAnalysis": """caseAnalysis:
+- compare os fatos narrados com a regra jurídica de forma direta;
+- prefira a estrutura FATO -> REGRA -> CONCLUSÃO;
+- não afirme que um fato não ocorreu apenas porque não foi mencionado;
+- pode complementar a ligação jurídica entre fato e regra quando a fonte for limitada.""",
+
+    "dontConfuse": """dontConfuse:
+- diferencie institutos próximos quando isso ajudar o aluno;
+- a distinção pode usar conhecimento jurídico complementar confiável;
+- não invente requisitos, artigos ou consequências.""",
+
+    "examSummary": """examSummary:
+- faça resumo curto, claro e útil para prova;
+- não generalize uma regra específica além do necessário.""",
+
+    "curiosities": """curiosities:
+- escreva somente informação complementar útil e juridicamente segura;
+- se não houver curiosidade realmente relevante, seja breve;
+- nunca invente dado jurídico para preencher este campo.""",
+}
+
+
+def _correct_text(question: QuestionInput) -> str:
+    return next(
+        (
+            text
+            for letter, text in question.alternatives
+            if letter == question.correct_letter
+        ),
+        "",
+    )
+
+
+def _format_alternatives(question: QuestionInput) -> str:
+    return "\n".join(
+        f"{letter}) {text}"
+        for letter, text in question.alternatives
+    )
+
+
+def _format_sources(sources: list[dict]) -> str:
+    if not sources:
+        return "(Nenhuma fonte jurídica selecionada.)"
+
+    blocks: list[str] = []
+
+    for index, source in enumerate(sources, start=1):
+        source_id = f"S{index}"
+
+        blocks.append(
+            "\n".join(
+                [
+                    f"[{source_id}]",
+                    f"Referência: {source.get('referencia', '')}",
+                    f"Texto jurídico: {source.get('texto', '')}",
+                    f"Fonte: {source.get('fonte', '')}",
+                    f"URL oficial: {source.get('url_oficial', '')}",
+                ]
+            )
+        )
+
+    return "\n\n".join(blocks)
+
+
+def build_structured_explanation_prompt(
+    question: QuestionInput,
+    sources: list[dict],
+    section_keys: list[str] | tuple[str, ...] | None = None,
+) -> str:
+    """`section_keys` restricts the prompt to a subset of SECTIONS (see
+    SECTION_GROUPS) — used to split one 10-section generation into two
+    smaller, faster calls. Defaults to all 10 keys when omitted, so
+    existing single-call callers are unaffected.
+    """
+    keys = list(section_keys) if section_keys is not None else list(SECTIONS.keys())
+    correct_text = _correct_text(question)
+
+    template = {
+        key: {
+            "text": "<texto do tópico, no máximo 2 a 4 frases>",
+            "evidenceQuotes": [
+                {"sourceId": "S1", "quote": "<trecho literal da fonte S1, se aplicável>"}
+            ],
+        }
+        for key in keys
+    }
+    if "practicalCase" in template:
+        template["practicalCase"]["evidenceQuotes"] = []
+
+    topic_rules = "\n\n".join(_TOPIC_RULES[key] for key in keys)
+
+    return f"""{SYSTEM_RULES}
+
+=== QUESTÃO OFICIAL ===
+
+Matéria:
+{question.subject or "não informada"}
+
+Enunciado:
+{question.statement}
+
+Alternativas:
+{_format_alternatives(question)}
+
+GABARITO OFICIAL DEFINITIVO:
+{question.correct_letter}) {correct_text}
+
+O gabarito acima é um dado de entrada.
+NÃO resolva novamente a questão.
+NÃO escolha outra alternativa.
+Sua única tarefa é explicar o gabarito oficial.
+
+=== FONTES JURÍDICAS AUTORIZADAS ===
+
+{_format_sources(sources)}
+
+=== REGRAS OBRIGATÓRIAS ===
+
+Responda SOMENTE com JSON válido.
+
+Não use markdown.
+Não use blocos ```json.
+Não escreva introdução.
+Não escreva conclusão fora do JSON.
+
+Use exatamente estas {len(keys)} chaves:
+
+{", ".join(keys)}
+
+Cada tópico deve conter EXATAMENTE estes dois campos:
+
+"text": string, no máximo 2 a 4 frases. Seja direto — não repita o
+enunciado inteiro, não faça introduções longas, não se repita entre
+tópicos.
+"evidenceQuotes": lista de {{"sourceId": "S1", "quote": "trecho literal da fonte S1"}}
+
+NÃO inclua um campo "sourcesUsed". Esse campo não existe mais neste
+formato — o sistema calcula sozinho, a partir de evidenceQuotes válidas,
+quais fontes foram usadas. Incluí-lo não tem nenhum efeito; omita-o.
+
+Os únicos IDs de fonte permitidos são:
+S1, S2, S3 etc., conforme as fontes apresentadas acima.
+
+evidenceQuotes são âncoras literais das fontes, não uma exigência para cada
+frase da explicação.
+
+Quando uma afirmação estiver diretamente sustentada por uma das fontes,
+inclua em evidenceQuotes um trecho LITERAL copiado exatamente dessa fonte.
+
+Se uma parte da explicação for conhecimento jurídico complementar e não
+existir trecho literal correspondente nas fontes fornecidas, mantenha a
+explicação e deixe evidenceQuotes vazio para essa parte.
+
+NUNCA invente evidenceQuotes.
+
+Se evidenceQuotes for preenchido:
+- sourceId deve existir;
+- quote deve existir literalmente na fonte correspondente;
+- não parafraseie dentro de quote.
+
+Uma evidenceQuote falsa ou não literal é erro de validação.
+
+REGRAS POR TÓPICO:
+
+{topic_rules}
+
+REGRA DE INSUFICIÊNCIA:
+
+A insuficiência da fonte, sozinha, NÃO obriga a apagar uma explicação
+juridicamente correta.
+
+Use:
+
+"{INSUFFICIENT}"
+
+somente quando realmente não for possível produzir conteúdo juridicamente
+seguro para aquele tópico.
+
+Quando a explicação puder ser complementada de forma segura com conhecimento
+jurídico, escreva a explicação normalmente e deixe evidenceQuotes vazio se
+não houver citação literal correspondente.
+
+Os identificadores S1, S2, S3 etc. devem aparecer SOMENTE dentro do campo
+"sourceId" de evidenceQuotes.
+Nunca escreva "S1", "S2", "S3" ou outro identificador interno dentro do
+campo "text". No texto destinado ao aluno, cite apenas a referência
+jurídica normal, como "art. 332 do Código Penal".
+
+As keywords usadas pelo buscador NÃO são fontes jurídicas.
+
+Seja conciso em todos os tópicos — respostas curtas e diretas são sempre
+preferíveis a respostas longas.
+
+=== FORMATO JSON OBRIGATÓRIO ===
+
+{json.dumps(template, ensure_ascii=False, indent=2)}
+"""
+
+
+def _strip_json_fence(raw: str) -> str:
+    text = raw.strip()
+
+    if text.startswith("```json") and text.endswith("```"):
+        return text[len("```json"):-3].strip()
+
+    if text.startswith("```") and text.endswith("```"):
+        return text[3:-3].strip()
+
+    return text
+
+
+def _normalize_whitespace(text: str) -> str:
+    return " ".join(text.split())
+
+
+def _sanitize_source_id_leaks(text: str) -> str:
+    """Deterministic, regex-only cleanup of common leaked-ID phrasings
+    ("conforme S1", "(S1)", ", S2", "fonte S3", ...). Never touches legal
+    content — only removes the ID mention (and its immediate connecting
+    punctuation/word). Callers must re-check RE_SOURCE_ID_LEAK afterwards;
+    this function makes no guarantee the result is clean.
+    """
+    cleaned = text
+    for pattern in _LEAK_REMOVAL_PATTERNS:
+        cleaned = pattern.sub("", cleaned)
+    cleaned = re.sub(r"\s+([.,;:!?])", r"\1", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    return cleaned
+
+
+def _quote_is_valid(item: object, sources: list[dict], allowed_source_ids: set[str]) -> bool:
+    """A literal, auditable anchor check — never a semantic judgment.
+    Returning True only proves the quoted string exists verbatim
+    (whitespace aside) in the cited source's own text; it says nothing
+    about whether the surrounding claim correctly interprets that text.
+    """
+    if not isinstance(item, dict) or set(item.keys()) != {"sourceId", "quote"}:
+        return False
+
+    source_id = item.get("sourceId")
+    quote = item.get("quote")
+
+    if source_id not in allowed_source_ids:
+        return False
+    if not isinstance(quote, str) or not quote.strip():
+        return False
+
+    source_index = int(str(source_id)[1:]) - 1
+    if not (0 <= source_index < len(sources)):
+        return False
+
+    source_text = sources[source_index].get("texto", "") or ""
+    return _normalize_whitespace(quote) in _normalize_whitespace(source_text)
+
+
+def _dedupe_preserve_order(seq: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in seq:
+        if item not in seen:
+            seen.add(item)
+            out.append(item)
+    return out
+
+
+def process_structured_explanation(
+    raw: str,
+    sources: list[dict],
+    section_keys: list[str] | tuple[str, ...] | None = None,
+) -> dict:
+    """`section_keys` restricts validation to a subset of SECTIONS (see
+    SECTION_GROUPS) — pass the same keys used to build the prompt when
+    processing a partial (grouped) generation. Defaults to all 10 keys.
+
+    The model is asked ONLY for {"text", "evidenceQuotes"} per section —
+    `sourcesUsed` is never requested and never trusted from the model; it
+    is always DERIVED here from evidenceQuotes that pass literal
+    verification against the cited source's own text. This removes the
+    model's most common (and most harmless) failure mode observed in
+    practice: writing a well-grounded sentence but forgetting to also
+    declare it in a separate sourcesUsed list.
+
+    Returns:
+      {
+        "status": "approved" | "approved_with_gaps" | "rejected",
+        "sections": {key: {"text", "sourcesUsed", "evidenceQuotes"}} | None,
+        "downgrades": [{"section": key, "reason": str}],
+        "errors": [str],  # populated only when status == "rejected"
+      }
+
+    "approved_with_gaps" means the explanation is safe to show, but one or
+    more legal sections do not have a literal evidenceQuote and therefore
+    contain complementary legal explanation not fully anchored in the local
+    source set.
+
+    A missing evidenceQuote does NOT erase otherwise valid explanatory text.
+
+    "rejected" is reserved for failures that make the response unsafe or
+    impossible to process, including invalid JSON, broken structure or a
+    supplied evidenceQuote that is not literal / references an invalid
+    source.
+    """
+    cleaned = _strip_json_fence(raw)
+
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        return {"status": "rejected", "sections": None, "downgrades": [], "errors": [f"JSON inválido: {exc}"]}
+
+    if not isinstance(data, dict):
+        return {
+            "status": "rejected",
+            "sections": None,
+            "downgrades": [],
+            "errors": ["A raiz da resposta precisa ser um objeto JSON."],
+        }
+
+    keys_order = list(section_keys) if section_keys is not None else list(SECTIONS.keys())
+    expected_keys = set(keys_order)
+    actual_keys = set(data.keys())
+    missing = expected_keys - actual_keys
+    extra = actual_keys - expected_keys
+
+    errors: list[str] = []
+    if missing:
+        errors.append("Tópicos ausentes: " + ", ".join(sorted(missing)))
+    if extra:
+        errors.append("Tópicos inesperados: " + ", ".join(sorted(extra)))
+    if errors:
+        return {"status": "rejected", "sections": None, "downgrades": [], "errors": errors}
+
+    allowed_source_ids = {f"S{i}" for i in range(1, len(sources) + 1)}
+
+    processed: dict = {}
+    downgrades: list[dict] = []
+
+    for key in keys_order:
+        section = data[key]
+
+        if not isinstance(section, dict):
+            return {
+                "status": "rejected",
+                "sections": None,
+                "downgrades": [],
+                "errors": [f"{key}: precisa ser um objeto JSON."],
+            }
+
+        text = section.get("text")
+        if not isinstance(text, str) or not text.strip():
+            return {
+                "status": "rejected",
+                "sections": None,
+                "downgrades": [],
+                "errors": [f"{key}: text precisa ser uma string não vazia."],
+            }
+        text = text.strip()
+
+        quotes_raw = section.get("evidenceQuotes", [])
+        if not isinstance(quotes_raw, list):
+            return {
+                "status": "rejected",
+                "sections": None,
+                "downgrades": [],
+                "errors": [f"{key}: evidenceQuotes precisa ser uma lista."],
+            }
+
+        valid_quotes = [q for q in quotes_raw if _quote_is_valid(q, sources, allowed_source_ids)]
+
+        # Se o modelo forneceu evidenceQuote, TODAS precisam ser válidas.
+        # Citação inventada / sourceId inexistente é erro bloqueante.
+        if quotes_raw and len(valid_quotes) != len(quotes_raw):
+            return {
+                "status": "rejected",
+                "sections": None,
+                "downgrades": [],
+                "errors": [
+                    f"{key}: existe evidenceQuote inválida, não literal ou com sourceId inexistente."
+                ],
+            }
+
+        derived_sources_used = _dedupe_preserve_order(
+            [q["sourceId"] for q in valid_quotes]
+        )
+
+        is_insufficient = text == INSUFFICIENT
+        downgraded = False
+        downgrade_reason: str | None = None
+
+        if key == "practicalCase":
+            final_text, final_quotes, final_sources_used = (
+                text,
+                valid_quotes,
+                derived_sources_used,
+            )
+
+        elif is_insufficient:
+            final_text, final_quotes, final_sources_used = (
+                INSUFFICIENT,
+                [],
+                [],
+            )
+            downgraded = True
+            downgrade_reason = (
+                "modelo declarou insuficiência de fonte para este tópico"
+            )
+
+        else:
+            # REGRA NOVA:
+            # ausência de evidenceQuote não apaga uma explicação correta.
+            final_text, final_quotes, final_sources_used = (
+                text,
+                valid_quotes,
+                derived_sources_used,
+            )
+
+            if not valid_quotes:
+                downgraded = True
+                downgrade_reason = (
+                    "texto jurídico complementar sem evidenceQuote literal; "
+                    "mantido como explicação, pois fonte limitada não é erro"
+                )
+
+        # ID-leak sanitization applies regardless of section/downgrade
+        # state above — a leak in an otherwise-safe sentence is still a
+        # leak, and practicalCase is not exempt either.
+        if RE_SOURCE_ID_LEAK.search(final_text):
+            sanitized = _sanitize_source_id_leaks(final_text)
+            if sanitized and not RE_SOURCE_ID_LEAK.search(sanitized):
+                final_text = sanitized
+            elif not downgraded:
+                final_text, final_quotes, final_sources_used = INSUFFICIENT, [], []
+                downgraded = True
+                downgrade_reason = (
+                    "identificador interno de fonte vazado no texto e não removível com "
+                    "segurança — seção substituída pela frase de insuficiência"
+                )
+
+        if downgraded:
+            downgrades.append({"section": key, "reason": downgrade_reason})
+
+        processed[key] = {
+            "text": final_text,
+            "sourcesUsed": final_sources_used,
+            "evidenceQuotes": final_quotes,
+        }
+
+    status = "approved_with_gaps" if downgrades else "approved"
+    return {"status": status, "sections": processed, "downgrades": downgrades, "errors": []}
+
+
+def merge_processed_explanations(parts: list[dict]) -> dict:
+    """Combines multiple process_structured_explanation results — each
+    covering a different, non-overlapping group of SECTIONS (see
+    SECTION_GROUPS) — into one final result covering all 10 topics.
+
+    Any rejected part rejects the whole explanation (its errors are
+    collected from every rejected part). Otherwise, sections and
+    downgrades from every part are combined, and the merged status is
+    "approved_with_gaps" if any part had a downgrade, "approved"
+    otherwise.
+    """
+    rejected_parts = [p for p in parts if p["status"] == "rejected"]
+    if rejected_parts:
+        errors = [e for p in rejected_parts for e in p["errors"]]
+        return {"status": "rejected", "sections": None, "downgrades": [], "errors": errors}
+
+    sections: dict = {}
+    downgrades: list[dict] = []
+    for part in parts:
+        sections.update(part["sections"])
+        downgrades.extend(part["downgrades"])
+
+    missing = set(SECTIONS.keys()) - set(sections.keys())
+    if missing:
+        return {
+            "status": "rejected",
+            "sections": None,
+            "downgrades": [],
+            "errors": [f"Tópicos ausentes após combinar blocos: {', '.join(sorted(missing))}"],
+        }
+
+    status = "approved_with_gaps" if downgrades else "approved"
+    return {"status": status, "sections": sections, "downgrades": downgrades, "errors": []}
+
+
+def build_app_explanation(sections: dict) -> dict:
+    """Student-facing view of a processed `sections` dict (from
+    process_structured_explanation / merge_processed_explanations):
+    just {key: text}, and only for topics that actually have content — a
+    topic whose text is exactly the insufficiency sentence is dropped
+    entirely, so the frontend only has to render what's there. `text`
+    already can never contain "S1"/"S2" (RE_SOURCE_ID_LEAK is enforced
+    before a section is ever finalized), so this never needs to sanitize
+    anything itself — it's a pure filter.
+    """
+    return {key: section["text"] for key, section in sections.items() if section["text"] != INSUFFICIENT}

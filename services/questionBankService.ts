@@ -75,6 +75,15 @@ export const approveDraft = async (draft: QuestionDraft, approvedBy: string): Pr
     contentHash: draft.contentHash,
     approvedAt: Date.now(),
     approvedBy,
+    // Carried through from the draft for sources that set them (currently
+    // only worker/exam_discovery — see PublishedQuestion's own comment).
+    // Previously dropped here even though the type declared them, so an
+    // approved exam-discovery question silently lost its banca/órgão/
+    // cargo/ano the moment it left question_drafts.
+    examBoard: draft.examBoard,
+    organization: draft.organization,
+    position: draft.position,
+    examYear: draft.examYear,
   };
   await setDoc(doc(db, 'questions', draft.id), cleanData(published));
   await deleteDoc(doc(db, 'question_drafts', draft.id));
@@ -93,14 +102,19 @@ const escapeHtml = (text: string): string =>
 const mapBankQuestion = (q: PublishedQuestion): QuizQuestion => {
   const sortedAlternatives = [...q.alternatives].sort((a, b) => a.position - b.position);
   const correctIndex = sortedAlternatives.findIndex(a => a.letter === q.correctLetter);
-  const topic = [q.subjectRaw, q.topicRaw].filter(Boolean).join(' · ');
+  // Prefer matéria/assunto (fc_concursos-style decks); a source like
+  // exam_discovery never sets those, so fall back to the exam's own
+  // banca/cargo/ano — always something more useful than the generic label.
+  const subjectTopic = [q.subjectRaw, q.topicRaw].filter(Boolean).join(' · ');
+  const examTopic = [q.examBoard, q.organization, q.position, q.examYear].filter(Boolean).join(' · ');
+  const topic = subjectTopic || examTopic || 'Nosso Banco de Questões';
   return {
     id: `bank-${q.id}`,
     question: `<p>${escapeHtml(q.statement)}</p>`,
     options: sortedAlternatives.map(a => a.text),
     correctAnswer: Math.max(0, correctIndex),
     explanation: q.explanation,
-    topic: topic || 'Nosso Banco de Questões',
+    topic,
   };
 };
 
@@ -160,6 +174,105 @@ export const fetchBankQuestions = async (
   const all = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<PublishedQuestion, 'id'>) }));
   if (all.length === 0) {
     throw new Error('Nenhuma questão encontrada para essa matéria/assunto no nosso banco ainda.');
+  }
+  const shuffled = [...all].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count).map(mapBankQuestion);
+};
+
+// --- Banco geral por prova oficial (banca / órgão / cargo / ano) ---
+// A general, source-agnostic filter path over the SAME `questions`
+// collection — orthogonal to importSubject/subjectRaw above. Any source
+// that fills in examBoard/organization/position/examYear (currently only
+// worker/exam_discovery) becomes browsable this way, independent of
+// whether it was ever tagged with a matéria. Meant to be reused by every
+// feature that offers "estudar por questões", not just this file's own
+// CONCURSO tab.
+//
+// Full-collection scans, same tradeoff/justification as the matéria
+// facets above: fine at the bank's current size, revisit if it grows into
+// the thousands.
+
+const nonEmpty = (value: unknown): value is string | number => value !== null && value !== undefined && value !== '';
+
+export const listExamBoards = async (): Promise<BankFacetOption[]> => {
+  const snap = await getDocs(collection(db, 'questions'));
+  const counts = new Map<string, number>();
+  snap.docs.forEach(d => {
+    const board = (d.data() as PublishedQuestion).examBoard;
+    if (nonEmpty(board)) counts.set(board, (counts.get(board) ?? 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
+};
+
+export const listExamInstitutions = async (board: string): Promise<BankFacetOption[]> => {
+  const snap = await getDocs(query(collection(db, 'questions'), where('examBoard', '==', board)));
+  const counts = new Map<string, number>();
+  snap.docs.forEach(d => {
+    const institution = (d.data() as PublishedQuestion).organization;
+    if (nonEmpty(institution)) counts.set(institution, (counts.get(institution) ?? 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
+};
+
+export const listExamPositions = async (board: string, institution: string): Promise<BankFacetOption[]> => {
+  const snap = await getDocs(
+    query(collection(db, 'questions'), where('examBoard', '==', board), where('organization', '==', institution))
+  );
+  const counts = new Map<string, number>();
+  snap.docs.forEach(d => {
+    const position = (d.data() as PublishedQuestion).position;
+    if (nonEmpty(position)) counts.set(position, (counts.get(position) ?? 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
+};
+
+// Level 4 (ano) doubles as "how many questions exist for this exact
+// banca/órgão/cargo/ano" via BankFacetOption.count — same role
+// bankTopicsTotal/bankAvailableCount play for the matéria path.
+export const listExamYears = async (board: string, institution: string, position: string): Promise<BankFacetOption[]> => {
+  const snap = await getDocs(
+    query(
+      collection(db, 'questions'),
+      where('examBoard', '==', board),
+      where('organization', '==', institution),
+      where('position', '==', position)
+    )
+  );
+  const counts = new Map<number, number>();
+  snap.docs.forEach(d => {
+    const year = (d.data() as PublishedQuestion).examYear;
+    if (nonEmpty(year)) counts.set(year, (counts.get(year) ?? 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([year, count]) => ({ value: String(year), count }))
+    .sort((a, b) => Number(b.value) - Number(a.value)); // most recent exam first
+};
+
+export const fetchExamQuestions = async (
+  board: string,
+  institution: string,
+  position: string,
+  year: number,
+  count: number
+): Promise<QuizQuestion[]> => {
+  const snap = await getDocs(
+    query(
+      collection(db, 'questions'),
+      where('examBoard', '==', board),
+      where('organization', '==', institution),
+      where('position', '==', position),
+      where('examYear', '==', year)
+    )
+  );
+  const all = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<PublishedQuestion, 'id'>) }));
+  if (all.length === 0) {
+    throw new Error('Nenhuma questão encontrada para essa banca/órgão/cargo/ano no nosso banco ainda.');
   }
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count).map(mapBankQuestion);

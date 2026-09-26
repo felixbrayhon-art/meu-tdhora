@@ -36,6 +36,13 @@ class ParsedQuestion:
     subject_raw: str | None = None
     topic_raw: str | None = None
     warnings: list[str] = field(default_factory=list)
+    # Optional, source-specific metadata (e.g. worker/parsers/direto_ao_ponto.py).
+    # fc_concursos.py never sets these, so they stay None there and this is a
+    # purely additive change — no existing behavior changes.
+    exam_year: int | None = None
+    exam_board: str | None = None
+    organization: str | None = None
+    position: str | None = None
 
     @property
     def content_hash(self) -> str:
@@ -57,6 +64,10 @@ class ParsedQuestion:
             "contentHash": self.content_hash,
             "status": "needs_attention" if self.warnings else "pending_review",
             "warnings": self.warnings,
+            "examYear": self.exam_year,
+            "examBoard": self.exam_board,
+            "organization": self.organization,
+            "position": self.position,
         }
 
 

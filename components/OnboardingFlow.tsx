@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { StudyProfile } from '../types';
-import NameStep from './NameStep';
 import ProfileSelection from './ProfileSelection';
 import AvatarBuilder from './AvatarBuilder';
 import CharacterRevealScreen from './CharacterRevealScreen';
@@ -10,28 +9,19 @@ interface OnboardingFlowProps {
   onComplete: (data: { name: string; studyProfile: StudyProfile; characterId: string }) => void;
 }
 
-type Step = 'nome' | 'objetivo' | 'personagem' | 'revelacao';
+type Step = 'objetivo' | 'personagem' | 'revelacao';
 
 const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
-  const [step, setStep] = useState<Step>('nome');
+  const [step, setStep] = useState<Step>('objetivo');
   const [name, setName] = useState('');
   const [studyProfile, setStudyProfile] = useState<StudyProfile | null>(null);
   const [characterId, setCharacterId] = useState(defaultCharacterId);
 
-  if (step === 'nome') {
-    return (
-      <NameStep
-        initialName={name}
-        onNext={(n) => { setName(n); setStep('objetivo'); }}
-      />
-    );
-  }
-
   if (step === 'objetivo') {
     return (
       <ProfileSelection
-        onBack={() => setStep('nome')}
-        onSelect={(p) => { setStudyProfile(p); setStep('personagem'); }}
+        initialName={name}
+        onNext={(n, p) => { setName(n); setStudyProfile(p); setStep('personagem'); }}
       />
     );
   }

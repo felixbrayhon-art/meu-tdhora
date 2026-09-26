@@ -34,6 +34,8 @@ worker/__pycache__
 worker/**/__pycache__
 worker/*.json
 worker/**/*.json
+worker/.venv
+worker/output
 *.pdf
 
 # Admin SDK service account key — never versioned, wherever it's placed.

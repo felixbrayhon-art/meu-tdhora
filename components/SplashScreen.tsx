@@ -35,7 +35,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         alt=""
         className="absolute inset-0 w-full h-full object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/40" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#473c33]/70 via-[#473c33]/20 to-[#473c33]/40" />
 
       <div className="relative z-10 h-full flex flex-col items-center justify-end pb-16 px-10">
         <div className="max-w-md w-full text-center space-y-8 animate-in zoom-in-95 duration-1000">
@@ -52,7 +52,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             <p className="text-white/70 text-[10px] font-bold uppercase tracking-[0.5em]">Superando a memória de peixe</p>
 
             <div className="h-1 w-48 bg-white/20 rounded-full overflow-hidden">
-               <div className="h-full bg-yellow-400 animate-[loading_5s_linear_forwards]"></div>
+               <div className="h-full bg-[#fed386] animate-[loading_5s_linear_forwards]"></div>
             </div>
           </div>
         </div>

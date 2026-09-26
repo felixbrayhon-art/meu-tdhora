@@ -36,14 +36,14 @@ const CharacterTip: React.FC<CharacterTipProps> = ({ id, message }) => {
   };
 
   return (
-    <div className="relative bg-blue-50 border border-blue-100 rounded-[30px] pt-5 pr-10 pb-5 pl-4 mb-6 flex items-end gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
+    <div className="relative bg-[#fff6e8] border border-[#fff0d5] rounded-[30px] pt-5 pr-10 pb-5 pl-4 mb-6 flex items-end gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
       {src && <img src={src} alt="" className="h-20 sm:h-24 object-contain shrink-0 -mb-5" />}
       <div className="flex-1 bg-white rounded-2xl rounded-bl-none p-4 shadow-sm text-sm text-gray-700 font-medium leading-relaxed">
         {message}
       </div>
       <button
         onClick={dismiss}
-        className="absolute top-2 right-2 p-1.5 hover:bg-black/5 rounded-full transition-colors"
+        className="absolute top-2 right-2 p-1.5 hover:bg-[#473c33]/5 rounded-full transition-colors"
         aria-label="Dispensar dica"
       >
         <X className="w-4 h-4 text-gray-400" />

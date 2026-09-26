@@ -37,9 +37,6 @@ def validate_question_structure(q: dict) -> list[str]:
     if not (q.get("statement") or "").strip():
         errors.append("statement vazio")
 
-    if not (q.get("explanation") or "").strip():
-        errors.append("explanation vazio")
-
     return errors
 
 

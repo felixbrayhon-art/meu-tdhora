@@ -1,5 +1,5 @@
 
-export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON' | 'PERFORMANCE' | 'SAVED_GUIDED_LESSONS' | 'DRIVE_READER' | 'VADE_MECUM' | 'NOTES' | 'ADMIN_QUESTION_REVIEW';
+export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON' | 'PERFORMANCE' | 'SAVED_GUIDED_LESSONS' | 'DRIVE_READER' | 'VADE_MECUM' | 'NOTES' | 'ADMIN_QUESTION_REVIEW' | 'VR_METHOD';
 
 // --- Question bank import pipeline (admin-only) ---
 // Populated by worker/ (a local Python script, not a hosted service — see
@@ -51,6 +51,15 @@ export interface QuestionDraft {
   status: QuestionDraftStatus;
   warnings: string[];
   possibleDuplicateOfId?: string;
+  // Optional exam metadata — mirrors PublishedQuestion's own fields (see its
+  // comment). Present on the Firestore doc for a source like
+  // worker/exam_discovery well before approval; declared here too so
+  // approveDraft() can read and carry it through instead of silently
+  // dropping it at publish time.
+  examBoard?: string | null;
+  organization?: string | null;
+  position?: string | null;
+  examYear?: number | null;
 }
 
 export interface PublishedQuestion {
@@ -69,6 +78,14 @@ export interface PublishedQuestion {
   contentHash: string;
   approvedAt: number;
   approvedBy: string;
+  // Optional exam metadata (only populated by newer sources, e.g. a future
+  // publish of worker/parsers/direto_ao_ponto.py content — never present on
+  // fc_concursos-sourced questions). Every consumer must treat these as
+  // absent, not just falsy.
+  examBoard?: string | null;
+  organization?: string | null;
+  position?: string | null;
+  examYear?: number | null;
 }
 
 export interface DrawPoint {
@@ -278,6 +295,13 @@ export interface QuizQuestion {
   userCommentary?: string;
   explanationImages?: string[];
   explanationImageSizes?: string[];
+  // Optional exam metadata, carried through from PublishedQuestion when the
+  // source question bank has it (see Método VR) — absent for every other
+  // question source (AI-generated, ENEM, pasted, etc).
+  examBoard?: string | null;
+  organization?: string | null;
+  position?: string | null;
+  examYear?: number | null;
 }
 
 export interface Notebook {
@@ -444,4 +468,39 @@ export interface StudyCycle {
   steps: StudyCycleStep[];
   currentStepIndex: number;
   createdAt: number;
+}
+
+// --- Método VR (question-by-question reverse engineering study mode) ---
+// Additive-only: does not touch QuizAttempt, ErrorVaultItem or any other
+// existing progress type. See services/vrMethodService.ts.
+
+export type VRErrorReason = 'nao_sabia' | 'confundi_conceitos' | 'cai_na_pegadinha' | 'erro_atencao' | 'chutei';
+export type VRCorrectReason = 'sabia' | 'duvida' | 'chute_acertou';
+export type VRConfidenceLevel = 'baixa' | 'media' | 'alta';
+
+export interface VRAttempt {
+  id: string;
+  sessionId: string;
+  questionId: string;
+  subject: string;
+  topic?: string | null;
+  examBoard?: string | null;
+  examYear?: number | null;
+  isCorrect: boolean;
+  selectedIndex: number;
+  correctIndex: number;
+  errorReason?: VRErrorReason;
+  correctReason?: VRCorrectReason;
+  confidence?: VRConfidenceLevel;
+  answeredAt: number;
+}
+
+export interface VRSession {
+  id: string;
+  subject: string;
+  topic?: string | null;
+  startedAt: number;
+  finishedAt?: number;
+  totalQuestions: number;
+  totalCorrect: number;
 }

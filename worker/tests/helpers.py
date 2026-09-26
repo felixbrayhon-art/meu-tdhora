@@ -25,6 +25,7 @@ def make_parsed_question(
     subject_raw: str = "Materia de Teste",
     topic_raw: str = "Assunto de Teste",
     warnings: list[str] | None = None,
+    exam_year: int | None = None,
 ) -> ParsedQuestion:
     statement = statement or f"Enunciado sintetico de teste numero {number}, sem conteudo real."
     alternatives = [
@@ -44,6 +45,7 @@ def make_parsed_question(
         explanation=explanation,
         source_page=1,
         warnings=list(warnings) if warnings else [],
+        exam_year=exam_year,
     )
 
 

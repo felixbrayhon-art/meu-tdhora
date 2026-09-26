@@ -7,10 +7,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from parsers import fc_concursos  # noqa: E402
+from parsers import direto_ao_ponto, fc_concursos  # noqa: E402
 
 PARSERS = {
     "fc_concursos": fc_concursos,
+    "direto_ao_ponto": direto_ao_ponto,
 }
 
 

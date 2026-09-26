@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Play, Pause, RotateCcw, Brain, CheckCircle2, ChevronRight, BookOpen, Download, Bookmark, BookmarkCheck } from './icons';
@@ -17,23 +16,23 @@ interface GuidedLessonViewProps {
   initialLesson?: GuidedLesson; // For viewing saved lessons offline
 }
 
-const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ 
-  subject, 
-  topic, 
-  profile, 
-  explanationStyle = 'TECNICA',
-  onBack, 
-  onComplete,
-  initialLesson
-}) => {
+const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, profile, explanationStyle = 'TECNICA', onBack, onComplete, initialLesson }) => {
+  // Entering directly (e.g. from the sidebar, with no matéria/assunto chosen yet)
+  // leaves subject/topic empty — activeSubject/activeTopic hold what's actually
+  // being taught, seeded from the props but filled in by the setup form below
+  // when the caller didn't already collect them (e.g. Hub's own mini-form).
+  const [activeSubject, setActiveSubject] = useState(subject);
+  const [activeTopic, setActiveTopic] = useState(topic);
+  const [setupSubject, setSetupSubject] = useState('');
+  const [setupTopic, setSetupTopic] = useState('');
   const [lesson, setLesson] = useState<GuidedLesson | null>(initialLesson || null);
-  const [loading, setLoading] = useState(!initialLesson);
+  const [loading, setLoading] = useState(!initialLesson && Boolean(subject && topic));
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [displayedSteps, setDisplayedSteps] = useState<GuidedLessonStep[]>([]);
   const [isPaused, setIsPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
-  
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastPushedStepIndexRef = useRef<number>(-1);
 
@@ -43,13 +42,13 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
       const saved = localStorage.getItem('saved_guided_lessons');
       if (saved) {
         const parsed: SavedGuidedLesson[] = JSON.parse(saved);
-        const exists = parsed.some(l => l.topic === topic && l.subject === subject);
+        const exists = parsed.some((l) => l.topic === activeTopic && l.subject === activeSubject);
         setIsSaved(exists);
       }
     } catch (e) {
-      console.error("Error loading saved guided lessons:", e);
+      console.error('Error loading saved guided lessons:', e);
     }
-  }, [topic, subject]);
+  }, [activeTopic, activeSubject]);
 
   const toggleSaveLesson = () => {
     if (!lesson) return;
@@ -57,26 +56,26 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
     try {
       const saved = localStorage.getItem('saved_guided_lessons');
       let parsed: SavedGuidedLesson[] = [];
-      
+
       try {
         parsed = saved ? JSON.parse(saved) : [];
       } catch (e) {
-        console.error("Malformed saved_guided_lessons in localStorage, resetting.");
+        console.error('Malformed saved_guided_lessons in localStorage, resetting.');
         parsed = [];
       }
 
       if (isSaved) {
         // Remove
-        parsed = parsed.filter(l => !(l.topic === topic && l.subject === subject));
+        parsed = parsed.filter((l) => !(l.topic === activeTopic && l.subject === activeSubject));
         setIsSaved(false);
       } else {
         // Add
         const newSaved: SavedGuidedLesson = {
           id: Math.random().toString(36).substr(2, 9),
-          subject,
-          topic,
-          lesson: { ...lesson, subject }, // Include subject in lesson object too
-          savedAt: Date.now()
+          subject: activeSubject,
+          topic: activeTopic,
+          lesson: { ...lesson, subject: activeSubject }, // Include subject in lesson object too
+          savedAt: Date.now(),
         };
         parsed.push(newSaved);
         setIsSaved(true);
@@ -84,8 +83,8 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
 
       localStorage.setItem('saved_guided_lessons', JSON.stringify(parsed));
     } catch (e) {
-      console.error("Failed to toggle save lesson:", e);
-      alert("Não foi possível salvar a aula localmente (espaço insuficiente ou erro de sistema).");
+      console.error('Failed to toggle save lesson:', e);
+      alert('Não foi possível salvar a aula localmente (espaço insuficiente ou erro de sistema).');
     }
   };
 
@@ -101,28 +100,26 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
     // Title
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Aula Guiada: ${topic}`, margin, yPosition);
+    doc.text(`Aula Guiada: ${activeTopic}`, margin, yPosition);
     yPosition += 10;
 
     doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Assunto: ${subject}`, margin, yPosition);
+    doc.text(`Assunto: ${activeSubject}`, margin, yPosition);
     yPosition += 20;
 
     // Content
     lesson.steps.forEach((step, index) => {
       doc.setFontSize(12);
-      
+
       // Handle page overflow
       if (yPosition > doc.internal.pageSize.getHeight() - 40) {
         doc.addPage();
         yPosition = 20;
       }
 
-      const typeLabel = step.type === 'CONCEPT' ? 'CONCEITO: ' : 
-                        step.type === 'ANALOGY' ? 'ANALOGIA: ' : 
-                        step.type === 'REINFORCEMENT' ? 'REFORÇO: ' : '';
-      
+      const typeLabel = step.type === 'CONCEPT' ? 'CONCEITO: ' : step.type === 'ANALOGY' ? 'ANALOGIA: ' : step.type === 'REINFORCEMENT' ? 'REFORÇO: ' : '';
+
       if (typeLabel) {
         doc.setFont('helvetica', 'bold');
         doc.text(typeLabel, margin, yPosition);
@@ -132,30 +129,35 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
       doc.setFont('helvetica', 'normal');
       const lines = doc.splitTextToSize(step.content, maxWidth);
       doc.text(lines, margin, yPosition);
-      yPosition += (lines.length * 7) + 10;
+      yPosition += lines.length * 7 + 10;
     });
 
     // Save PDF
-    doc.save(`Aula_Guiada_${topic.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Aula_Guiada_${activeTopic.replace(/\s+/g, '_')}.pdf`);
+  };
+
+  const startLesson = (s: string, t: string) => {
+    setActiveSubject(s);
+    setActiveTopic(t);
   };
 
   useEffect(() => {
-    if (initialLesson) return;
-    
+    if (initialLesson || !activeSubject || !activeTopic) return;
+
     const fetchLesson = async () => {
       try {
         setLoading(true);
-        const data = await generateGuidedLesson(subject, topic, profile, explanationStyle);
+        const data = await generateGuidedLesson(activeSubject, activeTopic, profile, explanationStyle);
         setLesson(data);
         setError(null);
       } catch (err: any) {
-        setError(err.message || "Erro ao carregar a aula guiada.");
+        setError(err.message || 'Erro ao carregar a aula guiada.');
       } finally {
         setLoading(false);
       }
     };
     fetchLesson();
-  }, [subject, topic, profile, explanationStyle, initialLesson]);
+  }, [activeSubject, activeTopic, profile, explanationStyle, initialLesson]);
 
   useEffect(() => {
     if (!lesson || isPaused) return;
@@ -167,17 +169,17 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
       // toggling isPaused (e.g. clicking Resume) re-runs this effect for the SAME
       // currentStepIndex and would push the current paragraph again, duplicating it.
       if (lastPushedStepIndexRef.current !== currentStepIndex) {
-        setDisplayedSteps(prev => [...prev, step]);
+        setDisplayedSteps((prev) => [...prev, step]);
         lastPushedStepIndexRef.current = currentStepIndex;
       }
 
       const words = step.content.split(' ').length;
       const baseDelay = Math.max(words * 120 + 2500, 4000); // TDAH friendly delay
       const typePause = step.type === 'QUESTION_PAUSE' ? 4000 : 1500;
-      
+
       const timer = setTimeout(() => {
         if (!isPaused) {
-          setCurrentStepIndex(prev => prev + 1);
+          setCurrentStepIndex((prev) => prev + 1);
         }
       }, baseDelay + typePause);
 
@@ -189,29 +191,70 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTo({
         top: scrollRef.current.scrollHeight,
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
     }
   }, [displayedSteps]);
 
-  if (loading) return (
-    <div className="fixed inset-0 z-[200] bg-[#0A0F1E]">
-      <LoadingFish message={`Preparando aula sobre ${topic}...`} fullScreen />
-    </div>
-  );
-  
+  if (!activeSubject || !activeTopic) {
+    return (
+      <div className="fixed inset-0 z-[200] bg-[#473c33] flex flex-col items-center justify-center p-8 text-center">
+        <div className="max-w-md w-full space-y-6">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-[#fecc73] animate-pulse"></span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#fed386]">AULA GUIADA</span>
+          </div>
+          <h1 className="text-3xl font-black uppercase tracking-tighter text-white">Sobre o que vamos aprender?</h1>
+          <p className="text-slate-400 font-bold text-sm">Escolha a matéria e o assunto — a IA guia uma explicação contínua sobre isso.</p>
+          <div className="space-y-3 text-left">
+            <input
+              value={setupSubject}
+              onChange={(e) => setSetupSubject(e.target.value)}
+              placeholder="Matéria (Ex: Português)"
+              autoFocus
+              className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#fecc73] transition-all"
+            />
+            <input
+              value={setupTopic}
+              onChange={(e) => setSetupTopic(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && setupSubject.trim() && setupTopic.trim() && startLesson(setupSubject.trim(), setupTopic.trim())}
+              placeholder="Assunto (Ex: Crase)"
+              className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#fecc73] transition-all"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={onBack} className="px-6 py-4 rounded-2xl font-black uppercase text-xs tracking-widest text-white/50 hover:text-white hover:bg-white/10 transition-all">
+              Voltar
+            </button>
+            <button
+              onClick={() => startLesson(setupSubject.trim(), setupTopic.trim())}
+              disabled={!setupSubject.trim() || !setupTopic.trim()}
+              className="flex-1 bg-[#fec868] hover:bg-[#fecc73] disabled:opacity-30 text-white font-black uppercase tracking-widest py-4 rounded-2xl shadow-xl transition-colors"
+            >
+              Começar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading)
+    return (
+      <div className="fixed inset-0 z-[200] bg-[#473c33]">
+        <LoadingFish message={`Preparando aula sobre ${activeTopic}...`} fullScreen />
+      </div>
+    );
+
   if (error) {
     return (
-      <div className="fixed inset-0 z-[200] bg-[#0A0F1E] flex flex-col items-center justify-center p-8 text-center h-full space-y-4">
+      <div className="fixed inset-0 z-[200] bg-[#473c33] flex flex-col items-center justify-center p-8 text-center h-full space-y-4">
         <div className="bg-red-900/20 p-8 rounded-[40px] border border-red-500/30 max-w-md backdrop-blur-xl">
           <div className="w-16 h-16 bg-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <RotateCcw className="w-8 h-8 text-white" />
           </div>
           <p className="text-red-200 font-bold mb-8 text-lg">{error}</p>
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-3 bg-white text-black px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all mx-auto shadow-xl"
-          >
+          <button onClick={onBack} className="flex items-center gap-3 bg-white text-[#473c33] px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all mx-auto shadow-xl">
             <ChevronLeft className="w-5 h-5" /> Tentar Novamente
           </button>
         </div>
@@ -220,83 +263,60 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col h-full bg-[#0A0F1E] text-slate-100 font-sans selection:bg-blue-500/30 overflow-hidden">
+    <div className="fixed inset-0 z-[200] flex flex-col h-full bg-[#473c33] text-slate-100 font-sans selection:bg-[#fecc73]/30 overflow-hidden">
       {/* Header Imersivo */}
-      <header className="p-6 flex items-center justify-between border-b border-white/5 bg-black/40 backdrop-blur-2xl sticky top-0 z-20">
+      <header className="p-6 flex items-center justify-between border-b border-white/5 bg-[#473c33]/40 backdrop-blur-2xl sticky top-0 z-20">
         <button onClick={onBack} className="p-3 hover:bg-white/10 rounded-2xl transition-colors active:scale-95 group">
           <ChevronLeft className="w-7 h-7 text-white/50 group-hover:text-white" />
         </button>
         <div className="text-center flex-1">
           <div className="flex items-center justify-center gap-2 mb-1">
-             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">IMERSÃO ATIVA</span>
+            <span className="w-2 h-2 rounded-full bg-[#fecc73] animate-pulse"></span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#fed386]">IMERSÃO ATIVA</span>
           </div>
-          <h1 className="text-lg font-black uppercase italic tracking-tighter text-white">{subject} • {topic}</h1>
+          <h1 className="text-lg font-black uppercase tracking-tighter text-white">
+            {activeSubject} • {activeTopic}
+          </h1>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={toggleSaveLesson}
-            className={`p-3 rounded-2xl transition-all active:scale-90 ${isSaved ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/50 hover:text-white hover:bg-white/20'}`}
-            title={isSaved ? "Salvo no App" : "Salvar no App (Offline)"}
-          >
+          <button onClick={toggleSaveLesson} className={`p-3 rounded-2xl transition-all active:scale-90 ${isSaved ? 'bg-[#fecc73] text-white' : 'bg-white/10 text-white/50 hover:text-white hover:bg-white/20'}`} title={isSaved ? 'Salvo no App' : 'Salvar no App (Offline)'}>
             {isSaved ? <BookmarkCheck className="w-7 h-7" /> : <Bookmark className="w-7 h-7" />}
           </button>
-          <button 
-            onClick={downloadPDF}
-            className="p-3 bg-white/10 text-white/50 hover:text-white hover:bg-white/20 rounded-2xl transition-all active:scale-90"
-            title="Baixar em PDF"
-          >
+          <button onClick={downloadPDF} className="p-3 bg-white/10 text-white/50 hover:text-white hover:bg-white/20 rounded-2xl transition-all active:scale-90" title="Baixar em PDF">
             <Download className="w-7 h-7" />
           </button>
-          <button 
-            onClick={() => setIsPaused(!isPaused)}
-            className={`p-3 rounded-2xl transition-all shadow-xl active:scale-90 ${isPaused ? 'bg-orange-500 text-white animate-pulse' : 'bg-white/10 text-white/50 hover:text-white'}`}
-          >
+          <button onClick={() => setIsPaused(!isPaused)} className={`p-3 rounded-2xl transition-all shadow-xl active:scale-90 ${isPaused ? 'bg-[#fdad74] text-white animate-pulse' : 'bg-white/10 text-white/50 hover:text-white'}`}>
             {isPaused ? <Play className="w-7 h-7" /> : <Pause className="w-7 h-7" />}
           </button>
         </div>
       </header>
 
       {/* Área de Texto Autoscroll */}
-      <div 
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-6 py-20 space-y-20 scrollbar-none"
-        style={{ scrollBehavior: 'smooth' }}
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-20 space-y-20 scrollbar-none" style={{ scrollBehavior: 'smooth' }}>
         <AnimatePresence initial={false}>
           {displayedSteps.map((step, idx) => (
-            <motion.div
-              key={`${step.type}-${idx}`}
-              initial={{ opacity: 0, y: 40, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-              className={`max-w-2xl mx-auto relative ${
-                step.type === 'QUESTION_PAUSE' 
-                ? 'bg-blue-500/5 border-2 border-blue-500/20 p-10 rounded-[40px] shadow-2xl shadow-blue-900/20' 
-                : step.type === 'ANALOGY' 
-                ? 'bg-orange-500/5 border-2 border-orange-500/20 p-10 rounded-[40px] italic shadow-2xl shadow-orange-900/20'
-                : ''
-              }`}
-            >
+            <motion.div key={`${step.type}-${idx}`} initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className={`max-w-2xl mx-auto relative ${step.type === 'QUESTION_PAUSE' ? 'bg-[#fecc73]/5 border-2 border-[#fecc73]/20 p-10 rounded-[40px] shadow-2xl' : step.type === 'ANALOGY' ? 'bg-[#fdad74]/5 border-2 border-[#fdad74]/20 p-10 rounded-[40px] shadow-2xl shadow-[#ac4800]/20' : ''}`}>
               {step.type === 'QUESTION_PAUSE' && (
-                <div className="absolute -top-4 left-10 bg-blue-600 text-white px-4 py-1.5 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-lg">
+                <div className="absolute -top-4 left-10 bg-[#fec868] text-white px-4 py-1.5 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-lg">
                   <Brain className="w-4 h-4" /> MOMENTO DE REFLEXÃO
                 </div>
               )}
               {step.type === 'ANALOGY' && (
-                <div className="absolute -top-4 left-10 bg-orange-600 text-white px-4 py-1.5 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-lg">
+                <div className="absolute -top-4 left-10 bg-[#fda769] text-white px-4 py-1.5 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-lg">
                   <RotateCcw className="w-4 h-4" /> BIZU DE MEMÓRIA
                 </div>
               )}
 
-              <p className={`
-                ${step.type === 'OPENING' ? 'text-4xl font-black leading-none text-white italic tracking-tighter' : ''}
-                ${step.type === 'OVERVIEW' ? 'text-2xl font-bold text-slate-400 leading-tight' : ''}
-                ${step.type === 'QUESTION_PAUSE' ? 'text-2xl font-black text-blue-100 italic' : ''}
-                ${step.type === 'CONCEPT' ? 'text-xl leading-relaxed text-slate-200 border-l-4 border-blue-500/30 pl-8' : ''}
-                ${step.type === 'REINFORCEMENT' ? 'text-2xl font-black text-green-400 uppercase italic' : ''}
-                ${!['OPENING', 'OVERVIEW', 'QUESTION_PAUSE', 'CONCEPT', 'REINFORCEMENT'].includes(step.type) ? 'text-xl leading-relaxed text-slate-300' : ''}
-              `}>
+              <p
+                className={`
+ ${step.type === 'OPENING' ? 'text-4xl font-black leading-none text-white tracking-tighter' : ''}
+ ${step.type === 'OVERVIEW' ? 'text-2xl font-bold text-slate-400 leading-tight' : ''}
+ ${step.type === 'QUESTION_PAUSE' ? 'text-2xl font-black text-[#fff0d5] ' : ''}
+ ${step.type === 'CONCEPT' ? 'text-xl leading-relaxed text-slate-200 border-l-4 border-[#fecc73]/30 pl-8' : ''}
+ ${step.type === 'REINFORCEMENT' ? 'text-2xl font-black text-[#bcce8d] uppercase ' : ''}
+ ${!['OPENING', 'OVERVIEW', 'QUESTION_PAUSE', 'CONCEPT', 'REINFORCEMENT'].includes(step.type) ? 'text-xl leading-relaxed text-slate-300' : ''}
+ `}
+              >
                 {step.content}
               </p>
             </motion.div>
@@ -305,37 +325,33 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
 
         {currentStepIndex < (lesson?.steps.length || 0) && !isPaused && (
           <div className="flex justify-center py-12">
-            <motion.div 
-              animate={{ 
+            <motion.div
+              animate={{
                 scale: [1, 1.2, 1],
-                opacity: [0.3, 0.7, 0.3]
+                opacity: [0.3, 0.7, 0.3],
               }}
               transition={{ repeat: Infinity, duration: 2 }}
               className="flex gap-2"
             >
-              <div className="w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50" />
-              <div className="w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50" />
-              <div className="w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50" />
+              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50" />
+              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50" />
+              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50" />
             </motion.div>
           </div>
         )}
 
         {currentStepIndex === (lesson?.steps.length || 0) && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.8, y: 50 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="max-w-sm mx-auto text-center space-y-8 pt-20 pb-32"
-          >
-            <div className="w-24 h-24 bg-green-500/10 border-4 border-green-500/30 p-4 rounded-full mx-auto flex items-center justify-center shadow-2xl shadow-green-900/20">
-              <CheckCircle2 className="w-12 h-12 text-green-500" />
+          <motion.div initial={{ opacity: 0, scale: 0.8, y: 50 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="max-w-sm mx-auto text-center space-y-8 pt-20 pb-32">
+            <div className="w-24 h-24 bg-[#b1c77b]/10 border-4 border-[#b1c77b]/30 p-4 rounded-full mx-auto flex items-center justify-center shadow-2xl shadow-[#596b2a]/20">
+              <CheckCircle2 className="w-12 h-12 text-[#b1c77b]" />
             </div>
             <div>
-              <h3 className="text-4xl font-black uppercase italic tracking-tighter leading-none mb-4">Ciclo de Explicação Concluído</h3>
+              <h3 className="text-4xl font-black uppercase tracking-tighter leading-none mb-4">Ciclo de Explicação Concluído</h3>
               <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Você concluiu esta jornada de aprendizado.</p>
             </div>
             <button
               onClick={() => onComplete(5)} // Give a small reward for completion
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-3xl font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/40 flex items-center justify-center gap-4 transition-all hover:scale-105 active:scale-95 group"
+              className="w-full bg-[#fec868] hover:bg-[#fecc73] text-white py-6 rounded-3xl font-black uppercase tracking-[0.2em] shadow-2xl flex items-center justify-center gap-4 transition-all hover:scale-105 active:scale-95 group"
             >
               CONCLUIR AULA <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
             </button>
@@ -344,20 +360,22 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({
       </div>
 
       {/* Indicador de Progresso Inferior */}
-      <div className="p-8 bg-black/60 backdrop-blur-2xl border-t border-white/5">
+      <div className="p-8 bg-[#473c33]/60 backdrop-blur-2xl border-t border-white/5">
         <div className="max-w-2xl mx-auto space-y-4">
-           <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
-             <span>PROGRESSO DA JORNADA</span>
-             <span className="text-blue-500">{Math.round((currentStepIndex / (lesson?.steps.length || 1)) * 100)}%</span>
-           </div>
-           <div className="h-2 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
-             <motion.div 
-               className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]"
-               initial={{ width: 0 }}
-               animate={{ width: `${(currentStepIndex / (lesson?.steps.length || 1)) * 100}%` }}
-               transition={{ duration: 0.5 }}
-             />
-           </div>
+          <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
+            <span>PROGRESSO DA JORNADA</span>
+            <span className="text-[#fecc73]">{Math.round((currentStepIndex / (lesson?.steps.length || 1)) * 100)}%</span>
+          </div>
+          <div className="h-2 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
+            <motion.div
+              className="h-full bg-gradient-to-r from-[#fec868] to-[#fec868] rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]"
+              initial={{ width: 0 }}
+              animate={{
+                width: `${(currentStepIndex / (lesson?.steps.length || 1)) * 100}%`,
+              }}
+              transition={{ duration: 0.5 }}
+            />
+          </div>
         </div>
       </div>
     </div>

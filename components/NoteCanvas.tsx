@@ -496,7 +496,7 @@ const NoteCanvas = forwardRef<NoteCanvasHandle, NoteCanvasProps>(
       ctx.save();
       applyTransform(ctx);
       ctx.lineWidth = 1.5 / v.scale;
-      ctx.strokeStyle = '#F59E0B';
+      ctx.strokeStyle = '#f59e0b';
       ctx.setLineDash([6 / v.scale, 4 / v.scale]);
 
       if (bounds) {
@@ -508,7 +508,7 @@ const NoteCanvas = forwardRef<NoteCanvasHandle, NoteCanvasProps>(
         const handles = getHandlePositions(bounds, v.scale);
         const r = (HANDLE_HIT_R * 0.55) / v.scale;
         ctx.setLineDash([]);
-        ctx.fillStyle = '#F59E0B';
+        ctx.fillStyle = '#f59e0b';
         ctx.strokeStyle = '#FFFFFF';
         ctx.lineWidth = 1.5 / v.scale;
         [handles.nw, handles.ne, handles.sw, handles.se].forEach(p => {
@@ -517,12 +517,12 @@ const NoteCanvas = forwardRef<NoteCanvasHandle, NoteCanvasProps>(
           ctx.fill();
           ctx.stroke();
         });
-        ctx.strokeStyle = '#F59E0B';
+        ctx.strokeStyle = '#f59e0b';
         ctx.beginPath();
         ctx.moveTo(handles.boxTopCenter.x, handles.boxTopCenter.y);
         ctx.lineTo(handles.rotate.x, handles.rotate.y);
         ctx.stroke();
-        ctx.fillStyle = '#F59E0B';
+        ctx.fillStyle = '#f59e0b';
         ctx.strokeStyle = '#FFFFFF';
         ctx.beginPath();
         ctx.arc(handles.rotate.x, handles.rotate.y, r, 0, Math.PI * 2);
@@ -1035,7 +1035,7 @@ const NoteCanvas = forwardRef<NoteCanvasHandle, NoteCanvasProps>(
           });
           ctx.restore();
           ctx.save();
-          ctx.strokeStyle = '#F59E0B';
+          ctx.strokeStyle = '#f59e0b';
           ctx.lineWidth = 1.5 / viewRef.current.scale;
           ctx.setLineDash([6 / viewRef.current.scale, 4 / viewRef.current.scale]);
           ctx.beginPath();
@@ -1410,7 +1410,7 @@ const NoteCanvas = forwardRef<NoteCanvasHandle, NoteCanvasProps>(
               fontSize: textEditor.fontSizeScreen,
               color: colorRef.current,
               background: 'rgba(255,255,255,0.85)',
-              border: '1.5px dashed #F59E0B',
+              border: '1.5px dashed #f59e0b',
               borderRadius: 4,
               outline: 'none',
               resize: 'none',
