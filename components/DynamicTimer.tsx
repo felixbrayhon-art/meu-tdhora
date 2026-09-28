@@ -203,26 +203,27 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4">
-      <div className="flex justify-between items-center mb-12">
-        <button onClick={onBack} className="text-gray-400 font-bold uppercase text-[10px] tracking-widest flex items-center gap-2 hover:text-[#473c33] transition-colors">
+    <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#e9e0d4] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(71,60,51,0.06)]">
+        <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
           </svg>
           Sair do Bloco
         </button>
-        <div className="flex flex-col items-end">
-          <h1 className="text-2xl font-black uppercase tracking-tighter">
-            Timer <span className="text-[#fecc73]">Dinâmico</span>
+        <div className="text-center sm:text-right">
+          <h1 className="text-xl font-black uppercase tracking-tight text-[#473c33] md:text-2xl">
+            Timer <span className="text-[#e5a83e]">Dinâmico</span>
           </h1>
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Blocos Imutáveis</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Blocos imutáveis</span>
         </div>
-      </div>
+      </header>
 
-      <div className={`rounded-[60px] p-12 shadow-2xl transition-colors duration-1000 ${styles.light} relative overflow-hidden min-h-[500px] flex flex-col items-center justify-center`}>
+      <section className={`relative min-h-[560px] overflow-hidden rounded-[32px] p-5 shadow-[0_18px_42px_rgba(71,60,51,0.1)] transition-colors duration-1000 md:p-8 ${styles.light}`}>
         {/* Phase Indicator */}
-        <div className="absolute top-10 left-12">
-          <span className={`px-4 py-1.5 rounded-full font-black text-[10px] tracking-widest text-white ${styles.bg}`}>{styles.label}</span>
+        <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
+          <span className={`rounded-full px-4 py-2 font-black text-[10px] tracking-widest text-white shadow-sm ${styles.bg}`}>{styles.label}</span>
+          <span className="rounded-full border border-black/5 bg-white/55 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-[#8f8375]">{isActive ? 'Em andamento' : 'Pronto para iniciar'}</span>
         </div>
 
         <AnimatePresence mode="wait">
@@ -289,11 +290,14 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
               </div>
             </motion.div>
           ) : phase === 'EVOCATION' ? (
-            <motion.div key="evocation" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="text-center space-y-8">
-              <h2 className="text-4xl font-black uppercase tracking-tighter max-w-xl mx-auto leading-tight">FECHE TUDO. O QUE VOCÊ LEMBRA DO ESTUDO DE {strategicMode && selectedTopic ? <span className="text-[#fda769] block mt-2 underline">{selectedTopic}</span> : <span className={styles.text}>ONTEM?</span>}</h2>
+            <motion.div key="evocation" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="mx-auto w-full max-w-4xl text-center">
+              <div className="mb-7">
+                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#8f8375]">Fase de evocação</p>
+                <h2 className="mx-auto mt-3 max-w-3xl text-3xl font-black uppercase leading-[1.05] tracking-tight text-[#473c33] md:text-5xl">Feche tudo. O que você lembra do estudo de {strategicMode && selectedTopic ? <span className="mt-2 block text-[#b0632a] underline decoration-2 underline-offset-4">{selectedTopic}?</span> : <span className={`${styles.text} block`}>ontem?</span>}</h2>
+              </div>
 
               {strategicMode && editalConfig && !isActive && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto w-full mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto w-full mb-6">
                   <div className="space-y-1 text-left">
                     <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>
                     <select
@@ -328,23 +332,32 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
                 </div>
               )}
 
-              <div className="w-full max-w-xl mx-auto">
-                <textarea value={evocationText} onChange={(e) => setEvocationText(e.target.value)} placeholder="Escreva livremente aqui tudo o que você lembra... Não consulte nada!" className="w-full bg-white/50 backdrop-blur-sm border-2 border-[#fed6ba] rounded-[30px] p-6 min-h-[150px] focus:outline-none focus:border-[#fdad74] font-bold transition-all text-[#ac4800] placeholder:text-[#fed6ba]" />
+              <div className="grid items-end gap-5 lg:grid-cols-[1fr_220px]">
+                <label className="block text-left">
+                  <span className="mb-2 ml-2 block text-[10px] font-black uppercase tracking-widest text-[#8f8375]">Escreva o que já sabe</span>
+                  <textarea value={evocationText} onChange={(e) => setEvocationText(e.target.value)} placeholder="Escreva livremente aqui tudo o que você lembra... Não consulte nada!" className="min-h-[148px] w-full rounded-[24px] border-2 border-[#fed6ba] bg-white/65 p-5 font-semibold text-[#ac4800] placeholder:text-[#e8bda1] backdrop-blur-sm transition-all focus:border-[#fdad74] focus:outline-none focus:ring-4 focus:ring-[#fdad74]/15" />
+                </label>
+
+                <div className="rounded-[24px] border border-black/5 bg-white/55 p-5 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#8f8375]">Tempo restante</p>
+                  <div className="mt-2 text-5xl font-black tabular-nums tracking-tighter text-[#473c33]">{formatTime(seconds)}</div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/10">
+                    <div className={`h-full rounded-full transition-all ${styles.bg}`} style={{ width: `${Math.max(0, Math.min(100, (seconds / 300) * 100))}%` }} />
+                  </div>
+                </div>
               </div>
 
-              <div className="text-7xl font-black tabular-nums tracking-tighter">{formatTime(seconds)}</div>
-
               {isActive && (
-                <div className="flex justify-center">
-                  <button onClick={handleEvocationSubmit} className="bg-[#fda769] text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl hover:scale-105 transition-all">
+                <div className="mt-6 flex justify-center">
+                  <button onClick={handleEvocationSubmit} className="rounded-2xl bg-[#fda769] px-10 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl transition-all hover:scale-[1.02]">
                     Finalizar e Analisar
                   </button>
                 </div>
               )}
 
               {!isActive && (
-                <button onClick={startSession} className={`${styles.bg} text-white px-12 py-5 rounded-[25px] font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-all`}>
-                  Iniciar Evocação
+                <button onClick={startSession} className={`mt-6 ${styles.bg} text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg hover:scale-[1.02] transition-all`}>
+                  Iniciar evocação
                 </button>
               )}
             </motion.div>
@@ -588,9 +601,9 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
             </motion.div>
           ) : null}
         </AnimatePresence>
-      </div>
+      </section>
 
-      <div className="mt-12 grid grid-cols-3 gap-8">
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
         {[
           {
             icon: '🧠',
@@ -608,10 +621,10 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
             desc: 'Analisar o erro impede a repetição.',
           },
         ].map((item, idx) => (
-          <div key={idx} className="bg-white p-6 rounded-[30px] border border-gray-100 shadow-sm text-center">
+          <div key={idx} className="rounded-[24px] border border-[#e9e0d4] bg-white p-5 text-center shadow-[0_8px_22px_rgba(71,60,51,0.05)]">
             <span className="text-3xl block mb-2">{item.icon}</span>
-            <p className="font-black text-[10px] uppercase tracking-widest text-[#fecc73] mb-1">{item.label}</p>
-            <p className="text-gray-400 text-[10px] font-medium leading-tight">{item.desc}</p>
+            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-[#e5a83e]">{item.label}</p>
+            <p className="text-[10px] font-medium leading-tight text-[#8f8375]">{item.desc}</p>
           </div>
         ))}
       </div>

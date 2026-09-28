@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DOMPurify from 'dompurify';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, Maximize2, Minimize2, Move, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen, Copy, CheckCircle2 } from './icons';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, Maximize2, Minimize2, Move, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen, Copy, CheckCircle2 } from './icons';
 import { QuizFolder, Notebook, QuizQuestion, ExplanationStyle } from '../types';
 import MarkdownContent from './MarkdownContent';
 import { RichTextEditor } from './RichTextEditor';
 import { MoveToNotebookModal } from './MoveToNotebookModal';
+import { updateQuestionExplanation } from '../services/questionBankService';
 
 interface QuizPlayerProps {
   folder: QuizFolder;
@@ -16,9 +17,14 @@ interface QuizPlayerProps {
   onMoveQuestion: (questionId: string, sourceFolderId: string, sourceNotebookId: string, targetFolderId: string, targetNotebookId: string) => void;
   onTriggerGuidedLesson?: (subject: string, topic: string) => void;
   initialFontSizeMultiplier?: number;
+  // Admins can fix a bank question's explanation on the spot, right where
+  // they noticed it was wrong — only for questions that actually came from
+  // the shared bank (id prefixed "bank-" by questionBankService's
+  // mapBankQuestion), since anything else has no Firestore doc to patch.
+  isAdmin?: boolean;
 }
 
-const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBack, onComplete, onUpdateQuestions, onMoveQuestion, onTriggerGuidedLesson, initialFontSizeMultiplier = 1 }) => {
+const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBack, onComplete, onUpdateQuestions, onMoveQuestion, onTriggerGuidedLesson, initialFontSizeMultiplier = 1, isAdmin = false }) => {
   if (!notebook || !folder) {
     console.error('QuizPlayer: Lost context (notebook or folder is null)');
     onBack();
@@ -27,14 +33,18 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
 
   const [questions, setQuestions] = useState<QuizQuestion[]>(notebook.questions);
   const initialQuestions = useRef([...notebook.questions]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  // Resume where the student left off — the first question without a saved
+  // userAnswer — instead of always restarting at question 1. Only runs once
+  // per mount, matching how the rest of QuizPlayer's local state is seeded
+  // from `notebook` at open time.
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    const firstUnanswered = notebook.questions.findIndex((q) => q.userAnswer === undefined);
+    return firstUnanswered === -1 ? 0 : firstUnanswered;
+  });
   const [questionScratched, setQuestionScratched] = useState<string[]>([]);
   const [questionHighlighted, setQuestionHighlighted] = useState<string[]>([]);
   const [tempSelectedAnswer, setTempSelectedAnswer] = useState<number | null>(null);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
-  const [showCommentary, setShowCommentary] = useState(false);
   const [crossedOut, setCrossedOut] = useState<number[]>([]);
   const [userCommentaryInput, setUserCommentaryInput] = useState('');
   const [showNoteSection, setShowNoteSection] = useState(false);
@@ -212,6 +222,12 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
   };
 
   const currentQ = questions[currentIndex];
+  // Source of truth is the persisted userAnswer on the question itself, not
+  // local-only state — this is what makes an already-answered question show
+  // as answered (right/wrong, which option) after leaving and reopening the
+  // caderno, and lets "Zerar Caderno" be the only thing that clears it.
+  const selectedAnswer = currentQ.userAnswer ?? null;
+  const score = questions.filter((q) => typeof q.userAnswer === 'number' && q.userAnswer === q.correctAnswer).length;
 
   const handleUpdateImageSize = (imgIdx: number, size: string) => {
     const qIdx = questions.findIndex((q) => q.id === currentQ.id);
@@ -226,6 +242,45 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
     };
     setQuestions(newQuestions);
     onUpdateQuestions?.(newQuestions);
+  };
+
+  const [editingExplanation, setEditingExplanation] = useState(false);
+  const [explanationDraft, setExplanationDraft] = useState('');
+  const [savingExplanation, setSavingExplanation] = useState(false);
+  const [explanationSaveError, setExplanationSaveError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    setEditingExplanation(false);
+    setExplanationSaveError(null);
+  }, [currentIndex]);
+
+  const canEditExplanation = isAdmin && currentQ.id.startsWith('bank-');
+
+  const handleStartEditExplanation = () => {
+    setExplanationDraft(currentQ.explanation);
+    setExplanationSaveError(null);
+    setEditingExplanation(true);
+  };
+
+  const handleSaveExplanation = async () => {
+    const qIdx = questions.findIndex((q) => q.id === currentQ.id);
+    if (qIdx === -1) return;
+    setSavingExplanation(true);
+    setExplanationSaveError(null);
+    try {
+      // currentQ.id is "bank-<firestoreDocId>" (see questionBankService's
+      // mapBankQuestion) — strip the prefix to get the real doc to patch.
+      await updateQuestionExplanation(currentQ.id.replace(/^bank-/, ''), explanationDraft);
+      const newQuestions = [...questions];
+      newQuestions[qIdx] = { ...newQuestions[qIdx], explanation: explanationDraft };
+      setQuestions(newQuestions);
+      onUpdateQuestions?.(newQuestions);
+      setEditingExplanation(false);
+    } catch (error: any) {
+      setExplanationSaveError(error?.message || 'Não foi possível salvar a explicação.');
+    } finally {
+      setSavingExplanation(false);
+    }
   };
 
   const toggleQuestionScratch = () => {
@@ -267,8 +322,6 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
       setQuestions(shuffled);
       setCurrentIndex(0);
       setTempSelectedAnswer(null);
-      setSelectedAnswer(null);
-      setShowCommentary(false);
       setCrossedOut([]);
     }
   };
@@ -282,11 +335,38 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
   const handleConfirmAnswer = () => {
     if (tempSelectedAnswer === null || selectedAnswer !== null) return;
 
-    setSelectedAnswer(tempSelectedAnswer);
-    const isCorrect = tempSelectedAnswer === questions[currentIndex].correctAnswer;
+    const newQuestions = [...questions];
+    newQuestions[currentIndex] = { ...newQuestions[currentIndex], userAnswer: tempSelectedAnswer };
+    setQuestions(newQuestions);
+    onUpdateQuestions?.(newQuestions);
+    setTempSelectedAnswer(null);
+  };
 
-    if (isCorrect) setScore((s) => s + 1);
-    setShowCommentary(true);
+  // "Revisar resposta" only reopens the CURRENT question for a new answer —
+  // unlike "Zerar Caderno" below, it never touches any other question.
+  const handleReviewAnswer = () => {
+    const { userAnswer, ...rest } = questions[currentIndex];
+    const newQuestions = [...questions];
+    newQuestions[currentIndex] = rest as QuizQuestion;
+    setQuestions(newQuestions);
+    onUpdateQuestions?.(newQuestions);
+    setTempSelectedAnswer(null);
+  };
+
+  // Explicit, deliberate reset the student has to ask for — clears every
+  // saved answer in this caderno so progress restarts at question 1. This is
+  // the ONLY thing that should ever wipe userAnswer in bulk.
+  const handleResetNotebook = () => {
+    if (!confirm('Isso vai apagar TODAS as respostas salvas neste caderno e recomeçar do zero. Essa ação não pode ser desfeita. Continuar?')) return;
+    const resetQuestions = questions.map((q) => {
+      const { userAnswer, ...rest } = q;
+      return rest as QuizQuestion;
+    });
+    setQuestions(resetQuestions);
+    onUpdateQuestions?.(resetQuestions);
+    setCurrentIndex(0);
+    setTempSelectedAnswer(null);
+    setCrossedOut([]);
   };
 
   const handleDoubleClick = (idx: number) => {
@@ -306,8 +386,6 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
         setCurrentIndex(newQuestions.length - 1);
       }
       setTempSelectedAnswer(null);
-      setSelectedAnswer(null);
-      setShowCommentary(false);
       setCrossedOut([]);
     }
   };
@@ -329,8 +407,6 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
       setTempSelectedAnswer(null);
-      setSelectedAnswer(null);
-      setShowCommentary(false);
       setCrossedOut([]);
       setQuestionScratched([]);
       setQuestionHighlighted([]);
@@ -356,8 +432,6 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
     if (currentIndex > 0) {
       setCurrentIndex((prev) => prev - 1);
       setTempSelectedAnswer(null);
-      setSelectedAnswer(null);
-      setShowCommentary(false);
       setCrossedOut([]);
       setQuestionScratched([]);
       setQuestionHighlighted([]);
@@ -410,19 +484,28 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
 
   return (
     <div className="fixed inset-0 z-[200] bg-[#f8fafc] text-[#1e293b] selection:bg-[#fecc73]/30 overflow-y-auto font-sans">
-      <div className="w-full max-w-5xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
         {/* HEADER: PROGRESS & TITLE */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between gap-8 mb-8 sticky top-0 z-50">
-          <div className="flex flex-col shrink-0">
-            <h1 className="text-sm font-black text-[#fec868] tracking-tight uppercase ">{notebook.name}</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Sessão {folder.name}</p>
+        <div className="bg-white/95 backdrop-blur rounded-2xl p-3 sm:p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3 mb-5 sticky top-2 z-50">
+          <div className="flex items-center gap-3 min-w-0 basis-56 flex-1">
+            <button onClick={() => { handleSaveUserCommentary(); onBack(); }} className="shrink-0 p-2 rounded-xl text-slate-400 hover:text-[#473c33] hover:bg-slate-100 transition-all" aria-label="Sair do simulado" title="Sair do simulado">
+              <LogOut className="w-4 h-4" />
+            </button>
+            <button onClick={handleResetNotebook} className="shrink-0 p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all" aria-label="Zerar caderno" title="Zerar caderno (apaga todas as respostas salvas)">
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-sm font-black text-[#473c33] tracking-tight uppercase truncate" title={notebook.name}>{notebook.name}</h1>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1 truncate">Sessão {folder.name}</p>
+            </div>
           </div>
 
-          <div className="flex-1 flex flex-col items-center gap-2">
-            <div className="flex justify-center items-center gap-2 mb-1">
+          <div className="flex-1 min-w-[180px] max-w-md flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Questão {currentIndex + 1} de {questions.length}</span>
               <span className="text-[11px] font-black text-[#fecc73] tracking-wider">{Math.round(((currentIndex + 1) / questions.length) * 100)}%</span>
             </div>
-            <div className="w-full max-w-sm h-1.5 bg-[#fff6e8] rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-[#fff6e8] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#fecc73] transition-all duration-700 ease-out"
                 style={{
@@ -432,43 +515,39 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1.5 mr-4">
-              <button className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#fecc73] rounded-xl transition-all border border-slate-100">
-                <Share2 className="w-4 h-4" />
-              </button>
-              <button onClick={prevQuestion} disabled={currentIndex === 0} className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#fecc73] rounded-xl transition-all border border-slate-100 disabled:opacity-30">
+          <div className="flex items-center gap-1.5 shrink-0">
+              <button onClick={prevQuestion} disabled={currentIndex === 0} className="flex items-center gap-1.5 px-2.5 py-2 bg-slate-50 text-slate-500 hover:text-[#fecc73] rounded-xl transition-all border border-slate-100 disabled:opacity-30" aria-label="Questão anterior" title="Questão anterior">
                 <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline text-[10px] font-black uppercase tracking-wide">Anterior</span>
               </button>
-              <button onClick={nextQuestion} disabled={currentIndex === questions.length - 1} className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#fecc73] rounded-xl transition-all border border-slate-100 disabled:opacity-30">
+              <button onClick={nextQuestion} disabled={currentIndex === questions.length - 1} className="flex items-center gap-1.5 px-2.5 py-2 bg-slate-50 text-slate-500 hover:text-[#fecc73] rounded-xl transition-all border border-slate-100 disabled:opacity-30" aria-label="Próxima questão" title="Próxima questão">
+                <span className="hidden sm:inline text-[10px] font-black uppercase tracking-wide">Próxima</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
-            </div>
-            <div className="w-px h-8 bg-slate-100 mr-2"></div>
-            <div className="flex items-center gap-2 bg-[#fff6e8]/50 px-4 py-2 rounded-xl text-[#fec868] border border-[#fff0d5]/50">
-              <span className="text-[11px] font-black tracking-widest tabular-nums">00:00 MIN</span>
-            </div>
           </div>
         </div>
         {/* QUIZ MAIN CARD */}
-        <div className="bg-white rounded-[40px] p-8 md:p-16 border border-slate-200/60 shadow-[0_20px_50px_rgba(0,0,0,0.03)] relative overflow-hidden mb-10 transition-all hover:shadow-[0_25px_60px_rgba(0,0,0,0.05)]">
-          <div className="mb-10 text-center md:text-left">
-            <div className="flex items-center justify-between mb-6">
-              <span className="text-[11px] font-black text-[#fecc73]/50 uppercase tracking-[0.3em]">Questão {currentIndex + 1}</span>
-
+        <div className="bg-white rounded-[28px] p-4 sm:p-6 md:p-8 border border-slate-200/60 shadow-[0_20px_50px_rgba(0,0,0,0.03)] relative overflow-hidden mb-6 transition-all hover:shadow-[0_25px_60px_rgba(0,0,0,0.05)]">
+          <div className="mb-7">
+            <div className="flex flex-wrap gap-3 items-center justify-between mb-4 pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner mr-2 items-center">
+                <span className="text-[11px] font-black text-[#fecc73] uppercase tracking-[0.2em]">Questão {currentIndex + 1}</span>
+                <span className="text-[10px] font-bold text-slate-400">• Enunciado</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner items-center">
                   <div className="flex items-center gap-2 px-3 border-r border-slate-200 mr-2">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Texto</span>
                     <input type="range" min="0.8" max="2.5" step="0.1" value={questionFontSize} onChange={(e) => setQuestionFontSize(parseFloat(e.target.value))} className="w-16 accent-[#fecc73] h-1" title="Aumentar/Diminuir letra da questão" />
                   </div>
-                  <button onClick={() => copyQuestionToClipboard(currentQ)} className={`p-2 rounded-lg transition-all active:scale-90 mr-1 ${copiedId === currentQ.id ? 'bg-[#b1c77b] text-white shadow-lg' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Copiar questão inteira">
+                  <button onClick={() => copyQuestionToClipboard(currentQ)} className={`p-2 rounded-lg transition-all active:scale-90 mr-1 ${copiedId === currentQ.id ? 'bg-[#b1c77b] text-white shadow-lg' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Copiar questão inteira" aria-label="Copiar questão inteira">
                     {copiedId === currentQ.id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => handleSelectiveMark('highlight')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentQ.id) ? 'bg-[#fff0d5] text-[#fec868] shadow-sm border border-[#ffe6b9]' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Destacar (Selecione texto ou clique para todo enunciado)">
+                  <button onClick={() => handleSelectiveMark('highlight')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentQ.id) ? 'bg-[#fff0d5] text-[#fec868] shadow-sm border border-[#ffe6b9]' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Destacar (Selecione texto ou clique para todo enunciado)" aria-label="Destacar texto">
                     <Highlighter className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleSelectiveMark('strike')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionScratched.includes(currentQ.id) ? 'bg-slate-200 text-slate-600 shadow-sm' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Taxar (Selecione texto ou clique para todo enunciado)">
+                  <button onClick={() => handleSelectiveMark('strike')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionScratched.includes(currentQ.id) ? 'bg-slate-200 text-slate-600 shadow-sm' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Rasurar (Selecione texto ou clique para todo enunciado)" aria-label="Rasurar texto">
                     <PenLine className="w-4 h-4" />
                   </button>
                   <button
@@ -477,11 +556,12 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                       setQuestionHighlighted(questionHighlighted.filter((id) => id !== currentQ.id));
                     }}
                     className="p-2 text-slate-300 hover:text-red-500 transition-all active:scale-90"
-                    title="Limpar Marcações"
+                    title="Limpar marcações"
+                    aria-label="Limpar marcações"
                   >
                     <Eraser className="w-4 h-4" />
                   </button>
-                  <button onClick={handleUndo} disabled={!(undoStack[currentQ.id] && undoStack[currentQ.id].length > 0)} className="p-2 text-slate-300 hover:text-[#fdad74] disabled:opacity-20 transition-all active:scale-90" title="Desfazer Marcação">
+                  <button onClick={handleUndo} disabled={!(undoStack[currentQ.id] && undoStack[currentQ.id].length > 0)} className="p-2 text-slate-300 hover:text-[#fdad74] disabled:opacity-20 transition-all active:scale-90" title="Desfazer marcação" aria-label="Desfazer marcação">
                     <Undo2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -501,24 +581,27 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
  `}</style>
             <div
               ref={questionTextRef}
-              className={`quiz-question-text font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 p-8 md:p-12 rounded-[40px] shadow-inner relative z-10 ${questionScratched.includes(currentQ.id) ? 'text-slate-300 bg-slate-100/50 grayscale blur-[0.5px] opacity-40 line-through' : questionHighlighted.includes(currentQ.id) ? 'text-slate-900 bg-[#fff6e8]/80 border-l-[12px] border-l-yellow-400 border border-[#ffe6b9]/50' : 'text-slate-800 bg-slate-50 border border-slate-100'}`}
+              className={`quiz-question-text font-semibold leading-[1.6] tracking-tight markdown-body transition-all duration-500 p-5 sm:p-7 md:p-9 rounded-3xl shadow-inner relative z-10 ${questionScratched.includes(currentQ.id) ? 'text-slate-300 bg-slate-100/50 grayscale blur-[0.5px] opacity-40 line-through' : questionHighlighted.includes(currentQ.id) ? 'text-slate-900 bg-[#fff6e8]/80 border-l-[8px] border-l-yellow-400 border border-[#ffe6b9]/50' : 'text-slate-800 bg-slate-50 border border-slate-100'}`}
               dangerouslySetInnerHTML={{
                 __html: DOMPurify.sanitize(currentQ.question),
               }}
             />
           </div>
 
-          <div className="flex gap-1.5 absolute top-8 right-8">
-            <button onClick={() => setShowMoveModal(true)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#fecc73] hover:bg-[#fff6e8] rounded-xl transition-all" title="Mover questão">
+          <div className="flex flex-wrap items-center justify-end gap-2 mb-6 pt-1">
+            <span className="mr-auto text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ações da questão</span>
+            <button onClick={() => setShowMoveModal(true)} className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 text-slate-500 hover:text-[#fecc73] hover:bg-[#fff6e8] rounded-xl transition-all text-[10px] font-black uppercase tracking-wide" title="Mover questão">
               <Move className="w-4 h-4" />
+              <span className="hidden sm:inline">Mover</span>
             </button>
-            <button onClick={handleDeleteQuestion} className="p-2.5 bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Excluir questão">
+            <button onClick={handleDeleteQuestion} className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all text-[10px] font-black uppercase tracking-wide" title="Excluir questão">
               <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Excluir</span>
             </button>
           </div>
 
           {/* We keep the options grid visible regardless of selectedAnswer being null or not */}
-          <div className={`grid ${currentQ.options.every((o) => !o.trim()) ? 'grid-cols-5' : 'grid-cols-1'} gap-4 mb-10`}>
+          <div className={`grid ${currentQ.options.every((o) => !o.trim()) ? 'grid-cols-5' : 'grid-cols-1'} gap-3 mb-7`}>
             {questions[currentIndex].options.map((opt, idx) => {
               const isConfirmed = selectedAnswer !== null;
               const isCorrectAnswer = idx === currentQ.correctAnswer;
@@ -555,8 +638,23 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
 
               return (
                 <div key={idx} className="relative group">
-                  <div onClick={() => handleSelect(idx)} onDoubleClick={() => handleDoubleClick(idx)} className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-6 rounded-[25px] flex items-center gap-6'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] ${btnClass} relative overflow-hidden`} role="button" aria-disabled={isConfirmed} tabIndex={0}>
-                    <div className={`flex items-center flex-1 ${isQuickMode ? 'justify-center' : 'gap-6'}`}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(idx)}
+                    onDoubleClick={() => handleDoubleClick(idx)}
+                    onKeyDown={(event) => {
+                      if ((event.key === 'Enter' || event.key === ' ') && !isConfirmed) {
+                        event.preventDefault();
+                        handleSelect(idx);
+                      }
+                    }}
+                    className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-4 sm:p-5 rounded-2xl flex items-center gap-4 sm:gap-5'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#fecc73]/30 ${btnClass} relative overflow-hidden`}
+                    aria-label={`Alternativa ${String.fromCharCode(65 + idx)}${opt ? `: ${opt}` : ''}`}
+                    aria-pressed={isUserSelection}
+                    aria-disabled={isConfirmed}
+                    tabIndex={isConfirmed ? -1 : 0}
+                  >
+                    <div className={`flex items-center flex-1 ${isQuickMode ? 'justify-center' : 'gap-4 sm:gap-5'}`}>
                       <span className={`${isQuickMode ? 'w-10 h-10 rounded-xl' : 'w-12 h-12 rounded-full'} border flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-all ${circleClass}`}>{String.fromCharCode(65 + idx)}</span>
                       {!isQuickMode && <span className="text-[16px] leading-snug">{opt}</span>}
                     </div>
@@ -572,7 +670,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                       </div>
                     )}
                     {!isQuickMode && !isConfirmed && <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isUserSelection ? 'border-[#fecc73] bg-[#fecc73]' : 'border-slate-200'}`}>{isUserSelection && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}</div>}
-                  </div>
+                  </button>
                 </div>
               );
             })}
@@ -580,46 +678,95 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
 
           {selectedAnswer === null ? (
             <>
-              <div className="flex justify-center md:justify-start mb-10">
-                <button onClick={handleConfirmAnswer} disabled={tempSelectedAnswer === null} className="bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-slate-100 disabled:text-slate-300 disabled:cursor-not-allowed text-white font-bold px-10 py-3.5 rounded-xl uppercase text-[11px] tracking-wider transition-all active:scale-95 shadow-lg shadow-[#596b2a]/10">
-                  CONFERIR RESPOSTA
+              <div className="flex flex-wrap items-center justify-between gap-3 mt-7 pt-5 border-t border-slate-100">
+                <button onClick={handleConfirmAnswer} disabled={tempSelectedAnswer === null} className="flex items-center gap-2 bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-slate-100 disabled:text-slate-300 disabled:cursor-not-allowed text-white font-bold px-5 py-3 rounded-xl uppercase text-[11px] tracking-wider transition-all active:scale-95 shadow-lg shadow-[#596b2a]/10">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Conferir resposta
                 </button>
-              </div>
 
-              <div className="flex items-center justify-center gap-3 mt-16 scale-110">
-                <button onClick={prevQuestion} disabled={currentIndex === 0} className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-[#fec868] rounded-xl shadow-sm transition-all disabled:opacity-20 active:scale-95">
+                <div className="flex flex-wrap items-center gap-2">
+                <button onClick={prevQuestion} disabled={currentIndex === 0} className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 text-slate-500 hover:text-[#fec868] rounded-xl shadow-sm transition-all disabled:opacity-20 active:scale-95" aria-label="Questão anterior" title="Questão anterior">
                   <ChevronLeft className="w-6 h-6" />
+                  <span className="hidden sm:inline text-[10px] font-black uppercase">Anterior</span>
                 </button>
-                <button onClick={nextQuestion} disabled={currentIndex === questions.length - 1} className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-[#fec868] rounded-xl shadow-sm transition-all disabled:opacity-20 active:scale-95">
+                <button onClick={nextQuestion} disabled={currentIndex === questions.length - 1} className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 text-slate-500 hover:text-[#fec868] rounded-xl shadow-sm transition-all disabled:opacity-20 active:scale-95" aria-label="Próxima questão" title="Próxima questão">
+                  <span className="hidden sm:inline text-[10px] font-black uppercase">Próxima</span>
                   <ChevronRight className="w-6 h-6" />
                 </button>
-                <button onClick={shuffleQuestions} className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-[#fec868] rounded-xl shadow-sm transition-all active:scale-95">
+                <button onClick={shuffleQuestions} className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 text-slate-500 hover:text-[#fec868] rounded-xl shadow-sm transition-all active:scale-95" title="Embaralhar questões">
                   <Shuffle className="w-6 h-6" />
+                  <span className="hidden sm:inline text-[10px] font-black uppercase">Embaralhar</span>
+                </button>
+                <button onClick={handleResetNotebook} className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 text-slate-500 hover:text-red-500 rounded-xl shadow-sm transition-all active:scale-95" title="Zerar caderno (apaga todas as respostas salvas)">
+                  <Trash2 className="w-6 h-6" />
+                  <span className="hidden sm:inline text-[10px] font-black uppercase">Zerar caderno</span>
                 </button>
                 <button
                   onClick={() => {
                     handleSaveUserCommentary();
                     onBack();
                   }}
-                  className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-red-500 rounded-xl shadow-sm transition-all active:scale-95"
+                  className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 text-slate-500 hover:text-red-500 rounded-xl shadow-sm transition-all active:scale-95"
+                  title="Sair do simulado"
                 >
-                  <LogOut className="w-6 h-6" />
+                  <LogOut className="w-5 h-5" />
+                  <span className="hidden sm:inline text-[10px] font-black uppercase">Sair</span>
                 </button>
+                </div>
               </div>
             </>
           ) : (
             <div className="animate-in fade-in slide-in-from-bottom-5 duration-500">
-              <div className={`p-8 rounded-[40px] mb-8 border ${selectedAnswer === currentQ.correctAnswer ? 'bg-[#f4f7ec] border-[#e9efda] shadow-sm' : 'bg-red-50 border-red-100 shadow-sm'}`}>
-                <div className="flex items-center gap-6">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl ${selectedAnswer === currentQ.correctAnswer ? 'bg-[#b1c77b]' : 'bg-red-500'}`}>{selectedAnswer === currentQ.correctAnswer ? '✓' : '✗'}</div>
+              <div className={`p-5 sm:p-6 rounded-3xl mb-5 border shadow-sm dark:shadow-none ${selectedAnswer === currentQ.correctAnswer ? 'bg-[#f1f6e8] dark:bg-[#34392c] border-[#abc270]/40 dark:border-[#82965b]' : 'bg-[#fff1ec] dark:bg-[#3d302a] border-[#df9278] dark:border-[#b96b50]'}`}>
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl ${selectedAnswer === currentQ.correctAnswer ? 'bg-[#82995a]' : 'bg-[#c96f53]'}`}>{selectedAnswer === currentQ.correctAnswer ? '✓' : '✗'}</div>
                   <div>
-                    <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedAnswer === currentQ.correctAnswer ? 'text-[#abc270]' : 'text-red-600'}`}>{selectedAnswer === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}</p>
-                    <p className="text-slate-800 text-[17px] font-bold">{selectedAnswer === currentQ.correctAnswer ? 'Resposta correta! Você consolidou este conhecimento.' : `A resposta correta é a alternativa ${String.fromCharCode(65 + currentQ.correctAnswer)}.`}</p>
+                    <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedAnswer === currentQ.correctAnswer ? 'text-[#596b2a] dark:text-[#c4d99a]' : 'text-[#984b39] dark:text-[#f1a58b]'}`}>{selectedAnswer === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}</p>
+                    <p className={`text-[17px] font-bold ${selectedAnswer === currentQ.correctAnswer ? 'text-[#46523a] dark:text-[#f2efd2]' : 'text-[#713a2e] dark:text-[#f1c5b4]'}`}>{selectedAnswer === currentQ.correctAnswer ? 'Resposta correta! Você consolidou este conhecimento.' : `A resposta correta é a alternativa ${String.fromCharCode(65 + currentQ.correctAnswer)}.`}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-[40px] p-8 md:p-12 border border-slate-100 shadow-inner mb-8 transition-all">
+              <div className="flex flex-wrap items-center gap-2 mb-5 p-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                <span className="mr-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Apoio</span>
+                <button
+                  onClick={() => {
+                    setShowNoteSection(!showNoteSection);
+                    if (!showNoteSection) {
+                      setTimeout(() => {
+                        noteSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setIsNoteExpanded(true);
+                      }, 100);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide transition-all ${showNoteSection ? 'bg-[#fec868] text-white' : 'bg-slate-50 text-slate-600 hover:text-[#fecc73]'}`}
+                  title="Alternar nota estratégica"
+                >
+                  <MessageSquarePlus className="w-4 h-4" /> Nota
+                </button>
+                <button
+                  onClick={() => {
+                    setShowImageArea(!showImageArea);
+                    if (!showImageArea) {
+                      setTimeout(() => imageInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide transition-all ${showImageArea ? 'bg-[#fec868] text-white' : 'bg-slate-50 text-slate-600 hover:text-[#fecc73]'}`}
+                  title="Alternar anexo de imagem"
+                >
+                  <ImageIcon className="w-4 h-4" /> Imagem
+                </button>
+                {onTriggerGuidedLesson && (
+                  <button onClick={() => onTriggerGuidedLesson(currentQ.topic?.includes(':') ? currentQ.topic.split(':')[0] : folder.name, currentQ.topic?.includes(':') ? currentQ.topic.split(':')[1] : currentQ.topic || notebook.name)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide bg-[#fff6e8] text-[#ec9700] hover:bg-[#fec868] hover:text-white transition-all" title="Abrir aula guiada">
+                    <BookOpen className="w-4 h-4" /> Aula guiada
+                  </button>
+                )}
+                <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide bg-slate-50 text-slate-500 hover:text-[#fecc73] transition-all" title="Voltar ao enunciado">
+                  <HelpCircle className="w-4 h-4 rotate-180" /> Enunciado
+                </button>
+              </div>
+
+              <div className="bg-slate-50 rounded-3xl p-5 sm:p-7 md:p-8 border border-slate-100 shadow-inner mb-6 transition-all">
                 {showNoteSection && (
                   <div ref={noteSectionRef} className="bg-white border border-slate-100 p-6 md:p-8 rounded-[35px] mb-8 relative shadow-sm group hover:shadow-md transition-all">
                     <div className="flex items-center justify-between mb-6">
@@ -687,9 +834,17 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 bg-[#fecc73] text-white rounded-lg flex items-center justify-center font-black text-sm shadow-lg shadow-[#fecc73]/20">A</div>
-                  <h4 className="text-[10px] font-black text-[#fec868] uppercase tracking-widest">MAPEAMENTO DA LÓGICA DA QUESTÃO</h4>
+                <div className="flex items-center justify-between gap-3 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[#fecc73] text-white rounded-lg flex items-center justify-center font-black text-sm shadow-lg shadow-[#fecc73]/20">A</div>
+                    <h4 className="text-[10px] font-black text-[#fec868] uppercase tracking-widest">MAPEAMENTO DA LÓGICA DA QUESTÃO</h4>
+                  </div>
+                  {canEditExplanation && !editingExplanation && (
+                    <button onClick={handleStartEditExplanation} className="flex items-center gap-2 px-3 py-2 bg-[#473c33]/5 hover:bg-[#473c33]/10 text-[#473c33] rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">
+                      <PenLine className="w-3.5 h-3.5" />
+                      Editar (admin)
+                    </button>
+                  )}
                 </div>
 
                 {onTriggerGuidedLesson && (
@@ -707,7 +862,27 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                   </button>
                 )}
 
-                <MarkdownContent content={currentQ.explanation} />
+                {editingExplanation ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={explanationDraft}
+                      onChange={(e) => setExplanationDraft(e.target.value)}
+                      rows={12}
+                      className="w-full bg-white border-2 border-[#fec868]/40 focus:border-[#fec868] rounded-2xl p-5 text-sm font-medium text-slate-700 outline-none transition-all resize-y shadow-inner"
+                    />
+                    {explanationSaveError && <p className="text-xs font-bold text-red-500">{explanationSaveError}</p>}
+                    <div className="flex items-center gap-3">
+                      <button onClick={handleSaveExplanation} disabled={savingExplanation} className="px-6 py-3 bg-[#473c33] hover:bg-[#5a4b3f] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40">
+                        {savingExplanation ? 'Salvando...' : 'Salvar explicação'}
+                      </button>
+                      <button onClick={() => setEditingExplanation(false)} disabled={savingExplanation} className="px-6 py-3 text-slate-400 hover:text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <MarkdownContent content={currentQ.explanation} />
+                )}
 
                 {/* Imagens Adicionais do Usuário */}
                 {currentQ.explanationImages && currentQ.explanationImages.length > 0 && (
@@ -769,7 +944,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
               </div>
 
               <div className="flex items-center justify-between mt-12">
-                <button onClick={() => setSelectedAnswer(null)} className="text-slate-400 hover:text-[#fecc73] font-bold text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95">
+                <button onClick={handleReviewAnswer} className="text-slate-400 hover:text-[#fecc73] font-bold text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95">
                   <ChevronLeft className="w-4 h-4" /> REVISAR RESPOSTA
                 </button>
 
@@ -844,61 +1019,6 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                 className="px-12 py-5 bg-[#fec868] text-white font-black uppercase text-[11px] tracking-widest rounded-full hover:bg-[#ffb22a] transition-all shadow-2xl active:scale-95"
               >
                 CONCLUIR E SALVAR
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Floating Action Buttons Sidebar */}
-        {questions.length > 0 && selectedAnswer !== null && (
-          <div className="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-[250] items-center">
-            <div className="flex flex-col bg-white/100 backdrop-blur-xl p-2.5 rounded-full border border-slate-200 shadow-2xl gap-3">
-              <button
-                onClick={() => {
-                  setShowNoteSection(!showNoteSection);
-                  if (!showNoteSection) {
-                    setTimeout(() => {
-                      noteSectionRef.current?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center',
-                      });
-                      setIsNoteExpanded(true);
-                    }, 100);
-                  }
-                }}
-                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative ${showNoteSection ? 'bg-[#fec868] text-white' : 'bg-white text-slate-600 border border-slate-100 hover:border-[#ffe6b9]'}`}
-                title="Alternar Nota Estratégica"
-              >
-                <MessageSquarePlus className="w-6 h-6" />
-                <div className="absolute right-full mr-4 px-3 py-1.5 bg-[#473c33] text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">{showNoteSection ? 'Ocultar Nota' : 'Nota Estratégica'}</div>
-              </button>
-              <button
-                onClick={() => {
-                  setShowImageArea(!showImageArea);
-                  if (!showImageArea) {
-                    setTimeout(() => {
-                      imageInputRef.current?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center',
-                      });
-                    }, 100);
-                  }
-                }}
-                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative ${showImageArea ? 'bg-[#fec868] text-white' : 'bg-white text-slate-600 border border-slate-100 hover:border-[#ffe6b9]'}`}
-                title="Alternar Anexo de Imagem"
-              >
-                <ImageIcon className="w-6 h-6" />
-                <div className="absolute right-full mr-4 px-3 py-1.5 bg-[#473c33] text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">{showImageArea ? 'Ocultar Imagem' : 'Anexar Imagem'}</div>
-              </button>
-              {onTriggerGuidedLesson && (
-                <button onClick={() => onTriggerGuidedLesson(currentQ.topic?.includes(':') ? currentQ.topic.split(':')[0] : folder.name, currentQ.topic?.includes(':') ? currentQ.topic.split(':')[1] : currentQ.topic || notebook.name)} className="w-14 h-14 bg-gradient-to-br from-[#fecc73] to-[#fec868] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative border border-white/20" title="Aula Guiada sobre este assunto">
-                  <BookOpen className="w-6 h-6" />
-                  <div className="absolute right-full mr-4 px-3 py-1.5 bg-[#ec9700] text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">Aula Guiada</div>
-                </button>
-              )}
-              <div className="w-full h-px bg-slate-100 my-1"></div>
-              <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="w-14 h-14 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all" title="Voltar ao Topo">
-                <HelpCircle className="w-5 h-5 rotate-180" />
               </button>
             </div>
           </div>

@@ -97,103 +97,132 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
     }
   };
 
+  const canGenerate = strategicMode ? Boolean(selectedSubject && selectedTopic) : topic.trim().length > 0;
+
   if (loading) {
-    return <LoadingFish message="Mergulhando mais fundo..." submessage="IA está extraindo o néctar do conhecimento" />;
+    return (
+      <div className="relative isolate w-full min-h-[calc(100dvh-8rem)] rounded-[32px] bg-[#473c33] text-white selection:bg-[#fecc73]/30 p-3 sm:p-6">
+        <div className="relative h-full min-h-[calc(100dvh-11rem)] w-full overflow-hidden rounded-[28px] border border-white/10 shadow-2xl">
+          <LoadingFish message="Mergulhando mais fundo..." submessage="A IA está organizando seu dossiê de alta performance" fullScreen />
+          <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-4 p-4 sm:p-5 bg-[#473c33]/55 backdrop-blur-md border-b border-white/10">
+            <button onClick={onBack} className="shrink-0 p-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all" aria-label="Cancelar exploração" title="Voltar">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <div className="min-w-0 flex-1 text-center sm:text-left">
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#fed386]">EXPLORAÇÃO ILIMITADA</p>
+              <h1 className="mt-1 text-sm sm:text-base font-black text-white truncate">Preparando seu dossiê</h1>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 shrink-0 text-[9px] font-black uppercase tracking-widest text-white/60">
+              <span className="w-2 h-2 rounded-full bg-[#fecc73] animate-pulse" />
+              Processando
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#473c33] text-white selection:bg-[#fecc73]/30 overflow-y-auto font-sans">
-      <div className="w-full max-w-7xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-10 duration-700">
+    <div className={`relative isolate w-full min-h-full min-w-0 rounded-[32px] selection:bg-[#fecc73]/30 font-sans ${result ? 'bg-[#473c33] text-white' : 'bg-[#f7f3ed] text-[#473c33]'}`}>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 xl:px-10 pt-6 sm:pt-10 pb-32 animate-in fade-in slide-in-from-bottom-10 duration-700">
         {!result ? (
-          <div className="max-w-3xl mx-auto py-20">
-            <button onClick={onBack} className="mb-8 text-gray-500 font-black uppercase text-[10px] tracking-[0.3em] flex items-center gap-2 hover:text-white transition-all group">
-              <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
-              </svg>
-              VOLTAR AO HUB
-            </button>
-
-            <div className="text-center mb-12">
-              <h1 className="font-logo text-6xl mb-4 uppercase text-white shadow-2xl">
-                {strategicMode ? 'Mergulho' : 'Exploração'} <span className="text-[#fecc73]">{strategicMode ? 'Estratégico' : 'Ilimitada'}</span>
-              </h1>
-              <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] opacity-60">{strategicMode ? (studyProfile === 'FACULDADE' ? 'CONECTADO À SUA GRADE' : 'CONECTADO AO SEU EDITAL') : `GERANDO DOSSIÊ DE ALTA PERFORMANCE PARA ${studyProfile}`}</p>
-            </div>
-
-            <div className="bg-white/5 backdrop-blur-2xl p-8 md:p-16 rounded-[60px] border border-white/10 shadow-2xl space-y-12">
-              {strategicMode && editalConfig ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-6 ">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>
-                    <select
-                      value={selectedSubject}
-                      onChange={(e) => {
-                        setSelectedSubject(e.target.value);
-                        setSelectedTopic('');
-                      }}
-                      className="w-full bg-white/5 border-2 border-white/10 rounded-[40px] px-8 py-6 text-xl focus:outline-none focus:border-[#fecc73] transition-all font-black text-white appearance-none cursor-pointer"
-                    >
-                      <option value="" className="bg-[#473c33]">
-                        Selecionar Matéria...
-                      </option>
-                      {editalConfig.subjects.map((s, i) => (
-                        <option key={i} value={s.name} className="bg-[#473c33]">
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-6 ">Assunto Específico</label>
-                    <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)} disabled={!selectedSubject} className="w-full bg-white/5 border-2 border-white/10 rounded-[40px] px-8 py-6 text-xl focus:outline-none focus:border-[#fecc73] transition-all font-black text-white appearance-none cursor-pointer disabled:opacity-20">
-                      <option value="" className="bg-[#473c33]">
-                        Selecionar Assunto...
-                      </option>
-                      {editalConfig.subjects
-                        .find((s) => s.name === selectedSubject)
-                        ?.topics.map((t, i) => (
-                          <option key={i} value={t} className="bg-[#473c33]">
-                            {t}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] ml-8 ">O que você quer mergulhar hoje?</label>
-                  <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="DIGITE O TEMA DO SEU MERGULHO..." className="w-full bg-white/5 border-2 border-white/10 rounded-[40px] px-10 py-10 text-3xl focus:outline-none focus:border-[#fecc73] transition-all placeholder:text-white/5 font-black text-white text-center " onKeyPress={(e) => e.key === 'Enter' && handleGenerate()} />
-                </div>
-              )}
-
-              <div className="flex flex-col md:flex-row gap-8 items-center justify-between pt-4">
-                <div className="flex-1 w-full space-y-6">
-                  <div className="bg-white/5 p-8 rounded-[40px] border border-white/5">
-                    <div className="flex justify-between mb-4">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Questões no Caderno</label>
-                      <span className="text-[#fecc73] font-black text-xl">{numQuestions}</span>
-                    </div>
-                    <input type="range" min="3" max="15" value={numQuestions} onChange={(e) => setNumQuestions(Number(e.target.value))} className="w-full h-2 bg-white/10 rounded-full accent-[#fecc73] cursor-pointer" />
-                  </div>
-
-                  <div className="bg-white/5 p-8 rounded-[40px] border border-white/5 group">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] block mb-6 text-center md:text-left group-hover:text-[#fed386] transition-colors">ESTILO DO mapeamento da lógica (PROMPT)</label>
-                    <div className="relative">
-                      <textarea value={explanationStyle} onChange={(e) => setExplanationStyle(e.target.value)} placeholder="Ex: Explique de forma simples e direta, focando em bizus para TDAH." className="w-full bg-white/5 border-2 border-white/10 rounded-[30px] p-6 text-sm font-medium text-white outline-none focus:border-[#fecc73]/50 transition-all min-h-[100px] resize-none" />
-                      <div className="absolute top-4 right-6 text-lg opacity-30">⚡</div>
-                    </div>
-                    <p className="text-[9px] font-bold text-slate-500 mt-4 text-center md:text-left">Dica: Prompts objetivos geram questões de forma mais rápida.</p>
-                  </div>
-                </div>
-
-                <button onClick={() => handleGenerate()} className="w-full md:w-auto bg-[#fec868] text-white px-16 py-12 rounded-[40px] font-black text-2xl hover:bg-[#fecc73] transition-all active:scale-95 flex items-center justify-center gap-4 shadow-2xl uppercase tracking-tighter h-full">
-                  INICIAR DOSSIÊ
-                  <svg className="w-8 h-8 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
+          <div className="w-full max-w-6xl mx-auto py-2 md:py-4">
+            <section className="overflow-hidden rounded-[32px] border border-[#e9e0d4] bg-white shadow-[0_18px_48px_rgba(71,60,51,0.14)]">
+              <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#eee6d6] px-5 py-4 sm:px-7">
+                <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
+                  Voltar ao Hub
                 </button>
+                <div className="flex items-center gap-2 rounded-full bg-[#fff6e8] px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#d88b2f]">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-[#f5b84b]" />
+                  {strategicMode ? 'Mergulho estratégico' : 'Exploração ilimitada'}
+                </div>
+              </header>
+
+              <div className="grid lg:grid-cols-[1.02fr_0.98fr]">
+                <div className="bg-[#abc270] px-6 py-8 text-[#473c33] sm:px-10 sm:py-12">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fecc73] text-[#473c33] shadow-lg shadow-black/10">
+                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18.5 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                  </div>
+                  <p className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-[#596b2a]">Dossiê de alto desempenho</p>
+                  <h1 className="mt-3 max-w-md text-3xl font-black uppercase leading-[0.98] tracking-tight text-[#473c33] sm:text-4xl">{strategicMode ? 'Mergulho estratégico' : 'Exploração ilimitada'}</h1>
+                  <p className="mt-5 max-w-md text-sm font-semibold leading-relaxed text-[#473c33]">{strategicMode ? 'Escolha uma matéria do seu edital e transforme o próximo tema em uma trilha de estudo objetiva.' : `Digite um tema e a IA cria um dossiê completo para ${studyProfile.toLowerCase()}, com resumo, exemplos e questões.`}</p>
+                  <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                    <div className="rounded-2xl border border-[#f4f7ec]/70 bg-[#f4f7ec]/35 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[#596b2a]">01</p>
+                      <p className="mt-2 text-sm font-black text-[#473c33]">Escolha o foco</p>
+                      <p className="mt-1 text-xs font-medium text-[#596b2a]">Defina o tema ou selecione no edital.</p>
+                    </div>
+                    <div className="rounded-2xl border border-[#f4f7ec]/70 bg-[#f4f7ec]/35 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[#596b2a]">02</p>
+                      <p className="mt-2 text-sm font-black text-[#473c33]">Gere seu dossiê</p>
+                      <p className="mt-1 text-xs font-medium text-[#596b2a]">Receba uma trilha pronta para estudar.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-8 sm:px-10 sm:py-12">
+                  <div className="mb-7">
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#a79c8e]">Vamos começar</p>
+                    <h2 className="mt-2 text-2xl font-black tracking-tight text-[#473c33]">Defina seu próximo mergulho</h2>
+                    <p className="mt-2 text-sm font-medium leading-relaxed text-[#8f8375]">Ajuste o tema, a quantidade de questões e o estilo da explicação.</p>
+                  </div>
+
+                  {strategicMode && editalConfig ? (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">{studyProfile === 'FACULDADE' ? 'Disciplina da grade' : 'Matéria do edital'}</span>
+                        <select
+                          value={selectedSubject}
+                          onChange={(e) => {
+                            setSelectedSubject(e.target.value);
+                            setSelectedTopic('');
+                          }}
+                          className="w-full appearance-none rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15"
+                        >
+                          <option value="">Selecionar matéria...</option>
+                          {editalConfig.subjects.map((s, i) => <option key={i} value={s.name}>{s.name}</option>)}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Assunto específico</span>
+                        <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)} disabled={!selectedSubject} className="w-full appearance-none rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15 disabled:cursor-not-allowed disabled:opacity-50">
+                          <option value="">Selecionar assunto...</option>
+                          {editalConfig.subjects.find((s) => s.name === selectedSubject)?.topics.map((t, i) => <option key={i} value={t}>{t}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  ) : (
+                    <label className="block">
+                      <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Tema do mergulho</span>
+                      <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Ex.: Responsabilidade civil" className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" onKeyDown={(e) => e.key === 'Enter' && canGenerate && handleGenerate()} />
+                    </label>
+                  )}
+
+                  <div className="mt-5 rounded-2xl border border-[#eee6d6] bg-[#fdfbf7] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-[#725442]">Questões no caderno</label>
+                      <span className="rounded-full bg-[#fff6e8] px-3 py-1 text-sm font-black text-[#d88b2f]">{numQuestions}</span>
+                    </div>
+                    <input type="range" min="3" max="15" value={numQuestions} onChange={(e) => setNumQuestions(Number(e.target.value))} className="mt-4 h-2 w-full cursor-pointer rounded-full accent-[#e5a83e]" />
+                    <div className="mt-2 flex justify-between text-[9px] font-bold uppercase tracking-wider text-[#b7ac9e]"><span>3 questões</span><span>15 questões</span></div>
+                  </div>
+
+                  <label className="group mt-5 block">
+                    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Estilo da explicação</span>
+                    <textarea value={explanationStyle} onChange={(e) => setExplanationStyle(e.target.value)} placeholder="Ex.: Explique de forma simples, técnica e analítica." className="min-h-[104px] w-full resize-none rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-medium text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" />
+                    <span className="mt-2 block text-[10px] font-medium text-[#a79c8e]">Uma orientação objetiva ajuda a IA a adaptar o material.</span>
+                  </label>
+
+                  <button onClick={() => handleGenerate()} disabled={!canGenerate} className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#473c33] px-5 py-4 text-xs font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_20px_rgba(71,60,51,0.18)] transition-all hover:bg-[#5a493f] disabled:cursor-not-allowed disabled:bg-[#d9d0c4] disabled:text-[#a79c8e] disabled:shadow-none">
+                    Iniciar dossiê
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                  </button>
+                </div>
               </div>
-            </div>
+            </section>
           </div>
         ) : (
           <div className="max-w-7xl mx-auto py-6">

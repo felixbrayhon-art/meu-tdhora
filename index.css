@@ -1,9 +1,18 @@
 @import "tailwindcss";
 
+/* Dark mode is a manual toggle (a `dark` class on <html>), not OS-driven —
+   so `dark:` variants only apply when the user opts in via the Sidebar switch. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
     background-color: #FDFBF7;
     color: #0A0F1E;
+}
+
+.dark body {
+    background-color: #1c1712;
+    color: #f4ebdd;
 }
 .font-logo { font-family: 'Righteous', sans-serif; }
 .gradient-yellow { background: linear-gradient(135deg, #FACC15 0%, #EAB308 100%); }
@@ -65,4 +74,242 @@ body {
     background-size: 250% 100%;
     animation: shimmer-sweep 2.6s ease-in-out infinite;
     animation-delay: 0.6s;
+}
+
+@keyframes loading-progress {
+    0% { transform: translateX(-115%); }
+    55% { transform: translateX(85%); }
+    100% { transform: translateX(230%); }
+}
+.loading-progress {
+    animation: loading-progress 1.8s ease-in-out infinite;
+}
+
+/* Optional dark appearance, inspired by the app's charcoal, cream and orange palette. */
+html.dark {
+    color-scheme: dark;
+    --dark-canvas: #24251f;
+    --dark-surface: #2d2e27;
+    --dark-surface-raised: #35362e;
+    --dark-surface-muted: #303129;
+    --dark-cream: #f2efd2;
+    --dark-cream-muted: #c8c5a9;
+    --dark-orange: #e96f34;
+    --dark-orange-hover: #f07b40;
+    --dark-border: rgba(242, 239, 210, 0.11);
+}
+
+html.dark body {
+    background-color: var(--dark-canvas);
+    color: var(--dark-cream);
+}
+
+html.dark .glass-card {
+    background: rgba(45, 46, 39, 0.92);
+}
+
+.dark .markdown-body strong {
+    color: var(--dark-cream) !important;
+}
+
+.dark .markdown-body h3 {
+    color: #f3a06c;
+    border-color: var(--dark-border);
+}
+
+/* Main app surfaces and common Tailwind neutrals. */
+.dark [class~="bg-[#E8DDCC]"],
+.dark [class~="bg-[#FDFBF7]"],
+.dark [class~="bg-[#fdfbf7]"],
+.dark [class~="bg-[#f7f3ed]"],
+.dark [class~="bg-[#f8fafc]"],
+.dark [class~="bg-[#f8fafc]/90"],
+.dark [class~="dark:bg-[#24251f]"],
+.dark [class~="bg-[#FDFBF7]/90"],
+.dark [class~="dark:bg-[#141110]"],
+.dark [class~="dark:bg-[#1c1712]"] {
+    background-color: var(--dark-canvas) !important;
+}
+
+.dark [class~="bg-white"],
+.dark [class~="bg-white/80"],
+.dark [class~="bg-white/90"],
+.dark [class~="bg-white/95"],
+.dark [class~="bg-gray-50"],
+.dark [class~="bg-gray-50/50"],
+.dark [class~="bg-gray-50/80"],
+.dark [class~="bg-slate-50"],
+.dark [class~="bg-slate-50/50"],
+.dark [class~="bg-[#f4ebdd]"],
+.dark [class~="bg-[#fdfbf7]/80"],
+.dark [class~="bg-[#fdfbf7]/90"],
+.dark [class~="dark:bg-[#272019]"],
+.dark [class~="dark:bg-[#322922]"] {
+    background-color: var(--dark-surface) !important;
+}
+
+.dark [class~="bg-gray-100"],
+.dark [class~="bg-gray-100/50"],
+.dark [class~="bg-slate-100"],
+.dark [class~="bg-[#eee6d6]"],
+.dark [class~="bg-[#e9e0d4]"],
+.dark [class~="bg-[#f4f7ec]"],
+.dark [class~="bg-[#e9efda]"],
+.dark [class~="bg-[#fff6e8]"],
+.dark [class~="bg-[#fff1e8]"],
+.dark [class~="bg-[#fff0d5]"],
+.dark [class~="bg-[#fff8f8]"],
+.dark [class~="bg-[#f7fbf1]"],
+.dark [class~="bg-[#fdfbf7]/50"],
+.dark [class~="bg-white/50"],
+.dark [class~="bg-white/60"],
+.dark [class~="bg-white/70"],
+.dark [class~="dark:bg-[#3a2f22]"] {
+    background-color: var(--dark-surface-raised) !important;
+}
+
+/* Keep success and focus greens, but deepen the light sage for dark surfaces. */
+.dark [class~="bg-[#abc270]"] {
+    background-color: #657a40 !important;
+}
+
+.dark [class~="bg-white/5"],
+.dark [class~="bg-white/10"],
+.dark [class~="bg-white/20"],
+.dark [class~="bg-white/[0.03]"],
+.dark [class~="bg-white/[0.05]"],
+.dark [class~="bg-white/[0.08]"],
+.dark [class~="bg-white/[0.15]"] {
+    background-color: rgba(242, 239, 210, 0.055) !important;
+}
+
+/* Recolor the app's warm gold actions to the orange accent from the reference. */
+.dark [class~="bg-[#fec868]"],
+.dark [class~="bg-[#fecc73]"],
+.dark [class~="bg-[#fdad74]"],
+.dark [class~="bg-[#fda769]"],
+.dark [class~="bg-[#ff832a]"],
+.dark [class~="bg-[#ec6300]"],
+.dark [class~="bg-[#eab308]"],
+.dark [class~="dark:bg-[#d9772b]"] {
+    background-color: var(--dark-orange) !important;
+}
+
+.dark [class~="bg-[#473c33]"],
+.dark [class~="bg-[#272019]"],
+.dark [class~="dark:bg-[#1c1712]"] {
+    background-color: var(--dark-surface-muted) !important;
+}
+
+.dark [class~="hover:bg-[#f4ebdd]"]:hover,
+.dark [class~="hover:bg-[#eee6d6]"]:hover,
+.dark [class~="hover:bg-gray-50"]:hover,
+.dark [class~="hover:bg-gray-100"]:hover,
+.dark [class~="dark:hover:bg-[#272019]"]:hover {
+    background-color: var(--dark-surface-raised) !important;
+}
+
+.dark [class~="hover:bg-[#fecc73]"]:hover,
+.dark [class~="hover:bg-[#fec868]"]:hover,
+.dark [class~="hover:bg-[#fbbf24]"]:hover,
+.dark [class~="dark:hover:bg-[#c96a25]"]:hover {
+    background-color: var(--dark-orange-hover) !important;
+}
+
+/* Cream foreground and softer supporting copy. */
+.dark [class~="text-[#0A0F1E]"],
+.dark [class~="text-[#1E293B]"],
+.dark [class~="text-[#1e293b]"],
+.dark [class~="text-[#334155]"],
+.dark [class~="text-[#473c33]"],
+.dark [class~="text-[#725442]"],
+.dark [class~="text-gray-900"],
+.dark [class~="text-gray-800"],
+.dark [class~="text-gray-700"],
+.dark [class~="text-slate-900"],
+.dark [class~="text-slate-800"],
+.dark [class~="text-slate-700"],
+.dark [class~="dark:text-[#f4ebdd]"] {
+    color: var(--dark-cream) !important;
+}
+
+.dark [class~="text-gray-600"],
+.dark [class~="text-gray-500"],
+.dark [class~="text-gray-400"],
+.dark [class~="text-gray-300"],
+.dark [class~="text-slate-600"],
+.dark [class~="text-slate-500"],
+.dark [class~="text-slate-400"],
+.dark [class~="text-slate-300"],
+.dark [class~="text-[#a79c8e]"],
+.dark [class~="text-[#8f8375]"],
+.dark [class~="text-[#b7ac9e]"],
+.dark [class~="text-[#c8bbaa]"],
+.dark [class~="text-[#7d6f5c]"],
+.dark [class~="dark:text-[#a89680]"],
+.dark [class~="dark:text-[#7d6f5c]"] {
+    color: var(--dark-cream-muted) !important;
+}
+
+.dark [class~="text-[#fecc73]"],
+.dark [class~="text-[#fec868]"],
+.dark [class~="text-[#ff832a]"],
+.dark [class~="text-[#ffb22a]"],
+.dark [class~="text-[#ec6300]"],
+.dark [class~="text-[#d88b2f]"],
+.dark [class~="text-[#c9773e]"],
+.dark [class~="dark:text-[#d9772b]"] {
+    color: var(--dark-orange) !important;
+}
+
+.dark [class~="text-[#596b2a]"] {
+    color: #d8e6a7 !important;
+}
+
+/* Light borders, separators and form placeholders become visible on dark surfaces. */
+.dark [class~="border-gray-50"],
+.dark [class~="border-gray-100"],
+.dark [class~="border-gray-200"],
+.dark [class~="border-slate-100"],
+.dark [class~="border-slate-200"],
+.dark [class~="border-[#eee6d6]"],
+.dark [class~="border-[#e9e0d4]"],
+.dark [class~="border-[#e3d9ca]"],
+.dark [class~="border-[#fff0d5]"],
+.dark [class~="border-[#fff6e8]"],
+.dark [class~="dark:border-white/[0.06]"],
+.dark [class~="dark:border-white/[0.08]"] {
+    border-color: var(--dark-border) !important;
+}
+
+.dark [class~="divide-gray-50"] > :not([hidden]) ~ :not([hidden]),
+.dark [class~="divide-gray-100"] > :not([hidden]) ~ :not([hidden]),
+.dark [class~="divide-[#f1ebe3]"] > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--dark-border) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder,
+.dark [class~="placeholder:text-[#a79c8e]"]::placeholder,
+.dark [class~="placeholder:text-[#b7ac9e]"]::placeholder,
+.dark [class~="placeholder:text-gray-300"]::placeholder {
+    color: #aaa78e !important;
+    opacity: 1;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+    color-scheme: dark;
+}
+
+.dark input[type="checkbox"],
+.dark input[type="radio"],
+.dark input[type="range"] {
+    accent-color: var(--dark-orange);
+}
+
+.dark ::selection {
+    background: rgba(233, 111, 52, 0.35);
+    color: var(--dark-cream);
 }

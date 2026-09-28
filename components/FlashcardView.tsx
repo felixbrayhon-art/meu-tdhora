@@ -246,7 +246,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {/* Quick Review Card */}
-                <button onClick={() => startReview('all')} className="group relative overflow-hidden bg-gradient-to-br from-[#fda769] to-red-600 p-10 rounded-[50px] text-left shadow-2xl transition-all hover:scale-[1.03] active:scale-95">
+                <button onClick={() => startReview('all')} className="group relative overflow-hidden bg-[#e96f34] hover:bg-[#f07b40] p-10 rounded-[50px] text-left shadow-2xl transition-all hover:scale-[1.03] active:scale-95">
                   <div className="relative z-10">
                     <h3 className="text-3xl font-black mb-1 uppercase tracking-tighter leading-none">REVISÃO GERAL</h3>
                     <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-10">Todos os cards pendentes</p>

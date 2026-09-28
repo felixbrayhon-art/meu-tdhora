@@ -93,6 +93,8 @@ import {
   Trash as PhTrash,
   TrendUp as PhTrendUp,
   Trophy as PhTrophy,
+  Moon as PhMoon,
+  Sun as PhSun,
   Upload as PhUpload,
   User as PhUser,
   UserCircle as PhUserCircle,
@@ -220,3 +222,5 @@ export const CheckSquare = wrap(PhCheckSquare, 'fill');
 export const MousePointer = wrap(PhCursor, 'fill');
 export const Pentagon = wrap(PhPentagon, 'fill');
 export const Waypoints = wrap(PhPath, 'fill');
+export const Moon = wrap(PhMoon, 'fill');
+export const Sun = wrap(PhSun, 'fill');

@@ -198,42 +198,84 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
 
   if (!activeSubject || !activeTopic) {
     return (
-      <div className="fixed inset-0 z-[200] bg-[#473c33] flex flex-col items-center justify-center p-8 text-center">
-        <div className="max-w-md w-full space-y-6">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <span className="w-2 h-2 rounded-full bg-[#fecc73] animate-pulse"></span>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#fed386]">AULA GUIADA</span>
-          </div>
-          <h1 className="text-3xl font-black uppercase tracking-tighter text-white">Sobre o que vamos aprender?</h1>
-          <p className="text-slate-400 font-bold text-sm">Escolha a matéria e o assunto — a IA guia uma explicação contínua sobre isso.</p>
-          <div className="space-y-3 text-left">
-            <input
-              value={setupSubject}
-              onChange={(e) => setSetupSubject(e.target.value)}
-              placeholder="Matéria (Ex: Português)"
-              autoFocus
-              className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#fecc73] transition-all"
-            />
-            <input
-              value={setupTopic}
-              onChange={(e) => setSetupTopic(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && setupSubject.trim() && setupTopic.trim() && startLesson(setupSubject.trim(), setupTopic.trim())}
-              placeholder="Assunto (Ex: Crase)"
-              className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#fecc73] transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={onBack} className="px-6 py-4 rounded-2xl font-black uppercase text-xs tracking-widest text-white/50 hover:text-white hover:bg-white/10 transition-all">
-              Voltar
-            </button>
-            <button
-              onClick={() => startLesson(setupSubject.trim(), setupTopic.trim())}
-              disabled={!setupSubject.trim() || !setupTopic.trim()}
-              className="flex-1 bg-[#fec868] hover:bg-[#fecc73] disabled:opacity-30 text-white font-black uppercase tracking-widest py-4 rounded-2xl shadow-xl transition-colors"
-            >
-              Começar
-            </button>
-          </div>
+      <div className="absolute inset-0 z-[200] overflow-y-auto bg-[#f7f3ed] p-4 sm:p-6 md:p-8 text-[#473c33]">
+        <div className="mx-auto flex min-h-full w-full max-w-5xl items-center justify-center">
+          <section className="w-full overflow-hidden rounded-[32px] border border-[#e9e0d4] bg-white shadow-[0_18px_48px_rgba(71,60,51,0.14)]">
+            <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#eee6d6] px-5 py-4 sm:px-7">
+              <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
+                <ChevronLeft className="h-4 w-4" />
+                Voltar
+              </button>
+              <div className="flex items-center gap-2 rounded-full bg-[#fff6e8] px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#d88b2f]">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-[#f5b84b]" />
+                Aula direta
+              </div>
+            </header>
+
+            <div className="grid lg:grid-cols-[1.02fr_0.98fr]">
+              <div className="bg-[#473c33] px-6 py-8 sm:px-10 sm:py-12 text-white">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fecc73] text-[#473c33] shadow-lg shadow-black/10">
+                  <BookOpen className="h-6 w-6" />
+                </div>
+                <p className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-[#fed386]">Aprendizado guiado</p>
+                <h1 className="mt-3 max-w-md text-3xl font-black uppercase leading-[0.98] tracking-tight sm:text-4xl">Sobre o que vamos aprender?</h1>
+                <p className="mt-5 max-w-md text-sm font-medium leading-relaxed text-[#e7ddd1]">Escolha uma matéria e um assunto. A IA organiza uma explicação contínua, com exemplos e pausas para você acompanhar no seu ritmo.</p>
+                <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#fed386]">01</p>
+                    <p className="mt-2 text-sm font-bold text-white">Defina o tema</p>
+                    <p className="mt-1 text-xs text-[#c8bbaa]">Comece pelo conteúdo que quer entender.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#fed386]">02</p>
+                    <p className="mt-2 text-sm font-bold text-white">Acompanhe a aula</p>
+                    <p className="mt-1 text-xs text-[#c8bbaa]">Avance e pause quando precisar.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-8 sm:px-10 sm:py-12">
+                <div className="mb-8">
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#a79c8e]">Vamos começar</p>
+                  <h2 className="mt-2 text-2xl font-black tracking-tight text-[#473c33]">Defina sua próxima aula</h2>
+                  <p className="mt-2 text-sm font-medium leading-relaxed text-[#8f8375]">Use termos específicos para receber uma explicação mais precisa.</p>
+                </div>
+
+                <div className="space-y-5">
+                  <label className="block">
+                    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Matéria</span>
+                    <input
+                      value={setupSubject}
+                      onChange={(e) => setSetupSubject(e.target.value)}
+                      placeholder="Ex.: Direito Constitucional"
+                      autoFocus
+                      className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Assunto</span>
+                    <input
+                      value={setupTopic}
+                      onChange={(e) => setSetupTopic(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && setupSubject.trim() && setupTopic.trim() && startLesson(setupSubject.trim(), setupTopic.trim())}
+                      placeholder="Ex.: Legítima defesa"
+                      className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15"
+                    />
+                  </label>
+                </div>
+
+                <button
+                  onClick={() => startLesson(setupSubject.trim(), setupTopic.trim())}
+                  disabled={!setupSubject.trim() || !setupTopic.trim()}
+                  className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#473c33] px-5 py-4 text-xs font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_20px_rgba(71,60,51,0.18)] transition-all hover:bg-[#5a493f] disabled:cursor-not-allowed disabled:bg-[#d9d0c4] disabled:text-[#a79c8e] disabled:shadow-none"
+                >
+                  Começar aula
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-wider text-[#b7ac9e]">Pressione Enter no assunto para continuar</p>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     );
@@ -241,14 +283,29 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
 
   if (loading)
     return (
-      <div className="fixed inset-0 z-[200] bg-[#473c33]">
-        <LoadingFish message={`Preparando aula sobre ${activeTopic}...`} fullScreen />
+      <div className="absolute inset-0 z-[200] bg-[#473c33] p-3 sm:p-5 md:p-7 overflow-hidden">
+        <div className="relative h-full w-full max-w-6xl mx-auto overflow-hidden rounded-[28px] border border-white/10 shadow-2xl">
+          <LoadingFish message={`Preparando aula sobre ${activeTopic}...`} submessage="A IA está organizando uma trilha de estudo para você" fullScreen />
+          <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-4 p-4 sm:p-5 bg-[#473c33]/55 backdrop-blur-md border-b border-white/10">
+            <button onClick={onBack} className="shrink-0 p-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all" aria-label="Cancelar preparação da aula" title="Voltar">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="min-w-0 flex-1 text-center sm:text-left">
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#fed386]">AULA GUIADA</p>
+              <h1 className="mt-1 text-sm sm:text-base font-black text-white truncate" title={activeTopic}>{activeTopic}</h1>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 shrink-0 text-[9px] font-black uppercase tracking-widest text-white/60">
+              <span className="w-2 h-2 rounded-full bg-[#fecc73] animate-pulse" />
+              Preparando
+            </div>
+          </div>
+        </div>
       </div>
     );
 
   if (error) {
     return (
-      <div className="fixed inset-0 z-[200] bg-[#473c33] flex flex-col items-center justify-center p-8 text-center h-full space-y-4">
+      <div className="absolute inset-0 z-[200] bg-[#473c33] flex flex-col items-center justify-center p-4 sm:p-8 text-center h-full space-y-4 overflow-y-auto">
         <div className="bg-red-900/20 p-8 rounded-[40px] border border-red-500/30 max-w-md backdrop-blur-xl">
           <div className="w-16 h-16 bg-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <RotateCcw className="w-8 h-8 text-white" />
@@ -263,7 +320,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col h-full bg-[#473c33] text-slate-100 font-sans selection:bg-[#fecc73]/30 overflow-hidden">
+    <div className="absolute inset-0 z-[200] flex flex-col h-full bg-[#473c33] text-slate-100 font-sans selection:bg-[#fecc73]/30 overflow-hidden">
       {/* Header Imersivo */}
       <header className="p-6 flex items-center justify-between border-b border-white/5 bg-[#473c33]/40 backdrop-blur-2xl sticky top-0 z-20">
         <button onClick={onBack} className="p-3 hover:bg-white/10 rounded-2xl transition-colors active:scale-95 group">

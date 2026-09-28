@@ -59,6 +59,12 @@ const App: React.FC = () => {
   const [timerMode, setTimerMode] = useState<TimerMode>(TimerMode.POMODORO);
   const [showGlobalBar, setShowGlobalBar] = useState(true);
 
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('focus_dark_mode') === 'true');
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    localStorage.setItem('focus_dark_mode', String(isDarkMode));
+  }, [isDarkMode]);
+
   // Audio Global State
   const [activeChannel, setActiveChannel] = useState<'RELAX' | 'MPB' | null>(null);
   const [isPlayingRain, setIsPlayingRain] = useState(false);
@@ -229,6 +235,8 @@ const App: React.FC = () => {
   }, [currentView]);
 
   // States for Sidebar Navigation
+  const [tdhQuestionSession, setTDHQuestionSession] = useState(false);
+  const isQuestionSession = currentView === 'QUIZ_PLAYER' || (currentView === 'TDH_QUESTOES' && tdhQuestionSession);
   const [materialsSelectedFolderId, setMaterialsSelectedFolderId] = useState<string | null>(null);
   const [materialsSelectedNotebookId, setMaterialsSelectedNotebookId] = useState<string | null>(null);
   const [flashcardsSelectedFolderId, setFlashcardsSelectedFolderId] = useState<string | null>(null);
@@ -869,6 +877,44 @@ const App: React.FC = () => {
     });
   };
 
+  // TDH Questões só filtra/gera as questões; responder e estudar acontece em
+  // Meus Materiais (QuizPlayer). O aluno escolhe pasta (existente ou nova,
+  // via o mesmo sentinel "NEW:<nome>" do SaveToFolderModal/handleSaveToNotebook)
+  // e nome do caderno no próprio TDHQuestoes; aqui só resolvemos esse destino
+  // e já abrimos o QuizPlayer nele, sem passar pela tela de prática que
+  // existia dentro do TDHQuestoes.
+  const handleStartFilteredQuiz = (topic: string, subject: string | undefined, questions: QuizQuestion[], folderId: string, notebookName: string) => {
+    if (!questions.length) return;
+    const isNewFolder = folderId.startsWith('NEW:');
+    const newFolderName = isNewFolder ? folderId.replace('NEW:', '') : null;
+    const existingFolder = isNewFolder ? undefined : folders.find((f) => f.id === folderId);
+    const targetFolderId = isNewFolder ? Math.random().toString(36).substr(2, 9) : folderId;
+    const existingNotebook = existingFolder?.notebooks.find((n) => n.name.toLowerCase() === notebookName.toLowerCase());
+    const notebookId = existingNotebook ? existingNotebook.id : Math.random().toString(36).substr(2, 9);
+    const newNotebook: Notebook = {
+      id: notebookId,
+      name: notebookName,
+      questions,
+      createdAt: Date.now(),
+    };
+
+    setFolders((prev) => {
+      if (isNewFolder) {
+        return [...prev, { id: targetFolderId, name: newFolderName!, topic: newFolderName!, notebooks: [newNotebook], createdAt: Date.now() }];
+      }
+      return prev.map((f) => {
+        if (f.id !== targetFolderId) return f;
+        if (existingNotebook) {
+          return { ...f, notebooks: f.notebooks.map((n) => (n.id === existingNotebook.id ? { ...n, questions: [...n.questions, ...questions] } : n)) };
+        }
+        return { ...f, notebooks: [...f.notebooks, newNotebook] };
+      });
+    });
+
+    setActiveNotebookInfo({ folderId: targetFolderId, notebookId });
+    setCurrentView('QUIZ_PLAYER');
+  };
+
   const handleUpdateQuestions = (folderId: string, notebookId: string, questions: QuizQuestion[]) => {
     setFolders((prev) =>
       prev.map((f) => {
@@ -1011,11 +1057,12 @@ const App: React.FC = () => {
 
   return (
     <CharacterProvider characterId={stats.characterId}>
-      <div className="min-h-screen w-screen bg-[#E8DDCC] p-2 lg:p-5 flex">
-      <div className="flex w-full h-[calc(100vh-16px)] lg:h-[calc(100vh-40px)] bg-[#FDFBF7] text-[#473c33] overflow-hidden rounded-[24px] lg:rounded-[32px] shadow-2xl">
+      <div className="min-h-screen w-screen bg-[#E8DDCC] dark:bg-[#141110] p-2 lg:p-5 flex">
+      <div className="flex w-full h-[calc(100vh-16px)] lg:h-[calc(100vh-40px)] bg-[#FDFBF7] dark:bg-[#1c1712] text-[#473c33] dark:text-[#f4ebdd] overflow-hidden rounded-[24px] lg:rounded-[32px] shadow-2xl dark:shadow-none">
         <div className="hidden lg:block shrink-0">
           <Sidebar
             currentView={currentView}
+            questionSession={isQuestionSession}
             setView={(v) => {
               setCurrentView(v);
               if (v === 'MATERIALS') {
@@ -1040,10 +1087,13 @@ const App: React.FC = () => {
               setFlashcardsViewMode('FOLDER_DETAIL');
               setCurrentView('FLASHCARDS');
             }}
+            isDarkMode={isDarkMode}
+            onToggleDarkMode={() => setIsDarkMode((v) => !v)}
           />
         </div>
 
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        {/* A transformed pane contains fixed quiz headers, dialogs and progress bars within the space beside the sidebar. */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative" style={isQuestionSession ? { transform: 'translateZ(0)' } : undefined}>
           {cloudSyncError && (
             <div className="shrink-0 z-[200] bg-red-500 text-white text-xs font-bold px-4 py-2 flex items-center justify-between gap-3">
               <span>⚠️ {cloudSyncError}</span>
@@ -1052,16 +1102,16 @@ const App: React.FC = () => {
               </button>
             </div>
           )}
-          <header className="shrink-0 z-50">
-            <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} />
-          </header>
+          {!isQuestionSession && <header className="shrink-0 z-50">
+            <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} />
+          </header>}
 
           <div className="flex-1 overflow-y-auto custom-scrollbar relative">
             <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop />
             <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop />
             <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop />
 
-            {showGlobalBar && (
+            {showGlobalBar && !isQuestionSession && (
               <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[150] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500">
                 {isStorageFull && !user && <div className="bg-red-500 text-white text-[10px] font-black uppercase tracking-widest py-1 px-4 rounded-t-xl mb-[-10px] mx-auto w-fit shadow-lg animate-bounce">⚠️ Memória do Navegador Cheia! Entre com o Google para salvar na nuvem</div>}
                 <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl rounded-[35px] p-2 flex items-center justify-between gap-3 relative">
@@ -1111,7 +1161,7 @@ const App: React.FC = () => {
               </div>
             )}
 
-            <main className="max-w-[1400px] mx-auto px-4 py-8 relative">
+            <main className="max-w-[1400px] min-h-full mx-auto px-4 py-8 relative">
               {(() => {
                 const STUDY_VIEWS = ['STUDY_CYCLE', 'FLASHCARDS', 'DYNAMIC_TIMER', 'TDH_QUESTOES', 'DRIVE_READER', 'MATERIALS', 'QUIZ_PLAYER', 'GUIDED_LESSON', 'TIMER', 'FOCUS_MODE', 'VR_METHOD'];
                 const isStudyView = STUDY_VIEWS.includes(currentView);
@@ -1297,6 +1347,8 @@ const App: React.FC = () => {
                   )}
                   {currentView === 'TDH_QUESTOES' && (
                     <TDHQuestoes
+                      onQuestionSessionChange={setTDHQuestionSession}
+                      onQuestionsReady={handleStartFilteredQuiz}
                       onBack={() => {
                         setCurrentView('HUB');
                         setStrategicMode(false);
@@ -1403,6 +1455,7 @@ const App: React.FC = () => {
                       onUpdateQuestions={(qs) => handleUpdateQuestions(activeNotebookInfo.folderId, activeNotebookInfo.notebookId, qs)}
                       onMoveQuestion={handleMoveQuestion}
                       initialFontSizeMultiplier={stats.fontSizeMultiplier || 1}
+                      isAdmin={isAdmin}
                       onTriggerGuidedLesson={(subject, topic) => {
                         setGuidedLessonData({ subject, topic });
                         setCurrentView('GUIDED_LESSON');
@@ -1540,7 +1593,7 @@ const App: React.FC = () => {
 
                   {currentView === 'SOCIAL_MODULE' && <SocialModule myUid={user?.uid} myStats={stats} isLoggedIn={!!user} onLogin={handleLogin} isStudyMode={globalTimerActive} onBack={() => setCurrentView('HUB')} />}
 
-                  {currentView === 'PROFILE' && <ProfileView stats={stats} onUpdate={setStats} onBack={() => setCurrentView('HUB')} onOpenCatalog={() => setCurrentView('FISH_CATALOG')} myId={socialState.myId} isAIEnabled={isAIEnabled} setIsAIEnabled={setIsAIEnabled} onLogout={handleLogout} isLoggedIn={!!user} />}
+                  {currentView === 'PROFILE' && <ProfileView stats={stats} onUpdate={setStats} onBack={() => setCurrentView('HUB')} onOpenCatalog={() => setCurrentView('FISH_CATALOG')} myId={socialState.myId} isAIEnabled={isAIEnabled} setIsAIEnabled={setIsAIEnabled} onLogout={handleLogout} onLogin={handleLogin} isLoggedIn={!!user} />}
                   {currentView === 'COMMUNITY' && <CommunityView activities={activities} onBack={() => setCurrentView('HUB')} onPostManual={handleManualPost} />}
                   {currentView === 'FISH_CATALOG' && <FishCatalog onBack={() => setCurrentView('HUB')} />}
                   {currentView === 'VADE_MECUM' && <VadeMecumView onBack={() => setCurrentView('HUB')} />}
@@ -1615,7 +1668,7 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} />
+        {!isQuestionSession && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} />}
         <BuildTag />
       </div>
       </div>

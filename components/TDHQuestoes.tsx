@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, Database } from './icons';
 import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { fetchEnemExams, fetchEnemQuestions, enemDisciplineLabel, EnemExamInfo } from '../services/enemService';
-import { BankFacetOption, fetchBankQuestions, fetchExamQuestions, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamYears } from '../services/questionBankService';
+import { BankFacetOption, countBankQuestions, fetchBankQuestions, fetchExamQuestions, listBankAreasForSubject, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamYears } from '../services/questionBankService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
 import LoadingFish from './LoadingFish';
 import FilterDropdown from './FilterDropdown';
@@ -59,9 +59,16 @@ interface TDHQuestoesProps {
   fontSizeMultiplier: number;
   onBatchComplete?: (topic: string, subject: string, total: number, correct: number, questions?: QuizQuestion[]) => void;
   onTriggerGuidedLesson?: (subject: string, topic: string) => void;
+  onQuestionSessionChange?: (active: boolean) => void;
+  // TDH Questões só filtra/gera o lote de questões; a resposta/estudo acontece
+  // em Meus Materiais (QuizPlayer). Quando presente, assim que `questions` fica
+  // pronto mostramos o modal "Salvar em Caderno" (pasta + nome escolhidos
+  // pelo aluno) e só então o pai é avisado, já com esse destino — a tela de
+  // prática interna desta view não é mais usada.
+  onQuestionsReady?: (topic: string, subject: string | undefined, questions: QuizQuestion[], folderId: string, notebookName: string) => void;
 }
 
-const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, explanationStyle: initialStyle, questionProfileStyle: initialQuestionStyle, fontSizeMultiplier, onBatchComplete, onTriggerGuidedLesson }) => {
+const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, explanationStyle: initialStyle, questionProfileStyle: initialQuestionStyle, fontSizeMultiplier, onBatchComplete, onTriggerGuidedLesson, onQuestionSessionChange, onQuestionsReady }) => {
   const [topic, setTopic] = useState(prefill || '');
   const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE' | 'MANUAL' | 'ENEM' | 'CONCURSO'>('AUTO');
   const [enemExams, setEnemExams] = useState<EnemExamInfo[]>([]);
@@ -74,10 +81,15 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
   const [bankTopics, setBankTopics] = useState<BankFacetOption[]>([]);
   const [bankTopicsTotal, setBankTopicsTotal] = useState(0);
   const [bankTopic, setBankTopic] = useState(''); // '' = qualquer assunto dentro da matéria
+  const [bankAreas, setBankAreas] = useState<BankFacetOption[]>([]);
+  const [bankArea, setBankArea] = useState(''); // '' = qualquer área dentro da matéria (ex: "Policial")
   const [bankCount, setBankCount] = useState(10);
   const [bankError, setBankError] = useState<string | null>(null);
   const [bankLoadingSubjects, setBankLoadingSubjects] = useState(false);
   const [bankLoadingTopics, setBankLoadingTopics] = useState(false);
+  const [bankLoadingAreas, setBankLoadingAreas] = useState(false);
+  const [bankMatchCount, setBankMatchCount] = useState(0);
+  const [bankLoadingCount, setBankLoadingCount] = useState(false);
   // Segundo caminho de filtro dentro do CONCURSO, paralelo ao de matéria/
   // assunto acima: banca/órgão/cargo/ano, para provas oficiais
   // descobertas automaticamente (worker/exam_discovery) que não têm
@@ -128,6 +140,12 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  useEffect(() => {
+    onQuestionSessionChange?.(questions.length > 0);
+  }, [questions.length, onQuestionSessionChange]);
+
+  useEffect(() => () => onQuestionSessionChange?.(false), [onQuestionSessionChange]);
+
   const [currentIdx, setCurrentIdx] = useState(0);
   const [flagged, setFlagged] = useState<number[]>([]);
   const [questionScratched, setQuestionScratched] = useState<number[]>([]);
@@ -178,6 +196,22 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveMode, setSaveMode] = useState<'ALL' | 'SINGLE'>('ALL');
+
+  // Assim que o filtro/geração termina, abrimos o modal "Salvar em Caderno"
+  // pra escolher pasta e nome — só ao confirmar é que o pai (App.tsx) recebe
+  // o lote e navega pra Meus Materiais. Sem esse modal, cancelar não deixaria
+  // outra forma de voltar ao filtro (a prática interna não existe mais aqui).
+  const bankSaveModalShownRef = useRef(false);
+  useEffect(() => {
+    if (!questions.length) {
+      bankSaveModalShownRef.current = false;
+      return;
+    }
+    if (!onQuestionsReady || bankSaveModalShownRef.current) return;
+    bankSaveModalShownRef.current = true;
+    setSaveMode('ALL');
+    setShowSaveModal(true);
+  }, [questions, onQuestionsReady]);
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
   const [crossedOut, setCrossedOut] = useState<number[]>([]);
   const [userCommentaryInput, setUserCommentaryInput] = useState('');
@@ -317,35 +351,68 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     }
   }, [inputMode]);
 
-  // Segundo nível: só busca os assuntos depois que uma matéria (nível 1) foi escolhida.
+  // Matéria, área e assunto são 3 filtros INDEPENDENTES e opcionais entre si
+  // — só a matéria é obrigatória (BUSCAR já funciona só com ela). Trocar de
+  // matéria zera área/assunto (a seleção antiga pode nem existir na nova
+  // matéria); mas trocar a área NUNCA mexe no assunto escolhido, e vice-versa
+  // — cada efeito abaixo só reconsulta e atualiza a SUA própria lista de
+  // opções (agora já filtrada pela outra escolha, quando houver), sem forçar
+  // o aluno a preencher os três pra conseguir buscar algo.
+  React.useEffect(() => {
+    setBankTopic('');
+    setBankArea('');
+  }, [bankSubject]);
+
   React.useEffect(() => {
     if (!bankSubject) {
       setBankTopics([]);
       setBankTopicsTotal(0);
-      setBankTopic('');
       return;
     }
     setBankLoadingTopics(true);
-    setBankTopic('');
-    listBankTopicsForSubject(bankSubject)
+    listBankTopicsForSubject(bankSubject, bankArea || null)
       .then(({ total, topics }) => {
         setBankTopicsTotal(total);
         setBankTopics(topics);
       })
       .catch((err) => setBankError(err.message || 'Não foi possível carregar os assuntos dessa matéria.'))
       .finally(() => setBankLoadingTopics(false));
-  }, [bankSubject]);
-
-  // Quantas questões existem de fato pra essa combinação matéria/assunto —
-  // usado pro aluno saber quantas ele consegue pedir/salvar, e pra travar o
-  // slider nesse teto em vez de deixar pedir mais do que existe.
-  const bankAvailableCount = bankTopic ? (bankTopics.find((t) => t.value === bankTopic)?.count ?? 0) : bankTopicsTotal;
+  }, [bankSubject, bankArea]);
 
   React.useEffect(() => {
-    if (bankAvailableCount > 0 && bankCount > bankAvailableCount) {
-      setBankCount(bankAvailableCount);
+    if (!bankSubject) {
+      setBankAreas([]);
+      return;
     }
-  }, [bankAvailableCount]);
+    setBankLoadingAreas(true);
+    listBankAreasForSubject(bankSubject, bankTopic || null)
+      .then(setBankAreas)
+      .catch((err) => setBankError(err.message || 'Não foi possível carregar as áreas dessa matéria.'))
+      .finally(() => setBankLoadingAreas(false));
+  }, [bankSubject, bankTopic]);
+
+  // Quantas questões existem de fato pra essa combinação matéria/assunto/área
+  // — usado pro aluno saber quantas ele consegue pedir/salvar, e pra travar
+  // o slider nesse teto em vez de deixar pedir mais do que existe. Consulta
+  // o Firestore direto porque assunto e área, quando combinados, podem se
+  // sobrepor menos do que a soma das duas contagens isoladas sugere.
+  React.useEffect(() => {
+    if (!bankSubject) {
+      setBankMatchCount(0);
+      return;
+    }
+    setBankLoadingCount(true);
+    countBankQuestions(bankSubject, bankTopic || null, bankArea || null)
+      .then(setBankMatchCount)
+      .catch((err) => setBankError(err.message || 'Não foi possível verificar a disponibilidade dessa seleção.'))
+      .finally(() => setBankLoadingCount(false));
+  }, [bankSubject, bankTopic, bankArea]);
+
+  React.useEffect(() => {
+    if (bankMatchCount > 0 && bankCount > bankMatchCount) {
+      setBankCount(bankMatchCount);
+    }
+  }, [bankMatchCount]);
 
   // --- Cascata banca -> órgão (institution) -> cargo (position) -> ano ---
   React.useEffect(() => {
@@ -446,10 +513,10 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     setShowCommentary(false);
     setSaved(false);
     setUserAnswers({});
-    setTopic(bankTopic ? `${bankSubject} · ${bankTopic}` : bankSubject);
+    setTopic([bankSubject, bankArea, bankTopic].filter(Boolean).join(' · '));
 
     try {
-      const formatted = await fetchBankQuestions(bankSubject, bankTopic || null, bankCount);
+      const formatted = await fetchBankQuestions(bankSubject, bankTopic || null, bankArea || null, bankCount);
       setQuestions(formatted);
       setTempSelectedOpt(null);
       setIsSubmitted(false);
@@ -784,6 +851,13 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
 
   const handleConfirmSave = (folderId: string, notebookName: string) => {
     const questionsToSave = saveMode === 'SINGLE' ? [questions[currentIdx]] : questions;
+    if (onQuestionsReady) {
+      // Veio do filtro/geração do banco — o pai cuida de criar/atualizar o
+      // caderno no destino escolhido e já navega pra Meus Materiais.
+      onQuestionsReady(topic, selectedSubject || undefined, questionsToSave, folderId, notebookName);
+      setShowSaveModal(false);
+      return;
+    }
     onSaveToNotebook(folderId, notebookName, questionsToSave);
     if (saveMode === 'ALL') setSaved(true);
     setShowSaveModal(false);
@@ -793,7 +867,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[200] bg-[#473c33] flex flex-col items-center justify-center p-6">
+      <div className="relative min-h-[calc(100dvh-12rem)] rounded-[32px] bg-[#473c33] flex flex-col items-center justify-center p-6">
         <div className="bg-white rounded-[50px] p-12 md:p-20 shadow-2xl flex flex-col items-center max-w-xl w-full">
           <LoadingFish message={batchStatus ? `Extraindo Bloco ${batchStatus.current} de ${batchStatus.total}` : 'Arquitetando Simulado...'} submessage={batchStatus ? `A IA está processando seu texto em partes para não pular nenhuma questão.` : `IA preparando questões focadas em ${studyProfile === 'CONCURSO' ? 'Concursos de Elite' : studyProfile === 'FACULDADE' ? 'Graduação / Faculdade' : 'ENEM/Vestibular'}`} />
 
@@ -824,38 +898,38 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#f8fafc] text-[#1e293b] selection:bg-[#fec868]/30 overflow-y-auto font-sans">
-      <div className="w-full max-w-5xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+    <div className={`${questions.length ? 'fixed inset-0 z-[200] overflow-y-auto' : 'relative w-full min-h-full rounded-[32px]'} bg-[#f8fafc] dark:bg-[#24251f] text-[#1e293b] dark:text-[#f2efd2] selection:bg-[#fec868]/30 font-sans`}>
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
         {!questions.length ? (
-          <div className="py-10">
-            <button onClick={onBack} className="mb-12 text-gray-500 font-black uppercase text-[10px] tracking-[0.3em] flex items-center gap-2 hover:text-white transition-all group">
+          <div className="py-2">
+            <button onClick={onBack} className="mb-4 text-gray-500 font-black uppercase text-[10px] tracking-[0.25em] flex items-center gap-2 hover:text-[#473c33] transition-all group">
               <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
               ABANDONAR SIMULADO
             </button>
 
-            <div className="bg-white rounded-[50px] p-12 md:p-20 border border-slate-200 relative overflow-hidden shadow-sm">
-              <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none text-[#fec868]">
-                <FileText className="w-64 h-64" />
+            <div className="bg-white rounded-[32px] p-5 sm:p-8 md:p-10 border border-slate-200 relative overflow-hidden shadow-sm">
+              <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none text-[#fec868]">
+                <FileText className="w-40 h-40" />
               </div>
 
-              <div className="relative z-10 text-center max-w-2xl mx-auto">
-                <div className="w-20 h-20 bg-[#fec868]/10 text-[#fec868] border border-[#fec868]/15 rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-sm">
-                  <Scissors className="w-8 h-8" />
+              <div className="relative z-10 text-center max-w-4xl mx-auto">
+                <div className="w-14 h-14 bg-[#fec868]/10 text-[#fec868] border border-[#fec868]/15 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm">
+                  <Scissors className="w-6 h-6" />
                 </div>
-                <h1 className="font-logo text-4xl md:text-6xl mb-4 leading-none uppercase text-slate-800">
+                <h1 className="font-logo text-3xl sm:text-4xl md:text-5xl mb-2 leading-none uppercase text-slate-800">
                   TDH
                   <span className="text-[#fec868]">{strategicMode ? 'estratégico' : 'questões'}</span>
                 </h1>
-                <p className="text-slate-400 text-lg mb-12 font-black uppercase tracking-widest text-[10px]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Alinhamento Automático à Grade Curricular' : 'Alinhamento Automático ao Edital') : `Simulados ${studyProfile === 'CONCURSO' ? 'Elite' : studyProfile === 'FACULDADE' ? 'Universitários' : 'Vestibular'} • Gabarito Comentado`}</p>
+                <p className="text-slate-400 text-[10px] mb-6 font-black uppercase tracking-[0.2em]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Alinhamento Automático à Grade Curricular' : 'Alinhamento Automático ao Edital') : `Simulados ${studyProfile === 'CONCURSO' ? 'Elite' : studyProfile === 'FACULDADE' ? 'Universitários' : 'Vestibular'} • Gabarito Comentado`}</p>
 
-                <div className="space-y-8">
-                  <div className="space-y-3 text-left max-w-2xl mx-auto">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-6 ">O que vamos treinar hoje?</label>
-                    <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={studyProfile === 'CONCURSO' ? 'Ex: Atos Administrativos' : studyProfile === 'FACULDADE' ? 'Ex: Cálculo I ou Patologia Humana' : 'Ex: Genética Mendeliana'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-[40px] px-10 py-6 text-xl focus:outline-none focus:border-[#fec868] transition-all font-black text-center text-slate-700 placeholder:text-slate-300" />
+                <div className="space-y-5">
+                  <div className="space-y-2 text-left max-w-3xl mx-auto">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">O que vamos treinar hoje?</label>
+                    <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={studyProfile === 'CONCURSO' ? 'Ex: Atos Administrativos' : studyProfile === 'FACULDADE' ? 'Ex: Cálculo I ou Patologia Humana' : 'Ex: Genética Mendeliana'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-lg focus:outline-none focus:border-[#fec868] transition-all font-black text-center text-slate-700 placeholder:text-slate-300" />
                   </div>
 
                   {!strategicMode && (
-                    <div className="flex bg-slate-50 p-1.5 rounded-[24px] mx-auto max-w-sm mb-8 border border-slate-100">
+                    <div className="flex bg-slate-50 p-1 rounded-2xl mx-auto max-w-xl mb-3 border border-slate-100 overflow-x-auto">
                       <button onClick={() => setInputMode('AUTO')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${inputMode === 'AUTO' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
                         IA
                       </button>
@@ -886,7 +960,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                                 setSelectedSubject(e.target.value);
                                 setSelectedTopic('');
                               }}
-                              className="w-full bg-white/5 border-2 border-white/10 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fdad74] transition-all font-bold appearance-none cursor-pointer text-white"
+                              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-[#fdad74] transition-all font-bold appearance-none cursor-pointer text-slate-700"
                             >
                               <option value="" className="bg-[#473c33]">
                                 Selecionar Matéria...
@@ -900,7 +974,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                           </div>
                           <div className="space-y-3 text-left">
                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Assunto Específico</label>
-                            <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)} disabled={!selectedSubject} className="w-full bg-white/5 border-2 border-white/10 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fdad74] transition-all font-bold appearance-none cursor-pointer disabled:opacity-20 text-white">
+                            <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)} disabled={!selectedSubject} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-[#fdad74] transition-all font-bold appearance-none cursor-pointer disabled:opacity-20 text-slate-700">
                               <option value="" className="bg-[#473c33]">
                                 Selecionar Assunto...
                               </option>
@@ -917,29 +991,29 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                       ) : null}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100 focus-within:border-[#fec868]/50 transition-all">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3 ">Banca Examinadora</label>
-                          <input value={banca} onChange={(e) => setBanca(e.target.value)} placeholder="Ex: FCC, FGV, CESPE..." className="w-full bg-transparent border-none text-xl focus:outline-none font-black text-slate-700 placeholder:text-slate-300" />
+                        <div className="bg-slate-50 p-5 rounded-2xl text-left border border-slate-100 focus-within:border-[#fec868]/50 transition-all">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Banca examinadora</label>
+                          <input value={banca} onChange={(e) => setBanca(e.target.value)} placeholder="Ex: FCC, FGV, CESPE..." className="w-full bg-transparent border-none text-lg focus:outline-none font-black text-slate-700 placeholder:text-slate-300" />
                         </div>
-                        <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100">
-                          <div className="flex justify-between items-center mb-6">
+                        <div className="bg-slate-50 p-5 rounded-2xl text-left border border-slate-100">
+                          <div className="flex justify-between items-center mb-4">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ">Qtd. Questões</label>
-                            <span className="text-[#fec868] font-black text-2xl tabular-nums">{numQuestions}</span>
+                            <span className="text-[#fec868] font-black text-xl tabular-nums">{numQuestions}</span>
                           </div>
                           <input type="range" min="1" max="50" value={numQuestions} onChange={(e) => setNumQuestions(Number(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer" />
                         </div>
                       </div>
 
-                      <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100 mb-4 group">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4 text-center md:text-left group-hover:text-[#fec868] transition-colors">ESTILO DO mapeamento da lógica (PROMPT)</label>
+                      <div className="bg-slate-50 p-5 rounded-2xl text-left border border-slate-100 mb-2 group">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3 text-center md:text-left group-hover:text-[#fec868] transition-colors">Estilo do mapeamento da lógica</label>
                         <div className="relative">
-                          <textarea value={explanationStyle} onChange={(e) => setExplanationStyle(e.target.value)} placeholder="Ex: Use mnemônicos engraçados, explique de forma simples e termine com um desafio mental." className="w-full bg-white border-2 border-slate-100 focus:border-[#fec868] rounded-[25px] p-6 text-sm font-medium text-slate-600 outline-none transition-all min-h-[100px] resize-none shadow-sm" />
+                          <textarea value={explanationStyle} onChange={(e) => setExplanationStyle(e.target.value)} placeholder="Ex: Use mnemônicos engraçados e explique de forma simples." className="w-full bg-white border-2 border-slate-100 focus:border-[#fec868] rounded-2xl p-4 text-sm font-medium text-slate-600 outline-none transition-all min-h-[78px] resize-none shadow-sm" />
                           <div className="absolute top-4 right-6 text-lg opacity-20">✍️</div>
                         </div>
                         <p className="text-[9px] font-bold text-slate-300 mt-4 text-center md:text-left">Dica: Quanto mais curto o comando, mais rápido a IA responde.</p>
                       </div>
 
-                      <button onClick={() => handleGenerate()} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8">
+                      <button onClick={() => handleGenerate()} className="w-full bg-[#fec868] text-white py-5 rounded-2xl font-black text-base hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-3 active:scale-95 group mt-3">
                         CONFIGURAR SIMULADO
                         <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                       </button>
@@ -1110,6 +1184,20 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                             </select>
                           </div>
 
+                          {bankAreas.length > 0 && (
+                            <div className="space-y-3 text-left animate-in fade-in slide-in-from-top-2 duration-300">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Área</label>
+                              <select value={bankArea} onChange={(e) => setBankArea(e.target.value)} disabled={bankLoadingAreas} className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fec868] transition-all font-bold appearance-none cursor-pointer text-slate-700 disabled:opacity-40">
+                                <option value="">{bankLoadingAreas ? 'Carregando áreas...' : `Todas as áreas (${bankTopicsTotal})`}</option>
+                                {bankAreas.map((a) => (
+                                  <option key={a.value} value={a.value}>
+                                    {a.value} ({a.count})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
                           <div className="space-y-3 text-left animate-in fade-in slide-in-from-top-2 duration-300">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Assunto</label>
                             <select value={bankTopic} onChange={(e) => setBankTopic(e.target.value)} disabled={bankLoadingTopics} className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fec868] transition-all font-bold appearance-none cursor-pointer text-slate-700 disabled:opacity-40">
@@ -1127,11 +1215,11 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ">Qtd. Questões</label>
                               <span className="text-[#fec868] font-black text-2xl tabular-nums">{bankCount}</span>
                             </div>
-                            <p className="text-[11px] font-bold text-slate-400 mb-4">{bankLoadingTopics ? 'Verificando disponibilidade...' : `${bankAvailableCount} questão${bankAvailableCount === 1 ? '' : 'ões'} disponível${bankAvailableCount === 1 ? '' : 'is'} nessa seleção`}</p>
-                            <input type="range" min="1" max={Math.max(1, bankAvailableCount)} value={bankCount} onChange={(e) => setBankCount(Number(e.target.value))} disabled={bankAvailableCount === 0} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer disabled:opacity-40" />
+                            <p className="text-[11px] font-bold text-slate-400 mb-4">{bankLoadingCount ? 'Verificando disponibilidade...' : `${bankMatchCount} questão${bankMatchCount === 1 ? '' : 'ões'} disponível${bankMatchCount === 1 ? '' : 'is'} nessa seleção`}</p>
+                            <input type="range" min="1" max={Math.max(1, bankMatchCount)} value={bankCount} onChange={(e) => setBankCount(Number(e.target.value))} disabled={bankMatchCount === 0} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer disabled:opacity-40" />
                           </div>
 
-                          <button onClick={handleFetchBank} disabled={!bankSubject || bankAvailableCount === 0} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
+                          <button onClick={handleFetchBank} disabled={!bankSubject || bankMatchCount === 0} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
                             BUSCAR DO NOSSO BANCO
                             <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                           </button>
@@ -1235,24 +1323,31 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
               </div>
             </div>
           </div>
+        ) : onQuestionsReady ? (
+          <div className="relative min-h-[calc(100dvh-12rem)] rounded-[32px] bg-[#473c33] flex flex-col items-center justify-center p-6">
+            <div className="bg-white rounded-[50px] p-12 md:p-20 shadow-2xl flex flex-col items-center max-w-xl w-full">
+              <LoadingFish message="Questões filtradas!" submessage="Escolha em qual caderno salvar para abrir em Meus Materiais." />
+            </div>
+          </div>
         ) : (
           <div className="py-6 space-y-8 pb-32">
             {/* Header Mini Imersivo */}
-            <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm sticky top-0 z-30">
-              <div className="flex items-center gap-6">
+            <div className="flex flex-wrap gap-4 justify-between items-center bg-white p-4 sm:p-6 rounded-3xl border border-slate-100 shadow-sm sticky top-0 z-30">
+              <div className="flex-1 basis-64 min-w-0 flex items-center gap-3">
                 <button
                   onClick={() => {
                     handleFinish();
                     setQuestions([]);
                   }}
-                  className="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all group active:scale-90"
+                  aria-label="Encerrar simulado e voltar"
+                  className="shrink-0 p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all group active:scale-90"
                 >
                   <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-[#fec868]" />
                 </button>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="w-2 h-2 rounded-full bg-[#fec868] animate-pulse"></span>
-                    <h4 className="font-black text-sm tracking-widest uppercase text-slate-800">{topic}</h4>
+                    <h4 className="font-black text-sm tracking-widest uppercase text-slate-800 truncate" title={topic}>{topic}</h4>
                   </div>
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
                     Questão {currentIdx + 1} de {questions.length} • EM ANDAMENTO
@@ -1285,10 +1380,17 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
               </div>
             </div>
 
-            <div className="bg-white rounded-[40px] p-8 md:p-16 shadow-sm border border-slate-200/60 relative overflow-hidden transition-all hover:shadow-md">
+            <div className="bg-white dark:bg-[#272019] rounded-[40px] p-8 md:p-16 shadow-sm dark:shadow-none border border-slate-200/60 dark:border-white/[0.06] relative overflow-hidden transition-all hover:shadow-md dark:hover:shadow-none">
               <div className="mb-10 text-center md:text-left">
-                <div className="flex items-center justify-between mb-6">
-                  <span className="text-[11px] font-black text-[#fec868]/50 uppercase tracking-[0.3em]">Questão {currentIdx + 1}</span>
+                <div className="flex flex-wrap gap-4 items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full" style={{ background: 'rgba(253,167,105,0.2)', color: '#b0632a' }}>
+                      {currentQ.topic || topic}
+                    </span>
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                      Questão {currentIdx + 1}/{questions.length}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner mr-2 items-center">
                       <div className="flex items-center gap-2 px-3 border-r border-slate-200 mr-2">
@@ -1344,31 +1446,33 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                   const isFinalSelected = selectedOpt === idx;
                   const isQuickMode = currentQ.options.every((o) => !o.trim());
 
-                  let cardClass = 'bg-white border border-slate-100 hover:border-[#fec868]/25 hover:bg-slate-50/50 text-slate-600 shadow-sm';
-                  let circleClass = 'border-slate-100 text-slate-300 group-hover:border-[#fec868]/50 group-hover:text-[#fec868]';
-                  let textClass = 'text-slate-600';
+                  let cardClass = 'bg-white dark:bg-[#211c15] border border-slate-100 dark:border-white/[0.08] hover:border-[#fec868]/25 dark:hover:border-[#d9772b]/40 hover:bg-slate-50/50 dark:hover:bg-[#272019] text-slate-600 dark:text-[#a89680] shadow-sm dark:shadow-none';
+                  let circleClass = 'border-slate-100 dark:border-white/[0.1] text-slate-300 dark:text-[#7d6f5c] group-hover:border-[#fec868]/50 dark:group-hover:border-[#d9772b]/60 group-hover:text-[#fec868] dark:group-hover:text-[#d9772b]';
+                  let textClass = 'text-slate-600 dark:text-[#a89680]';
 
                   if (isSelected && !isSubmitted) {
-                    cardClass = 'border-[#fec868]/25 bg-[#fec868]/10/20 text-slate-900 shadow-md border-l-[4px] border-l-blue-500 ring-4 ring-[#fec868]/5';
-                    circleClass = 'bg-[#fec868]/15 border-[#fec868] text-[#fec868]';
+                    cardClass = 'border-2 border-[#fec868] dark:border-[#d9772b] bg-[#fec868]/10 dark:bg-[#d9772b]/15 text-slate-900 dark:text-[#f4ebdd] shadow-md dark:shadow-none ring-4 ring-[#fec868]/10 dark:ring-[#d9772b]/15';
+                    circleClass = 'bg-[#fec868] dark:bg-[#d9772b] border-[#fec868] dark:border-[#d9772b] text-white';
                   }
 
                   if (isCrossedOut && !isSubmitted) {
-                    cardClass = 'border-transparent bg-slate-50/50 opacity-40';
-                    textClass = 'text-slate-300 line-through grayscale';
+                    cardClass = 'border-transparent bg-slate-50/50 dark:bg-white/5 opacity-40';
+                    textClass = 'text-slate-300 dark:text-[#7d6f5c] line-through grayscale';
                   }
 
                   if (isSubmitted) {
                     if (isCorrect) {
-                      cardClass = 'bg-[#abc270]/10 border-[#abc270]/25 text-[#596b2a] border-l-[4px] border-l-green-500';
-                      circleClass = 'bg-[#abc270] border-[#abc270] text-white';
-                      textClass = 'text-[#596b2a] font-bold';
+                      cardClass = 'bg-[#f1f6e8] dark:bg-[#34392c] border-2 border-[#abc270]/70 dark:border-[#82965b] text-[#46523a] dark:text-[#e3edca]';
+                      circleClass = 'bg-[#82995a] dark:bg-[#82995a] border-[#82995a] text-white';
+                      textClass = 'text-[#46523a] dark:text-[#e3edca] font-bold';
                     } else if (isFinalSelected) {
-                      cardClass = 'bg-red-50 border-red-200 text-red-700 border-l-[4px] border-l-red-500';
-                      circleClass = 'bg-red-500 border-red-500 text-white';
-                      textClass = 'text-red-700 font-bold';
+                      cardClass = 'bg-[#fff1ec] dark:bg-[#3d302a] border-2 border-[#df9278] dark:border-[#b96b50] text-[#984b39] dark:text-[#f1c5b4]';
+                      circleClass = 'bg-[#c96f53] dark:bg-[#c96f53] border-[#c96f53] text-white';
+                      textClass = 'text-[#984b39] dark:text-[#f1c5b4] font-bold';
                     } else {
-                      cardClass = 'opacity-40 bg-slate-50 border-transparent grayscale';
+                      cardClass = 'bg-slate-50 border border-slate-100 text-slate-400 opacity-60 dark:bg-[#303129] dark:border-white/[0.06] dark:text-[#aaa891]';
+                      circleClass = 'border-slate-200 text-slate-300 dark:border-white/[0.08] dark:text-[#aaa891]';
+                      textClass = 'text-slate-400 dark:text-[#aaa891]';
                     }
                   }
 
@@ -1377,10 +1481,14 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                       <div onClick={() => handleAnswerSelection(idx)} onDoubleClick={() => handleDoubleClick(idx)} className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-6 rounded-[25px] flex items-center gap-6'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] ${cardClass} relative overflow-hidden`} role="button" aria-disabled={isSubmitted} tabIndex={0}>
                         <div className={`flex items-center flex-1 ${isQuickMode ? 'justify-center' : 'gap-6'}`}>
                           <span className={`${isQuickMode ? 'w-10 h-10 rounded-xl' : 'w-12 h-12 rounded-full'} border flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-all ${circleClass}`}>{String.fromCharCode(65 + idx)}</span>
-                          {!isQuickMode && <span className={`text-[16px] leading-snug transition-colors ${textClass}`}>{opt}</span>}
+                          {!isQuickMode && <span className={`text-[16px] leading-snug transition-colors flex-1 ${textClass}`}>{opt}</span>}
+                          {isSubmitted && !isQuickMode && isCorrect && <span className="text-[9px] font-black uppercase tracking-widest flex-shrink-0 text-[#596b2a] dark:text-[#c4d99a]">Gabarito</span>}
+                          {isSubmitted && !isQuickMode && isFinalSelected && !isCorrect && <span className="text-[9px] font-black uppercase tracking-widest flex-shrink-0 text-[#984b39] dark:text-[#f1a58b]">Sua resposta</span>}
                         </div>
 
-                        {!isSubmitted && !isQuickMode && <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-[#fec868] bg-[#fec868]' : 'border-slate-200'}`}>{isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}</div>}
+                        {!isSubmitted && !isQuickMode && <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-[#fec868] dark:border-[#d9772b] bg-[#fec868] dark:bg-[#d9772b]' : 'border-slate-200 dark:border-white/[0.15]'}`}>{isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}</div>}
+                        {isSubmitted && !isQuickMode && isCorrect && <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-[#596b2a] dark:text-[#c4d99a]" />}
+                        {isSubmitted && !isQuickMode && isFinalSelected && !isCorrect && <X className="w-5 h-5 flex-shrink-0 text-[#984b39] dark:text-[#f1a58b]" />}
                       </div>
                     </div>
                   );
@@ -1388,26 +1496,26 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
               </div>
 
               {!isSubmitted ? (
-                <div className="flex justify-center md:justify-start">
-                  <button onClick={handleSubmitAnswer} disabled={tempSelectedOpt === null} className="bg-[#2ecc71] hover:bg-[#27ae60] disabled:bg-white/5 disabled:text-white/20 disabled:cursor-not-allowed text-white font-bold px-10 py-3.5 rounded-xl uppercase text-[11px] tracking-wider transition-all active:scale-95 shadow-lg shadow-[#3c481c]/10">
+                <div>
+                  <button onClick={handleSubmitAnswer} disabled={tempSelectedOpt === null} className="w-full bg-[#473c33] dark:bg-[#d9772b] hover:bg-[#5a4b3f] dark:hover:bg-[#c96a25] disabled:bg-slate-100 dark:disabled:bg-white/5 disabled:text-slate-300 dark:disabled:text-[#7d6f5c] disabled:cursor-not-allowed text-white font-black px-10 py-6 rounded-[35px] uppercase text-lg tracking-wider transition-all active:scale-95 shadow-xl dark:shadow-none">
                     CONFERIR RESPOSTA
                   </button>
                 </div>
               ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-5 duration-500">
-                  <div className={`p-8 rounded-[40px] mb-10 border ${selectedOpt === currentQ.correctAnswer ? 'bg-[#abc270]/10 border-[#abc270]/15 shadow-sm' : 'bg-red-50 border-red-100 shadow-sm'}`}>
+                  <div className={`p-8 rounded-[40px] mb-10 border ${selectedOpt === currentQ.correctAnswer ? 'bg-[#f1f6e8] dark:bg-[#34392c] border-[#abc270]/40 dark:border-[#82965b] shadow-sm dark:shadow-none' : 'bg-[#fff1ec] dark:bg-[#3d302a] border-[#df9278] dark:border-[#b96b50] shadow-sm dark:shadow-none'}`}>
                     <div className="flex items-center gap-6">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg ${selectedOpt === currentQ.correctAnswer ? 'bg-[#abc270]' : 'bg-red-500'}`}>{selectedOpt === currentQ.correctAnswer ? '✓' : '✗'}</div>
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg dark:shadow-none ${selectedOpt === currentQ.correctAnswer ? 'bg-[#82995a]' : 'bg-[#c96f53]'}`}>{selectedOpt === currentQ.correctAnswer ? '✓' : '✗'}</div>
                       <div>
-                        <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedOpt === currentQ.correctAnswer ? 'text-[#abc270]' : 'text-red-600'}`}>{selectedOpt === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}</p>
-                        <p className="text-slate-800 text-[17px] font-bold">
-                          Gabarito: <span className="text-[#fec868]">{String.fromCharCode(65 + currentQ.correctAnswer)}</span>
+                        <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedOpt === currentQ.correctAnswer ? 'text-[#596b2a] dark:text-[#c4d99a]' : 'text-[#984b39] dark:text-[#f1a58b]'}`}>{selectedOpt === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}</p>
+                        <p className={`text-[17px] font-bold ${selectedOpt === currentQ.correctAnswer ? 'text-[#46523a] dark:text-[#f2efd2]' : 'text-[#713a2e] dark:text-[#f1c5b4]'}`}>
+                          Gabarito: <span className={selectedOpt === currentQ.correctAnswer ? 'text-[#596b2a] dark:text-[#d9e9b2]' : 'text-[#984b39] dark:text-[#f1a58b]'}>{String.fromCharCode(65 + currentQ.correctAnswer)}</span>
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-[40px] p-8 md:p-12 border border-slate-100 shadow-inner leading-relaxed mb-10">
+                  <div className="bg-[#fec868]/10 dark:bg-[#fdfbf7] rounded-[40px] p-8 md:p-12 border-2 border-[#473c33]/10 dark:border-transparent shadow-inner dark:shadow-[0_-12px_40px_rgba(0,0,0,0.35)] leading-relaxed mb-10">
                     {showNoteSection && (
                       <div ref={noteSectionRef} className="bg-white border border-slate-100 p-6 md:p-8 rounded-[35px] mb-8 relative shadow-sm group hover:shadow-md transition-all">
                         <div className="flex items-center justify-between mb-6">
@@ -1653,7 +1761,20 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
         </div>
       )}
 
-      {showSaveModal && <SaveToFolderModal folders={folders} suggestedName={saveMode === 'SINGLE' ? currentQ.topic || topic : topic} onConfirm={handleConfirmSave} onClose={() => setShowSaveModal(false)} />}
+      {showSaveModal && (
+        <SaveToFolderModal
+          folders={folders}
+          suggestedName={saveMode === 'SINGLE' ? currentQ.topic || topic : topic}
+          onConfirm={handleConfirmSave}
+          onClose={() => {
+            setShowSaveModal(false);
+            // Sem prática interna nesta view, cancelar aqui só faz sentido
+            // voltando pro filtro — senão o aluno ficaria preso na tela de
+            // "abrindo em Meus Materiais" sem nenhuma ação possível.
+            if (onQuestionsReady) setQuestions([]);
+          }}
+        />
+      )}
 
       {/* Floating Action Buttons Sidebar */}
       {questions.length > 0 && isSubmitted && (

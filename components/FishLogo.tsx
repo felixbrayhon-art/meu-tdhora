@@ -10,8 +10,7 @@ interface FishLogoProps {
   /** Hide the fish icon and show only the "ToDaHORA" wordmark. */
   hideIcon?: boolean;
   days?: number;
-  /** Set true when rendering on a dark background (e.g. the sidebar) — the "dark"-tone
-   * letters switch from black to white there, since solid black is invisible on navy. */
+  /** Set true when rendering on a dark background — dark-tone letters switch to cream for contrast. */
   darkBg?: boolean;
 }
 
@@ -99,7 +98,7 @@ const FishLogo: React.FC<FishLogoProps> = ({
             <span
               key={idx}
               className={`font-logo leading-none ${letter.small ? 'text-2xl' : 'text-4xl'}`}
-              style={{ color: letter.tone === 'dark' ? (darkBg ? '#FFFFFF' : '#473c33') : '#eab308' }}
+              style={{ color: letter.tone === 'dark' ? (darkBg ? '#f2efd2' : '#473c33') : '#eab308' }}
             >
               {letter.char}
             </span>

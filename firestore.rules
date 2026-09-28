@@ -269,6 +269,17 @@ service cloud.firestore {
     match /questions/{questionId} {
       allow get, list: if isSignedIn();
       allow create, update: if isAdmin() && isValidPublishedQuestion(incoming());
+      // Narrow path for QuizPlayer's admin "editar explicação" toggle: fixing
+      // an already-published question's explanation shouldn't have to satisfy
+      // isValidPublishedQuestion's approvedBy/approvedAt shape again (worker
+      // imports set approvedBy to an importer email and approvedAt to a
+      // Firestore Timestamp via the Admin SDK, neither of which matches what
+      // that function expects from a client-side approval write) — this only
+      // ever touches `explanation`, nothing else.
+      allow update: if isAdmin()
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['explanation'])
+                    && incoming().explanation is string
+                    && incoming().explanation.size() <= 20000;
       allow delete: if isAdmin();
     }
   }

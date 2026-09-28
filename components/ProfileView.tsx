@@ -15,6 +15,7 @@ interface ProfileViewProps {
   isAIEnabled: boolean;
   setIsAIEnabled: (val: boolean) => void;
   onLogout?: () => void;
+  onLogin?: () => void;
   isLoggedIn?: boolean;
 }
 
@@ -48,7 +49,7 @@ const HERO_TINT_OPTIONS: { color: string | null; name: string }[] = [
   { color: '#10B981', name: 'Verde' },
 ];
 
-const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled, onLogout, isLoggedIn }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled, onLogout, onLogin, isLoggedIn }) => {
   const [name, setName] = useState(stats.name);
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [characterId, setCharacterId] = useState<string | undefined>(stats.characterId);
@@ -91,7 +92,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
 
         <div className="bg-white rounded-[50px] shadow-2xl border border-gray-100 overflow-hidden">
           {/* Cabeçalho unificado: retrato, identidade e estatísticas reais */}
-          <div className="bg-gradient-to-br from-[#473c33] to-[#141b30] text-white p-8 md:p-12 relative overflow-hidden">
+          <div className="bg-gradient-to-br from-[#473c33] to-[#141b30] dark:from-[#35362e] dark:to-[#24251f] text-white p-8 md:p-12 relative overflow-hidden">
             <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full bg-[#fed386]/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-16 -left-10 h-56 w-56 rounded-full bg-[#fecc73]/10 blur-3xl" />
 
@@ -256,9 +257,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
             </div>
 
             <div className="pt-6">
-              <button onClick={handleSave} className="w-full bg-[#fed386] text-white py-6 rounded-[30px] font-black text-xl shadow-xl shadow-[#fff0d5]/60 hover:scale-[1.02] transition-all active:scale-95">
+              <button onClick={handleSave} className="w-full bg-[#e96f34] hover:bg-[#f07b40] text-white py-6 rounded-[30px] font-black text-xl shadow-xl shadow-[#e96f34]/30 hover:scale-[1.02] transition-all active:scale-95">
                 SALVAR ALTERAÇÕES
               </button>
+              {!isLoggedIn && onLogin && (
+                <button onClick={onLogin} className="w-full mt-4 bg-white border-2 border-[#fed386] text-[#473c33] py-4 rounded-[25px] font-black text-[10px] uppercase tracking-widest hover:bg-[#fff6e8] transition-all">
+                  ENTRAR COM O GOOGLE (SALVAR NA NUVEM)
+                </button>
+              )}
               {isLoggedIn && onLogout && (
                 <button onClick={onLogout} className="w-full mt-4 bg-gray-100 text-gray-400 py-4 rounded-[25px] font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-all border border-transparent hover:border-red-100">
                   ENCERRAR SESSÃO (LOGOUT)

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { QuizFolder, Notebook, QuizAttempt, EditalConfig } from '../types';
 import { MoveAllNotebookQuestionsModal } from './MoveAllNotebookQuestionsModal';
 
@@ -25,10 +26,6 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
   const [moveAllNotebook, setMoveAllNotebook] = useState<Notebook | null>(null);
   const [isCreating, setIsCreating] = useState<'FOLDER' | 'NOTEBOOK' | null>(null);
   const [newName, setNewName] = useState('');
-
-  const totalQuestions = attempts.reduce((acc, curr) => acc + curr.total, 0);
-  const totalCorrect = attempts.reduce((acc, curr) => acc + curr.score, 0);
-  const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
 
   const selectedFolder = folders.find((f) => f.id === selectedFolderId);
   const selectedNotebook = selectedFolder?.notebooks.find((n) => n.id === selectedNotebookId);
@@ -90,7 +87,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
             ))}
           </div>
           <h2 className="text-3xl font-black tracking-tighter uppercase leading-none">
-            {strategicMode ? 'MATERIAIS' : 'MEUS'} <span className={strategicMode ? 'text-[#ac6e00]' : 'text-[#fecc73]'}>{selectedNotebookId ? 'CADERNO' : strategicMode ? 'ESTRATÉGICOS' : 'MATERIAIS'}</span>
+            {selectedNotebookId ? 'CADERNO DE' : strategicMode ? 'MATERIAIS' : 'MEUS'} <span className={strategicMode && !selectedNotebookId ? 'text-[#ac6e00]' : 'text-[#fecc73]'}>{selectedNotebookId ? 'QUESTÕES' : strategicMode ? 'ESTRATÉGICOS' : 'MATERIAIS'}</span>
           </h2>
         </div>
 
@@ -145,9 +142,39 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-500">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             <div className="lg:col-span-8 space-y-6">
-              <div className="bg-white rounded-[50px] p-10 md:p-14 shadow-xl border border-gray-100">
-                <h3 className="text-3xl font-black mb-8 uppercase tracking-tighter">{selectedNotebook.name}</h3>
+              <div className="bg-white rounded-[36px] p-6 sm:p-8 shadow-xl border border-gray-100">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-5 border-b border-gray-100">
+                  <div>
+                    <p className="text-[10px] font-black text-[#fec868] uppercase tracking-[0.3em] mb-2">Caderno salvo</p>
+                    <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-[#473c33]">{selectedNotebook.name}</h3>
+                  </div>
+                  <span className="px-3 py-1.5 rounded-full bg-[#fff6e8] text-[#ec9700] text-[10px] font-black uppercase tracking-widest">{selectedNotebook.questions.length} questões</span>
+                </div>
 
+                {selectedNotebook.questions.length > 0 ? (
+                  <div className="space-y-3" aria-label="Questões salvas">
+                    {selectedNotebook.questions.map((question, index) => (
+                      <article key={question.id || index} className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5 hover:border-[#ffe6b9] hover:bg-[#fffaf2] transition-colors">
+                        <div className="flex items-start gap-3">
+                          <span className="w-8 h-8 shrink-0 rounded-xl bg-[#fff6e8] text-[#ec9700] flex items-center justify-center text-xs font-black">{index + 1}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm sm:text-base leading-relaxed font-semibold text-[#334155] line-clamp-3" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(question.question) }} />
+                            <div className="flex flex-wrap items-center gap-2 mt-3 text-[9px] font-black uppercase tracking-widest text-gray-400">
+                              <span>{question.options.filter((option) => option.trim()).length || question.options.length} alternativas</span>
+                              {question.topic && <span className="text-[#fda769]">{question.topic}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                    <p className="text-gray-400 font-bold">Este caderno ainda não possui questões salvas.</p>
+                  </div>
+                )}
+
+                <div className="hidden" aria-hidden="true">
                 {selectedNotebook.summary ? (
                   <div className="space-y-6">
                     <div className="flex items-center gap-2 text-[#fec868] font-black uppercase text-[10px] tracking-widest">
@@ -163,12 +190,14 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                     <p className="text-gray-400 font-bold ">Este caderno não possui um resumo salvo.</p>
                   </div>
                 )}
+                </div>
               </div>
             </div>
 
             <div className="lg:col-span-4 space-y-6">
               <div className="bg-[#473c33] rounded-[45px] p-10 text-white shadow-2xl">
-                <h4 className="text-xl font-black mb-6 uppercase tracking-tighter">PRATICAR</h4>
+                <p className="text-[10px] font-black text-[#fed386] uppercase tracking-[0.3em] mb-3">Caderno de questões</p>
+                <h4 className="text-2xl font-black mb-6 uppercase tracking-tighter">PRATICAR AGORA</h4>
                 <div className="space-y-4 mb-10">
                   <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <span>Total Questões</span>
@@ -191,39 +220,6 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
         </div>
       ) : (
         <div className="space-y-16">
-          {!selectedFolderId && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div className="bg-white p-10 rounded-[50px] shadow-xl border border-gray-100 group hover:-translate-y-1 transition-all">
-                <p className="text-gray-400 font-black uppercase text-[10px] tracking-[0.3em] mb-4">Precisão Geral</p>
-                <div className="flex items-end gap-2">
-                  <span className="text-6xl font-black text-[#fec868] tracking-tighter leading-none">{accuracy}%</span>
-                  <div className="w-1.5 h-10 bg-[#fff0d5] rounded-full mb-1"></div>
-                </div>
-              </div>
-              <div className="bg-white p-10 rounded-[50px] shadow-xl shadow-gray-900/5 border border-gray-100 group hover:-translate-y-1 transition-all">
-                <p className="text-gray-400 font-black uppercase text-[10px] tracking-[0.3em] mb-4">Pastas</p>
-                <div className="flex items-end gap-2">
-                  <span className="text-6xl font-black text-gray-800 tracking-tighter leading-none">{folders.length}</span>
-                  <div className="w-1.5 h-10 bg-gray-100 rounded-full mb-1"></div>
-                </div>
-              </div>
-              <div className="bg-white p-10 rounded-[50px] shadow-xl shadow-[#596b2a]/5 border border-gray-100 group hover:-translate-y-1 transition-all">
-                <p className="text-gray-400 font-black uppercase text-[10px] tracking-[0.3em] mb-4">Acertos</p>
-                <div className="flex items-end gap-2">
-                  <span className="text-6xl font-black text-[#b1c77b] tracking-tighter leading-none">{totalCorrect}</span>
-                  <div className="w-1.5 h-10 bg-[#e9efda] rounded-full mb-1"></div>
-                </div>
-              </div>
-              <div className="bg-[#473c33] p-10 rounded-[50px] text-white shadow-2xl group hover:-translate-y-1 transition-all">
-                <p className="text-[#fed386] font-black uppercase text-[10px] tracking-[0.3em] mb-4">Treinos</p>
-                <div className="flex items-end gap-2">
-                  <span className="text-6xl font-black tracking-tighter leading-none">{attempts.length}</span>
-                  <div className="w-1.5 h-10 bg-[#ac6e00]/50 rounded-full mb-1"></div>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="flex flex-col gap-4">
             {/* List Subfolders */}
             {currentFolders.map((folder) => {
@@ -283,7 +279,6 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="text-xl font-black uppercase tracking-tighter truncate">{notebook.name}</h3>
-                      {notebook.summary && <span className="bg-[#f4f7ec] text-[#abc270] px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shrink-0">RESUMO</span>}
                     </div>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">{notebook.questions.length} QUESTÕES</span>

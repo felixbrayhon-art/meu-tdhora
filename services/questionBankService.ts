@@ -18,6 +18,14 @@ export const checkIsAdmin = async (uid: string): Promise<boolean> => {
   return snap.exists();
 };
 
+// Lets an admin fix a published question's explanation in place while
+// answering it (QuizPlayer's "editar explicação" toggle) — same `questions`
+// doc the student is already reading from `mapBankQuestion` below, so the
+// fix is live for every future student immediately, not just a local draft.
+export const updateQuestionExplanation = async (questionId: string, explanation: string): Promise<void> => {
+  await updateDoc(doc(db, 'questions', questionId), { explanation });
+};
+
 export const listImports = async (): Promise<QuestionImportBatch[]> => {
   const snap = await getDocs(query(collection(db, 'imports'), orderBy('importedAt', 'desc')));
   return snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<QuestionImportBatch, 'id'>) }));
@@ -146,34 +154,69 @@ export const listBankImportSubjects = async (): Promise<BankFacetOption[]> => {
     .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
 };
 
+const buildBankConstraints = (importSubject: string, topic: string | null, area: string | null) => {
+  const constraints = [where('importSubject', '==', importSubject)];
+  if (topic) constraints.push(where('subjectRaw', '==', topic));
+  if (area) constraints.push(where('position', '==', area));
+  return constraints;
+};
+
+const countByField = <K extends 'subjectRaw' | 'position'>(docs: { data: () => unknown }[], field: K): BankFacetOption[] => {
+  const counts = new Map<string, number>();
+  docs.forEach(d => {
+    const value = (d.data() as PublishedQuestion)[field];
+    if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
+};
+
 // Level 2: FC Concursos' own (finer) classification within that discipline
 // (subjectRaw) — only fetched once a level-1 matéria has been chosen.
 // `total` is the count for "Todos os assuntos" (every question under this
-// matéria, including any with no subjectRaw at all).
-export const listBankTopicsForSubject = async (importSubject: string): Promise<BankTopicFacets> => {
-  const snap = await getDocs(query(collection(db, 'questions'), where('importSubject', '==', importSubject)));
-  const counts = new Map<string, number>();
-  snap.docs.forEach(d => {
-    const topic = (d.data() as PublishedQuestion).subjectRaw;
-    if (topic) counts.set(topic, (counts.get(topic) ?? 0) + 1);
-  });
-  const topics = [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
-  return { total: snap.size, topics };
+// matéria/área, including any with no subjectRaw at all). Matéria is the
+// only required filter anywhere in this file — área here is an OPTIONAL
+// cross-filter: when set, assunto counts/options reflect just that área,
+// but leaving it unset never blocks fetching by matéria+assunto alone.
+export const listBankTopicsForSubject = async (importSubject: string, area: string | null = null): Promise<BankTopicFacets> => {
+  const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, null, area)));
+  return { total: snap.size, topics: countByField(snap.docs, 'subjectRaw') };
+};
+
+// "Área" is a coarse tag independent of subjectRaw/topicRaw (e.g. "Policial"
+// — set by worker/scripts/import_batch.py imports whose source deck targets
+// a specific career track), scoped within a matéria the same way assunto is.
+// Only questions that actually carry a `position` show up here — imports
+// that never set it (most of the bank, today) are simply absent from the
+// list rather than showing as an empty-label facet. `topic` is likewise an
+// OPTIONAL cross-filter, symmetric with `area` above — assunto and área
+// never require each other, or matéria's own assunto/área picks, to work.
+export const listBankAreasForSubject = async (importSubject: string, topic: string | null = null): Promise<BankFacetOption[]> => {
+  const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, topic, null)));
+  return countByField(snap.docs, 'position');
+};
+
+// Live count for the exact matéria + assunto + área combination currently
+// selected — assunto and área are independent facets (each counted only
+// against the matéria on their own in listBankTopicsForSubject/
+// listBankAreasForSubject above), so when both are set at once their real
+// overlap can only be known by asking Firestore directly.
+export const countBankQuestions = async (importSubject: string, topic: string | null, area: string | null): Promise<number> => {
+  const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, topic, area)));
+  return snap.size;
 };
 
 export const fetchBankQuestions = async (
   importSubject: string,
   topic: string | null,
+  area: string | null,
   count: number
 ): Promise<QuizQuestion[]> => {
-  const constraints = [where('importSubject', '==', importSubject)];
-  if (topic) constraints.push(where('subjectRaw', '==', topic));
-  const snap = await getDocs(query(collection(db, 'questions'), ...constraints));
+  const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, topic, area)));
   const all = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<PublishedQuestion, 'id'>) }));
   if (all.length === 0) {
-    throw new Error('Nenhuma questão encontrada para essa matéria/assunto no nosso banco ainda.');
+    throw new Error('Nenhuma questão encontrada para essa matéria/assunto/área no nosso banco ainda.');
   }
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count).map(mapBankQuestion);

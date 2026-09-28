@@ -91,7 +91,12 @@ const safeAIJsonParse = (text: string) => {
 };
 
 // Helper for calling AI with automatic retries for transient errors (503/500/429)
-const generateContentWithRetry = async (params: any, maxRetries = 5) => {
+// Without a fallback configured, Gemini is the user's only shot, so it's
+// worth patiently riding out a 429/503 with the original long backoff. With
+// OPENROUTER_API_KEY set, that ~60s of waiting (4 retries x ~15s for quota
+// errors) just delays reaching a fallback that can usually answer in
+// seconds — fail over fast instead.
+const generateContentWithRetry = async (params: any, maxRetries = OPENROUTER_API_KEY ? 2 : 5) => {
   let delay = 2000;
   let lastError;
 
@@ -100,37 +105,172 @@ const generateContentWithRetry = async (params: any, maxRetries = 5) => {
       return await ai.models.generateContent(params);
     } catch (error: any) {
       lastError = error;
-      
+
       const errorObj = error?.error || error;
       const errorMessage = errorObj?.message || error?.message || "";
       const errorStatus = String(errorObj?.code || errorObj?.status || error?.status || "");
-      
-      const isTransient = 
-        errorStatus === "503" || 
+
+      const isTransient =
+        errorStatus === "503" ||
         errorStatus === "500" ||
         errorStatus === "429" ||
-        errorMessage.includes('503') || 
-        errorMessage.includes('500') || 
+        errorMessage.includes('503') ||
+        errorMessage.includes('500') ||
         errorMessage.includes('429') ||
-        errorMessage.includes('high demand') || 
-        errorMessage.includes('UNAVAILABLE') || 
+        errorMessage.includes('high demand') ||
+        errorMessage.includes('UNAVAILABLE') ||
         errorMessage.includes('RESOURCE_EXHAUSTED');
 
       if (isTransient && i < maxRetries - 1) {
         const isQuota = errorStatus === "429" || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED');
         // Exponential backoff with jitter
         const jitter = Math.random() * 1000;
-        const retryDelay = (isQuota ? 15000 : delay) + jitter; 
-        
+        const retryDelay = OPENROUTER_API_KEY ? (1500 + jitter) : ((isQuota ? 15000 : delay) + jitter);
+
         console.warn(`IA ocupada ou limite atingido (Tentativa ${i + 1}/${maxRetries}). Tentando novamente em ${Math.round(retryDelay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
-        delay *= 2; 
+        delay *= 2;
         continue;
       }
       throw error;
     }
   }
   throw lastError;
+};
+
+// --- OpenRouter fallback ---
+// Only kicks in when the Gemini key above is rate-limited (429), the Google
+// backend is overloaded (503), or the key itself is invalid/missing. Never
+// used when Gemini succeeds. Tries free OpenRouter models in order until one
+// answers — each model's free tier is its own shared, rate-limited pool
+// (confirmed live: at any given moment some of the 6 below are 429/503 while
+// others answer fine), so the list is intentionally longer than 1-2 entries.
+// thinkingmachines/inkling(-small) and the coding-only models (poolside,
+// cohere/north-mini-code) are excluded: the former 403s outside an agentic
+// harness, the latter are coding-specialized and add no value here.
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+const OPENROUTER_FALLBACK_MODELS = [
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
+  'qwen/qwen3.8-27b:free',
+  'google/gemma-4-31b-it:free',
+  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+];
+// A free model's own backend can hang well past a normal request (confirmed
+// live: one of these timed out at 30s+ with nothing wrong on our end) — cap
+// each attempt so a single stuck model can't stall the whole chain.
+const OPENROUTER_PER_MODEL_TIMEOUT_MS = 20000;
+// Trying models strictly one-at-a-time means a single stuck model (confirmed
+// live: nemotron-3-super hung the full 20s twice in a row) delays every
+// model behind it. Racing a few at once — first success wins — fixes that:
+// a hung model just loses the race instead of blocking it. Batched rather
+// than all 6 at once, to avoid hammering the whole free pool per call.
+const OPENROUTER_RACE_BATCH_SIZE = 3;
+
+const shouldTryOpenRouterFallback = (error: any): boolean => {
+  if (!OPENROUTER_API_KEY) return false;
+  const errorObj = error?.error || error;
+  const errorMessage = String(errorObj?.message || error?.message || error || '').toLowerCase();
+  const errorStatus = String(errorObj?.code || errorObj?.status || error?.status || '');
+  return errorStatus === '429' || errorStatus === '503' || errorStatus === '500' ||
+    errorMessage.includes('429') || errorMessage.includes('503') ||
+    errorMessage.includes('resource_exhausted') || errorMessage.includes('unavailable') ||
+    errorMessage.includes('api key');
+};
+
+// Runs `attempt(model)` for OPENROUTER_FALLBACK_MODELS in batches of
+// OPENROUTER_RACE_BATCH_SIZE, racing each batch with Promise.any so the
+// first model to succeed wins immediately instead of waiting on a stuck one.
+// Only moves to the next batch if every model in the current one fails.
+const raceOpenRouterModels = async <T,>(attempt: (model: string) => Promise<T>): Promise<T> => {
+  let lastError: any;
+  for (let i = 0; i < OPENROUTER_FALLBACK_MODELS.length; i += OPENROUTER_RACE_BATCH_SIZE) {
+    const batch = OPENROUTER_FALLBACK_MODELS.slice(i, i + OPENROUTER_RACE_BATCH_SIZE);
+    try {
+      return await Promise.any(batch.map(attempt));
+    } catch (aggregateError: any) {
+      lastError = aggregateError?.errors?.[aggregateError.errors.length - 1] ?? aggregateError;
+    }
+  }
+  throw lastError || new Error('Fallback OpenRouter indisponível.');
+};
+
+// Converts a Gemini-style responseSchema (Type.OBJECT/STRING/ARRAY/...) into
+// plain JSON Schema, so every function's existing schema object can be
+// reused as-is for the OpenRouter fallback instead of hand-duplicated.
+const toJsonSchema = (googleSchema: any): any => {
+  if (!googleSchema || typeof googleSchema !== 'object') return googleSchema;
+  const { type, properties, items, ...rest } = googleSchema;
+  const out: any = { ...rest };
+  if (type) out.type = String(type).toLowerCase();
+  if (properties) out.properties = Object.fromEntries(Object.entries(properties).map(([k, v]) => [k, toJsonSchema(v)]));
+  if (items) out.items = toJsonSchema(items);
+  return out;
+};
+
+const callOpenRouterJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string): Promise<any> => {
+  return raceOpenRouterModels(async (model) => {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [
+            ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+            { role: 'user', content: userPrompt },
+          ],
+          response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: true, schema } },
+          reasoning: { enabled: false }, // skip hidden reasoning trace: not needed for extraction/generation, and avoids it eating the completion budget on large payloads
+          temperature: 0.3,
+          max_tokens: 24000, // parsePastedQuestions can extract many questions in one batch; keep headroom close to Gemini's own 25000 cap for the same call
+        }),
+        signal: AbortSignal.timeout(OPENROUTER_PER_MODEL_TIMEOUT_MS),
+      });
+      if (!res.ok) { console.warn(`[fallback] ${model} falhou: HTTP ${res.status}`); throw new Error(`OpenRouter (${model}) HTTP ${res.status}`); }
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (!text) { console.warn(`[fallback] ${model} retornou conteúdo vazio.`); throw new Error(`OpenRouter (${model}) retornou vazio`); }
+      console.warn(`[fallback] Gemini indisponível, resposta gerada via OpenRouter (${model}).`);
+      return safeAIJsonParse(text);
+    } catch (e: any) {
+      if (!(e instanceof Error && e.message.startsWith('OpenRouter ('))) {
+        console.warn(`[fallback] ${model} falhou: ${e?.name || ''} ${e?.message || e}`);
+      }
+      throw e;
+    }
+  });
+};
+
+const callOpenRouterText = async (systemInstruction: string | undefined, messages: { role: string, content: string }[], temperature = 0.6): Promise<string> => {
+  return raceOpenRouterModels(async (model) => {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []), ...messages],
+          reasoning: { enabled: false },
+          temperature,
+          max_tokens: 8000,
+        }),
+        signal: AbortSignal.timeout(OPENROUTER_PER_MODEL_TIMEOUT_MS),
+      });
+      if (!res.ok) { console.warn(`[fallback] ${model} falhou: HTTP ${res.status}`); throw new Error(`OpenRouter (${model}) HTTP ${res.status}`); }
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (!text) { console.warn(`[fallback] ${model} retornou conteúdo vazio.`); throw new Error(`OpenRouter (${model}) retornou vazio`); }
+      console.warn(`[fallback] Gemini indisponível, resposta gerada via OpenRouter (${model}).`);
+      return text;
+    } catch (e: any) {
+      if (!(e instanceof Error && e.message.startsWith('OpenRouter ('))) {
+        console.warn(`[fallback] ${model} falhou: ${e?.name || ''} ${e?.message || e}`);
+      }
+      throw e;
+    }
+  });
 };
 
 // Utility to get current date/time context for AI
@@ -146,16 +286,13 @@ export const generateStudyContent = async (topic: string, technique: string, num
     ? "Foco em disciplinas acadêmicas e ensino superior/graduação, conceitos complexos explicados com profundidade científica e rigor acadêmico."
     : "Foco em ENEM e grandes vestibulares. Linguagem didática.";
 
-  try {
-    const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
-      contents: `${getTimeContext()}
+  const studyContentPrompt = `${getTimeContext()}
       Gere um simulado de estudo sobre "${topic}". Especialmente, gere exatamente ${numQuestions} questões no quiz.
-      ${profileContext} 
+      ${profileContext}
       Técnica de Estudo: ${technique}.
-      
+
       INSTRUÇÕES PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES: ${explanationStyle}
-      
+
       REQUISITOS (SEJA ULTRA-CONCISO PARA VELOCIDADE):
       1. executiveSummary: Uma síntese estruturada do tema.
       2. deepDive: Uma análise técnica sobre o ponto central do tema.
@@ -166,12 +303,12 @@ export const generateStudyContent = async (topic: string, technique: string, num
          - Use mnemônicos inesquecíveis ou analogias visuais absurdas.
          - Dê uma regra de bolso definitiva para o usuário nunca mais hesitar.
          - Foque em clareza absoluta e simplicidade radical na decodificação do tema.
-      
+
       6. flashcards: Gere cards que facilitem a memorização ativa.
          - A "answer" deve ser direta, mas pode incluir um pequeno mnemônico entre parênteses para temas complexos.
-      
+
       Não use emojis excessivos. Use formatação em negrito para termos-chave. Use cabeçalhos Markdown (###) para organizar as seções da explicação. Profundidade 10/10. Foco total em aprovação de elite.
-      
+
       ESTRUTURA JSON:
       {
         "executiveSummary": "string",
@@ -185,79 +322,93 @@ export const generateStudyContent = async (topic: string, technique: string, num
         "explorationMenu": [{"topic": "string", "description": "string"}],
         "quiz": [{"question": "string", "options": ["string"], "correctAnswer": number, "explanation": "string", "memoryHint": "string"}],
         "flashcards": [{"question": "string", "answer": "string"}]
-      }`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
+      }`;
+
+  const studyContentSchema = {
+    type: Type.OBJECT,
+    properties: {
+      executiveSummary: { type: Type.STRING },
+      deepDive: { type: Type.STRING },
+      comparison: {
+        type: Type.OBJECT,
+        properties: {
+          leftConcept: { type: Type.STRING },
+          rightConcept: { type: Type.STRING },
+          leftData: {
+            type: Type.OBJECT,
+            properties: { desc: { type: Type.STRING }, example: { type: Type.STRING } },
+            required: ["desc", "example"]
+          },
+          rightData: {
+            type: Type.OBJECT,
+            properties: { desc: { type: Type.STRING }, example: { type: Type.STRING } },
+            required: ["desc", "example"]
+          }
+        },
+        required: ["leftConcept", "rightConcept", "leftData", "rightData"]
+      },
+      explorationMenu: {
+        type: Type.ARRAY,
+        items: {
           type: Type.OBJECT,
           properties: {
-            executiveSummary: { type: Type.STRING },
-            deepDive: { type: Type.STRING },
-            comparison: {
-              type: Type.OBJECT,
-              properties: {
-                leftConcept: { type: Type.STRING },
-                rightConcept: { type: Type.STRING },
-                leftData: {
-                  type: Type.OBJECT,
-                  properties: { desc: { type: Type.STRING }, example: { type: Type.STRING } },
-                  required: ["desc", "example"]
-                },
-                rightData: {
-                  type: Type.OBJECT,
-                  properties: { desc: { type: Type.STRING }, example: { type: Type.STRING } },
-                  required: ["desc", "example"]
-                }
-              },
-              required: ["leftConcept", "rightConcept", "leftData", "rightData"]
-            },
-            explorationMenu: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: { 
-                  topic: { type: Type.STRING },
-                  description: { type: Type.STRING }
-                },
-                required: ["topic", "description"]
-              }
-            },
-            quiz: {
-              type: Type.ARRAY,
-              minItems: numQuestions,
-              maxItems: numQuestions,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  question: { type: Type.STRING },
-                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  correctAnswer: { type: Type.INTEGER },
-                  explanation: { type: Type.STRING },
-                  memoryHint: { type: Type.STRING }
-                },
-                required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
-              }
-            },
-            flashcards: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: { question: { type: Type.STRING }, answer: { type: Type.STRING }, explanation: { type: Type.STRING } },
-                required: ["question", "answer", "explanation"]
-              }
-            }
+            topic: { type: Type.STRING },
+            description: { type: Type.STRING }
           },
-          required: ["executiveSummary", "deepDive", "comparison", "explorationMenu", "quiz", "flashcards"]
+          required: ["topic", "description"]
+        }
+      },
+      quiz: {
+        type: Type.ARRAY,
+        minItems: numQuestions,
+        maxItems: numQuestions,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            options: { type: Type.ARRAY, items: { type: Type.STRING } },
+            correctAnswer: { type: Type.INTEGER },
+            explanation: { type: Type.STRING },
+            memoryHint: { type: Type.STRING }
+          },
+          required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
+        }
+      },
+      flashcards: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: { question: { type: Type.STRING }, answer: { type: Type.STRING }, explanation: { type: Type.STRING } },
+          required: ["question", "answer", "explanation"]
         }
       }
+    },
+    required: ["executiveSummary", "deepDive", "comparison", "explorationMenu", "quiz", "flashcards"]
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: studyContentPrompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: studyContentSchema
+      }
     });
-  
+
     const text = response.text;
     if (text) {
       return safeAIJsonParse(text);
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, studyContentPrompt, toJsonSchema(studyContentSchema), 'study_content');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em generateStudyContent:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
@@ -272,22 +423,47 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
   const profileInstruction = questionProfileStyle ? `\nPERFIL ADICIONAL DAS QUESTÕES: ${questionProfileStyle}` : "";
   const bancaInstruction = banca ? ` A banca examinadora solicitada é a "${banca}". Siga rigorosamente o padrão de cobrança, a linguagem e os temas recorrentes dessa banca específica.` : "";
 
+  const examQuestionsPrompt = `${getTimeContext()}
+      Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E).
+      ${profileInstruction}
+      Não use emojis. Seja extremamente objetivo e rápido na resposta.
+
+      INSTRUÇÃO PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES ("explanation"):
+      ${explanationStyle}
+
+      O Mapeamento deve seguir o estilo acima de forma objetiva e clara.
+
+      A Dica de Memorização ("memoryHint") DEVE ser um "Bizu de Elite" para TDAH:
+      - Use gatilhos visuais, mnemônicos absurdos ou analogias impactantes.
+      - Ensine uma regra de ouro definitiva para nunca mais esquecer ou confundir este tema.`;
+
+  const examQuestionsJsonSchema = {
+    type: 'object',
+    properties: {
+      questions: {
+        type: 'array',
+        minItems: numQuestions,
+        maxItems: numQuestions,
+        items: {
+          type: 'object',
+          properties: {
+            question: { type: 'string' },
+            options: { type: 'array', items: { type: 'string' }, minItems: 5, maxItems: 5 },
+            correctAnswer: { type: 'integer' },
+            explanation: { type: 'string' },
+            memoryHint: { type: 'string' },
+          },
+          required: ['question', 'options', 'correctAnswer', 'explanation', 'memoryHint'],
+        },
+      },
+    },
+    required: ['questions'],
+  };
+
   try {
     const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
-      contents: `${getTimeContext()} 
-      Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E). 
-      ${profileInstruction}
-      Não use emojis. Seja extremamente objetivo e rápido na resposta.
-      
-      INSTRUÇÃO PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES ("explanation"):
-      ${explanationStyle}
-      
-      O Mapeamento deve seguir o estilo acima de forma objetiva e clara.
-      
-      A Dica de Memorização ("memoryHint") DEVE ser um "Bizu de Elite" para TDAH:
-      - Use gatilhos visuais, mnemônicos absurdos ou analogias impactantes.
-      - Ensine uma regra de ouro definitiva para nunca mais esquecer ou confundir este tema.`,
+      contents: examQuestionsPrompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -316,26 +492,43 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, examQuestionsPrompt, examQuestionsJsonSchema, 'exam_questions');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em generateExamQuestions:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
 
 export const identifyQuestionCount = async (text: string) => {
-  try {
-    const response = await generateContentWithRetry({
-      model: LITE_MODEL,
-      contents: `Analise cuidadosamente o texto abaixo e conte quantas questões de múltipla escolha (com alternativas A, B, C...) existem nele. 
+  const countPrompt = `Analise cuidadosamente o texto abaixo e conte quantas questões de múltipla escolha (com alternativas A, B, C...) existem nele.
       Ignore blocos de explicação, comentários ou gabaritos que venham após as questões; conte apenas os enunciados das perguntas.
       Retorne APENAS um número inteiro representando o total de questões.
-      
+
       Texto:
       """
       ${text.substring(0, 50000)}
-      """`
+      """`;
+  try {
+    const response = await generateContentWithRetry({
+      model: LITE_MODEL,
+      contents: countPrompt
     });
     const count = parseInt(response.text?.trim().replace(/[^0-9]/g, '') || "0");
     return isNaN(count) ? 0 : count;
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        const fallbackText = await callOpenRouterText(undefined, [{ role: 'user', content: countPrompt }], 0.1);
+        const count = parseInt(fallbackText?.trim().replace(/[^0-9]/g, '') || "0");
+        return isNaN(count) ? 0 : count;
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em identifyQuestionCount:', fallbackError);
+      }
+    }
     return 0;
   }
 };
@@ -359,41 +552,64 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
        USE ESTE GABARITO PARA IDENTIFICAR O 'correctAnswer' DE CADA QUESTÃO CORRESPONDENTE COM PRECISÃO MÁXIMA.`
     : "";
 
-  try {
-    const response = await generateContentWithRetry({
-      model: PRO_MODEL, // Use Pro model for extraction tasks to improve precision and capacity
-      contents: `${getTimeContext()}
-      Você é um extrator de questões de ALTA PRECISÃO. O usuário colou um texto longo. 
+  const parsePastedPrompt = `${getTimeContext()}
+      Você é um extrator de questões de ALTA PRECISÃO. O usuário colou um texto longo.
       Sua missão é extrair as questões solicitadas e transformá-las em JSON. ${batchPrompt}${gabaritoPrompt}
-      
+
       REGRAS DE OURO DE PRODUÇÃO:
-      - NÃO adicione nenhum preâmbulo, texto introdutório ou conclusão fora do JSON (ex: NÃO diga "Aqui está o JSON..." ou "Processamento concluído"). 
-      - Retorne EXCLUSIVAMENTE o bloco de código JSON. 
+      - NÃO adicione nenhum preâmbulo, texto introdutório ou conclusão fora do JSON (ex: NÃO diga "Aqui está o JSON..." ou "Processamento concluído").
+      - Retorne EXCLUSIVAMENTE o bloco de código JSON.
       - NÃO inclua rótulos redundantes dentro dos campos do JSON (ex: NÃO comece o 'question' com "QUESTÃO:" ou "Enunciado:"). O texto deve ser o conteúdo puro.
-      
+
       IDENTIFICAÇÃO DE RESPOSTAS E EXPLICAÇÕES (CRÍTICO - PRIORIDADE MÁXIMA AO TEXTO):
-      - O usuário frequentemente cola a resposta e a explicação logo abaixo de cada questão para guiar a IA. 
+      - O usuário frequentemente cola a resposta e a explicação logo abaixo de cada questão para guiar a IA.
       - BUSQUE ATENTAMENTE por padrões como: "Gabarito: A", "Resposta: B", "Alternativa correta: C", "[A]", "(B)", ou se uma alternativa estiver marcada com asteriscos, ou até mesmo apenas uma letra isolada logo após as alternativas que indique a resposta.
       - BUSQUE também por "Explicação:", "Comentário:", "Justificativa:", "Fundamentação:" ou blocos de texto explicativos que venham imediatamente após o gabarito ou as alternativas.
       - **REGRA DE OURO**: Se o texto colado indicar uma resposta ou explicação, você DEVE usá-las obrigatoriamente. Sua função aqui é de EXTRAÇÃO fiel e precisa, não de criação (a menos que a informação falte).
       - Se a resposta no texto for "A", o 'correctAnswer' DEVE ser 0. Se for "B", 1, e assim por diante.
-      
+
       ESTRUTURA DE CADA QUESTÃO NO JSON:
       - question: Enunciado integral e limpo da questão.
       - options: Array com exatamente 5 alternativas. Se o original tiver menos, complete com alternativas plausíveis.
       - correctAnswer: Index 0-4 (0=A, 1=B, etc). USE O GABARITO DO TEXTO SE DISPONÍVEL.
       - explanation: A EXPLICAÇÃO FORNECIDA NO TEXTO (se disponível no texto colado logo após a questão ou no fim da lista). Se o texto original não tiver comentário, use a seguinte instrução para gerar você mesmo uma explicação técnica e estruturada rica em markdown:
       ${explanationStyle}
-      
+
       - memoryHint: Gatilho mental TDAH (mnemônico ou analogia visual) para nunca mais esquecer o conceito.
-      
+
       PERFIL ADICIONAL DAS QUESTÕES:
       ${questionProfileStyle}
 
       TEXTO PARA ANALISAR:
       """
       ${pastedText}
-      """`,
+      """`;
+
+  const parsePastedJsonSchema = {
+    type: 'object',
+    properties: {
+      questions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            question: { type: 'string' },
+            options: { type: 'array', items: { type: 'string' }, minItems: 5, maxItems: 5 },
+            correctAnswer: { type: 'integer' },
+            explanation: { type: 'string' },
+            memoryHint: { type: 'string' },
+          },
+          required: ['question', 'options', 'correctAnswer', 'explanation', 'memoryHint'],
+        },
+      },
+    },
+    required: ['questions'],
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: PRO_MODEL, // Use Pro model for extraction tasks to improve precision and capacity
+      contents: parsePastedPrompt,
       config: {
         responseMimeType: "application/json",
         maxOutputTokens: 25000,
@@ -428,6 +644,13 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error: any) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, parsePastedPrompt, parsePastedJsonSchema, 'parsed_questions');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em parsePastedQuestions:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
@@ -439,6 +662,8 @@ export const chatWithFish = async (message: string, history: { role: string, par
     ? "O usuário está estudando para a faculdade/graduação escolar de nível superior. Use referências a provas de faculdade, artigos acadêmicos, TCC e rigor científico quando apropriado."
     : "O usuário está estudando para vestibulares/ENEM. Use referências a universidade e futuro acadêmico quando apropriado.";
 
+  const fishSystemInstruction = `${getTimeContext()} Você é o 'Peixe de Estudo' do app TDAH ORA. Sua missão é ser um companheiro de estudos amigável, incentivador e direto para estudantes com TDAH. ${profileTone} Regras: 1. Explique conceitos complexos de forma visual e simples (usando analogias). 2. Seja conciso; evite blocos gigantes de texto. 3. NÃO use emojis em hipótese alguma. 4. NÃO use asteriscos (*** ou **) para formatar o texto. 5. Se o usuário disser que esqueceu algo, explique em 3 pontos rápidos. 6. Ajude com revisões relâmpago. 7. Mantenha o tom de 'estamos juntos nessa'.`;
+
   try {
     const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
@@ -447,7 +672,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
         { role: 'user', parts: [{ text: message }] }
       ],
       config: {
-        systemInstruction: `${getTimeContext()} Você é o 'Peixe de Estudo' do app TDAH ORA. Sua missão é ser um companheiro de estudos amigável, incentivador e direto para estudantes com TDAH. ${profileTone} Regras: 1. Explique conceitos complexos de forma visual e simples (usando analogias). 2. Seja conciso; evite blocos gigantes de texto. 3. NÃO use emojis em hipótese alguma. 4. NÃO use asteriscos (*** ou **) para formatar o texto. 5. Se o usuário disser que esqueceu algo, explique em 3 pontos rápidos. 6. Ajude com revisões relâmpago. 7. Mantenha o tom de 'estamos juntos nessa'.`,
+        systemInstruction: fishSystemInstruction,
         temperature: 0.7,
         topP: 0.95,
         topK: 64,
@@ -455,61 +680,80 @@ export const chatWithFish = async (message: string, history: { role: string, par
     });
     return response.text + " "; // Minor change to make it unique
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        const openRouterHistory = history.map(h => ({
+          role: h.role === 'model' ? 'assistant' : 'user',
+          content: h.parts.map(p => p.text).join('\n'),
+        }));
+        return await callOpenRouterText(fishSystemInstruction, [...openRouterHistory, { role: 'user', content: message }], 0.7);
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em chatWithFish:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
 
 export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VESTIBULAR') => {
-  try {
-    const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
-      contents: `${getTimeContext()}
+  const evocationPrompt = `${getTimeContext()}
       Analise o seguinte texto de evocação ativa de um estudante (TDAH):
       "${text}"
-      
+
       TAREFAS:
       1. Identifique os pontos principais que o estudante lembrou.
       2. Identifique possíveis erros conceituais ou confusões.
       3. Dê um feedback encorajador e direto.
       4. Liste 2 pontos cruciais que ficaram de fora (se houver).
-      
-      Não use emojis. Use linguagem clara e direta.`,
+
+      Não use emojis. Use linguagem clara e direta.`;
+
+  const evocationSchema = {
+    type: Type.OBJECT,
+    properties: {
+      pointsIdentified: { type: Type.ARRAY, items: { type: Type.STRING } },
+      errorsFound: { type: Type.ARRAY, items: { type: Type.STRING } },
+      missedPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+      feedback: { type: Type.STRING }
+    },
+    required: ["pointsIdentified", "errorsFound", "missedPoints", "feedback"]
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: evocationPrompt,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            pointsIdentified: { type: Type.ARRAY, items: { type: Type.STRING } },
-            errorsFound: { type: Type.ARRAY, items: { type: Type.STRING } },
-            missedPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
-            feedback: { type: Type.STRING }
-          },
-          required: ["pointsIdentified", "errorsFound", "missedPoints", "feedback"]
-        }
+        responseSchema: evocationSchema
       }
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, evocationPrompt, toJsonSchema(evocationSchema), 'evocation_analysis');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em analyzeEvocation:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
 
 export const generateQuestionsFromAnalysis = async (analysis: any, profile: StudyProfile = 'VESTIBULAR') => {
-  try {
-    const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
-      contents: `${getTimeContext()}
+  const analysisPrompt = `${getTimeContext()}
       Com base nesta análise de evocação de um estudante (TDAH):
       Pontos que lembrou: ${analysis.pointsIdentified.join(', ')}
       Erros cometidos: ${analysis.errorsFound.join(', ')}
       Pontos esquecidos: ${analysis.missedPoints.join(', ')}
-      
+
       Perfil do Estudante: ${profile === 'CONCURSO' ? 'Concurso' : profile === 'FACULDADE' ? 'Universitário/Faculdade' : 'Vestibular/ENEM'}
-      
+
       TAREFA:
       Gere 5 questões de múltipla escolha (A, B, C, D, E) focadas PRINCIPALMENTE nos erros cometidos e pontos esquecidos (identificados acima).
       Se o estudante não cometeu erros, gere questões sobre os pontos que ele esqueceu ou sobre o tema geral.
-      
+
       ESTRUTURA OBRIGATÓRIA DA EXPLICAÇÃO ("explanation") (Use Markdown Ricamente):
       Seja EXAUSTIVO e TÉCNICO. Não seja breve. Desconstrua cada erro do estudante e de cada alternativa individualmente.
       - **CONCEITO E DEFINIÇÃO**: Natureza jurídica, distinções e fundamentos teóricos profundos.
@@ -520,46 +764,90 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
       - **PEGADINHA DE PROVA:** Destaque o ponto exato onde houve a falha de interpretação anterior.
       - **RESUMO PRA PROVA** e **DICA FINAL** (pontos de elite para não esquecer).
       - VISUAL: Negrito em termos-chave.
-      
+
       A Dica de Memorização ("memoryHint") DEVE ser um gatilho mental de impacto massivo. Ensine o usuário uma forma DEFINITIVA de não errar mais essa questão. Forneça uma explicação esclarecedora combinada com mnemônicos ou recursos imaginativos potentes para que ele nunca mais esqueça o motivo pelo qual errou.
-      
+
       Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada. Profundidade 10/10. Foco total em recuperação acelerada e domínio do tema.
-      
-      Retorne no formato JSON rigoroso.`,
+
+      Retorne no formato JSON rigoroso: um objeto { "questions": [...] }, cada item com question, options (5 alternativas), correctAnswer (índice 0-4), explanation, memoryHint.`;
+
+  try {
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: analysisPrompt,
     });
     if (response.text) {
       return safeAIJsonParse(response.text);
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        const fallbackSchema = {
+          type: 'object',
+          properties: {
+            questions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  question: { type: 'string' },
+                  options: { type: 'array', items: { type: 'string' }, minItems: 5, maxItems: 5 },
+                  correctAnswer: { type: 'integer' },
+                  explanation: { type: 'string' },
+                  memoryHint: { type: 'string' },
+                },
+                required: ['question', 'options', 'correctAnswer', 'explanation', 'memoryHint'],
+              },
+            },
+          },
+          required: ['questions'],
+        };
+        const result = await callOpenRouterJson(undefined, analysisPrompt, fallbackSchema, 'recovery_questions');
+        return result.questions;
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em generateQuestionsFromAnalysis:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
 
 export const extractTopicsFromEdital = async (subjectName: string, rawContent: string) => {
-  try {
-    const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
-      contents: `Extraia APENAS os tópicos de estudo para a disciplina "${subjectName}" do texto abaixo. 
-      Ignore burocracias, regras de prova ou datas. 
+  const editalTopicsPrompt = `Extraia APENAS os tópicos de estudo para a disciplina "${subjectName}" do texto abaixo.
+      Ignore burocracias, regras de prova ou datas.
       Retorne apenas uma lista de temas didáticos (ex: 'Conjuntos Numerativos').
       Máximo 15 tópicos curtos.
       Texto: "${rawContent}"
-      
-      Retorne em JSON: { "topics": ["string"] }`,
+
+      Retorne em JSON: { "topics": ["string"] }`;
+
+  const editalTopicsSchema = {
+    type: Type.OBJECT,
+    properties: {
+      topics: { type: Type.ARRAY, items: { type: Type.STRING } }
+    },
+    required: ["topics"]
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: editalTopicsPrompt,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            topics: { type: Type.ARRAY, items: { type: Type.STRING } }
-          },
-          required: ["topics"]
-        }
+        responseSchema: editalTopicsSchema
       }
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, editalTopicsPrompt, toJsonSchema(editalTopicsSchema), 'edital_topics');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em extractTopicsFromEdital:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
@@ -571,87 +859,109 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
     ? "Foco em pesquisas acadêmicas, teorias complexas e termos específicos de nível superior universitário."
     : "Foco em conceitos fundamentais do ENEM/Vestibular.";
 
-  try {
-    const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
-      contents: `${getTimeContext()}
-      Gere uma SESSÃO DE REVISÃO ESPAÇADA POR QUESTÕES (RECALL ATIVO) sobre o tópico "${topic}". 
+  const microThemePrompt = `${getTimeContext()}
+      Gere uma SESSÃO DE REVISÃO ESPAÇADA POR QUESTÕES (RECALL ATIVO) sobre o tópico "${topic}".
       ${profileStyle}
-      
+
       REQUISITOS:
       - 3 Questões inéditas, de alta qualidade para testar se o aluno realmente fixou o tópico na memória de longo prazo.
       - Múltipla escolha (A a D).
       - Linguagem direta e estimulante para o cérebro atípico (TDAH).
-      
+
       INSTRUÇÕES PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES: ${explanationStyle}
       - No campo "explanation", explique detalhadamente por que a alternativa correta é a certa e por que as outras são incorretas, de forma didática e técnica.
-      
+
       A Dica de Memorização ("memoryHint") DEVE ser um ensinamento de ALTO IMPACTO (Bizu de Elite TDAH) que esclarece o assunto de forma definitiva e profunda. Mostre um atalho mental ou uma analogia marcante que impeça o usuário de errar questões semelhantes no futuro.
-      
+
       Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e rápida. Profundidade 10/10.
-      
-      Retorne em JSON:`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
+
+      Retorne em JSON:`;
+
+  const microThemeSchema = {
+    type: Type.OBJECT,
+    properties: {
+      questions: {
+        type: Type.ARRAY,
+        items: {
           type: Type.OBJECT,
           properties: {
-            questions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  question: { type: Type.STRING },
-                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  correctAnswer: { type: Type.INTEGER },
-                  explanation: { type: Type.STRING },
-                  memoryHint: { type: Type.STRING }
-                },
-                required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
-              }
-            }
+            question: { type: Type.STRING },
+            options: { type: Type.ARRAY, items: { type: Type.STRING } },
+            correctAnswer: { type: Type.INTEGER },
+            explanation: { type: Type.STRING },
+            memoryHint: { type: Type.STRING }
           },
-          required: ["questions"]
+          required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
         }
+      }
+    },
+    required: ["questions"]
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: microThemePrompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: microThemeSchema
       }
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, microThemePrompt, toJsonSchema(microThemeSchema), 'micro_theme_validation');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em generateMicroThemeValidation:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
 
 export const explainStuckTopic = async (topic: string, profile: StudyProfile = 'VESTIBULAR') => {
-  try {
-    const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
-      contents: `${getTimeContext()}
-      O estudante está travado no tópico "${topic}" (errou 3 vezes). 
+  const stuckTopicPrompt = `${getTimeContext()}
+      O estudante está travado no tópico "${topic}" (errou 3 vezes).
       Perfil: ${profile}.
-      
+
       TAREFA:
       Explique este tema de uma forma COMPLETAMENTE NOVA e RADICALMENTE SIMPLES.
       - Use uma analogia inusitada.
       - Use bullet points.
       - Destaque o "Ponto de Confusão Comum" (onde as pessoas costumam errar).
       - Linguagem visual.
-      
-      Retorne em JSON:`,
+
+      Retorne em JSON:`;
+
+  const stuckTopicSchema = {
+    type: Type.OBJECT,
+    properties: {
+      newExplanation: { type: Type.STRING },
+      analogy: { type: Type.STRING },
+      commonMistake: { type: Type.STRING }
+    },
+    required: ["newExplanation", "analogy", "commonMistake"]
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: stuckTopicPrompt,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            newExplanation: { type: Type.STRING },
-            analogy: { type: Type.STRING },
-            commonMistake: { type: Type.STRING }
-          },
-          required: ["newExplanation", "analogy", "commonMistake"]
-        }
+        responseSchema: stuckTopicSchema
       }
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, stuckTopicPrompt, toJsonSchema(stuckTopicSchema), 'stuck_topic_explanation');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em explainStuckTopic:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
@@ -668,79 +978,90 @@ export const optimizeStudyPlan = async (
     ? 'Provas de Faculdade e Ensino Superior' 
     : 'Vestibular e ENEM';
 
-  try {
-    const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
-      contents: `${getTimeContext()}
+  const studyPlanPrompt = `${getTimeContext()}
       Você é um estrategista de estudos para ${profileLabel}.
-      
+
       ENTRADA:
       - Data da Prova: ${edital.examDate}
       - Carga Horária Diária: ${edital.dailyHours} horas
       - Matérias do Edital:
       ${subjectsPrompt}
-  
+
       TAREFA:
-      Gere um plano de estudos otimizado. 
+      Gere um plano de estudos otimizado.
       1. Ajuste o peso ideal (1-5) para cada matéria vinculando ao ID do edital.
       2. Gere um cronograma (DaySchedule) para os próximos 15 dias, distribuindo as horas diárias entre as matérias.
       3. Para cada sessão de estudo, sugira 1 ou 2 tópicos específicos do edital (baseado nos topics[] de cada matéria) que o usuário deve focar naquela sessão.
       4. Dê um conselho estratégico curto.
-  
+
       RESTRIÇÕES:
       - O total de minutos por dia deve respeitar ${edital.dailyHours * 60} min.
       - O cronograma deve ser uma lista de objetos com 'date' (YYYY-MM-DD) e 'sessions' (lista de {subjectId, subjectName, minutes, topics}).
       - Os topics em cada session devem vir da lista de tópicos reais da matéria no edital.
-      
-      Retorne em JSON:`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
+
+      Retorne em JSON:`;
+
+  const studyPlanSchema = {
+    type: Type.OBJECT,
+    properties: {
+      subjects: {
+        type: Type.ARRAY,
+        items: {
           type: Type.OBJECT,
           properties: {
-            subjects: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  editalSubjectId: { type: Type.STRING },
-                  weight: { type: Type.NUMBER },
-                  targetMinutes: { type: Type.NUMBER }
-                },
-                required: ["editalSubjectId", "weight", "targetMinutes"]
-              }
-            },
-            proposedSchedule: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  date: { type: Type.STRING },
-                  sessions: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        subjectId: { type: Type.STRING },
-                        subjectName: { type: Type.STRING },
-                        minutes: { type: Type.NUMBER },
-                        topics: { type: Type.ARRAY, items: { type: Type.STRING } }
-                      },
-                      required: ["subjectId", "subjectName", "minutes", "topics"]
-                    }
-                  }
-                },
-                required: ["date", "sessions"]
-              }
-            },
-            advice: { type: Type.STRING }
+            editalSubjectId: { type: Type.STRING },
+            weight: { type: Type.NUMBER },
+            targetMinutes: { type: Type.NUMBER }
           },
-          required: ["subjects", "proposedSchedule", "advice"]
+          required: ["editalSubjectId", "weight", "targetMinutes"]
         }
+      },
+      proposedSchedule: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            date: { type: Type.STRING },
+            sessions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  subjectId: { type: Type.STRING },
+                  subjectName: { type: Type.STRING },
+                  minutes: { type: Type.NUMBER },
+                  topics: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ["subjectId", "subjectName", "minutes", "topics"]
+              }
+            }
+          },
+          required: ["date", "sessions"]
+        }
+      },
+      advice: { type: Type.STRING }
+    },
+    required: ["subjects", "proposedSchedule", "advice"]
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: studyPlanPrompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: studyPlanSchema
       }
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, studyPlanPrompt, toJsonSchema(studyPlanSchema), 'study_plan');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em optimizeStudyPlan:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
@@ -753,66 +1074,77 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
     explanation: q.explanation
   }));
 
-  try {
-    const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
-      contents: `${getTimeContext()}
-      O estudante está com dificuldade severa no tópico "${topic}". 
+  const recoveryPrompt = `${getTimeContext()}
+      O estudante está com dificuldade severa no tópico "${topic}".
       Abaixo estão as questões que ele errou recentemente:
       ${JSON.stringify(questionsData)}
-      
+
       Perfil: ${profile}.
-      
+
       TAREFA:
       1. DIAGNÓSTICO: Identifique o padrão de erro.
       2. PLANO DE RECUPERAÇÃO: Sugira 3 passos imediatos.
       3. QUESTÕES DE CONTRAGOLPE: Gere 3 novas questões focadas nos pontos de falha. Use RIGOROSAMENTE a seguinte instrução para o campo "explanation": ${explanationStyle}
       4. FLASHCARDS DE RESGATE: Gere 3 flashcards.
-      
+
       A Dica de Memorização ("memoryHint") nas questões DEVE ser uma explicação de alta intensidade que ensine uma forma definitiva de NÃO ERRAR mais. Mostre ao cérebro do usuário o caminho mais lógico (ou absurdo) para que o conhecimento fique preso para sempre na memória. Use mnemônicos, gatilhos visuais, rimas ou histórias inesquecíveis.
-      
+
       Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e arejada.
-      
-      Retorne em JSON rigoroso. Profundidade 8/10. Objetivo: Erro Zero.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
+
+      Retorne em JSON rigoroso. Profundidade 8/10. Objetivo: Erro Zero.`;
+
+  const recoverySchema = {
+    type: Type.OBJECT,
+    properties: {
+      diagnosis: { type: Type.STRING },
+      recoverySteps: { type: Type.ARRAY, items: { type: Type.STRING } },
+      recoveryQuestions: {
+        type: Type.ARRAY,
+        items: {
           type: Type.OBJECT,
           properties: {
-            diagnosis: { type: Type.STRING },
-            recoverySteps: { type: Type.ARRAY, items: { type: Type.STRING } },
-            recoveryQuestions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  question: { type: Type.STRING },
-                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  correctAnswer: { type: Type.INTEGER },
-                  explanation: { type: Type.STRING },
-                  memoryHint: { type: Type.STRING }
-                },
-                required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
-              }
-            },
-            recoveryFlashcards: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  question: { type: Type.STRING },
-                  answer: { type: Type.STRING }
-                },
-                required: ["question", "answer"]
-              }
-            }
+            question: { type: Type.STRING },
+            options: { type: Type.ARRAY, items: { type: Type.STRING } },
+            correctAnswer: { type: Type.INTEGER },
+            explanation: { type: Type.STRING },
+            memoryHint: { type: Type.STRING }
           },
-          required: ["diagnosis", "recoverySteps", "recoveryQuestions", "recoveryFlashcards"]
+          required: ["question", "options", "correctAnswer", "explanation", "memoryHint"]
         }
+      },
+      recoveryFlashcards: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            answer: { type: Type.STRING }
+          },
+          required: ["question", "answer"]
+        }
+      }
+    },
+    required: ["diagnosis", "recoverySteps", "recoveryQuestions", "recoveryFlashcards"]
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: recoveryPrompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: recoverySchema
       }
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, recoveryPrompt, toJsonSchema(recoverySchema), 'recovery_plan');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em identifyAndProgramRecovery:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
@@ -825,59 +1157,81 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
     timestamp: new Date().toISOString()
   };
 
-  try {
-    const response = await generateContentWithRetry({
-      model: LITE_MODEL,
-      contents: `${getTimeContext()}
+  const proactiveAdvicePrompt = `${getTimeContext()}
       Você é o Mentor Peixe, o guia TDAH do estudante.
       Seja breve, encorajador e estratégico.
       Dados do estudante: ${JSON.stringify(context)}
-      
+
       TAREFA:
       1. GREETING: Uma saudação curta baseada no horário atual.
       2. INSIGHT: Um comentário sobre o progresso (ex: "Sua barra de matemática está esfriando!" ou "Você está voando hoje!").
       3. TASK: Uma sugestão de 1 tarefa imediata.
-      
+
       Retorne em JSON: { "greeting": string, "insight": string, "task": string, "taskView": string }
-      Opções de taskView: HUB, TIMER, FLASHCARDS, MATERIALS, TDH_QUESTOES, AI_DIRECT, SMART_REVISION.`,
+      Opções de taskView: HUB, TIMER, FLASHCARDS, MATERIALS, TDH_QUESTOES, AI_DIRECT, SMART_REVISION.`;
+
+  const proactiveAdviceSchema = {
+    type: Type.OBJECT,
+    properties: {
+      greeting: { type: Type.STRING },
+      insight: { type: Type.STRING },
+      task: { type: Type.STRING },
+      taskView: { type: Type.STRING }
+    },
+    required: ["greeting", "insight", "task", "taskView"]
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: LITE_MODEL,
+      contents: proactiveAdvicePrompt,
       config: {
         thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            greeting: { type: Type.STRING },
-            insight: { type: Type.STRING },
-            task: { type: Type.STRING },
-            taskView: { type: Type.STRING }
-          },
-          required: ["greeting", "insight", "task", "taskView"]
-        }
+        responseSchema: proactiveAdviceSchema
       }
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, proactiveAdvicePrompt, toJsonSchema(proactiveAdviceSchema), 'proactive_advice');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em getProactiveAdvice:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
 
 export const getDailyBibleMotivation = async (): Promise<string> => {
-  try {
-    const response = await generateContentWithRetry({
-      model: LITE_MODEL,
-      contents: [
-        { role: 'user', parts: [{ text: `${getTimeContext()}
+  const DEFAULT_MOTIVATION = "Tudo posso naquele que me fortalece. - Reflexão: Confie no seu processo e mantenha a calma.";
+  const bibleMotivationPrompt = `${getTimeContext()}
       Gere uma passagem curta e motivacional da Bíblia totalmente focada para um estudante com TDAH (foco, superação, ansiedade, perseverança).
       A linguagem deve ser inspiradora e focada no esforço, na superação e na esperança.
       Adicione uma reflexão rápida e pessoal de máximo 30 palavras para o estudante focar no dia de hoje.
       O formato deve ser: "Passagem (Capítulo:Versículo) - Reflexão curta."
-      NÃO use emojis. NÃO use formatação com asteriscos.` }] }
+      NÃO use emojis. NÃO use formatação com asteriscos.`;
+
+  try {
+    const response = await generateContentWithRetry({
+      model: LITE_MODEL,
+      contents: [
+        { role: 'user', parts: [{ text: bibleMotivationPrompt }] }
       ],
     });
-    return response.text?.trim() || "Tudo posso naquele que me fortalece. - Reflexão: Confie no seu processo e mantenha a calma.";
+    return response.text?.trim() || DEFAULT_MOTIVATION;
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        const fallbackText = await callOpenRouterText(undefined, [{ role: 'user', content: bibleMotivationPrompt }], 0.7);
+        return fallbackText?.trim() || DEFAULT_MOTIVATION;
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em getDailyBibleMotivation:', fallbackError);
+      }
+    }
     console.error("Erro ao buscar motivação:", error);
-    return "Tudo posso naquele que me fortalece. - Reflexão: Confie no seu processo e mantenha a calma.";
+    return DEFAULT_MOTIVATION;
   }
 };
 
@@ -892,53 +1246,64 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
     totalCycleHours
   };
 
-  try {
-    const response = await generateContentWithRetry({
-      model: LITE_MODEL,
-      contents: `${getTimeContext()}
+  const studyCyclePrompt = `${getTimeContext()}
       Você é um Engenheiro de Aprendizagem Especialista em Ciclos de Estudo para TDAH.
       Sua tarefa é criar um CICLO DE ESTUDO OTIMIZADO baseado nos dados do edital abaixo.
-      
+
       DADOS:
       ${JSON.stringify(context)}
-      
+
       DIRETRIZES TDAH:
       1. Intercale matérias de naturezas diferentes (ex: Exatas -> Humanas).
       2. Sessões devem ter entre 45 e 120 minutos.
       3. Dê mais tempo para matérias com "heat" baixo (esfriando) ou muitos tópicos.
       4. O ciclo deve ser uma lista sequencial de passos que o aluno seguirá repetidamente.
-      
+
       Retorne em JSON:
       {
         "steps": [
           { "subjectId": "string", "subjectName": "string", "durationMinutes": number }
         ]
-      }`,
+      }`;
+
+  const studyCycleSchema = {
+    type: Type.OBJECT,
+    properties: {
+      steps: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            subjectId: { type: Type.STRING },
+            subjectName: { type: Type.STRING },
+            durationMinutes: { type: Type.NUMBER }
+          },
+          required: ["subjectId", "subjectName", "durationMinutes"]
+        }
+      }
+    },
+    required: ["steps"]
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: LITE_MODEL,
+      contents: studyCyclePrompt,
       config: {
         thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            steps: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  subjectId: { type: Type.STRING },
-                  subjectName: { type: Type.STRING },
-                  durationMinutes: { type: Type.NUMBER }
-                },
-                required: ["subjectId", "subjectName", "durationMinutes"]
-              }
-            }
-          },
-          required: ["steps"]
-        }
+        responseSchema: studyCycleSchema
       }
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, studyCyclePrompt, toJsonSchema(studyCycleSchema), 'study_cycle');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em generateStudyCycle:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
@@ -950,15 +1315,12 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
     ? "Foco em disciplinas de nível superior/graduação acadêmica. Linguagem estruturada, reflexiva e cientificamente aprofundada."
     : "Foco em ENEM e grandes vestibulares. Linguagem didática e interdisciplinar.";
 
-  try {
-    const response = await generateContentWithRetry({
-      model: DEFAULT_MODEL,
-      contents: `${getTimeContext()}
+  const guidedLessonPrompt = `${getTimeContext()}
       Gere uma AULA GUIADA (Narrativa Contínua) sobre o tema "${topic}" da matéria "${subject}".
       ${profileContext}
-      
+
       OBJETIVO: Conduzir o aluno em um fluxo de aprendizado imersivo para TDAH, sem exigir interação constante, mas mantendo o cérebro ativo através de uma narrativa.
-      
+
       ESTRUTURA DA RESPOSTA (Sequência de Passos):
       1. OPENING: Começa direto, engajando o aluno com uma pergunta ou fato curioso. Sem botões.
       2. OVERVIEW: Um mapa mental rápido do que será visto.
@@ -968,13 +1330,39 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
       6. REINFORCEMENT: Responde a pergunta anterior e reforça o ponto chave.
       7. ANALOGY: Usa uma associação forte (ex: VAR no futebol, receita de bolo).
       8. CLOSING_APPLICATION: Mostra como esse tema cai na prova.
-      
+
       IMPORTANTE:
       - Divida em blocos pequenos e impactantes.
       - O fluxo deve ser lógico: História -> Conceito -> Pergunta -> Resposta -> Associação.
       - Não use emojis.
-      
-      Retorne em JSON rigoroso.`,
+
+      Retorne em JSON rigoroso.`;
+
+  const guidedLessonJsonSchema = {
+    type: 'object',
+    properties: {
+      id: { type: 'string' },
+      topic: { type: 'string' },
+      steps: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            type: { type: 'string' },
+            content: { type: 'string' },
+            pauseAfterMilliseconds: { type: 'number' },
+          },
+          required: ['type', 'content'],
+        },
+      },
+    },
+    required: ['id', 'topic', 'steps'],
+  };
+
+  try {
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: guidedLessonPrompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -1001,17 +1389,26 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterJson(undefined, guidedLessonPrompt, guidedLessonJsonSchema, 'guided_lesson');
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em generateGuidedLesson:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };
 
 export const getQuickExplanation = async (topic: string, context?: string, profile: StudyProfile = 'VESTIBULAR') => {
-  try {
-    const systemInstruction = `Você é um tutor especializado em TDAH altamente didático e focado em reter atenção. 
+  const systemInstruction = `Você é um tutor especializado em TDAH altamente didático e focado em reter atenção.
 Seu objetivo é explicar o fragmento de texto ou o assunto fornecido de forma direta, clara, usando metáforas visuais, bullet points e o mínimo de enrolação possível.`;
+  const quickExplanationPrompt = `Assunto: ${topic}\n\nContexto Adicional: ${context || 'Nenhum'}\n\nPor favor, explique isso de forma concisa e direta para um estudante com foco no perfil ${profile}. Use formatação Markdown.`;
+
+  try {
     const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
-      contents: `Assunto: ${topic}\n\nContexto Adicional: ${context || 'Nenhum'}\n\nPor favor, explique isso de forma concisa e direta para um estudante com foco no perfil ${profile}. Use formatação Markdown.`,
+      contents: quickExplanationPrompt,
       config: {
         systemInstruction,
         temperature: 0.5,
@@ -1019,6 +1416,13 @@ Seu objetivo é explicar o fragmento de texto ou o assunto fornecido de forma di
     });
     return response.text || "Sem resposta da IA.";
   } catch (error) {
+    if (shouldTryOpenRouterFallback(error)) {
+      try {
+        return await callOpenRouterText(systemInstruction, [{ role: 'user', content: quickExplanationPrompt }], 0.5);
+      } catch (fallbackError) {
+        console.error('Fallback OpenRouter também falhou em getQuickExplanation:', fallbackError);
+      }
+    }
     return handleAIError(error);
   }
 };

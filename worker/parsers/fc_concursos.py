@@ -135,6 +135,16 @@ def _parse_block(block: list[tuple[str, int]]) -> ParsedQuestion:
     else:
         warnings.append("Linha 'Gabarito:' não encontrada")
 
+    # Itens Certo/Errado marcam o gabarito pelo próprio julgamento ("Gabarito:
+    # C" ou "Gabarito: E"), não pela letra de posição da alternativa (que aqui
+    # é sempre a/b) — diferente das questões de múltipla escolha normais, onde
+    # o Gabarito já é a letra de posição. Sem este remapeamento, C/E nunca bate
+    # com a letra 'A'/'B' das alternativas e a questão é descartada por engano.
+    if correct_letter in ("C", "E") and len(alternatives) == 2:
+        normalized = {alt.text.strip().rstrip(".").casefold(): alt.letter for alt in alternatives}
+        if normalized.keys() == {"certo", "errado"}:
+            correct_letter = normalized["certo" if correct_letter == "C" else "errado"]
+
     if i < len(lines) and RE_COMENTARIO.match(lines[i]):
         i += 1
     else:

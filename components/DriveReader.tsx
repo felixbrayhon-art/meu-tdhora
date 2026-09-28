@@ -990,9 +990,9 @@ export const DriveReader: React.FC<DriveReaderProps> = ({ onBack, studyProfile =
   const filteredFiles = activeFileList.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="min-h-screen bg-gray-50/50 flex flex-col p-4 md:p-8 animate-in fade-in duration-500">
+    <div className="h-full min-h-0 overflow-hidden bg-gray-50/50 flex flex-col p-3 md:p-4 animate-in fade-in duration-500">
       {/* Upper header controls */}
-      <div className="flex justify-between items-center gap-4 mb-6 relative z-10 w-full">
+      <div className="flex justify-between items-center gap-4 mb-3 shrink-0 relative z-10 w-full">
         <button onClick={selectedFile ? () => setSelectedFile(null) : onBack} className="text-gray-400 font-bold text-xs tracking-widest flex items-center gap-2 hover:text-gray-700 transition-colors uppercase py-2 px-3 hover:bg-gray-100/70 rounded-2xl">
           <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
           {selectedFile ? 'Biblioteca' : 'Sair e Voltar ao Painel'}
@@ -1009,19 +1009,19 @@ export const DriveReader: React.FC<DriveReaderProps> = ({ onBack, studyProfile =
       </div>
 
       {/* Main Section */}
-      <div className="flex-1 flex flex-col min-h-0 bg-white rounded-[40px] shadow-xl border border-gray-100 overflow-hidden relative">
+      <div className="flex-1 flex flex-col min-h-0 bg-white rounded-[28px] shadow-xl border border-gray-100 overflow-hidden relative">
         {!selectedFile ? (
           /* EXPLORER DISPLAY (Unified with tabs for Locals and Google Drive) */
-          <div className="flex-1 flex flex-col p-6 md:p-10 min-h-0 select-none">
+          <div className="flex-1 flex flex-col p-4 md:p-6 min-h-0 select-none">
             {/* Upper Selection Nav Tabs */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center mb-8 pb-6 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center mb-4 pb-4 border-b border-gray-100 shrink-0">
               <div>
-                <div className="flex bg-gray-100 p-1.5 rounded-2xl w-fit gap-1 mb-2">
-                  <button onClick={() => setExplorerTab('LOCAL')} className={`px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center gap-1.5 ${explorerTab === 'LOCAL' ? 'bg-white text-[#fec868] shadow-sm' : 'text-gray-400 hover:text-gray-700'}`}>
+                <div className="flex bg-gray-100 p-1 rounded-2xl w-fit gap-1 mb-1">
+                  <button onClick={() => setExplorerTab('LOCAL')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all flex items-center gap-1.5 ${explorerTab === 'LOCAL' ? 'bg-white text-[#fec868] shadow-sm' : 'text-gray-400 hover:text-gray-700'}`}>
                     <Laptop className="w-4 h-4" />
                     Biblioteca Local ({localFiles.length})
                   </button>
-                  <button onClick={() => setExplorerTab('FIREBASE')} className={`px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center gap-1.5 ${explorerTab === 'FIREBASE' ? 'bg-white text-[#fec868] shadow-sm' : 'text-gray-400 hover:text-gray-700'}`}>
+                  <button onClick={() => setExplorerTab('FIREBASE')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all flex items-center gap-1.5 ${explorerTab === 'FIREBASE' ? 'bg-white text-[#fec868] shadow-sm' : 'text-gray-400 hover:text-gray-700'}`}>
                     <Database className="w-4 h-4" />
                     Biblioteca Firebase ({firebaseFiles.length})
                   </button>
@@ -1055,7 +1055,7 @@ export const DriveReader: React.FC<DriveReaderProps> = ({ onBack, studyProfile =
                 <div className="w-full md:w-80 flex flex-col shrink-0">
                   <span className="text-gray-400 text-[9px] font-black uppercase tracking-widest mb-3 block">ADICIONAR NOVO PDF</span>
 
-                  <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()} className={`flex-1 min-h-[180px] border-2 border-dashed rounded-[30px] p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-[1.01] ${isDragging ? 'border-[#fecc73] bg-[#fff6e8]/40' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50 hover:border-[#fedda1]'}`}>
+                  <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()} className={`flex-1 min-h-[140px] border-2 border-dashed rounded-[24px] p-4 text-center flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-[1.01] ${isDragging ? 'border-[#fecc73] bg-[#fff6e8]/40' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50 hover:border-[#fedda1]'}`}>
                     <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".pdf,application/pdf" className="hidden" />
 
                     {loading ? (
@@ -1065,7 +1065,7 @@ export const DriveReader: React.FC<DriveReaderProps> = ({ onBack, studyProfile =
                       </div>
                     ) : (
                       <>
-                        <div className="w-14 h-14 bg-[#fff6e8] text-[#fecc73] rounded-2xl flex items-center justify-center mb-4 shadow-inner">
+                        <div className="w-12 h-12 bg-[#fff6e8] text-[#fecc73] rounded-2xl flex items-center justify-center mb-3 shadow-inner">
                           <Upload className="w-6 h-6 stroke-[2]" />
                         </div>
                         <h4 className="font-extrabold text-xs text-gray-700 uppercase tracking-tight mb-1">Solte o PDF aqui</h4>
@@ -1074,7 +1074,7 @@ export const DriveReader: React.FC<DriveReaderProps> = ({ onBack, studyProfile =
                     )}
                   </div>
 
-                  <div className="mt-4 bg-[#fff6e8]/40 border border-[#fff6e8] rounded-2xl p-4 flex gap-2">
+                  <div className="mt-3 bg-[#fff6e8]/40 border border-[#fff6e8] rounded-2xl p-3 flex gap-2">
                     <Database className="w-4 h-4 text-[#fecc73] shrink-0 mt-0.5" />
                     <p className="text-[10px] text-gray-500 font-bold leading-relaxed">
                       Sua biblioteca é armazenada no banco local (<span className="text-[#fec868] font-extrabold">IndexedDB</span>) do seu navegador. Zero custos de plano de internet e total privacidade acadêmica!
