@@ -168,11 +168,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, isLoading, error, onClo
 
           <div aria-hidden="true" className="pointer-events-none absolute right-2 bottom-7 top-7 z-30 hidden w-1.5 rounded-r-full bg-[repeating-linear-gradient(to_bottom,#f4e6cf_0px,#f4e6cf_3px,#d5c6ac_4px,#d5c6ac_5px)] shadow-[3px_0_5px_rgba(20,16,12,0.24)] dark:bg-[repeating-linear-gradient(to_bottom,#716957_0px,#716957_3px,#4e493d_4px,#4e493d_5px)] md:block" />
 
-          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-[46%] z-20 hidden w-12 -translate-x-1/2 bg-gradient-to-r from-[#473c33]/8 via-[#473c33]/42 to-[#fffaf0]/90 shadow-[0_0_20px_rgba(71,60,51,0.28)] dark:from-[#f2efd2]/15 dark:via-black/75 dark:to-[#f2efd2]/35 md:block">
-            <div className="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-[#473c33]/45 shadow-[0_0_8px_rgba(71,60,51,0.34)] dark:bg-black/80 dark:shadow-[0_0_9px_rgba(0,0,0,0.65)]" />
-            <div className="absolute inset-y-8 left-[calc(50%-4px)] w-px bg-white/80 dark:bg-[#f2efd2]/35" />
-            <div className="absolute inset-y-8 left-[calc(50%+3px)] w-px bg-[#473c33]/20 dark:bg-black/35" />
-          </div>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-5 left-[46%] z-20 hidden w-4 -translate-x-1/2 md:block"
+            style={{ background: 'linear-gradient(90deg, rgba(20,15,10,0.5), rgba(20,15,10,0.15), rgba(20,15,10,0.5))' }}
+          />
         </section>
       </div>
     </div>
