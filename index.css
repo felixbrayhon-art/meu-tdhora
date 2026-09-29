@@ -697,7 +697,9 @@ html.dark .glass-card {
 
 /* 3D page turn for the optional Vade Mecum book reader. */
 .vade-book-spread {
+    -webkit-perspective: 1800px;
     perspective: 1800px;
+    -webkit-transform-style: preserve-3d;
     transform-style: preserve-3d;
     isolation: isolate;
 }
@@ -728,9 +730,15 @@ html.dark .glass-card {
 .vade-page-turn-face {
     position: absolute;
     inset: 0;
-    overflow: hidden;
+    overflow: clip;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+}
+
+/* Safari's standalone web app can repaint nested scroll areas mid-transform.
+   Keep the animated sheet as a clipped, non-scrolling layer while it turns. */
+.vade-page-turn-face .vade-book-page-content {
+    overflow: clip;
 }
 
 .vade-page-turn-front {
@@ -743,13 +751,13 @@ html.dark .glass-card {
 }
 
 @keyframes vade-page-turn-next {
-    0% { transform: translate3d(0, 0, 0.5px) rotateY(0deg); }
-    100% { transform: translate3d(0, 0, 0.5px) rotateY(-180deg); }
+    0% { transform: translate3d(0, 0, 1px) rotateY(0deg); }
+    100% { transform: translate3d(0, 0, 1px) rotateY(-180deg); }
 }
 
 @keyframes vade-page-turn-previous {
-    0% { transform: translate3d(0, 0, 0.5px) rotateY(0deg); }
-    100% { transform: translate3d(0, 0, 0.5px) rotateY(180deg); }
+    0% { transform: translate3d(0, 0, 1px) rotateY(0deg); }
+    100% { transform: translate3d(0, 0, 1px) rotateY(180deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {

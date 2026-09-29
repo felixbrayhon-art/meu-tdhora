@@ -129,7 +129,7 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
     const paragraphs = article.texto.split(/\n+/).map((part) => part.trim()).filter(Boolean);
 
     return (
-      <article key={article.numero} className="vade-book-page relative flex flex-col overflow-hidden bg-[#fffaf0] px-6 py-7 text-[#473c33] sm:px-9 sm:py-9 md:px-10 dark:bg-[#292a23] dark:text-[#eee9d0]">
+      <article key={article.numero} className="vade-book-page relative flex flex-col overflow-clip bg-[#fffaf0] px-6 py-7 text-[#473c33] sm:px-9 sm:py-9 md:px-10 dark:bg-[#292a23] dark:text-[#eee9d0]">
         <div className="mb-7 flex items-center justify-between gap-4 border-b border-[#d8c7a9]/70 pb-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9c8666] dark:border-[#4a493d] dark:text-[#b5ad8c]">
           <span className="truncate">{currentLaw.shortName}</span>
           <span className="shrink-0">{pageNumber}</span>
@@ -226,8 +226,8 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
                     </button>
                   </div>
                 </div>
-                <div className="overflow-hidden rounded-[24px] border-[9px] border-[#473c33] bg-[#f4ead8] p-1 shadow-[0_18px_40px_rgba(71,60,51,.18)] dark:border-[#171812] dark:bg-[#25261f] sm:rounded-[30px] sm:border-[12px]">
-                  <div className="vade-book-spread relative grid overflow-hidden rounded-[15px] border border-[#ddcfb9] md:grid-cols-2 dark:border-[#414136]">
+                <div className="overflow-clip rounded-[24px] border-[9px] border-[#473c33] bg-[#f4ead8] p-1 shadow-[0_18px_40px_rgba(71,60,51,.18)] dark:border-[#171812] dark:bg-[#25261f] sm:rounded-[30px] sm:border-[12px]">
+                  <div className="vade-book-spread relative grid overflow-clip rounded-[15px] border border-[#ddcfb9] md:grid-cols-2 dark:border-[#414136]">
                     <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 hidden w-5 -translate-x-1/2 bg-gradient-to-r from-[#4f4438]/15 via-[#fffaf0]/45 to-[#4f4438]/15 md:block dark:from-black/25 dark:via-[#292a23]/50 dark:to-black/25" />
                     {renderBookPage(pageTurn === 'previous' ? previousSpread[0] : currentSpread[0], pageTurn === 'previous' ? (spreadIndex - 1) * 2 + 1 : spreadIndex * 2 + 1)}
                     {renderBookPage(pageTurn === 'next' ? nextSpread[1] : currentSpread[1], pageTurn === 'next' ? (spreadIndex + 1) * 2 + 2 : spreadIndex * 2 + 2)}
