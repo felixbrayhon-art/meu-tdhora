@@ -121,7 +121,11 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
                 <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-75 dark:opacity-45" style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(201,119,62,.18) 32px)' }} />
                 <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-5 w-px bg-[#e96f34]/45 sm:left-7" />
                 <div className="relative z-10 pl-2">
-                  <FishLogo className="origin-left scale-[0.7] sm:scale-[0.78]" days={0} darkBg />
+                  <FishLogo
+                    className="origin-left scale-[0.82] sm:scale-[0.9]"
+                    days={0}
+                    darkBg={document.documentElement.classList.contains('dark')}
+                  />
                 </div>
 
                 <div className="relative z-10 py-4 pl-2 md:py-8">
