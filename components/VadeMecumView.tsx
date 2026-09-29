@@ -13,12 +13,13 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
   const [articles, setArticles] = useState<VadeMecumArticle[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [openArticle, setOpenArticle] = useState<number | null>(null);
+  const [openArticle, setOpenArticle] = useState<string | null>(null);
 
   useEffect(() => {
     setArticles(null);
     setError(null);
     setOpenArticle(null);
+    setQuery('');
     getVadeMecumArticles(lawId)
       .then(setArticles)
       .catch(() => setError('Não foi possível carregar essa legislação agora.'));
@@ -37,7 +38,15 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
             <Scale className="w-8 h-8 text-[#fdad74]" />
             Vade Mecum
           </h2>
-          <p className="text-gray-500 mt-1 font-medium tracking-wide uppercase text-sm">{VADE_MECUM_LAWS.find((l) => l.id === lawId)?.name}</p>
+          <select
+            value={lawId}
+            onChange={(e) => setLawId(e.target.value)}
+            className="mt-1 text-gray-500 font-medium tracking-wide uppercase text-sm bg-transparent border-none focus:outline-none cursor-pointer hover:text-gray-700"
+          >
+            {VADE_MECUM_LAWS.map((law) => (
+              <option key={law.id} value={law.id}>{law.name}</option>
+            ))}
+          </select>
         </div>
 
         <button onClick={onBack} className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors uppercase tracking-widest text-sm">

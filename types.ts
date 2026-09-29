@@ -144,7 +144,9 @@ export interface NoteFolder {
 }
 
 export interface VadeMecumArticle {
-  numero: number;
+  // String, not number: some codes have letter-suffixed articles inserted by
+  // later amendments (e.g. "121-A", or even "359-M-A") that a plain int can't represent.
+  numero: string;
   titulo: string | null;
   capitulo: string | null;
   secao: string | null;
@@ -160,6 +162,7 @@ export interface VadeMecumLaw {
 
 export const VADE_MECUM_LAWS: VadeMecumLaw[] = [
   { id: 'constituicao-federal', name: 'Constituição Federal de 1988', shortName: 'CF/88' },
+  { id: 'codigo-penal', name: 'Código Penal (Decreto-Lei nº 2.848/1940)', shortName: 'CP' },
 ];
 export type StudyProfile = 'VESTIBULAR' | 'CONCURSO' | 'FACULDADE';
 export type ExplanationStyle = string;
