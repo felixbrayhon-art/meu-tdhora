@@ -11,10 +11,12 @@ import TDHQuestoes from './components/TDHQuestoes';
 import StudyPlanView from './components/StudyPlanView';
 import ProfileView from './components/ProfileView';
 import CommunityView from './components/CommunityView';
+import LoginModal from './components/LoginModal';
 import SplashScreen from './components/SplashScreen';
 import FishCompanion from './components/FishCompanion';
 import BuildTag from './components/BuildTag';
 import OnboardingFlow from './components/OnboardingFlow';
+import ProfileSelection from './components/ProfileSelection';
 import FocusModeView from './components/FocusModeView';
 import FishCatalog from './components/FishCatalog';
 import VadeMecumView from './components/VadeMecumView';
@@ -51,6 +53,15 @@ const App: React.FC = () => {
   // almost instantly (e.g. a logged-out user), instead of being unmounted early.
   const [splashDone, setSplashDone] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(() =>
+    ['localhost', '127.0.0.1'].includes(window.location.hostname) &&
+    new URLSearchParams(window.location.search).get('previewLogin') === '1'
+  );
+  const isProfilePreview =
+    ['localhost', '127.0.0.1'].includes(window.location.hostname) &&
+    new URLSearchParams(window.location.search).get('previewProfile') === '1';
+  const [isGoogleLoginLoading, setIsGoogleLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isStorageFull, setIsStorageFull] = useState(false);
@@ -324,31 +335,51 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
+    setLoginError(null);
+    setIsLoginModalOpen(true);
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoginLoading(true);
+    setLoginError(null);
     try {
       console.log('🔐 Tentando login com popup...');
       await signInWithPopup(auth, googleProvider);
       console.log('✅ Login OK!');
+      setIsLoginModalOpen(false);
     } catch (error: any) {
       console.error('❌ Erro no login:', error?.code, error?.message);
-      alert('Erro no login: ' + (error?.code || error?.message || 'desconhecido'));
       // Popups get silently blocked by a lot of mobile/privacy-focused browsers
       // (Brave, Safari, in-app webviews). Fall back to a full-page redirect,
       // which onAuthStateChanged picks up automatically when the user returns.
       if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/operation-not-supported-in-this-environment'].includes(error?.code)) {
         try {
           await signInWithRedirect(auth, googleProvider);
+          return;
         } catch (redirectError) {
           console.error('Login failed (redirect)', redirectError);
+          setLoginError('Não foi possível abrir o login agora. Tente novamente ou continue sem entrar.');
         }
       } else {
         console.error('Login failed', error);
+        setLoginError(error?.code === 'auth/network-request-failed'
+          ? 'Verifique sua conexão e tente entrar novamente.'
+          : 'Não foi possível entrar agora. Tente novamente em alguns instantes.');
       }
+    } finally {
+      setIsGoogleLoginLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (user) setIsLoginModalOpen(false);
+  }, [user]);
+
   const handleLogout = () => {
-    auth.signOut().catch((e) => console.error('Logout failed', e));
+    auth.signOut()
+      .then(() => setIsLoginModalOpen(true))
+      .catch((e) => console.error('Logout failed', e));
   };
 
   // Helper to save sub-items to Firestore
@@ -1027,6 +1058,13 @@ const App: React.FC = () => {
         <BuildTag />
       </>
     );
+  if (isProfilePreview)
+    return (
+      <>
+        <ProfileSelection onNext={() => undefined} />
+        <BuildTag />
+      </>
+    );
   if (!stats.studyProfile)
     return (
       <>
@@ -1670,6 +1708,13 @@ const App: React.FC = () => {
 
         {!isQuestionSession && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} />}
         <BuildTag />
+        <LoginModal
+          isOpen={isLoginModalOpen}
+          isLoading={isGoogleLoginLoading}
+          error={loginError}
+          onClose={() => setIsLoginModalOpen(false)}
+          onGoogleLogin={handleGoogleLogin}
+        />
       </div>
       </div>
     </CharacterProvider>

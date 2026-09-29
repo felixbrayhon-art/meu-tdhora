@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft } from './icons';
+import { ArrowLeft, ArrowRight, BookOpen, Briefcase, GraduationCap, Sparkles } from './icons';
+import FishLogo from './FishLogo';
 import { StudyProfile } from '../types';
 
 interface ProfileSelectionProps {
@@ -8,65 +9,51 @@ interface ProfileSelectionProps {
   onBack?: () => void;
 }
 
-// Natural pixel size of onboarding-hero.webp — used to replicate object-fit:
-// cover's crop/scale math in JS, so the invisible hotspots stay locked onto
-// the "vestibular / concurso / faculdade" buttons already painted into the
-// artwork even when the viewport's aspect ratio doesn't match the image's
-// (2:1) and the browser crops top/bottom or left/right to fill the screen.
-const IMG_W = 2000;
-const IMG_H = 1000;
-
-const HOTSPOTS: Array<{ id: StudyProfile; title: string; xf: number; yf: number; wf: number; hf: number }> = [
-  { id: 'VESTIBULAR', title: 'Vestibular', xf: 0.227, yf: 0.435, wf: 0.15, hf: 0.17 },
-  { id: 'CONCURSO', title: 'Concursos', xf: 0.402, yf: 0.455, wf: 0.145, hf: 0.17 },
-  { id: 'FACULDADE', title: 'Faculdade', xf: 0.57, yf: 0.435, wf: 0.15, hf: 0.17 },
+const profiles: Array<{
+  id: StudyProfile;
+  title: string;
+  subtitle: string;
+  detail: string;
+  icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  number: string;
+}> = [
+  {
+    id: 'VESTIBULAR',
+    title: 'Vestibular',
+    subtitle: 'Quero conquistar minha vaga',
+    detail: 'ENEM e processos seletivos',
+    icon: GraduationCap,
+    number: '01',
+  },
+  {
+    id: 'CONCURSO',
+    title: 'Concurso',
+    subtitle: 'Estou me preparando para uma prova',
+    detail: 'Concursos públicos e certificações',
+    icon: Briefcase,
+    number: '02',
+  },
+  {
+    id: 'FACULDADE',
+    title: 'Faculdade',
+    subtitle: 'Quero organizar meus estudos',
+    detail: 'Graduação e outras formações',
+    icon: BookOpen,
+    number: '03',
+  },
 ];
-
-type Rect = { left: number; top: number; width: number; height: number };
 
 const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext, onBack }) => {
   const [name, setName] = useState(initialName ?? '');
   const [nameError, setNameError] = useState(false);
   const [pendingProfile, setPendingProfile] = useState<StudyProfile | null>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [rects, setRects] = useState<Partial<Record<StudyProfile, Rect>>>({});
 
   useEffect(() => {
-    const compute = () => {
-      const el = containerRef.current;
-      if (!el) return;
-      const cw = el.clientWidth;
-      const ch = el.clientHeight;
-      if (!cw || !ch) return;
-      const scale = Math.max(cw / IMG_W, ch / IMG_H);
-      const dispW = IMG_W * scale;
-      const dispH = IMG_H * scale;
-      const offsetX = (cw - dispW) / 2;
-      const offsetY = (ch - dispH) / 2;
-      const next: Partial<Record<StudyProfile, Rect>> = {};
-      HOTSPOTS.forEach((h) => {
-        next[h.id] = {
-          left: offsetX + h.xf * dispW,
-          top: offsetY + h.yf * dispH,
-          width: h.wf * dispW,
-          height: h.hf * dispH,
-        };
-      });
-      setRects(next);
-    };
-    compute();
-    window.addEventListener('resize', compute);
-    return () => window.removeEventListener('resize', compute);
-  }, []);
-
-  useEffect(() => {
-    if (pendingProfile) {
-      // Give the overlay a beat to mount before focusing, so the browser
-      // doesn't fight the fade-in for scroll/focus position.
-      const t = setTimeout(() => nameInputRef.current?.focus(), 50);
-      return () => clearTimeout(t);
-    }
+    if (!pendingProfile) return;
+    const timer = window.setTimeout(() => nameInputRef.current?.focus(), 80);
+    return () => window.clearTimeout(timer);
   }, [pendingProfile]);
 
   const handlePick = (profile: StudyProfile) => {
@@ -87,77 +74,166 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
     onNext(trimmed, pendingProfile);
   };
 
-  return (
-    <div id="profile-selection-screen" className="fixed inset-0 z-[110] overflow-hidden animate-in fade-in duration-700" style={{ fontFamily: "'Manrope', sans-serif" }}>
-      {/* Full-screen artwork — the only functional UI on top of it is the
-          three invisible hotspots aligned to its own painted buttons. */}
-      <div ref={containerRef} className="absolute inset-0 w-full h-full">
-        <img src="/onboarding-hero.webp" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/35 to-transparent pointer-events-none" />
+  const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+    setTilt({ x: y * -1.2, y: x * 1.2 });
+  };
 
-        {HOTSPOTS.map((h) => {
-          const rect = rects[h.id];
-          if (!rect) return null;
-          return (
+  return (
+    <div
+      id="profile-selection-screen"
+      className="fixed inset-0 z-[110] overflow-y-auto bg-[#f1e9d9] px-4 py-4 text-[#473c33] animate-in fade-in duration-500 dark:bg-[#211d18] dark:text-[#f2efd2] sm:px-6 sm:py-6"
+      style={{ fontFamily: "'Manrope', sans-serif" }}
+    >
+      <div className="pointer-events-none absolute inset-0 opacity-50 dark:opacity-25" aria-hidden="true" style={{ backgroundImage: 'radial-gradient(ellipse at 12% 12%, rgba(233,111,52,.12), transparent 32%), radial-gradient(ellipse at 90% 82%, rgba(254,200,104,.13), transparent 30%)' }} />
+
+      <div className="relative mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-[1120px] flex-col justify-center sm:min-h-[calc(100dvh-3rem)]">
+        <div className="mb-3 flex items-center justify-between gap-3 px-1 sm:mb-4 sm:px-2">
+          {onBack ? (
             <button
-              key={h.id}
-              onClick={() => handlePick(h.id)}
-              aria-label={h.title}
-              className="group absolute rounded-2xl outline-none focus-visible:ring-4 focus-visible:ring-white/70 transition-transform hover:scale-[1.03] active:scale-95"
-              style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
+              type="button"
+              onClick={onBack}
+              className="group inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-[10px] font-black uppercase tracking-[.16em] text-[#806f5d] transition hover:bg-white/55 hover:text-[#473c33] dark:text-[#c8c5a9] dark:hover:bg-white/[.06] dark:hover:text-[#f2efd2]"
             >
-              <span className="absolute inset-0 rounded-2xl bg-white/0 group-hover:bg-white/15 transition-colors" />
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+              Voltar
             </button>
-          );
-        })}
+          ) : <span />}
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#c9773e]/15 bg-[#fffaf0]/75 px-3.5 py-2 shadow-sm dark:border-white/[.08] dark:bg-[#34342b]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#e96f34] dark:bg-[#fec868]" />
+            <span className="text-[9px] font-black uppercase tracking-[.18em] text-[#a65c2f] dark:text-[#fed386]">Passo 1 de 2</span>
+          </div>
+        </div>
+
+        <div className="[perspective:2400px]">
+          <section
+            aria-labelledby="profile-title"
+            onPointerMove={handlePointerMove}
+            onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+            style={{ transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
+            className="relative w-full rounded-[34px] border-[7px] border-[#473c33] bg-[#473c33] p-1.5 shadow-[0_28px_65px_rgba(50,38,25,.24),0_7px_0_#ddceb0,0_13px_0_#f8f1e4] transition-transform duration-200 ease-out motion-reduce:transform-none motion-reduce:transition-none dark:border-[#514638] dark:bg-[#514638] dark:shadow-[0_28px_65px_rgba(0,0,0,.52),0_7px_0_#514638,0_13px_0_#292a23]"
+          >
+            <div className="relative grid overflow-hidden rounded-[27px] border border-[#d9cdb8] bg-[#fffaf0] md:min-h-[620px] md:grid-cols-[.88fr_1.12fr] dark:border-[#655b48] dark:bg-[#292a23]">
+              <aside className="profile-book-page-left relative flex min-h-[285px] flex-col justify-between overflow-hidden bg-[#f1e9d9] px-6 py-6 sm:min-h-[330px] sm:px-9 sm:py-8 md:min-h-[620px] md:px-10 md:py-9 dark:bg-[#34342b] md:shadow-[inset_-18px_0_20px_-14px_rgba(71,60,51,.24)] md:dark:shadow-[inset_-18px_0_20px_-14px_rgba(0,0,0,.5)]">
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-75 dark:opacity-45" style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(201,119,62,.18) 32px)' }} />
+                <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-5 w-px bg-[#e96f34]/45 sm:left-7" />
+                <div className="relative z-10 pl-2">
+                  <FishLogo className="origin-left scale-[0.7] sm:scale-[0.78]" days={0} darkBg />
+                </div>
+
+                <div className="relative z-10 py-4 pl-2 md:py-8">
+                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#c9773e]/20 bg-white/55 px-3.5 py-2 text-[9px] font-black uppercase tracking-[.18em] text-[#a65c2f] dark:border-[#fec868]/20 dark:bg-white/[.06] dark:text-[#fed386]">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Vamos começar
+                  </div>
+                  <h1 id="profile-title" className="max-w-md font-logo text-[clamp(2rem,4vw,3.35rem)] uppercase leading-[.98] tracking-tight text-[#473c33] dark:text-[#f2efd2]">
+                    Qual é o seu <span className="text-[#e96f34] dark:text-[#fec868]">objetivo?</span>
+                  </h1>
+                  <p className="mt-4 max-w-md text-sm font-semibold leading-6 text-[#725e4a] dark:text-[#d1c7b3] sm:text-base">
+                    Escolha seu perfil para deixar o ToDAHORA no ritmo da sua jornada.
+                  </p>
+                </div>
+
+                <div className="relative z-10 hidden items-center justify-between gap-3 border-t border-[#473c33]/15 pl-2 pt-4 text-[10px] font-bold leading-5 text-[#725e4a] dark:border-white/10 dark:text-[#c8c5a9] sm:flex">
+                  <span>Você pode ajustar seu objetivo depois no perfil.</span>
+                  <span className="shrink-0 text-[9px] font-black tracking-widest opacity-60">01 / 02</span>
+                </div>
+              </aside>
+
+              <div className="profile-book-page-right relative flex flex-col justify-center overflow-hidden bg-[#fffaf0] px-5 py-7 sm:px-9 sm:py-9 md:px-10 md:py-10 dark:bg-[#292a23] md:shadow-[inset_18px_0_20px_-14px_rgba(71,60,51,.22)] md:dark:shadow-[inset_18px_0_22px_-14px_rgba(0,0,0,.55)]">
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-55 dark:opacity-35" style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(201,119,62,.13) 32px)' }} />
+                <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 hidden w-px bg-[#473c33]/10 dark:bg-white/10 md:block" />
+                <div aria-hidden="true" className="pointer-events-none absolute right-0 top-20 z-10 h-12 w-2.5 rounded-l-md bg-[#e96f34] shadow-[inset_2px_0_3px_rgba(71,60,51,.2),0_3px_8px_rgba(71,60,51,.16)] dark:bg-[#e96f34]" />
+
+                <div className="relative z-10 mx-auto w-full max-w-[540px]">
+                  <div className="mb-5 border-b-2 border-[#e96f34]/30 pb-3 pr-8 dark:border-[#fec868]/30">
+                    <p className="text-[9px] font-black uppercase tracking-[.23em] text-[#c9773e] dark:text-[#f3a06c]">Seu caderno começa aqui</p>
+                    <h2 className="mt-1 font-logo text-2xl uppercase leading-tight tracking-tight text-[#473c33] dark:text-[#f2efd2] sm:text-[28px]">Escolha seu perfil</h2>
+                  </div>
+
+                  <div className="space-y-3" role="group" aria-label="Perfis de estudo">
+                    {profiles.map(({ id, title, subtitle, detail, icon: Icon, number }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => handlePick(id)}
+                        className="group flex min-h-[86px] w-full items-center gap-3 rounded-[20px] border border-[#e6dac8] bg-white/80 p-3 text-left shadow-[0_3px_0_rgba(71,60,51,.045)] transition hover:-translate-y-0.5 hover:border-[#e96f34]/55 hover:bg-[#fff7eb] hover:shadow-[0_9px_20px_rgba(71,60,51,.09)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#e96f34]/25 active:translate-y-0 sm:gap-4 sm:p-4 dark:border-white/[.1] dark:bg-[#35362e]/85 dark:hover:border-[#e96f34]/60 dark:hover:bg-[#3c3d33] dark:hover:shadow-[0_9px_20px_rgba(0,0,0,.18)]"
+                      >
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fff1dd] text-[#e96f34] shadow-sm transition group-hover:scale-105 dark:bg-[#e96f34]/15 dark:text-[#fec868] sm:h-[54px] sm:w-[54px]">
+                          <Icon className="h-6 w-6" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-2">
+                            <span className="font-logo text-base font-semibold uppercase tracking-tight text-[#473c33] dark:text-[#f2efd2] sm:text-lg">{title}</span>
+                            <span className="text-[8px] font-black tracking-[.16em] text-[#b4a894] dark:text-[#aaa891]">{number}</span>
+                          </span>
+                          <span className="mt-0.5 block text-xs font-bold leading-5 text-[#725e4a] dark:text-[#d1c7b3]">{subtitle}</span>
+                          <span className="mt-1 block text-[9px] font-black uppercase tracking-[.12em] text-[#a79c8e] dark:text-[#aaa891]">{detail}</span>
+                        </span>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#b6a892] transition group-hover:bg-[#e96f34] group-hover:text-white dark:text-[#aaa891] dark:group-hover:bg-[#e96f34]">
+                          <ArrowRight className="h-4 w-4" />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="mt-4 text-center text-[10px] font-semibold leading-5 text-[#a79c8e] dark:text-[#aaa891]">
+                    A escolha ajusta sugestões e organização, sem limitar seus estudos.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-5 left-[44%] z-20 hidden w-4 -translate-x-1/2 md:block"
+                style={{ background: 'linear-gradient(90deg, rgba(20,15,10,0.5), rgba(20,15,10,0.15), rgba(20,15,10,0.5))' }}
+              />
+            </div>
+
+            <div aria-hidden="true" className="pointer-events-none absolute right-2 bottom-6 top-6 z-30 hidden w-1.5 rounded-r-full bg-[repeating-linear-gradient(to_bottom,#f4e6cf_0px,#f4e6cf_3px,#d5c6ac_4px,#d5c6ac_5px)] shadow-[3px_0_5px_rgba(20,16,12,.2)] dark:bg-[repeating-linear-gradient(to_bottom,#716957_0px,#716957_3px,#4e493d_4px,#4e493d_5px)] md:block" />
+          </section>
+        </div>
       </div>
 
-      <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-5 md:px-10 pt-5 md:pt-7">
-        {onBack ? (
-          <button onClick={onBack} className="flex items-center gap-2 px-3 py-2 rounded-2xl text-white/80 hover:text-white hover:bg-white/10 transition-all">
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-[11px] font-medium uppercase tracking-[0.06em]">Voltar</span>
-          </button>
-        ) : <span />}
-        <div className="flex items-center gap-2 bg-black/30 rounded-full px-4 py-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white">Passo 1 de 2</span>
-        </div>
-      </header>
-
-      {/* Name capture is a secondary micro-step: it only appears once the
-          user has already tapped a profile chip, so the base screen stays
-          just the artwork with its functional hotspots. */}
       {pendingProfile && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 px-5 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-[28px] bg-[#FBF7F0] p-6 md:p-8 text-center shadow-2xl">
-            <h1 className="font-logo font-medium text-xl md:text-2xl text-[#473c33] leading-[1.1]">Como podemos te chamar?</h1>
-            <input
-              ref={nameInputRef}
-              value={name}
-              onChange={(e) => { setName(e.target.value); if (e.target.value.trim()) setNameError(false); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') confirmName(); }}
-              placeholder="Digite seu apelido..."
-              className="w-full mt-4 bg-white border-2 rounded-2xl px-5 py-3.5 text-base font-semibold text-center text-[#473c33] placeholder:text-[#725442]/40 focus:outline-none transition-all"
-              style={{ borderColor: nameError ? '#A94432' : '#E8DDCC' }}
-            />
-            {nameError && (
-              <p className="text-[11px] font-semibold mt-2" style={{ color: '#A94432' }}>Digite seu apelido antes de continuar</p>
-            )}
-            <div className="flex gap-2 mt-5">
-              <button
-                onClick={() => setPendingProfile(null)}
-                className="flex-1 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest text-[#725442] bg-[#E8DDCC]"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={confirmName}
-                className="flex-1 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest text-white bg-[#ec6300]"
-              >
-                Continuar
-              </button>
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#211d18]/65 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-name-title"
+            className="relative w-full max-w-[440px] overflow-hidden rounded-[28px] border-[5px] border-[#473c33] bg-[#473c33] p-1 shadow-[0_28px_70px_rgba(0,0,0,.42),0_6px_0_#ddceb0] dark:border-[#514638] dark:bg-[#514638] dark:shadow-[0_28px_70px_rgba(0,0,0,.58),0_6px_0_#292a23]"
+          >
+            <div className="relative overflow-hidden rounded-[21px] border border-[#d9cdb8] bg-[#fffaf0] px-6 py-7 text-center sm:px-8 dark:border-[#655b48] dark:bg-[#292a23]">
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-55 dark:opacity-30" style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(201,119,62,.15) 32px)' }} />
+              <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-5 w-px bg-[#e96f34]/40" />
+              <div className="relative z-10">
+                <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#fff1dd] text-[#e96f34] dark:bg-[#e96f34]/15 dark:text-[#fec868]">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#c9773e] dark:text-[#f3a06c]">Só falta uma coisa</p>
+                <h2 id="profile-name-title" className="mt-1 font-logo text-2xl uppercase leading-tight text-[#473c33] dark:text-[#f2efd2]">Como podemos te chamar?</h2>
+                <p className="mt-2 text-xs font-semibold text-[#8f8375] dark:text-[#c8c5a9]">Seu nome aparece no seu espaço de estudos.</p>
+                <input
+                  ref={nameInputRef}
+                  value={name}
+                  onChange={(event) => { setName(event.target.value); if (event.target.value.trim()) setNameError(false); }}
+                  onKeyDown={(event) => { if (event.key === 'Enter') confirmName(); }}
+                  placeholder="Digite seu apelido"
+                  aria-label="Seu apelido"
+                  aria-invalid={nameError}
+                  className={`mt-5 w-full rounded-2xl border-2 bg-white/85 px-4 py-3.5 text-center text-sm font-bold text-[#473c33] outline-none transition placeholder:text-[#a79c8e]/80 focus:border-[#e96f34] focus:ring-4 focus:ring-[#e96f34]/10 dark:bg-[#35362e] dark:text-[#f2efd2] dark:placeholder:text-[#aaa891] ${nameError ? 'border-[#bd4b35]' : 'border-[#e6dac8] dark:border-white/[.1]'}`}
+                />
+                {nameError && <p role="alert" className="mt-2 text-[11px] font-bold text-[#a94432] dark:text-[#f3a06c]">Digite seu apelido antes de continuar.</p>}
+                <div className="mt-5 flex gap-2.5">
+                  <button type="button" onClick={() => setPendingProfile(null)} className="flex-1 rounded-2xl border border-[#e6dac8] bg-white/80 px-4 py-3 text-[10px] font-black uppercase tracking-[.14em] text-[#725442] transition hover:bg-[#f4ebdd] dark:border-white/[.1] dark:bg-[#35362e] dark:text-[#d1c7b3] dark:hover:bg-[#414239]">Voltar</button>
+                  <button type="button" onClick={confirmName} className="flex-1 rounded-2xl bg-[#e96f34] px-4 py-3 text-[10px] font-black uppercase tracking-[.14em] text-white shadow-[0_8px_18px_rgba(233,111,52,.2)] transition hover:-translate-y-0.5 hover:bg-[#d95f29] active:translate-y-0 dark:hover:bg-[#f07b40]">Continuar</button>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
         </div>
       )}
     </div>

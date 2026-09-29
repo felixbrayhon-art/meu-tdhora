@@ -85,6 +85,25 @@ body {
     animation: loading-progress 1.8s ease-in-out infinite;
 }
 
+/* NotebookOpenView's cover-opening effect: each page starts flat (as if
+   closed, stacked on the spine at 0deg) and swings out to its resting angle.
+   Two separate keyframes since the pages rotate in opposite directions. */
+@keyframes book-open-left {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(-10deg); }
+}
+@keyframes book-open-right {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(10deg); }
+}
+.animate-book-open-left {
+    animation: book-open-left 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.animate-book-open-right {
+    animation: book-open-right 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: 0.08s;
+}
+
 /* Optional dark appearance, inspired by the app's charcoal, cream and orange palette. */
 html.dark {
     color-scheme: dark;
@@ -266,6 +285,32 @@ html.dark .glass-card {
     color: #d8e6a7 !important;
 }
 
+/* Fold the profile-selection spread open in 3D on wider screens. */
+#profile-selection-screen .profile-book-page-left,
+#profile-selection-screen .profile-book-page-right {
+    transform-style: preserve-3d;
+    transition: transform 350ms ease-out;
+}
+
+@media (min-width: 768px) {
+    #profile-selection-screen .profile-book-page-left {
+        transform: rotateY(-10deg);
+        transform-origin: right center;
+    }
+
+    #profile-selection-screen .profile-book-page-right {
+        transform: rotateY(10deg);
+        transform-origin: left center;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #profile-selection-screen .profile-book-page-left,
+    #profile-selection-screen .profile-book-page-right {
+        transition: none;
+    }
+}
+
 /* Light borders, separators and form placeholders become visible on dark surfaces. */
 .dark [class~="border-gray-50"],
 .dark [class~="border-gray-100"],
@@ -312,21 +357,4 @@ html.dark .glass-card {
 .dark ::selection {
     background: rgba(233, 111, 52, 0.35);
     color: var(--dark-cream);
-}
-
-/* Onboarding (ProfileSelection) always renders its own light theme, even if
-   dark mode is toggled on from a previous session — it has no dark: variants
-   of its own, so the generic catch-all above would otherwise recolor its
-   text to cream and make it unreadable against its light cream background. */
-.dark #profile-selection-screen [class~="text-[#473c33]"] {
-    color: #473c33 !important;
-}
-.dark #profile-selection-screen [class~="text-[#725442]"] {
-    color: #725442 !important;
-}
-.dark #profile-selection-screen [class~="bg-[#E8DDCC]"] {
-    background-color: #E8DDCC !important;
-}
-.dark #profile-selection-screen [class~="bg-white"] {
-    background-color: #ffffff !important;
 }

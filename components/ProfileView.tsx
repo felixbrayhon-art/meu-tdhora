@@ -266,8 +266,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
                 </button>
               )}
               {isLoggedIn && onLogout && (
-                <button onClick={onLogout} className="w-full mt-4 bg-gray-100 text-gray-400 py-4 rounded-[25px] font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-all border border-transparent hover:border-red-100">
-                  ENCERRAR SESSÃO (LOGOUT)
+                <button onClick={onLogout} className="w-full mt-4 border border-[#e8b8a8] bg-[#fff1ec] py-4 rounded-[25px] font-black text-[10px] uppercase tracking-widest text-[#a64b32] transition-all hover:border-[#df9278] hover:bg-[#ffe5db] dark:border-[#75463c] dark:bg-[#3d302a] dark:text-[#f1c5b4] dark:hover:bg-[#50372f]">
+                  SAIR DESSA CONTA
                 </button>
               )}
             </div>
