@@ -313,3 +313,20 @@ html.dark .glass-card {
     background: rgba(233, 111, 52, 0.35);
     color: var(--dark-cream);
 }
+
+/* Onboarding (ProfileSelection) always renders its own light theme, even if
+   dark mode is toggled on from a previous session — it has no dark: variants
+   of its own, so the generic catch-all above would otherwise recolor its
+   text to cream and make it unreadable against its light cream background. */
+.dark #profile-selection-screen [class~="text-[#473c33]"] {
+    color: #473c33 !important;
+}
+.dark #profile-selection-screen [class~="text-[#725442]"] {
+    color: #725442 !important;
+}
+.dark #profile-selection-screen [class~="bg-[#E8DDCC]"] {
+    background-color: #E8DDCC !important;
+}
+.dark #profile-selection-screen [class~="bg-white"] {
+    background-color: #ffffff !important;
+}
