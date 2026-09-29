@@ -318,6 +318,7 @@ export interface Notebook {
 export interface QuizFolder {
   id: string;
   name: string;
+  color?: string;
   notebooks: Notebook[];
   topic: string;
   createdAt: number;

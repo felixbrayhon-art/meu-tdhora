@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { CheckCircle2 } from './icons';
 import { generateStudyContent } from '../services/geminiService';
 import BookLoader from './BookLoader';
 import MarkdownContent from './MarkdownContent';
@@ -336,38 +335,6 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                   </div>
                 </div>
 
-                {/* VISUALIZAÇÃO DE QUESTÕES */}
-                {result.quiz && result.quiz.length > 0 && (
-                  <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl border border-gray-100 mb-10 overflow-hidden relative">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#fecc73] to-[#fecc73]"></div>
-                    <div className="flex items-center gap-3 mb-8">
-                      <div className="w-8 h-8 bg-[#fff6e8] text-[#fec868] rounded-lg flex items-center justify-center">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </div>
-                      <h3 className="text-lg font-black uppercase tracking-tight text-[#1E293B]">Bateria de Fixação</h3>
-                    </div>
-
-                    <ul className="space-y-8 divide-y divide-gray-50">
-                      {result.quiz.map((q: any, i: number) => (
-                        <li key={i} className={i > 0 ? 'pt-8' : ''}>
-                          <div className="flex gap-4 items-start mb-6">
-                            <span className="w-7 h-7 bg-[#fff6e8] border border-[#fff0d5] rounded-lg flex items-center justify-center text-[10px] font-black text-[#fec868] shrink-0">{i + 1}</span>
-                            <div className="text-base text-[#1E293B] font-medium leading-relaxed markdown-body" dangerouslySetInnerHTML={{ __html: q.question }} />
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 ml-11">
-                            {q.options.map((opt: string, idx: number) => (
-                              <div key={idx} className={`p-4 rounded-xl border text-[13px] transition-all flex items-center gap-3 ${idx === q.correctAnswer ? 'bg-[#f4f7ec] border-[#dae4bf]/50 text-[#98b847] font-semibold' : 'bg-gray-50/50 border-gray-50 text-gray-500'}`}>
-                                <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold uppercase ${idx === q.correctAnswer ? 'bg-[#b1c77b] text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-300'}`}>{String.fromCharCode(65 + idx)}</span>
-                                {opt}
-                              </div>
-                            ))}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
                 {/* SALVAR E PRATICAR */}
                 <div className="bg-[#fec868] rounded-[50px] p-12 text-white shadow-[0_35px_60px_-15px_rgba(37,99,235,0.3)] relative overflow-hidden group">
                   <div className="absolute -top-32 -right-32 w-80 h-80 bg-white/10 blur-[80px] rounded-full group-hover:scale-110 transition-transform duration-1000"></div>
@@ -417,6 +384,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                 </div>
               </div>
             </div>
+
           </div>
         )}
       </div>

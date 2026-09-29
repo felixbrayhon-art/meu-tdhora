@@ -1418,18 +1418,25 @@ const App: React.FC = () => {
                     <MaterialsManager
                       folders={folders}
                       attempts={attempts}
-                      onCreateFolder={(name, parentId) =>
+                      onCreateFolder={(name, parentId, color) =>
                         setFolders((prev) => [
                           ...prev,
                           {
                             id: Math.random().toString(36).substr(2, 9),
                             name,
+                            color,
                             topic: name,
                             notebooks: [],
                             createdAt: Date.now(),
                             parentId,
                           },
                         ])
+                      }
+                      onUpdateFolderColor={(folderId, color) =>
+                        setFolders((prev) => prev.map((folder) => (folder.id === folderId ? { ...folder, color } : folder)))
+                      }
+                      onRenameFolder={(folderId, name) =>
+                        setFolders((prev) => prev.map((folder) => (folder.id === folderId ? { ...folder, name } : folder)))
                       }
                       onCreateNotebook={(fid, name) =>
                         setFolders((prev) =>

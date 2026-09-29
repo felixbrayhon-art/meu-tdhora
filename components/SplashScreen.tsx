@@ -1,69 +1,71 @@
-
 import React, { useEffect, useState } from 'react';
-import FishLogo from './FishLogo';
 
 interface SplashScreenProps {
   onComplete: () => void;
 }
 
+const SPLASH_TITLE = 'ToDAHora';
+
 const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const [isVisible, setIsVisible] = useState(true);
-  const [showBrand, setShowBrand] = useState(false);
 
   useEffect(() => {
-    // Inicia o surgimento da marca logo após a barra de progresso
-    const brandTimer = setTimeout(() => {
-      setShowBrand(true);
-    }, 2000);
-
-    // Finaliza a splash screen após a animação da marca
-    const exitTimer = setTimeout(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const exitTimer = window.setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onComplete, 600);
-    }, 5000);
+      window.setTimeout(onComplete, 700);
+    }, prefersReducedMotion ? 1000 : 5000);
 
-    return () => {
-      clearTimeout(brandTimer);
-      clearTimeout(exitTimer);
-    };
+    return () => window.clearTimeout(exitTimer);
   }, [onComplete]);
 
   return (
-    <div className={`fixed inset-0 z-[100] overflow-hidden transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <img
-        src="/splash-cast-banner.jpg"
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#473c33]/70 via-[#473c33]/20 to-[#473c33]/40" />
+    <div
+      className={`splash-screen fixed inset-0 z-[100] flex items-center justify-center overflow-hidden px-6 transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      role="status"
+      aria-label="Carregando ToDAHora"
+    >
+      <div className="splash-screen__glow splash-screen__glow--left" aria-hidden="true" />
+      <div className="splash-screen__glow splash-screen__glow--right" aria-hidden="true" />
 
-      <div className="relative z-10 h-full flex flex-col items-center justify-end pb-16 px-10">
-        <div className="max-w-md w-full text-center space-y-8 animate-in zoom-in-95 duration-1000">
-          {/* Container com animação de entrada amortecida para a tipografia/logo */}
-          <div
-            className={`transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform-gpu ${
-              showBrand ? 'opacity-100 translate-y-0 scale-150' : 'opacity-0 translate-y-8 scale-125'
-            }`}
-          >
-            <FishLogo className="justify-center py-4" darkBg hideIcon />
-          </div>
+      <div className="splash-screen__content flex flex-col items-center text-center">
+        <div className="splash-wordmark" aria-label="ToDAHora">
+          <h1 className="splash-wordmark__title" aria-hidden="true">
+            {Array.from(SPLASH_TITLE).map((character, index) => (
+              <span
+                key={`${character}-${index}`}
+                className={`splash-wordmark__letter splash-wordmark__letter--${[0, 2, 3, 4].includes(index) ? 'gold' : 'orange'}`}
+                style={{
+                  '--splash-delay': `${1.55 + index * 0.055}s`,
+                  '--splash-from': `${-0.38 * (index + 1)}em`,
+                } as React.CSSProperties}
+              >
+                {character}
+              </span>
+            ))}
+            <span className="splash-wordmark__suffix">estude</span>
+          </h1>
 
-          <div className="space-y-6 w-full flex flex-col items-center">
-            <p className="text-white/70 text-[10px] font-bold uppercase tracking-[0.5em]">Superando a memória de peixe</p>
-
-            <div className="h-1 w-48 bg-white/20 rounded-full overflow-hidden">
-               <div className="h-full bg-[#fed386] animate-[loading_5s_linear_forwards]"></div>
+          <div className="splash-orb" aria-hidden="true">
+            <div className="splash-orb__inner">
+              <svg className="splash-orb__wave splash-orb__wave--back" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+                <path d="M799.09 90c-80.714 0-79.621-90-200-90-120.377 0-118.607 90-200 90-81.391 0-81.215-90-200-90C80.308 0 78.68 89.29-.91 90v510h800V90z" />
+              </svg>
+              <svg className="splash-orb__wave splash-orb__wave--front" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+                <path d="M799.09 90c-80.714 0-79.621-90-200-90-120.377 0-118.607 90-200 90-81.391 0-81.215-90-200-90C80.308 0 78.68 89.29-.91 90v510h800V90z" />
+              </svg>
             </div>
           </div>
         </div>
-      </div>
 
-      <style>{`
-        @keyframes loading {
-          0% { width: 0%; }
-          100% { width: 100%; }
-        }
-      `}</style>
+        <p className="splash-screen__tagline mt-8 text-[10px] font-extrabold uppercase tracking-[0.42em] sm:text-xs">
+          Seu foco, no seu ritmo
+        </p>
+
+        <div className="splash-screen__progress mt-8 h-1 w-44 overflow-hidden rounded-full" aria-hidden="true">
+          <span className="splash-screen__progress-fill block h-full rounded-full" />
+        </div>
+      </div>
     </div>
   );
 };
