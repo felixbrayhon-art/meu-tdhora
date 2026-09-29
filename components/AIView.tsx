@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2 } from './icons';
 import { generateStudyContent } from '../services/geminiService';
-import LoadingFish from './LoadingFish';
+import BookLoader from './BookLoader';
 import MarkdownContent from './MarkdownContent';
 import SaveToFolderModal from './SaveToFolderModal';
 import { QuizFolder, QuizQuestion, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
@@ -102,8 +102,12 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
   if (loading) {
     return (
       <div className="relative isolate w-full min-h-[calc(100dvh-8rem)] rounded-[32px] bg-[#473c33] text-white selection:bg-[#fecc73]/30 p-3 sm:p-6">
-        <div className="relative h-full min-h-[calc(100dvh-11rem)] w-full overflow-hidden rounded-[28px] border border-white/10 shadow-2xl">
-          <LoadingFish message="Mergulhando mais fundo..." submessage="A IA está organizando seu dossiê de alta performance" fullScreen />
+        <div className="relative h-full min-h-[calc(100dvh-11rem)] w-full overflow-hidden rounded-[28px] border border-white/10 shadow-2xl flex flex-col items-center justify-center gap-6 animate-in fade-in duration-500">
+          <BookLoader className="scale-[2.4] sm:scale-[3]" />
+          <div className="text-center px-6 mt-4">
+            <p className="text-white font-black text-xl tracking-tight drop-shadow-md">Mergulhando mais fundo...</p>
+            <p className="text-white/70 text-[10px] font-bold uppercase tracking-[0.22em] leading-relaxed mt-2">A IA está organizando seu dossiê de alta performance</p>
+          </div>
           <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-4 p-4 sm:p-5 bg-[#473c33]/55 backdrop-blur-md border-b border-white/10">
             <button onClick={onBack} className="shrink-0 p-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all" aria-label="Cancelar exploração" title="Voltar">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

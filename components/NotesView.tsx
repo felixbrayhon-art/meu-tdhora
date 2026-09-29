@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
-import { PenLine, Trash2, Plus, X, Folder, FolderPlus, Check, Palette, ChevronLeft, ChevronRight, MoreVertical, CheckSquare, Pencil } from './icons';
+import { PenLine, Trash2, Plus, X, Folder, FolderPlus, Check, Palette, ChevronLeft, MoreVertical, CheckSquare, Pencil } from './icons';
 import { HandwrittenNote, NoteFolder, NotePaperStyle } from '../types';
+import Folder3D from './Folder3D';
 
 interface NotesViewProps {
   notes: HandwrittenNote[];
@@ -102,6 +103,23 @@ const NoteEditor: React.FC<{
     const activeTouches = new Set<number>();
     const blockedPointerIds = new Set<number>();
 
+    // Two-finger tap → undo (the Notability/GoodNotes shortcut): if exactly
+    // two touches land and both lift again quickly without traveling far,
+    // treat it as "undo" instead of a real canvas gesture. A third finger
+    // joining, or either finger moving past the threshold, cancels it —
+    // that's a real pinch/pan, not a tap.
+    const TAP_MAX_MS = 300;
+    const TAP_MAX_MOVE_PX = 12;
+    let tapGesture: { startTime: number; positions: Map<number, { x: number; y: number }> } | null = null;
+
+    // Excalidraw's imperative API only exposes history.clear(), not an
+    // undo() call — dispatching its own Ctrl/Cmd+Z shortcut is the
+    // documented workaround for triggering undo from outside the canvas.
+    const triggerUndo = () => {
+      const ev = new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', keyCode: 90, which: 90, ctrlKey: true, metaKey: true, bubbles: true, cancelable: true });
+      wrapper.dispatchEvent(ev);
+    };
+
     const onPointerCapture = (e: PointerEvent) => {
       if (e.pointerType === 'pen') {
         hasStylus = true;
@@ -116,7 +134,21 @@ const NoteEditor: React.FC<{
         if (inGraceWindow && activeTouches.size === 1) {
           blockedPointerIds.add(e.pointerId);
         }
+        if (activeTouches.size === 2 && blockedPointerIds.size === 0) {
+          tapGesture = { startTime: Date.now(), positions: new Map() };
+          activeTouches.forEach((id) => tapGesture!.positions.set(id, { x: e.clientX, y: e.clientY }));
+        } else if (activeTouches.size > 2) {
+          tapGesture = null;
+        }
       }
+
+      if (e.type === 'pointermove' && tapGesture?.positions.has(e.pointerId)) {
+        const start = tapGesture.positions.get(e.pointerId)!;
+        if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > TAP_MAX_MOVE_PX) {
+          tapGesture = null;
+        }
+      }
+
       if (blockedPointerIds.has(e.pointerId)) {
         e.stopPropagation();
         e.preventDefault();
@@ -127,6 +159,10 @@ const NoteEditor: React.FC<{
         return;
       }
       if (e.type === 'pointerup' || e.type === 'pointercancel') {
+        if (e.type === 'pointerup' && tapGesture?.positions.has(e.pointerId) && Date.now() - tapGesture.startTime <= TAP_MAX_MS) {
+          triggerUndo();
+        }
+        tapGesture = null;
         activeTouches.delete(e.pointerId);
       }
     };
@@ -564,11 +600,11 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
         )}
 
         {openFolderId === null ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-5">
             {folderStats.map(({ folder: f, count, size, lastModified }) => (
               <div key={f.id} className="relative group">
                 {renamingFolderId === f.id ? (
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#f4ebdd]">
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#f4ebdd] h-full">
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: f.color + '22' }}>
                       <Folder className="w-5 h-5" style={{ color: f.color }} />
                     </div>
@@ -589,31 +625,30 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
                   <button
                     onClick={() => (selectionMode ? toggleSelected(f.id) : openFolder(f.id))}
                     aria-pressed={selectionMode ? selectedIds.has(f.id) : undefined}
-                    className={`w-full flex items-center gap-3 pl-4 pr-12 py-4 rounded-2xl border transition-colors text-left ${selectedIds.has(f.id) ? 'bg-[#fff1e8] border-[#fdb887]' : 'bg-white border-[#eee6d6] hover:bg-[#fdfbf7] hover:border-[#ddd2c2]'}`}
+                    className={`w-full flex flex-col gap-3 p-4 rounded-[22px] border transition-colors text-left ${selectedIds.has(f.id) ? 'bg-[#fff1e8] border-[#fdb887]' : 'bg-white border-[#eee6d6] hover:bg-[#fdfbf7] hover:border-[#ddd2c2]'}`}
                   >
-                    {selectionMode && (
-                      <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${selectedIds.has(f.id) ? 'bg-[#fdad74] border-[#fdad74]' : 'border-[#a79c8e]'}`}>
-                        {selectedIds.has(f.id) && <Check className="w-3.5 h-3.5 text-[#473c33]" />}
-                      </span>
-                    )}
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: f.color + '22' }}>
-                      <Folder className="w-5 h-5" style={{ color: f.color }} />
+                    <Folder3D color={f.color} />
+                    <div className="flex items-start gap-2">
+                      {selectionMode && (
+                        <span className={`w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${selectedIds.has(f.id) ? 'bg-[#fdad74] border-[#fdad74]' : 'border-[#a79c8e]'}`}>
+                          {selectedIds.has(f.id) && <Check className="w-3.5 h-3.5 text-[#473c33]" />}
+                        </span>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-[#473c33] text-[15px] truncate">{f.name}</p>
+                        <p className="text-xs text-[#725442] mt-0.5 truncate">{count} {count === 1 ? 'anotação' : 'anotações'} · {formatBytes(size)}</p>
+                        <p className="text-xs text-[#a79c8e] mt-0.5 truncate">{formatDate(lastModified)}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-[#473c33] text-[15px] truncate">{f.name}</p>
-                      <p className="text-xs text-[#725442] mt-0.5">{count} {count === 1 ? 'anotação' : 'anotações'} · {formatBytes(size)}</p>
-                    </div>
-                    <p className="text-xs text-[#725442] shrink-0 hidden xl:block pr-10">{formatDate(lastModified)}</p>
-                    {!selectionMode && <ChevronRight className="w-4 h-4 text-[#a79c8e] flex-shrink-0 sm:hidden" />}
                   </button>
                 )}
                 {!selectionMode && renamingFolderId !== f.id && (
-                  <div data-note-menu className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <div data-note-menu className="absolute right-3 top-3">
                     <button
                       aria-label={`Opções da pasta ${f.name}`}
                       aria-expanded={rowMenuId === f.id}
                       onClick={(e) => { e.stopPropagation(); setRowMenuId(rowMenuId === f.id ? null : f.id); }}
-                      className="p-2 rounded-lg text-[#725442] hover:text-[#473c33] hover:bg-[#eee6d6] transition-colors"
+                      className="p-2 rounded-lg bg-white/80 backdrop-blur text-[#725442] hover:text-[#473c33] hover:bg-white transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                     >
                       <MoreVertical className="w-4 h-4" />
                     </button>
@@ -643,16 +678,13 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
             {unfiledNotes.length > 0 && (
               <button
                 onClick={() => !selectionMode && openFolder(NONE_FOLDER)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors text-left ${selectionMode ? 'opacity-40 pointer-events-none' : 'hover:bg-[#f4ebdd] active:bg-[#eee6d6]'}`}
+                className={`w-full flex flex-col gap-3 p-4 rounded-[22px] border border-[#eee6d6] bg-white text-left transition-colors ${selectionMode ? 'opacity-40 pointer-events-none' : 'hover:bg-[#fdfbf7] hover:border-[#ddd2c2]'}`}
               >
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#f4ebdd]">
-                  <Folder className="w-5 h-5 text-[#725442]" />
-                </div>
+                <Folder3D color="#a79c8e" />
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-[#473c33] text-[15px] truncate">Sem pasta</p>
                   <p className="text-xs text-[#725442] mt-0.5">{unfiledNotes.length} {unfiledNotes.length === 1 ? 'anotação' : 'anotações'}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-[#a79c8e] flex-shrink-0" />
               </button>
             )}
 
