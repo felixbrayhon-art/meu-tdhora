@@ -190,11 +190,6 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
                 </div>
               </div>
 
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-5 left-[44%] z-20 hidden w-4 -translate-x-1/2 md:block"
-                style={{ background: 'linear-gradient(90deg, rgba(20,15,10,0.5), rgba(20,15,10,0.15), rgba(20,15,10,0.5))' }}
-              />
             </div>
 
             <div aria-hidden="true" className="pointer-events-none absolute right-2 bottom-6 top-6 z-30 hidden w-1.5 rounded-r-full bg-[repeating-linear-gradient(to_bottom,#f4e6cf_0px,#f4e6cf_3px,#d5c6ac_4px,#d5c6ac_5px)] shadow-[3px_0_5px_rgba(20,16,12,.2)] dark:bg-[repeating-linear-gradient(to_bottom,#716957_0px,#716957_3px,#4e493d_4px,#4e493d_5px)] md:block" />
