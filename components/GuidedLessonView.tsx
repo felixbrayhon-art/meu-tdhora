@@ -141,22 +141,26 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
     setActiveTopic(t);
   };
 
+  // Pulled out of the effect so the "Tentar Novamente" button can re-run the
+  // exact same fetch in place — it used to just call onBack, which bounced
+  // the user all the way out to the Hub instead of retrying the lesson.
+  const fetchLesson = async (s: string, t: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await generateGuidedLesson(s, t, profile, explanationStyle);
+      setLesson(data);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao carregar a aula guiada.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (initialLesson || !activeSubject || !activeTopic) return;
-
-    const fetchLesson = async () => {
-      try {
-        setLoading(true);
-        const data = await generateGuidedLesson(activeSubject, activeTopic, profile, explanationStyle);
-        setLesson(data);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || 'Erro ao carregar a aula guiada.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLesson();
+    fetchLesson(activeSubject, activeTopic);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSubject, activeTopic, profile, explanationStyle, initialLesson]);
 
   useEffect(() => {
@@ -311,9 +315,14 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
             <RotateCcw className="w-8 h-8 text-white" />
           </div>
           <p className="text-red-200 font-bold mb-8 text-lg">{error}</p>
-          <button onClick={onBack} className="flex items-center gap-3 bg-white text-[#473c33] px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all mx-auto shadow-xl">
-            <ChevronLeft className="w-5 h-5" /> Tentar Novamente
-          </button>
+          <div className="flex items-center justify-center gap-3">
+            <button onClick={() => fetchLesson(activeSubject, activeTopic)} className="flex items-center gap-3 bg-white text-[#473c33] px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-xl">
+              <RotateCcw className="w-5 h-5" /> Tentar Novamente
+            </button>
+            <button onClick={onBack} className="flex items-center gap-3 bg-white/10 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-white/20 transition-all">
+              <ChevronLeft className="w-5 h-5" /> Voltar
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -41,6 +41,20 @@ const handleAIError = (error: any) => {
   throw new AIError(errorMessage || "Erro inesperado ao chamar a API do Gemini. Verifique sua conexão.");
 };
 
+// Heuristic for "this string field was cut off mid-sentence" — catches a
+// dangling comma/no-terminator ending and an unmatched quote (e.g. a model
+// that starts "Exemplos: '" and never gets to close it). Not perfect, but
+// cheap and catches the truncation shapes actually seen from free models.
+const looksTruncated = (s: string): boolean => {
+  const t = (s || '').trim();
+  if (t.length < 60) return true;
+  if (!/[.!?…”’"')]$/.test(t)) return true;
+  const singleQuotes = (t.match(/'/g) || []).length;
+  const doubleQuotes = (t.match(/"/g) || []).length;
+  if (singleQuotes % 2 !== 0 || doubleQuotes % 2 !== 0) return true;
+  return false;
+};
+
 const safeAIJsonParse = (text: string) => {
   if (!text) throw new AIError("A IA retornou uma resposta vazia.");
   
@@ -168,8 +182,19 @@ const OPENROUTER_PER_MODEL_TIMEOUT_MS = 20000;
 // than all 6 at once, to avoid hammering the whole free pool per call.
 const OPENROUTER_RACE_BATCH_SIZE = 3;
 
-const shouldTryOpenRouterFallback = (error: any): boolean => {
-  if (!OPENROUTER_API_KEY) return false;
+// Groq runs its own LPU hardware rather than aggregating third-party free
+// endpoints like OpenRouter's ":free" pool does, so it doesn't share that
+// pool's "all 6 congested at once" failure mode — tried first, ahead of
+// OpenRouter, for exactly that reason. gpt-oss-120b is the primary (best
+// quality); gpt-oss-20b is the backup (faster, separate daily quota, in case
+// the primary's is already spent). Confirmed against this account's actual
+// /openai/v1/models listing — Groq's catalog changes over time, so re-check
+// that endpoint if either model ever 404s with "does not exist".
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const GROQ_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
+const GROQ_TIMEOUT_MS = 20000;
+
+const isTransientAIError = (error: any): boolean => {
   const errorObj = error?.error || error;
   const errorMessage = String(errorObj?.message || error?.message || error || '').toLowerCase();
   const errorStatus = String(errorObj?.code || errorObj?.status || error?.status || '');
@@ -178,6 +203,9 @@ const shouldTryOpenRouterFallback = (error: any): boolean => {
     errorMessage.includes('resource_exhausted') || errorMessage.includes('unavailable') ||
     errorMessage.includes('api key');
 };
+
+const shouldTryOpenRouterFallback = (error: any): boolean =>
+  (!!GROQ_API_KEY || !!OPENROUTER_API_KEY) && isTransientAIError(error);
 
 // Runs `attempt(model)` for OPENROUTER_FALLBACK_MODELS in batches of
 // OPENROUTER_RACE_BATCH_SIZE, racing each batch with Promise.any so the
@@ -209,7 +237,7 @@ const toJsonSchema = (googleSchema: any): any => {
   return out;
 };
 
-const callOpenRouterJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string): Promise<any> => {
+const callOpenRouterJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
   return raceOpenRouterModels(async (model) => {
     try {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -232,8 +260,17 @@ const callOpenRouterJson = async (systemInstruction: string | undefined, userPro
       const data = await res.json();
       const text = data?.choices?.[0]?.message?.content;
       if (!text) { console.warn(`[fallback] ${model} retornou conteúdo vazio.`); throw new Error(`OpenRouter (${model}) retornou vazio`); }
+      const parsed = safeAIJsonParse(text);
+      // Small free models routinely emit syntactically-valid JSON that's
+      // semantically cut off (a field stops mid-sentence) instead of erroring
+      // out — treat that the same as a failed model so Promise.any moves on
+      // to another one in the batch rather than handing the user broken text.
+      if (validate && !validate(parsed)) {
+        console.warn(`[fallback] ${model} retornou conteúdo incompleto/cortado.`);
+        throw new Error(`OpenRouter (${model}) retornou conteúdo incompleto`);
+      }
       console.warn(`[fallback] Gemini indisponível, resposta gerada via OpenRouter (${model}).`);
-      return safeAIJsonParse(text);
+      return parsed;
     } catch (e: any) {
       if (!(e instanceof Error && e.message.startsWith('OpenRouter ('))) {
         console.warn(`[fallback] ${model} falhou: ${e?.name || ''} ${e?.message || e}`);
@@ -271,6 +308,124 @@ const callOpenRouterText = async (systemInstruction: string | undefined, message
       throw e;
     }
   });
+};
+
+// Groq-specific fallback: only 2 candidate models (vs. OpenRouter's batched
+// race across 6), tried sequentially rather than raced — Groq's own hardware
+// is reliable enough that racing for latency isn't the priority here; the
+// backup model exists purely so a spent daily quota on the primary doesn't
+// take the whole Groq attempt down with it.
+const callGroqModel = async (model: string, body: Record<string, any>): Promise<string> => {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, ...body }),
+    signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
+  });
+  if (!res.ok) { console.warn(`[groq] ${model} falhou: HTTP ${res.status}`); throw new Error(`Groq (${model}) HTTP ${res.status}`); }
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text) { console.warn(`[groq] ${model} retornou conteúdo vazio.`); throw new Error(`Groq (${model}) retornou vazio`); }
+  return text;
+};
+
+const callGroqJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
+  let lastError: any;
+  for (const model of GROQ_MODELS) {
+    try {
+      const text = await callGroqModel(model, {
+        messages: [
+          ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+          { role: 'user', content: userPrompt },
+        ],
+        // strict:true on Groq additionally demands every optional field be
+        // folded into `required` (OpenAI's structured-outputs rule) across
+        // all 17 existing schemas — not worth rewriting all of them just for
+        // constrained decoding when strict:false still gets solid schema
+        // adherence from a 120b model on a reliable, uncongested host.
+        response_format: { type: 'json_schema', json_schema: { name: schemaName, schema, strict: false } },
+        temperature: 0.3,
+        max_tokens: 24000,
+      });
+      const parsed = safeAIJsonParse(text);
+      if (validate && !validate(parsed)) {
+        console.warn(`[groq] ${model} retornou conteúdo incompleto/cortado.`);
+        throw new Error(`Groq (${model}) retornou conteúdo incompleto`);
+      }
+      console.warn(`[fallback] Gemini indisponível, resposta gerada via Groq (${model}).`);
+      return parsed;
+    } catch (e: any) {
+      if (!(e instanceof Error && e.message.startsWith('Groq ('))) {
+        console.warn(`[groq] ${model} falhou: ${e?.name || ''} ${e?.message || e}`);
+      }
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('Groq indisponível.');
+};
+
+const callGroqText = async (systemInstruction: string | undefined, messages: { role: string, content: string }[], temperature = 0.6): Promise<string> => {
+  let lastError: any;
+  for (const model of GROQ_MODELS) {
+    try {
+      const text = await callGroqModel(model, {
+        messages: [...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []), ...messages],
+        temperature,
+        max_tokens: 8000,
+      });
+      console.warn(`[fallback] Gemini indisponível, resposta gerada via Groq (${model}).`);
+      return text;
+    } catch (e: any) {
+      if (!(e instanceof Error && e.message.startsWith('Groq ('))) {
+        console.warn(`[groq] ${model} falhou: ${e?.name || ''} ${e?.message || e}`);
+      }
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('Groq indisponível.');
+};
+
+// Single entry point every function's catch block calls: Groq first (its own
+// reliable hardware), OpenRouter's free-model race second. Keeps each of the
+// 17 call sites down to one call instead of two nested try/catches.
+const tryJsonFallbacks = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
+  let lastError: any;
+  if (GROQ_API_KEY) {
+    try {
+      return await callGroqJson(systemInstruction, userPrompt, schema, schemaName, validate);
+    } catch (e) {
+      lastError = e;
+      console.warn('[fallback] Groq falhou, tentando OpenRouter:', e);
+    }
+  }
+  if (OPENROUTER_API_KEY) {
+    try {
+      return await callOpenRouterJson(systemInstruction, userPrompt, schema, schemaName, validate);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('Nenhum fallback de IA disponível.');
+};
+
+const tryTextFallbacks = async (systemInstruction: string | undefined, messages: { role: string, content: string }[], temperature = 0.6): Promise<string> => {
+  let lastError: any;
+  if (GROQ_API_KEY) {
+    try {
+      return await callGroqText(systemInstruction, messages, temperature);
+    } catch (e) {
+      lastError = e;
+      console.warn('[fallback] Groq falhou, tentando OpenRouter:', e);
+    }
+  }
+  if (OPENROUTER_API_KEY) {
+    try {
+      return await callOpenRouterText(systemInstruction, messages, temperature);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('Nenhum fallback de IA disponível.');
 };
 
 // Utility to get current date/time context for AI
@@ -404,7 +559,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, studyContentPrompt, toJsonSchema(studyContentSchema), 'study_content');
+        return await tryJsonFallbacks(undefined, studyContentPrompt, toJsonSchema(studyContentSchema), 'study_content');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateStudyContent:', fallbackError);
       }
@@ -494,7 +649,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, examQuestionsPrompt, examQuestionsJsonSchema, 'exam_questions');
+        return await tryJsonFallbacks(undefined, examQuestionsPrompt, examQuestionsJsonSchema, 'exam_questions');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateExamQuestions:', fallbackError);
       }
@@ -522,7 +677,7 @@ export const identifyQuestionCount = async (text: string) => {
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        const fallbackText = await callOpenRouterText(undefined, [{ role: 'user', content: countPrompt }], 0.1);
+        const fallbackText = await tryTextFallbacks(undefined, [{ role: 'user', content: countPrompt }], 0.1);
         const count = parseInt(fallbackText?.trim().replace(/[^0-9]/g, '') || "0");
         return isNaN(count) ? 0 : count;
       } catch (fallbackError) {
@@ -646,7 +801,7 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
   } catch (error: any) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, parsePastedPrompt, parsePastedJsonSchema, 'parsed_questions');
+        return await tryJsonFallbacks(undefined, parsePastedPrompt, parsePastedJsonSchema, 'parsed_questions');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em parsePastedQuestions:', fallbackError);
       }
@@ -686,7 +841,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
           role: h.role === 'model' ? 'assistant' : 'user',
           content: h.parts.map(p => p.text).join('\n'),
         }));
-        return await callOpenRouterText(fishSystemInstruction, [...openRouterHistory, { role: 'user', content: message }], 0.7);
+        return await tryTextFallbacks(fishSystemInstruction, [...openRouterHistory, { role: 'user', content: message }], 0.7);
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em chatWithFish:', fallbackError);
       }
@@ -732,7 +887,7 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, evocationPrompt, toJsonSchema(evocationSchema), 'evocation_analysis');
+        return await tryJsonFallbacks(undefined, evocationPrompt, toJsonSchema(evocationSchema), 'evocation_analysis');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em analyzeEvocation:', fallbackError);
       }
@@ -803,7 +958,7 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
           },
           required: ['questions'],
         };
-        const result = await callOpenRouterJson(undefined, analysisPrompt, fallbackSchema, 'recovery_questions');
+        const result = await tryJsonFallbacks(undefined, analysisPrompt, fallbackSchema, 'recovery_questions');
         return result.questions;
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateQuestionsFromAnalysis:', fallbackError);
@@ -843,7 +998,7 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, editalTopicsPrompt, toJsonSchema(editalTopicsSchema), 'edital_topics');
+        return await tryJsonFallbacks(undefined, editalTopicsPrompt, toJsonSchema(editalTopicsSchema), 'edital_topics');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em extractTopicsFromEdital:', fallbackError);
       }
@@ -911,7 +1066,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, microThemePrompt, toJsonSchema(microThemeSchema), 'micro_theme_validation');
+        return await tryJsonFallbacks(undefined, microThemePrompt, toJsonSchema(microThemeSchema), 'micro_theme_validation');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateMicroThemeValidation:', fallbackError);
       }
@@ -957,7 +1112,7 @@ export const explainStuckTopic = async (topic: string, profile: StudyProfile = '
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, stuckTopicPrompt, toJsonSchema(stuckTopicSchema), 'stuck_topic_explanation');
+        return await tryJsonFallbacks(undefined, stuckTopicPrompt, toJsonSchema(stuckTopicSchema), 'stuck_topic_explanation');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em explainStuckTopic:', fallbackError);
       }
@@ -1057,7 +1212,7 @@ export const optimizeStudyPlan = async (
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, studyPlanPrompt, toJsonSchema(studyPlanSchema), 'study_plan');
+        return await tryJsonFallbacks(undefined, studyPlanPrompt, toJsonSchema(studyPlanSchema), 'study_plan');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em optimizeStudyPlan:', fallbackError);
       }
@@ -1140,7 +1295,7 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, recoveryPrompt, toJsonSchema(recoverySchema), 'recovery_plan');
+        return await tryJsonFallbacks(undefined, recoveryPrompt, toJsonSchema(recoverySchema), 'recovery_plan');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em identifyAndProgramRecovery:', fallbackError);
       }
@@ -1195,7 +1350,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, proactiveAdvicePrompt, toJsonSchema(proactiveAdviceSchema), 'proactive_advice');
+        return await tryJsonFallbacks(undefined, proactiveAdvicePrompt, toJsonSchema(proactiveAdviceSchema), 'proactive_advice');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em getProactiveAdvice:', fallbackError);
       }
@@ -1224,7 +1379,7 @@ export const getDailyBibleMotivation = async (): Promise<string> => {
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        const fallbackText = await callOpenRouterText(undefined, [{ role: 'user', content: bibleMotivationPrompt }], 0.7);
+        const fallbackText = await tryTextFallbacks(undefined, [{ role: 'user', content: bibleMotivationPrompt }], 0.7);
         return fallbackText?.trim() || DEFAULT_MOTIVATION;
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em getDailyBibleMotivation:', fallbackError);
@@ -1299,7 +1454,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterJson(undefined, studyCyclePrompt, toJsonSchema(studyCycleSchema), 'study_cycle');
+        return await tryJsonFallbacks(undefined, studyCyclePrompt, toJsonSchema(studyCycleSchema), 'study_cycle');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateStudyCycle:', fallbackError);
       }
@@ -1359,12 +1514,26 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
     required: ['id', 'topic', 'steps'],
   };
 
+  // Guards against both known truncation shapes: Gemini stopping mid-JSON
+  // once it hits its output cap, and a free OpenRouter model ending a step's
+  // "content" mid-sentence despite valid JSON syntax (see looksTruncated).
+  const validateGuidedLesson = (parsed: any): boolean => {
+    const steps = parsed?.steps;
+    if (!Array.isArray(steps) || steps.length < 6) return false;
+    return steps.every((step: any) => typeof step?.content === 'string' && !looksTruncated(step.content));
+  };
+
   try {
     const response = await generateContentWithRetry({
       model: DEFAULT_MODEL,
       contents: guidedLessonPrompt,
       config: {
         responseMimeType: "application/json",
+        // 8 rich narrative steps routinely run longer than this SDK's default
+        // output cap, which was silently truncating the JSON mid-generation —
+        // safeAIJsonParse's salvage logic then returned a lesson with its
+        // last step (or its "content" text) cut off instead of failing loudly.
+        maxOutputTokens: 25000,
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -1387,15 +1556,24 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
         }
       }
     });
-    return safeAIJsonParse(response.text);
-  } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
-      try {
-        return await callOpenRouterJson(undefined, guidedLessonPrompt, guidedLessonJsonSchema, 'guided_lesson');
-      } catch (fallbackError) {
-        console.error('Fallback OpenRouter também falhou em generateGuidedLesson:', fallbackError);
+    const parsed = safeAIJsonParse(response.text);
+    if (!validateGuidedLesson(parsed)) {
+      throw new Error('GUIDED_LESSON_TRUNCATED');
+    }
+    return parsed;
+  } catch (error: any) {
+    const isTruncation = error?.message === 'GUIDED_LESSON_TRUNCATED';
+    if (isTruncation || shouldTryOpenRouterFallback(error)) {
+      if (isTruncation) console.warn('[guided_lesson] Resposta do Gemini veio cortada, tentando fallback.');
+      if (OPENROUTER_API_KEY) {
+        try {
+          return await tryJsonFallbacks(undefined, guidedLessonPrompt, guidedLessonJsonSchema, 'guided_lesson', validateGuidedLesson);
+        } catch (fallbackError) {
+          console.error('Fallback OpenRouter também falhou em generateGuidedLesson:', fallbackError);
+        }
       }
     }
+    if (isTruncation) throw new AIError('A IA gerou uma aula incompleta. Tente novamente.');
     return handleAIError(error);
   }
 };
@@ -1418,7 +1596,7 @@ Seu objetivo é explicar o fragmento de texto ou o assunto fornecido de forma di
   } catch (error) {
     if (shouldTryOpenRouterFallback(error)) {
       try {
-        return await callOpenRouterText(systemInstruction, [{ role: 'user', content: quickExplanationPrompt }], 0.5);
+        return await tryTextFallbacks(systemInstruction, [{ role: 'user', content: quickExplanationPrompt }], 0.5);
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em getQuickExplanation:', fallbackError);
       }
