@@ -93,6 +93,15 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
   const previousSpread = filtered.slice(Math.max(0, spreadIndex - 1) * 2, Math.max(0, spreadIndex - 1) * 2 + 2);
   const nextSpread = filtered.slice((spreadIndex + 1) * 2, (spreadIndex + 1) * 2 + 2);
 
+  const completePageTurn = (direction: 'next' | 'previous') => {
+    if (!pageTurnLocked.current) return;
+    if (pageTurnTimer.current !== null) window.clearTimeout(pageTurnTimer.current);
+    setSpreadIndex((page) => page + (direction === 'next' ? 1 : -1));
+    setPageTurn(null);
+    pageTurnLocked.current = false;
+    pageTurnTimer.current = null;
+  };
+
   const moveSpread = (direction: 'next' | 'previous') => {
     const isOutOfBounds = direction === 'next' ? spreadIndex >= spreadCount - 1 : spreadIndex === 0;
     if (isOutOfBounds || pageTurnLocked.current) return;
@@ -104,11 +113,8 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
       pageTurnLocked.current = true;
       setPageTurn(direction);
       pageTurnTimer.current = window.setTimeout(() => {
-        setSpreadIndex((page) => page + (direction === 'next' ? 1 : -1));
-        setPageTurn(null);
-        pageTurnLocked.current = false;
-        pageTurnTimer.current = null;
-      }, 720);
+        completePageTurn(direction);
+      }, 1000);
     } else {
       setSpreadIndex((page) => page + (direction === 'next' ? 1 : -1));
     }
@@ -227,7 +233,13 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
                     {renderBookPage(pageTurn === 'next' ? nextSpread[1] : currentSpread[1], pageTurn === 'next' ? (spreadIndex + 1) * 2 + 2 : spreadIndex * 2 + 2)}
 
                     {pageTurn && (
-                      <div className={`vade-page-turn vade-page-turn-${pageTurn}`} aria-hidden="true">
+                      <div
+                        className={`vade-page-turn vade-page-turn-${pageTurn}`}
+                        onAnimationEnd={(event) => {
+                          if (event.target === event.currentTarget) completePageTurn(pageTurn);
+                        }}
+                        aria-hidden="true"
+                      >
                         <div className="vade-page-turn-face vade-page-turn-front">
                           {renderBookPage(pageTurn === 'next' ? currentSpread[1] : currentSpread[0], pageTurn === 'next' ? spreadIndex * 2 + 2 : spreadIndex * 2 + 1)}
                         </div>
