@@ -6,6 +6,7 @@ import { generateMicroThemeValidation, explainStuckTopic, identifyAndProgramReco
 import LoadingFish from './LoadingFish';
 import CharacterTip from './CharacterTip';
 import ForgettingCurve from './ForgettingCurve';
+import { toLocalDateKey } from '../utils/localDate';
 
 interface SmartRevisionViewProps {
   items: SmartRevisionItem[];
@@ -536,7 +537,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
                     <div key={i} className={`min-h-[90px] rounded-2xl border p-2 transition-all flex flex-col ${!d ? 'bg-gray-50/20 border-transparent' : 'bg-white border-gray-100 hover:border-[#ffe6b9]'}`}>
                       {d && (
                         <>
-                          <span className={`text-[10px] font-black mb-1 ${d.dateStr === new Date().toISOString().split('T')[0] ? 'text-[#fec868]' : 'text-gray-300'}`}>{d.day}</span>
+                          <span className={`text-[10px] font-black mb-1 ${d.dateStr === toLocalDateKey() ? 'text-[#fec868]' : 'text-gray-300'}`}>{d.day}</span>
                           <div className="space-y-1 overflow-y-auto max-h-[50px] scrollbar-hide">
                             {d.items.map((it) => (
                               <div key={it.id} className="text-[7px] font-black bg-[#473c33] text-white p-1 rounded-md px-1.5 truncate leading-none uppercase border-l-2 border-[#fecc73]" title={`REVISÃO: ${it.topic}`}>

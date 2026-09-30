@@ -118,13 +118,18 @@ export interface DrawStroke {
 }
 
 export type NotePaperStyle = 'dots' | 'lines' | 'grid' | 'blank';
+export type NotePenPreset = 'ballpoint' | 'fineliner' | 'pencil' | 'highlighter' | 'brush' | 'monoline';
 
 export interface HandwrittenNote {
   id: string;
   title: string;
+  /** Optional cover color selected by the user. */
+  color?: string;
   folderId?: string;
   /** @deprecated Only present on notes saved before the switch to Excalidraw — the current editor no longer reads or writes this. */
   paperStyle?: NotePaperStyle;
+  /** Preset selected for new strokes in the Excalidraw editor. */
+  penPreset?: NotePenPreset;
   /** @deprecated Only present on notes saved before the switch to Excalidraw. */
   strokes?: DrawStroke[];
   /** Excalidraw's own scene data (elements/appState/files), untyped here since it's opaque to the rest of the app — read back from ExcalidrawImperativeAPI on save, passed straight through as initialData on open. */
@@ -312,6 +317,8 @@ export interface QuizQuestion {
 export interface Notebook {
   id: string;
   name: string;
+  /** Optional cover color selected by the user. */
+  color?: string;
   questions: QuizQuestion[];
   summary?: string;
   createdAt: number;

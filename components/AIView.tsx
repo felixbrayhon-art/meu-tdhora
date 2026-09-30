@@ -9,7 +9,7 @@ interface AIViewProps {
   onBack: () => void;
   folders: QuizFolder[];
   onNewContent: (content: any) => void;
-  onSaveToNotebook: (folderId: string, notebookName: string, questions: QuizQuestion[], summary?: string) => void;
+  onSaveToNotebook: (folderId: string, notebookName: string, questions: QuizQuestion[], summary?: string, notebookColor?: string, folderColor?: string) => void;
   studyProfile: StudyProfile;
   prefill?: { topic: string; autoStart: boolean } | null;
   onConsumedPrefill?: () => void;
@@ -88,9 +88,9 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
     }
   };
 
-  const handleConfirmSave = (folderId: string, notebookName: string) => {
+  const handleConfirmSave = (folderId: string, notebookName: string, notebookColor: string, folderColor: string) => {
     if (result) {
-      onSaveToNotebook(folderId, notebookName, result.quiz, result.executiveSummary);
+      onSaveToNotebook(folderId, notebookName, result.quiz, result.executiveSummary, notebookColor, folderColor);
       setSaved(true);
       setShowSaveModal(false);
     }

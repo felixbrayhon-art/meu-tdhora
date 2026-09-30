@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AppView, QuizFolder, FlashcardFolder, UserStats, getFishRank } from '../types';
-import { Home, Timer, Layers, BookOpen, Brain, ChevronDown, ChevronRight, ChevronLeft, Folder, FileText, Users, Plus, PanelLeftOpen, PanelLeftClose, BarChart3, Bookmark, Scale, PenLine, Search, Zap, Clock, Trophy, Moon, Sun } from './icons';
+import { Home, Timer, Layers, BookOpen, Brain, ChevronDown, ChevronRight, ChevronLeft, Folder, FileText, Users, Plus, PanelLeftOpen, PanelLeftClose, BarChart3, Bookmark, Scale, PenLine, Zap, Clock, Trophy, Moon, Sun } from './icons';
 import { motion, AnimatePresence } from 'motion/react';
 import FishLogo from './FishLogo';
 import AvatarDisplay from './AvatarDisplay';
@@ -73,7 +73,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
     { id: 'DRIVE_READER' as AppView, label: 'Biblioteca Drive', icon: Folder },
     { id: 'NOTES' as AppView, label: 'Anotações', icon: PenLine },
     { id: 'TDH_QUESTOES' as AppView, label: 'TDHQuestões', icon: FileText },
-    { id: 'VR_METHOD' as AppView, label: 'Método VR', icon: Search },
     { id: 'AI_DIRECT' as AppView, label: 'Aula Direta', icon: Zap },
     { id: 'GUIDED_LESSON' as AppView, label: 'Aula Guiada', icon: BookOpen },
     { id: 'SAVED_GUIDED_LESSONS' as AppView, label: 'Aulas Salvas', icon: Bookmark },

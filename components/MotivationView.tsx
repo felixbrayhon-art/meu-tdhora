@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getDailyBibleMotivation } from '../services/geminiService';
 import { useCharacterId } from '../contexts/CharacterContext';
 import { getPeaceSrc } from '../services/avatarService';
+import { toLocalDateKey } from '../utils/localDate';
 
 const MotivationView: React.FC = () => {
   const [motivation, setMotivation] = useState<string | null>(null);
@@ -11,7 +12,7 @@ const MotivationView: React.FC = () => {
 
   useEffect(() => {
     const lastFetch = localStorage.getItem('motivation_fetch_date');
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateKey();
 
     if (lastFetch === today) {
       setMotivation(localStorage.getItem('motivation_content'));
@@ -25,7 +26,7 @@ const MotivationView: React.FC = () => {
     try {
       const content = await getDailyBibleMotivation();
       try {
-        localStorage.setItem('motivation_fetch_date', new Date().toISOString().split('T')[0]);
+        localStorage.setItem('motivation_fetch_date', toLocalDateKey());
         localStorage.setItem('motivation_content', content);
       } catch (storageError) {
         console.warn('Could not save daily motivation to localStorage', storageError);

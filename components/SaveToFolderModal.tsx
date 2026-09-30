@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { QuizFolder } from '../types';
+import StudyBook3D from './StudyBook3D';
+import CustomColorField from './CustomColorField';
 
 interface SaveToFolderModalProps {
   folders: QuizFolder[];
   suggestedName: string;
-  onConfirm: (folderId: string, notebookName: string) => void;
+  onConfirm: (folderId: string, notebookName: string, notebookColor: string, folderColor: string) => void;
   onClose: () => void;
 }
 
@@ -12,13 +14,15 @@ const SaveToFolderModal: React.FC<SaveToFolderModalProps> = ({ folders, suggeste
   const [notebookName, setNotebookName] = useState(suggestedName);
   const [selectedFolderId, setSelectedFolderId] = useState<string>(folders[0]?.id || 'NEW');
   const [newFolderName, setNewFolderName] = useState('');
+  const [notebookColor, setNotebookColor] = useState('#f97316');
+  const [folderColor, setFolderColor] = useState('#f4ad2d');
 
   const handleConfirm = () => {
     if (selectedFolderId === 'NEW') {
       if (!newFolderName.trim()) return;
-      onConfirm('NEW:' + newFolderName, notebookName);
+      onConfirm('NEW:' + newFolderName, notebookName, notebookColor, folderColor);
     } else {
-      onConfirm(selectedFolderId, notebookName);
+      onConfirm(selectedFolderId, notebookName, notebookColor, folderColor);
     }
   };
 
@@ -77,15 +81,20 @@ const SaveToFolderModal: React.FC<SaveToFolderModalProps> = ({ folders, suggeste
             </div>
 
             {selectedFolderId === 'NEW' && (
-              <div className="animate-in slide-in-from-top-4 duration-300">
+              <div className="animate-in slide-in-from-top-4 duration-300 space-y-4">
                 <label className="text-[10px] font-black text-[#fecc73] uppercase tracking-[0.3em] block mb-3 ml-2">Nome da Nova Pasta</label>
                 <input autoFocus value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="EX: DIREITO CONSTITUCIONAL" className="w-full bg-white/5 border-2 border-[#fecc73]/30 rounded-[25px] px-8 py-5 text-lg font-black text-white focus:outline-none focus:border-[#fecc73] transition-all placeholder:text-white/10 uppercase " />
+                <CustomColorField dark label="Cor da pasta" color={folderColor} onChange={setFolderColor} />
               </div>
             )}
 
-            <div>
+            <div className="space-y-4">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] block mb-3 ml-2">Título do Caderno</label>
-              <input value={notebookName} onChange={(e) => setNotebookName(e.target.value)} placeholder="Ex: Resumo de Atos Administrativos" className="w-full bg-white/5 border-2 border-white/10 rounded-[25px] px-8 py-5 text-lg font-black text-white focus:outline-none focus:border-[#fdad74] transition-all placeholder:text-white/10 " />
+              <div className="flex items-center gap-4">
+                <div className="w-16 shrink-0"><StudyBook3D title={notebookName || 'Novo caderno'} color={notebookColor} /></div>
+                <input value={notebookName} onChange={(e) => setNotebookName(e.target.value)} placeholder="Ex: Resumo de Atos Administrativos" className="w-full min-w-0 bg-white/5 border-2 border-white/10 rounded-[25px] px-6 py-5 text-lg font-black text-white focus:outline-none focus:border-[#fdad74] transition-all placeholder:text-white/10 " />
+              </div>
+              <CustomColorField dark label="Cor da capa" color={notebookColor} onChange={setNotebookColor} />
             </div>
           </div>
 

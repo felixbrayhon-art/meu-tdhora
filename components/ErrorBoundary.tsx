@@ -34,8 +34,7 @@ class ErrorBoundary extends Component<Props, State> {
             </div>
             <h1 className="font-logo text-4xl mb-4 uppercase">Ops! O sistema parou de respirar.</h1>
             <p className="text-slate-400 font-bold mb-10 leading-relaxed">
-              Ocorreu um erro inesperado que impediu o carregamento da interface. 
-              Geralmente isso acontece por problemas de conexão ou dados corrompidos no navegador.
+              Ocorreu um erro inesperado que impediu o carregamento da interface. Recarregar o app mantém seus dados locais, como anotações, cadernos e progresso.
             </p>
             
             <div className="bg-[#473c33]/40 p-6 rounded-2xl mb-10 text-left overflow-auto max-h-40 border border-white/5 font-mono text-xs text-red-300">
@@ -43,21 +42,12 @@ class ErrorBoundary extends Component<Props, State> {
                {this.state.error?.toString()}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex justify-center">
               <button 
                 onClick={() => window.location.reload()}
-                className="bg-white text-[#473c33] px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-[#fecc73] hover:text-white transition-all shadow-xl active:scale-95"
+                className="bg-white text-[#473c33] px-5 py-4 text-xs sm:px-10 sm:text-sm rounded-2xl font-black uppercase tracking-widest text-center hover:bg-[#fecc73] hover:text-white transition-all shadow-xl active:scale-95"
               >
-                Recarregar App
-              </button>
-              <button 
-                onClick={() => {
-                   localStorage.clear();
-                   window.location.reload();
-                }}
-                className="bg-transparent border-2 border-white/10 text-white/50 px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:border-red-500 hover:text-red-500 transition-all active:scale-95 text-xs"
-              >
-                Limpar Cache e Sair
+                Recarregar com dados preservados
               </button>
             </div>
           </div>

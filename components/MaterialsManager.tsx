@@ -3,6 +3,8 @@ import DOMPurify from 'dompurify';
 import { QuizFolder, Notebook, QuizAttempt, EditalConfig } from '../types';
 import { MoveAllNotebookQuestionsModal } from './MoveAllNotebookQuestionsModal';
 import Folder3D from './Folder3D';
+import StudyBook3D from './StudyBook3D';
+import CustomColorField from './CustomColorField';
 
 const FOLDER_COLORS = [
   { name: 'Dourado', value: '#f4ad2d' },
@@ -21,7 +23,8 @@ interface MaterialsManagerProps {
   onCreateFolder: (name: string, parentId?: string, color?: string) => void;
   onUpdateFolderColor: (folderId: string, color: string) => void;
   onRenameFolder: (folderId: string, name: string) => void;
-  onCreateNotebook: (folderId: string, name: string) => void;
+  onCreateNotebook: (folderId: string, name: string, color?: string) => void;
+  onUpdateNotebook?: (folderId: string, notebookId: string, changes: { name?: string; color?: string }) => void;
   onDeleteFolder?: (folderId: string) => void;
   onDeleteNotebook?: (folderId: string, notebookId: string) => void;
   onMergeNotebooks?: (sourceNotebookId: string, sourceFolderId: string, targetNotebookId: string, targetFolderId: string) => void;
@@ -34,11 +37,12 @@ interface MaterialsManagerProps {
   setSelectedNotebookId: (id: string | null) => void;
 }
 
-const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, onBack, onPlayQuiz, onCreateFolder, onUpdateFolderColor, onRenameFolder, onCreateNotebook, onDeleteFolder, onDeleteNotebook, onMoveAllQuestions, strategicMode, editalConfig, selectedFolderId, setSelectedFolderId, selectedNotebookId, setSelectedNotebookId }) => {
+const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, onBack, onPlayQuiz, onCreateFolder, onUpdateFolderColor, onRenameFolder, onCreateNotebook, onUpdateNotebook, onDeleteFolder, onDeleteNotebook, onMoveAllQuestions, strategicMode, editalConfig, selectedFolderId, setSelectedFolderId, selectedNotebookId, setSelectedNotebookId }) => {
   const [moveAllNotebook, setMoveAllNotebook] = useState<Notebook | null>(null);
   const [isCreating, setIsCreating] = useState<'FOLDER' | 'NOTEBOOK' | null>(null);
   const [newName, setNewName] = useState('');
   const [newFolderColor, setNewFolderColor] = useState(FOLDER_COLORS[0].value);
+  const [editingNotebookId, setEditingNotebookId] = useState<string | null>(null);
   const [openColorPickerId, setOpenColorPickerId] = useState<string | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editingFolderName, setEditingFolderName] = useState('');
@@ -69,9 +73,11 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
     if (isCreating === 'FOLDER') {
       onCreateFolder(newName.trim(), selectedFolderId || undefined, newFolderColor);
     } else if (isCreating === 'NOTEBOOK' && selectedFolderId) {
-      onCreateNotebook(selectedFolderId, newName.trim());
+      if (editingNotebookId) onUpdateNotebook?.(selectedFolderId, editingNotebookId, { name: newName.trim(), color: newFolderColor });
+      else onCreateNotebook(selectedFolderId, newName.trim(), newFolderColor);
     }
     setNewName('');
+    setEditingNotebookId(null);
     setIsCreating(null);
   };
 
@@ -110,14 +116,14 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
         <div className="flex items-center gap-3 w-full md:w-auto">
           {!selectedNotebookId && (
             <>
-              <button onClick={() => { setNewFolderColor(FOLDER_COLORS[0].value); setIsCreating('FOLDER'); }} className="bg-[#fff6e8] hover:bg-[#fff0d5] text-[#fec868] px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm">
+              <button onClick={() => { setNewName(''); setEditingNotebookId(null); setNewFolderColor(FOLDER_COLORS[0].value); setIsCreating('FOLDER'); }} className="bg-[#fff6e8] hover:bg-[#fff0d5] text-[#fec868] px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
                 </svg>
                 {selectedFolderId ? 'Subpasta' : 'Pasta'}
               </button>
               {selectedFolderId && (
-                <button onClick={() => setIsCreating('NOTEBOOK')} className="bg-[#fff1e8] hover:bg-[#fee6d5] text-[#fda769] px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm">
+                <button onClick={() => { setNewName(''); setEditingNotebookId(null); setNewFolderColor(FOLDER_COLORS[0].value); setIsCreating('NOTEBOOK'); }} className="bg-[#fff1e8] hover:bg-[#fee6d5] text-[#fda769] px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
                   </svg>
@@ -131,41 +137,28 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
 
       {isCreating && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#473c33]/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl p-10 animate-in zoom-in-95 duration-500">
+          <div className="bg-white w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-[40px] shadow-2xl p-7 sm:p-10 animate-in zoom-in-95 duration-500">
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-2xl font-black tracking-tighter uppercase">{isCreating === 'FOLDER' ? (selectedFolderId ? 'CRIAR SUBPASTA' : 'CRIAR NOVA PASTA') : 'CRIAR NOVO CADERNO'}</h3>
-              <button onClick={() => setIsCreating(null)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-2xl font-black tracking-tighter uppercase">{isCreating === 'FOLDER' ? (selectedFolderId ? 'CRIAR SUBPASTA' : 'CRIAR NOVA PASTA') : editingNotebookId ? 'EDITAR CADERNO' : 'CRIAR NOVO CADERNO'}</h3>
+              <button onClick={() => { setIsCreating(null); setEditingNotebookId(null); }} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={isCreating === 'FOLDER' ? 'Ex: Revisão OAB' : 'Ex: Atos Administrativos'} className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-6 py-4 text-base font-bold focus:outline-none focus:border-[#fed386] transition-all mb-8" onKeyPress={(e) => e.key === 'Enter' && handleCreate()} />
-            {isCreating === 'FOLDER' && (
-              <fieldset className="mb-8">
-                <legend className="mb-3 text-[10px] font-black uppercase tracking-widest text-gray-400">Cor da pasta</legend>
-                <div className="flex flex-wrap gap-3">
-                  {FOLDER_COLORS.map((color) => (
-                    <button
-                      key={color.value}
-                      type="button"
-                      aria-label={`Selecionar cor ${color.name}`}
-                      aria-pressed={newFolderColor === color.value}
-                      title={color.name}
-                      onClick={() => setNewFolderColor(color.value)}
-                      className={`h-9 w-9 rounded-full transition-transform hover:scale-110 ${newFolderColor === color.value ? 'ring-2 ring-[#473c33] ring-offset-2 scale-105' : 'ring-1 ring-black/10'}`}
-                      style={{ backgroundColor: color.value }}
-                    />
-                  ))}
-                </div>
-              </fieldset>
-            )}
+            <div className="mb-6 flex items-center gap-5">
+              <div className="w-20 shrink-0">
+                <StudyBook3D title={newName || (isCreating === 'NOTEBOOK' ? 'Novo caderno' : 'Nova pasta')} color={newFolderColor} />
+              </div>
+              <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={isCreating === 'FOLDER' ? 'Ex: Revisão OAB' : 'Ex: Atos Administrativos'} className="min-w-0 flex-1 bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-base font-bold focus:outline-none focus:border-[#fed386] transition-all" onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreate())} />
+            </div>
+            <CustomColorField label={isCreating === 'FOLDER' ? 'Cor da pasta' : 'Cor da capa'} color={newFolderColor} onChange={setNewFolderColor} />
             <div className="flex gap-4">
-              <button onClick={() => setIsCreating(null)} className="flex-1 py-4 text-gray-400 font-black text-xs uppercase tracking-widest hover:text-gray-600">
+              <button onClick={() => { setIsCreating(null); setEditingNotebookId(null); }} className="flex-1 py-4 text-gray-400 font-black text-xs uppercase tracking-widest hover:text-gray-600">
                 CANCELAR
               </button>
               <button onClick={handleCreate} disabled={!newName.trim()} className="flex-1 bg-[#fecc73] text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-[#fff0d5]/60 disabled:opacity-30 transition-all">
-                CRIAR AGORA
+                {editingNotebookId ? 'SALVAR ALTERAÇÕES' : 'CRIAR AGORA'}
               </button>
             </div>
           </div>
@@ -354,6 +347,10 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                               style={{ backgroundColor: color.value }}
                             />
                           ))}
+                          <label className="flex h-7 w-7 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white text-[8px] font-black text-gray-500" title="Escolher qualquer cor">
+                            <span className="sr-only">Escolher qualquer cor</span>
+                            <input type="color" value={folder.color || FOLDER_COLORS[0].value} onChange={(e) => onUpdateFolderColor(folder.id, e.target.value)} aria-label={`Cor personalizada para ${folder.name}`} className="h-10 w-10 cursor-pointer border-0 bg-transparent p-0" />
+                          </label>
                         </div>
                       )}
                     </div>
@@ -389,15 +386,30 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
 
               return (
                 <div key={notebook.id} onClick={() => setSelectedNotebookId(notebook.id)} className="bg-white rounded-[30px] p-6 border border-gray-100 hover:shadow-xl hover:shadow-[#ac4800]/5 transform hover:-translate-x-1 transition-all group cursor-pointer relative flex items-center gap-6">
-                  <div className="w-14 h-14 bg-[#fff1e8] rounded-2xl flex items-center justify-center text-[#fda769] shrink-0 group-hover:scale-110 transition-transform">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
+                  <div className="w-[4.5rem] shrink-0">
+                    <StudyBook3D title={notebook.name} color={notebook.color || '#f97316'} />
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="text-xl font-black uppercase tracking-tighter truncate">{notebook.name}</h3>
+                      <button
+                        type="button"
+                        aria-label={`Editar caderno ${notebook.name}`}
+                        title="Editar título e cor da capa"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingNotebookId(notebook.id);
+                          setNewName(notebook.name);
+                          setNewFolderColor(notebook.color || '#f97316');
+                          setIsCreating('NOTEBOOK');
+                        }}
+                        className="shrink-0 rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-[#fff6e8] hover:text-[#ac6e00]"
+                      >
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                          <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
+                        </svg>
+                      </button>
                     </div>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">{notebook.questions.length} QUESTÕES</span>

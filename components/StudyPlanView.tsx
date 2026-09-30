@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { StudyPlan, StudySubject, DailyHistory, StudySession, EditalConfig, StudyProfile } from '../types';
 import { optimizeStudyPlan } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
+import { daysBetweenLocalDateKeys, toLocalDateKey } from '../utils/localDate';
 
 interface StudyPlanViewProps {
   onBack: () => void;
@@ -30,16 +31,15 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
   const colors = ['#facc15', '#3B82F6', '#10B981', '#f97316', '#8B5CF6', '#EC4899'];
 
   const cycleStats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const todayMinutes = plan.sessions?.filter((s) => new Date(s.date).toISOString().split('T')[0] === today).reduce((acc, s) => acc + s.durationMinutes, 0) || 0;
+    const today = toLocalDateKey();
+    const todayMinutes = plan.sessions?.filter((s) => toLocalDateKey(s.date) === today).reduce((acc, s) => acc + s.durationMinutes, 0) || 0;
 
     return { todayMinutes };
   }, [plan.sessions]);
 
   const daysToExam = useMemo(() => {
     if (!editalConfig.examDate) return null;
-    const diff = new Date(editalConfig.examDate).getTime() - new Date().getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return daysBetweenLocalDateKeys(toLocalDateKey(), editalConfig.examDate);
   }, [editalConfig.examDate]);
 
   const suggestedSubject = useMemo(() => {

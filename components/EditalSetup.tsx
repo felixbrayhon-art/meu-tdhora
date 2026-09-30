@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EditalConfig, EditalSubject, StudyProfile } from '../types';
 import LoadingFish from './LoadingFish';
@@ -12,23 +12,66 @@ interface EditalSetupProps {
   onBack: () => void;
 }
 
+type EditalSetupDraft = {
+  step: number;
+  subjectsText: string;
+  subjects: EditalSubject[];
+  currentSubjectIndex: number;
+  examDate: string;
+  dailyHours: number;
+  period: string;
+  showMedicinaSelector: boolean;
+  selectedMedPeriod: number | null;
+  numPeriods: number;
+  periodSubjectsText: Record<number, string>;
+  activePeriodTab: number;
+  preloadedEmentas: Record<string, string>;
+};
+
 const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', onComplete, onBack }) => {
-  const [step, setStep] = useState(1);
-  const [subjectsText, setSubjectsText] = useState('');
-  const [subjects, setSubjects] = useState<EditalSubject[]>([]);
-  const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
-  const [examDate, setExamDate] = useState('');
-  const [dailyHours, setDailyHours] = useState(4);
-  const [period, setPeriod] = useState('');
+  const draftKey = `focus_edital_setup_draft_${studyProfile}`;
+  const [draft] = useState<EditalSetupDraft | null>(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return null;
+      const value = JSON.parse(raw) as Partial<EditalSetupDraft>;
+      if (!value || typeof value !== 'object') return null;
+      return {
+        step: Math.min(3, Math.max(1, Number(value.step) || 1)),
+        subjectsText: typeof value.subjectsText === 'string' ? value.subjectsText : '',
+        subjects: Array.isArray(value.subjects) ? value.subjects : [],
+        currentSubjectIndex: Math.max(0, Number(value.currentSubjectIndex) || 0),
+        examDate: typeof value.examDate === 'string' ? value.examDate : '',
+        dailyHours: Number(value.dailyHours) || 4,
+        period: typeof value.period === 'string' ? value.period : '',
+        showMedicinaSelector: Boolean(value.showMedicinaSelector),
+        selectedMedPeriod: typeof value.selectedMedPeriod === 'number' ? value.selectedMedPeriod : null,
+        numPeriods: Math.min(20, Math.max(1, Number(value.numPeriods) || 8)),
+        periodSubjectsText: value.periodSubjectsText && typeof value.periodSubjectsText === 'object' ? value.periodSubjectsText : {},
+        activePeriodTab: Math.max(1, Number(value.activePeriodTab) || 1),
+        preloadedEmentas: value.preloadedEmentas && typeof value.preloadedEmentas === 'object' ? value.preloadedEmentas : {},
+      };
+    } catch {
+      return null;
+    }
+  });
+  const hasRestoredDraft = Boolean(draft);
+  const [step, setStep] = useState(draft?.step ?? 1);
+  const [subjectsText, setSubjectsText] = useState(draft?.subjectsText ?? '');
+  const [subjects, setSubjects] = useState<EditalSubject[]>(draft?.subjects ?? []);
+  const [currentSubjectIndex, setCurrentSubjectIndex] = useState(draft?.currentSubjectIndex ?? 0);
+  const [examDate, setExamDate] = useState(draft?.examDate ?? '');
+  const [dailyHours, setDailyHours] = useState(draft?.dailyHours ?? 4);
+  const [period, setPeriod] = useState(draft?.period ?? '');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showMedicinaSelector, setShowMedicinaSelector] = useState(false);
-  const [selectedMedPeriod, setSelectedMedPeriod] = useState<number | null>(null);
+  const [showMedicinaSelector, setShowMedicinaSelector] = useState(draft?.showMedicinaSelector ?? false);
+  const [selectedMedPeriod, setSelectedMedPeriod] = useState<number | null>(draft?.selectedMedPeriod ?? null);
 
   // College curriculum custom period mapping state
-  const [numPeriods, setNumPeriods] = useState<number>(8);
+  const [numPeriods, setNumPeriods] = useState<number>(draft?.numPeriods ?? 8);
   const [periodSubjectsText, setPeriodSubjectsText] = useState<{
     [key: number]: string;
-  }>({
+  }>(draft?.periodSubjectsText ?? {
     1: '',
     2: '',
     3: '',
@@ -38,10 +81,28 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
     7: '',
     8: '',
   });
-  const [activePeriodTab, setActivePeriodTab] = useState<number>(1);
+  const [activePeriodTab, setActivePeriodTab] = useState<number>(draft?.activePeriodTab ?? 1);
   const [preloadedEmentas, setPreloadedEmentas] = useState<{
     [key: string]: string;
-  }>({});
+  }>(draft?.preloadedEmentas ?? {});
+
+  useEffect(() => {
+    const hasContent = Boolean(subjectsText.trim() || subjects.length || examDate || period || step > 1 || Object.values(periodSubjectsText).some((value) => value.trim()));
+    try {
+      if (!hasContent) {
+        localStorage.removeItem(draftKey);
+        return;
+      }
+      const setupDraft: EditalSetupDraft = {
+        step, subjectsText, subjects, currentSubjectIndex, examDate, dailyHours, period,
+        showMedicinaSelector, selectedMedPeriod, numPeriods, periodSubjectsText,
+        activePeriodTab, preloadedEmentas,
+      };
+      localStorage.setItem(draftKey, JSON.stringify(setupDraft));
+    } catch (error) {
+      console.warn('Não foi possível salvar o rascunho do edital neste navegador.', error);
+    }
+  }, [draftKey, step, subjectsText, subjects, currentSubjectIndex, examDate, dailyHours, period, showMedicinaSelector, selectedMedPeriod, numPeriods, periodSubjectsText, activePeriodTab, preloadedEmentas]);
 
   const getPeriodSubjectCount = (periodNum: number) =>
     (periodSubjectsText[periodNum] || '').split('\n').filter((line) => line.trim().length > 0).length;
@@ -155,6 +216,7 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
   };
 
   const handleFinish = () => {
+    localStorage.removeItem(draftKey);
     onComplete({
       isActive: true,
       subjects,
@@ -182,6 +244,12 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
       </div>
 
       <CharacterTip id="edital-setup" message={studyProfile === 'FACULDADE' ? 'Vamos montar sua grade curricular! Liste as matérias de cada período (ou use um currículo pronto, se tiver), me diga a data da prova e quantas horas por dia você consegue estudar. No final eu monto um cronograma completo pra você.' : 'Vamos montar seu edital! Liste as matérias que vão cair na prova, a data do exame e quantas horas por dia você consegue estudar. No final eu transformo tudo isso num cronograma estratégico, sem você precisar organizar nada na mão.'} />
+
+      {hasRestoredDraft && (
+        <p role="status" className="mb-4 rounded-xl border border-[#d9e5c5] bg-[#f4f8ed] px-4 py-3 text-sm font-semibold text-[#52643d]">
+          Rascunho recuperado. Você pode continuar de onde parou; suas alterações são salvas neste dispositivo.
+        </p>
+      )}
 
       <div className="relative min-h-[500px] overflow-hidden rounded-[28px] border border-gray-100 bg-white p-5 shadow-xl sm:rounded-[36px] sm:p-8">
         {/* Progress Bar */}

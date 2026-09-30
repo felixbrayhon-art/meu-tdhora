@@ -5,7 +5,9 @@ import { generateStudyContent } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
 import ReactMarkdown from 'react-markdown';
 import { RichTextEditor } from './RichTextEditor';
-import { ChevronLeft, Brain, Plus, Trash2, FolderPlus, Sparkles, Check, X, RotateCcw, HelpCircle, Layers, Maximize2, Minimize2 } from './icons';
+import { ChevronLeft, Brain, Plus, Trash2, FolderPlus, Sparkles, Check, X, RotateCcw, HelpCircle, Layers, Maximize2, Minimize2, Pencil } from './icons';
+import StudyBook3D from './StudyBook3D';
+import CustomColorField from './CustomColorField';
 
 interface FlashcardViewProps {
   flashcards: Flashcard[];
@@ -28,6 +30,7 @@ type ManagedView = 'FOLDERS' | 'FOLDER_DETAIL' | 'REVIEW';
 const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards, folders, setFolders, onBack, studyProfile, strategicMode, editalConfig, onReviewBatchComplete, selectedFolderId, setSelectedFolderId, viewMode, setViewMode }) => {
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [showAIModal, setShowAIModal] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiTopic, setAiTopic] = useState('');
@@ -75,10 +78,17 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
 
   const handleCreateFolder = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFolder.name) return;
+    if (!newFolder.name.trim()) return;
+    if (editingFolderId) {
+      setFolders((prev) => prev.map((folder) => folder.id === editingFolderId ? { ...folder, name: newFolder.name.trim(), color: newFolder.color } : folder));
+      setEditingFolderId(null);
+      setShowAddFolderModal(false);
+      setNewFolder({ name: '', color: '#f97316' });
+      return;
+    }
     const folder: FlashcardFolder = {
       id: Math.random().toString(36).substr(2, 9),
-      name: newFolder.name,
+      name: newFolder.name.trim(),
       color: newFolder.color,
       createdAt: Date.now(),
     };
@@ -238,7 +248,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">SISTEMA REPETIÇÃO ESPAÇADA (SRS)</p>
                   </div>
                 </div>
-                <button onClick={() => setShowAddFolderModal(true)} className="bg-[#fdad74] text-white p-4 rounded-2xl hover:bg-[#fdb887] transition-all shadow-lg active:scale-90 flex items-center gap-2 group">
+                <button onClick={() => { setEditingFolderId(null); setNewFolder({ name: '', color: '#f97316' }); setShowAddFolderModal(true); }} className="bg-[#fdad74] text-white p-4 rounded-2xl hover:bg-[#fdb887] transition-all shadow-lg active:scale-90 flex items-center gap-2 group">
                   <FolderPlus className="w-6 h-6" />
                   <span className="hidden md:inline font-black text-xs uppercase tracking-widest">Nova Pasta</span>
                 </button>
@@ -274,14 +284,8 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                       }}
                       className="w-full h-full bg-white/5 backdrop-blur-xl p-10 rounded-[50px] text-left border border-white/5 hover:border-[#fdad74]/30 transition-all hover:scale-[1.02] shadow-2xl overflow-hidden relative"
                     >
-                      <div
-                        className="w-16 h-16 rounded-3xl mb-8 flex items-center justify-center shadow-lg"
-                        style={{
-                          backgroundColor: folder.color + '20',
-                          color: folder.color,
-                        }}
-                      >
-                        <Layers className="w-8 h-8" />
+                      <div className="w-24 shrink-0">
+                        <StudyBook3D title={folder.name} color={folder.color} />
                       </div>
                       <h3 className="text-2xl font-black uppercase tracking-tighter leading-none mb-1 text-white group-hover:text-[#fdad74] transition-colors">{folder.name}</h3>
                       <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">{flashcards.filter((f) => f.folderId === folder.id).length} Cards Totais</p>
@@ -296,6 +300,20 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                       <div className="absolute -bottom-6 -right-6 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
                         <Layers className="w-32 h-32" />
                       </div>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Editar pasta ${folder.name}`}
+                      title="Editar nome e cor"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingFolderId(folder.id);
+                        setNewFolder({ name: folder.name, color: folder.color });
+                        setShowAddFolderModal(true);
+                      }}
+                      className="absolute top-8 left-8 p-3 bg-white/10 text-white/70 rounded-2xl opacity-0 group-hover:opacity-100 hover:bg-white hover:text-[#473c33] transition-all z-20"
+                    >
+                      <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       onClick={(e) => {
@@ -581,10 +599,12 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#473c33] border border-white/10 rounded-[60px] w-full max-w-lg p-12 shadow-3xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-2 h-full bg-[#fdad74]"></div>
               <h3 className="text-3xl font-black mb-8 uppercase tracking-tighter">
-                Novo <span className="text-[#fdad74]">Módulo</span>
+                {editingFolderId ? 'Editar' : 'Novo'} <span className="text-[#fdad74]">Módulo</span>
               </h3>
               <form onSubmit={handleCreateFolder} className="space-y-8">
-                <div className="space-y-3">
+                <div className="grid grid-cols-[minmax(100px,130px)_1fr] items-center gap-4">
+                  <StudyBook3D title={newFolder.name || 'Novo caderno'} color={newFolder.color} />
+                  <div className="space-y-3">
                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Nome da Pasta</label>
                   <input
                     required
@@ -599,21 +619,15 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                     className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-8 py-6 focus:outline-none focus:border-[#fdad74] transition-all font-black text-xl"
                     placeholder="Ex: Legislação Penal"
                   />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Cor de Identificação</label>
-                  <div className="flex flex-wrap gap-4 mt-2 px-2">
-                    {['#f97316', '#EF4444', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#eab308'].map((c) => (
-                      <button key={c} type="button" onClick={() => setNewFolder((prev) => ({ ...prev, color: c }))} className={`w-12 h-12 rounded-2xl transition-all scale-100 active:scale-90 ${newFolder.color === c ? 'ring-4 ring-offset-4 ring-offset-[#473c33] ring-[#fdad74] scale-110' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: c }} />
-                    ))}
                   </div>
                 </div>
+                <CustomColorField dark label="Cor da capa" color={newFolder.color} onChange={(color) => setNewFolder((prev) => ({ ...prev, color }))} />
                 <div className="flex gap-4 pt-6">
-                  <button type="button" onClick={() => setShowAddFolderModal(false)} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-gray-500 hover:text-white transition-colors uppercase">
+                  <button type="button" onClick={() => { setShowAddFolderModal(false); setEditingFolderId(null); }} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-gray-500 hover:text-white transition-colors uppercase">
                     Cancelar
                   </button>
                   <button type="submit" className="flex-[2] bg-[#fdad74] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl shadow-[#fdad74]/20 active:scale-95">
-                    Criar Módulo
+                    {editingFolderId ? 'Salvar alterações' : 'Criar módulo'}
                   </button>
                 </div>
               </form>

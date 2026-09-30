@@ -65,9 +65,9 @@ const TimerView: React.FC<TimerViewProps> = ({ isActive, setIsActive, seconds, s
               <p className="mt-4 text-[10px] font-black text-[#fecc73] uppercase tracking-widest">ENTER PARA CONFIRMAR</p>
             </div>
           ) : (
-            <div className={`text-[110px] md:text-[150px] font-black leading-none tracking-tighter tabular-nums transition-all ${!isActive ? 'cursor-pointer hover:scale-105 hover:text-[#fecc73]' : ''}`} onClick={() => !isActive && setIsEditing(true)}>
+            <button type="button" disabled={isActive} aria-label={`Editar duração do timer: ${formatTime(seconds)}`} className={`text-[110px] md:text-[150px] font-black leading-none tracking-tighter tabular-nums transition-all disabled:cursor-default ${!isActive ? 'cursor-pointer hover:scale-105 hover:text-[#fecc73] focus-visible:outline-4 focus-visible:outline-[#fecc73]' : ''}`} onClick={() => setIsEditing(true)}>
               {formatTime(seconds)}
-            </div>
+            </button>
           )}
         </div>
 

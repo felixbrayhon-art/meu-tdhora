@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import DOMPurify from 'dompurify';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, Database } from './icons';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, Database, ClipboardList } from './icons';
 import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { fetchEnemExams, fetchEnemQuestions, enemDisciplineLabel, EnemExamInfo } from '../services/enemService';
 import { BankFacetOption, countBankQuestions, fetchBankQuestions, fetchExamQuestions, listBankAreasForSubject, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamYears } from '../services/questionBankService';
@@ -48,7 +48,7 @@ const reindexRecordForPermutation = <T,>(record: Record<number, T>, newOrder: nu
 interface TDHQuestoesProps {
   onBack: () => void;
   folders: QuizFolder[];
-  onSaveToNotebook: (folderId: string, notebookName: string, questions: QuizQuestion[]) => void;
+  onSaveToNotebook: (folderId: string, notebookName: string, questions: QuizQuestion[], summary?: string, notebookColor?: string, folderColor?: string) => void;
   studyProfile: StudyProfile;
   prefill?: string | null;
   onConsumedPrefill?: () => void;
@@ -65,7 +65,7 @@ interface TDHQuestoesProps {
   // pronto mostramos o modal "Salvar em Caderno" (pasta + nome escolhidos
   // pelo aluno) e só então o pai é avisado, já com esse destino — a tela de
   // prática interna desta view não é mais usada.
-  onQuestionsReady?: (topic: string, subject: string | undefined, questions: QuizQuestion[], folderId: string, notebookName: string) => void;
+  onQuestionsReady?: (topic: string, subject: string | undefined, questions: QuizQuestion[], folderId: string, notebookName: string, notebookColor?: string, folderColor?: string) => void;
 }
 
 const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, explanationStyle: initialStyle, questionProfileStyle: initialQuestionStyle, fontSizeMultiplier, onBatchComplete, onTriggerGuidedLesson, onQuestionSessionChange, onQuestionsReady }) => {
@@ -849,16 +849,16 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     setShowSaveModal(true);
   };
 
-  const handleConfirmSave = (folderId: string, notebookName: string) => {
+  const handleConfirmSave = (folderId: string, notebookName: string, notebookColor: string, folderColor: string) => {
     const questionsToSave = saveMode === 'SINGLE' ? [questions[currentIdx]] : questions;
     if (onQuestionsReady) {
       // Veio do filtro/geração do banco — o pai cuida de criar/atualizar o
       // caderno no destino escolhido e já navega pra Meus Materiais.
-      onQuestionsReady(topic, selectedSubject || undefined, questionsToSave, folderId, notebookName);
+      onQuestionsReady(topic, selectedSubject || undefined, questionsToSave, folderId, notebookName, notebookColor, folderColor);
       setShowSaveModal(false);
       return;
     }
-    onSaveToNotebook(folderId, notebookName, questionsToSave);
+    onSaveToNotebook(folderId, notebookName, questionsToSave, undefined, notebookColor, folderColor);
     if (saveMode === 'ALL') setSaved(true);
     setShowSaveModal(false);
   };
@@ -907,49 +907,73 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
               ABANDONAR SIMULADO
             </button>
 
-            <div className="bg-white rounded-[32px] p-5 sm:p-8 md:p-10 border border-slate-200 relative overflow-hidden shadow-sm">
-              <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none text-[#fec868]">
-                <FileText className="w-40 h-40" />
+            <div className="bg-white rounded-[32px] p-5 sm:p-8 md:p-10 border border-slate-200 dark:border-white/10 relative overflow-hidden shadow-sm">
+              <div className="absolute top-0 right-0 p-6 opacity-[0.035] pointer-events-none text-[#fec868]">
+                <FileText className="w-28 h-28" />
               </div>
 
-              <div className="relative z-10 text-center max-w-4xl mx-auto">
-                <div className="w-14 h-14 bg-[#fec868]/10 text-[#fec868] border border-[#fec868]/15 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm">
-                  <Scissors className="w-6 h-6" />
-                </div>
-                <h1 className="font-logo text-3xl sm:text-4xl md:text-5xl mb-2 leading-none uppercase text-slate-800">
-                  TDH
-                  <span className="text-[#fec868]">{strategicMode ? 'estratégico' : 'questões'}</span>
-                </h1>
-                <p className="text-slate-400 text-[10px] mb-6 font-black uppercase tracking-[0.2em]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Alinhamento Automático à Grade Curricular' : 'Alinhamento Automático ao Edital') : `Simulados ${studyProfile === 'CONCURSO' ? 'Elite' : studyProfile === 'FACULDADE' ? 'Universitários' : 'Vestibular'} • Gabarito Comentado`}</p>
-
-                <div className="space-y-5">
-                  <div className="space-y-2 text-left max-w-3xl mx-auto">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">O que vamos treinar hoje?</label>
-                    <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={studyProfile === 'CONCURSO' ? 'Ex: Atos Administrativos' : studyProfile === 'FACULDADE' ? 'Ex: Cálculo I ou Patologia Humana' : 'Ex: Genética Mendeliana'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-lg focus:outline-none focus:border-[#fec868] transition-all font-black text-center text-slate-700 placeholder:text-slate-300" />
+              <div className="relative z-10 max-w-4xl mx-auto">
+                <div className="mb-7 flex items-center gap-4 text-left">
+                  <div className="w-12 h-12 shrink-0 bg-[#fec868]/10 text-[#fec868] border border-[#fec868]/20 rounded-2xl flex items-center justify-center shadow-sm">
+                    <Scissors className="w-5 h-5" />
                   </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{strategicMode ? 'Prática direcionada' : 'Geração e curadoria'}</p>
+                    <h1 className="font-logo text-2xl sm:text-3xl leading-tight uppercase text-slate-800">
+                      TDH<span className="text-[#fec868]">QUESTÕES</span>
+                    </h1>
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Alinhado à sua grade curricular' : 'Alinhado ao seu edital') : `Simulados ${studyProfile === 'CONCURSO' ? 'para concursos' : studyProfile === 'FACULDADE' ? 'universitários' : 'de vestibular'} com gabarito comentado`}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <section className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 sm:p-5 text-left dark:bg-[#303129]">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#fec868]/15 text-[11px] font-black text-[#b65f2e] dark:text-[#f3a06c]">01</span>
+                      <div>
+                        <label htmlFor="quiz-topic" className="block text-sm font-black text-slate-700">Qual assunto você quer praticar?</label>
+                        <p className="text-[11px] font-medium text-slate-400">Digite um tema ou recorte específico.</p>
+                      </div>
+                    </div>
+                    <input id="quiz-topic" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={studyProfile === 'CONCURSO' ? 'Ex.: Atos administrativos' : studyProfile === 'FACULDADE' ? 'Ex.: Cálculo I ou Patologia humana' : 'Ex.: Genética mendeliana'} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-base focus:outline-none focus:border-[#fec868] focus:ring-2 focus:ring-[#fec868]/15 transition-all font-bold text-left text-slate-700 placeholder:text-slate-300" />
+                  </section>
 
                   {!strategicMode && (
-                    <div className="flex bg-slate-50 p-1 rounded-2xl mx-auto max-w-xl mb-3 border border-slate-100 overflow-x-auto">
-                      <button onClick={() => setInputMode('AUTO')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${inputMode === 'AUTO' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
-                        IA
-                      </button>
-                      <button onClick={() => setInputMode('PASTE')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'PASTE' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
-                        COLAR
-                      </button>
-                      <button onClick={() => setInputMode('MANUAL')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'MANUAL' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
-                        MANUAL
-                      </button>
-                      <button onClick={() => setInputMode('ENEM')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'ENEM' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
-                        ENEM
-                      </button>
-                      <button onClick={() => setInputMode('CONCURSO')} className={`flex-1 py-3 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all gap-2 flex items-center justify-center ${inputMode === 'CONCURSO' ? 'bg-white text-[#fec868] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}>
-                        CONCURSO
-                      </button>
-                    </div>
+                    <section className="space-y-3 text-left">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#fec868]/15 text-[11px] font-black text-[#b65f2e] dark:text-[#f3a06c]">02</span>
+                        <div>
+                          <h2 className="text-sm font-black text-slate-700">Como deseja montar as questões?</h2>
+                          <p className="text-[11px] font-medium text-slate-400">Escolha uma forma para continuar.</p>
+                        </div>
+                      </div>
+                      <div role="group" aria-label="Modo de criação das questões" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                        {([
+                          { mode: 'AUTO', label: 'IA', Icon: Brain },
+                          { mode: 'PASTE', label: 'Colar', Icon: FileText },
+                          { mode: 'MANUAL', label: 'Manual', Icon: PenLine },
+                          { mode: 'ENEM', label: 'ENEM', Icon: BookOpen },
+                          { mode: 'CONCURSO', label: 'Concurso', Icon: ClipboardList },
+                        ] as const).map(({ mode, label, Icon }) => (
+                          <button key={mode} type="button" aria-pressed={inputMode === mode} onClick={() => setInputMode(mode)} className={`min-h-[68px] rounded-xl border px-3 py-2.5 flex flex-col items-center justify-center gap-1.5 font-black text-[10px] uppercase tracking-wider transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e96f34] ${inputMode === mode ? 'border-[#fec868] bg-[#fec868] text-white shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:border-[#fec868]/60 hover:text-slate-700 dark:border-white/10 dark:bg-[#35362e] dark:text-[#c8c5a9] dark:hover:text-[#f2efd2]'}`}>
+                            <Icon className="h-4 w-4" />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
                   )}
 
                   {inputMode === 'AUTO' ? (
                     <>
+                      <section className="space-y-5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 sm:p-5 text-left">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#fec868]/15 text-[11px] font-black text-[#b65f2e] dark:text-[#f3a06c]">{strategicMode ? '02' : '03'}</span>
+                          <div>
+                            <h2 className="text-sm font-black text-slate-700">{strategicMode ? 'Defina o foco da prática' : 'Personalize sua bateria'}</h2>
+                            <p className="text-[11px] font-medium text-slate-400">{strategicMode ? 'Selecione a matéria e o assunto.' : 'Ajuste banca, quantidade e estilo da explicação.'}</p>
+                          </div>
+                        </div>
                       {strategicMode && editalConfig ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-3 text-left">
@@ -1017,6 +1041,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                         CONFIGURAR SIMULADO
                         <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                       </button>
+                      </section>
                     </>
                   ) : inputMode === 'PASTE' ? (
                     <div className="space-y-6 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
@@ -1478,7 +1503,22 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
 
                   return (
                     <div key={idx} className="relative group">
-                      <div onClick={() => handleAnswerSelection(idx)} onDoubleClick={() => handleDoubleClick(idx)} className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-6 rounded-[25px] flex items-center gap-6'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] ${cardClass} relative overflow-hidden`} role="button" aria-disabled={isSubmitted} tabIndex={0}>
+                      <div
+                        onClick={() => handleAnswerSelection(idx)}
+                        onDoubleClick={() => handleDoubleClick(idx)}
+                        onKeyDown={(event) => {
+                          if (!isSubmitted && (event.key === 'Enter' || event.key === ' ')) {
+                            event.preventDefault();
+                            handleAnswerSelection(idx);
+                          }
+                        }}
+                        className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-6 rounded-[25px] flex items-center gap-6'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e96f34] ${cardClass} relative overflow-hidden`}
+                        role="button"
+                        aria-label={`Alternativa ${String.fromCharCode(65 + idx)}: ${opt}`}
+                        aria-pressed={isSelected}
+                        aria-disabled={isSubmitted}
+                        tabIndex={isSubmitted ? -1 : 0}
+                      >
                         <div className={`flex items-center flex-1 ${isQuickMode ? 'justify-center' : 'gap-6'}`}>
                           <span className={`${isQuickMode ? 'w-10 h-10 rounded-xl' : 'w-12 h-12 rounded-full'} border flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-all ${circleClass}`}>{String.fromCharCode(65 + idx)}</span>
                           {!isQuickMode && <span className={`text-[16px] leading-snug transition-colors flex-1 ${textClass}`}>{opt}</span>}

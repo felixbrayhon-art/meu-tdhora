@@ -75,7 +75,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, isLoading, error, onClo
                   <span className="block">você.</span>
                 </h2>
                 <p className="mt-5 max-w-sm text-sm font-medium leading-6 text-[#725e4a] dark:text-[#d1c7b3]">
-                  Conecte sua conta para levar cadernos, revisões e progresso para outros dispositivos.
+                  Conecte sua conta para levar perfil, edital, cadernos de questões e flashcards para outros dispositivos.
                 </p>
               </div>
 
@@ -120,7 +120,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, isLoading, error, onClo
                     Entre no seu ritmo.
                   </h1>
                   <p className="mt-4 max-w-md text-sm font-medium leading-6 text-[#8f8375] dark:text-[#c8c5a9]">
-                    Use sua conta Google para sincronizar seu progresso e continuar de onde parou.
+                    O Google sincroniza seu perfil, edital, pastas e cadernos de questões e flashcards. Anotações manuscritas, cronograma, revisões IA, ciclos e histórico continuam neste dispositivo.
                   </p>
                 </div>
 

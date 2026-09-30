@@ -5,7 +5,6 @@ import { getProactiveAdvice } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, BarChart3, Bookmark, ClipboardList, Zap, FileText, Smile, Heart, Cloud, ArrowRight, PenLine, RotateCcw, Copy, Briefcase, Folder, Clock, Calendar, Bell, AlertTriangle, Scale, Search } from './icons';
 import MotivationView from './MotivationView';
-import PerformanceView from './PerformanceView';
 
 interface HubProps {
   setView: (view: AppView) => void;
@@ -46,40 +45,73 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
 
   const pendingRevisions = smartRevisionItems.filter((i) => i.status === 'PENDING').length;
 
+  const handleHubTabKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+    const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const activeIndex = tabs.indexOf(document.activeElement as HTMLButtonElement);
+    if (activeIndex < 0 || tabs.length === 0) return;
+    event.preventDefault();
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? tabs.length - 1
+        : (activeIndex + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+    tabs[nextIndex].focus();
+    tabs[nextIndex].click();
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
-      <nav aria-label="Navegação do painel" role="tablist" className="sticky top-3 z-20 flex w-full max-w-full gap-1 overflow-x-auto rounded-[24px] border border-[#e9e0d4] dark:border-white/[0.06] bg-white dark:bg-[#272019] p-2 shadow-[0_8px_22px_rgba(71,60,51,0.07)] dark:shadow-none no-scrollbar scroll-smooth">
-        <button role="tab" aria-selected={activeTab === 'ESTUDO'} onClick={() => setActiveTab('ESTUDO')} className={`min-w-[118px] shrink-0 flex-1 whitespace-nowrap rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-wide transition-all ${activeTab === 'ESTUDO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <BookOpen className="w-6 h-6" />
-          ESTUDO
+      <div className="sticky top-3 z-20 flex items-center gap-2 rounded-[20px] border border-[#e9e0d4] bg-white p-2 shadow-sm dark:border-white/[0.06] dark:bg-[#272019] xl:hidden">
+        <label htmlFor="hub-section" className="sr-only">Seção do painel</label>
+        <select id="hub-section" value={activeTab} onChange={(event) => setActiveTab(event.target.value as HubCategory)} className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#e9e0d4] bg-[#fdfbf7] px-3 text-xs font-black uppercase tracking-wide text-[#473c33] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e96f34] dark:border-white/10 dark:bg-[#1c1712] dark:text-[#f4ebdd]">
+          <option value="ESTUDO">Estudo</option>
+          <option value="EDITAL">{stats.studyProfile === 'FACULDADE' ? 'Grade curricular' : 'Edital'}</option>
+          <option value="ORGANIZACAO">Organização</option>
+          <option value="RELAXE">Relaxe</option>
+          <option value="REVISAO">Revisão IA</option>
+          <option value="MOTIVACAO">Motivação</option>
+        </select>
+        <button onClick={() => setView('PERFORMANCE')} className="min-h-11 rounded-xl bg-[#473c33] px-4 text-[10px] font-black uppercase tracking-wide text-white transition hover:bg-[#5a4b3f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e96f34] dark:bg-[#d9772b] dark:hover:bg-[#c96a25]">
+          Desempenho
         </button>
-        <button role="tab" aria-selected={activeTab === 'EDITAL'} onClick={() => setActiveTab('EDITAL')} className={`min-w-[118px] shrink-0 flex-1 whitespace-nowrap rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-wide transition-all ${activeTab === 'EDITAL' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <FileText className="w-6 h-6" />
-          {stats.studyProfile === 'FACULDADE' ? 'GRADE CURRICULAR' : 'EDITAL'}
+      </div>
+
+      <nav aria-label="Navegação do painel" className="sticky top-3 z-20 hidden w-full max-w-full items-center justify-center gap-2 overflow-x-auto rounded-[24px] border border-[#e9e0d4] bg-white p-2 shadow-[0_8px_22px_rgba(71,60,51,0.07)] no-scrollbar scroll-smooth dark:border-white/[0.06] dark:bg-[#272019] dark:shadow-none xl:flex">
+        <div role="tablist" aria-label="Seções do painel" onKeyDown={handleHubTabKeyDown} className="flex shrink-0 items-center gap-1">
+        <button role="tab" tabIndex={activeTab === 'ESTUDO' ? 0 : -1} aria-selected={activeTab === 'ESTUDO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('ESTUDO')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'ESTUDO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+          <BookOpen className="w-4 h-4" />
+          Estudo
         </button>
-        <button role="tab" aria-selected={activeTab === 'ORGANIZACAO'} onClick={() => setActiveTab('ORGANIZACAO')} className={`min-w-[138px] shrink-0 flex-1 whitespace-nowrap rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-wide transition-all ${activeTab === 'ORGANIZACAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <ClipboardList className="w-6 h-6" />
-          ORGANIZAÇÃO
+        <button role="tab" tabIndex={activeTab === 'EDITAL' ? 0 : -1} aria-selected={activeTab === 'EDITAL'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('EDITAL')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'EDITAL' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+          <FileText className="w-4 h-4" />
+          {stats.studyProfile === 'FACULDADE' ? 'Grade' : 'Edital'}
         </button>
-        <button role="tab" aria-selected={activeTab === 'RELAXE'} onClick={() => setActiveTab('RELAXE')} className={`min-w-[112px] shrink-0 flex-1 whitespace-nowrap rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-wide transition-all ${activeTab === 'RELAXE' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <Smile className="w-6 h-6" />
-          RELAXE
+        <button role="tab" tabIndex={activeTab === 'ORGANIZACAO' ? 0 : -1} aria-selected={activeTab === 'ORGANIZACAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('ORGANIZACAO')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'ORGANIZACAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+          <ClipboardList className="w-4 h-4" />
+          Organização
         </button>
-        <button role="tab" aria-selected={activeTab === 'REVISAO'} onClick={() => setActiveTab('REVISAO')} className={`min-w-[128px] shrink-0 flex-1 whitespace-nowrap rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-wide transition-all ${activeTab === 'REVISAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <Zap className="w-6 h-6" />
-          REVISÃO IA
+        <button role="tab" tabIndex={activeTab === 'RELAXE' ? 0 : -1} aria-selected={activeTab === 'RELAXE'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('RELAXE')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'RELAXE' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+          <Smile className="w-4 h-4" />
+          Relaxe
         </button>
-        <button role="tab" aria-selected={activeTab === 'MOTIVACAO'} onClick={() => setActiveTab('MOTIVACAO')} className={`min-w-[126px] shrink-0 flex-1 whitespace-nowrap rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-wide transition-all ${activeTab === 'MOTIVACAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <Heart className="w-6 h-6" />
-          MOTIVAÇÃO
+        <button role="tab" tabIndex={activeTab === 'REVISAO' ? 0 : -1} aria-selected={activeTab === 'REVISAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('REVISAO')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'REVISAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+          <Zap className="w-4 h-4" />
+          Revisão IA
         </button>
-        <button onClick={() => setView('PERFORMANCE')} className="min-w-[130px] shrink-0 flex-1 whitespace-nowrap rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-wide text-[#8f8375] transition-all hover:bg-[#f7f3ed] hover:text-[#473c33]">
-          <BarChart3 className="w-6 h-6" />
-          DESEMPENHO
+        <button role="tab" tabIndex={activeTab === 'MOTIVACAO' ? 0 : -1} aria-selected={activeTab === 'MOTIVACAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('MOTIVACAO')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'MOTIVACAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+          <Heart className="w-4 h-4" />
+          Motivação
+        </button>
+        </div>
+        <div aria-hidden="true" className="h-8 w-px shrink-0 bg-[#e9e0d4] dark:bg-white/10" />
+        <button onClick={() => setView('PERFORMANCE')} className="shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] text-[#8f8375] transition-all hover:bg-[#f7f3ed] hover:text-[#473c33] dark:text-[#c2baa0] dark:hover:bg-[#3a2f22] dark:hover:text-[#f4ebdd]">
+          <BarChart3 className="w-4 h-4" />
+          Desempenho
         </button>
       </nav>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px]">
+      <div id="hub-tabpanel" role="tabpanel" aria-label={`Conteúdo: ${activeTab.toLowerCase()}`} tabIndex={0} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px] focus-visible:outline-none">
         {(activeTab === 'ESTUDO' || activeTab === 'EDITAL') && (
           <>
             {pendingRevisions > 0 && (
@@ -281,14 +313,15 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Foco na Grade' : 'Foco no Edital') : 'Batalha de Simulados'}</p>
                 </button>
 
-                <button onClick={() => setView('VR_METHOD')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
+                <button type="button" disabled aria-describedby="vr-method-status" className={`p-6 rounded-[30px] text-left border transition-all cursor-not-allowed opacity-75 group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
+                  <span id="vr-method-status" className="absolute top-5 right-5 rounded-full bg-[#fff1e8] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-[#b65f2e] dark:bg-[#3a2f22] dark:text-[#e8a46f]">Em desenvolvimento</span>
                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
                     <Search className="w-7 h-7" />
                   </div>
                   <h2 className="font-logo text-2xl mb-2 relative z-10 uppercase">
                     Método <span className="text-[#fecc73]">VR</span>
                   </h2>
-                  <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Aprenda desmontando cada questão e descobrindo como a banca cobra</p>
+                  <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Engenharia reversa de questões, em breve.</p>
                 </button>
 
                 <button
@@ -435,8 +468,8 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
               <div className="mb-8 w-12 h-12 bg-white/20 text-white rounded-2xl flex items-center justify-center backdrop-blur-sm">
                 <Bell className="w-7 h-7" />
               </div>
-              <h2 className="font-logo text-2xl mb-2 uppercase">MODO FOCO</h2>
-              <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Saúde & Blindagem</p>
+              <h2 className="font-logo text-2xl mb-2 uppercase">PAUSAS & LEMBRETES</h2>
+              <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Água, medicação e transição</p>
             </button>
           </>
         )}

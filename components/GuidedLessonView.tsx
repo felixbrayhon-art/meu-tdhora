@@ -82,13 +82,9 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
 
     try {
       const saved = localStorage.getItem('saved_guided_lessons');
-      let parsed: SavedGuidedLesson[] = [];
-
-      try {
-        parsed = saved ? JSON.parse(saved) : [];
-      } catch (e) {
-        console.error('Malformed saved_guided_lessons in localStorage, resetting.');
-        parsed = [];
+      let parsed: SavedGuidedLesson[] = saved ? JSON.parse(saved) : [];
+      if (!Array.isArray(parsed)) {
+        throw new Error('saved_guided_lessons não contém uma lista válida.');
       }
 
       if (isSaved) {
@@ -111,7 +107,9 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
       localStorage.setItem('saved_guided_lessons', JSON.stringify(parsed));
     } catch (e) {
       console.error('Failed to toggle save lesson:', e);
-      alert('Não foi possível salvar a aula localmente (espaço insuficiente ou erro de sistema).');
+      alert(e instanceof SyntaxError
+        ? 'Os dados das aulas salvas estão inválidos. Mantive o conteúdo original e não sobrescrevi seus dados.'
+        : 'Não foi possível salvar a aula localmente (espaço insuficiente ou erro de sistema).');
     }
   };
 

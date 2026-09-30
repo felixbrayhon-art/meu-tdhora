@@ -151,17 +151,17 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="flex-1 w-full flex flex-col bg-[#FDFBF7] h-full" style={{ overflowY: 'auto' }}>
-      <div className="bg-white px-8 py-8 md:py-10 shadow-sm border-b border-gray-100 flex-shrink-0 flex items-center justify-between sticky top-0 z-30">
+    <div className="flex-1 w-full flex flex-col bg-[#FDFBF7] text-[#473c33] h-full dark:bg-[#1c1712] dark:text-[#f4ebdd]" style={{ overflowY: 'auto' }}>
+      <div className="bg-white px-8 py-8 md:py-10 shadow-sm border-b border-gray-100 flex-shrink-0 flex items-center justify-between sticky top-0 z-30 dark:bg-[#272019] dark:border-white/[0.08]">
         <div>
-          <h2 className="font-logo text-3xl text-gray-900 flex items-center gap-3">
+          <h2 className="font-logo text-3xl text-gray-900 flex items-center gap-3 dark:text-[#f4ebdd]">
             <Scale className="w-8 h-8 text-[#fdad74]" />
             Vade Mecum
           </h2>
           <select
             value={lawId}
             onChange={(e) => { cancelPageTurn(); setLawId(e.target.value); }}
-            className="mt-1 text-gray-500 font-medium tracking-wide uppercase text-sm bg-transparent border-none focus:outline-none cursor-pointer hover:text-gray-700"
+            className="mt-1 text-gray-500 font-medium tracking-wide uppercase text-sm bg-transparent border-none focus:outline-none cursor-pointer hover:text-gray-700 dark:text-[#c2baa0] dark:hover:text-white"
           >
             {VADE_MECUM_LAWS.map((law) => (
               <option key={law.id} value={law.id}>{law.name}</option>
@@ -169,7 +169,7 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
           </select>
         </div>
 
-        <button onClick={onBack} className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors uppercase tracking-widest text-sm">
+        <button onClick={onBack} className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors uppercase tracking-widest text-sm dark:bg-[#3a2f22] dark:text-[#f4ebdd] dark:hover:bg-[#493a29]">
           Voltar
         </button>
       </div>
@@ -177,7 +177,7 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
       <div className="p-6 md:p-10 w-full max-w-6xl mx-auto space-y-6">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input value={query} onChange={(e) => { cancelPageTurn(); setQuery(e.target.value); }} placeholder="Buscar por número do artigo ou palavra-chave..." className="w-full bg-white border-2 border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-base font-medium focus:outline-none focus:border-[#fdb887] transition-colors" />
+          <input value={query} onChange={(e) => { cancelPageTurn(); setQuery(e.target.value); }} placeholder="Buscar por número do artigo ou palavra-chave..." className="w-full bg-white border-2 border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-base font-medium focus:outline-none focus:border-[#fdb887] transition-colors dark:bg-[#292a23] dark:border-white/10 dark:text-[#f4ebdd] dark:placeholder:text-[#aaa58e]" />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#eadfce] bg-white p-3 dark:border-[#454438] dark:bg-[#292a23]">
@@ -201,12 +201,12 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
 
         {articles && (
           <>
-            <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">
+            <p className="text-gray-400 font-bold uppercase tracking-widest text-xs dark:text-[#aaa58e]">
               {filtered.length} de {articles.length} artigos
             </p>
 
             {filtered.length === 0 ? (
-              <p className="text-center text-gray-400 font-bold py-12">Nenhum artigo encontrado.</p>
+              <p className="text-center text-gray-400 font-bold py-12 dark:text-[#aaa58e]">Nenhum artigo encontrado.</p>
             ) : readingMode === 'book' ? (
               <section aria-label="Leitura em formato de livro" className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-3 px-1">
@@ -280,10 +280,10 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
                 }
 
                 return (
-                  <button key={article.numero} onClick={() => setOpenArticle(article.numero)} className="w-full bg-white rounded-2xl border-2 border-gray-100 flex items-center justify-between gap-4 p-5 text-left hover:shadow-lg hover:border-[#fed6ba] transition-all">
+                  <button key={article.numero} onClick={() => setOpenArticle(article.numero)} className="w-full bg-white rounded-2xl border-2 border-gray-100 flex items-center justify-between gap-4 p-5 text-left hover:shadow-lg hover:border-[#fed6ba] transition-all dark:bg-[#292a23] dark:border-white/[0.08] dark:hover:border-[#e96f34]/50">
                     <div className="min-w-0">
-                      <p className="font-black text-gray-900">Art. {article.numero}</p>
-                      {context && <p className="text-xs text-gray-400 font-bold uppercase tracking-wide truncate">{context}</p>}
+                      <p className="font-black text-gray-900 dark:text-[#f4ebdd]">Art. {article.numero}</p>
+                      {context && <p className="text-xs text-gray-400 font-bold uppercase tracking-wide truncate dark:text-[#aaa58e]">{context}</p>}
                     </div>
                     <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
                   </button>

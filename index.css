@@ -878,3 +878,287 @@ html.dark .curriculum-editor > div {
         animation-duration: 1ms;
     }
 }
+
+/* Reusable rotating book cover for notebooks and study notes. */
+.study-book {
+    --study-book-color: #f97316;
+    --study-book-ink: #fffaf0;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 0.76;
+    perspective: 1100px;
+    isolation: isolate;
+}
+.study-book__pages {
+    position: absolute;
+    inset: 4% 3% 3% 11%;
+    overflow: hidden;
+    border-radius: 3px 12px 12px 3px;
+    background: repeating-linear-gradient(to bottom, #fffdf7 0 11px, #e9e0d3 12px 13px);
+    box-shadow: 3px 5px 9px rgba(38, 29, 20, .2);
+}
+.study-book__page-lines {
+    position: absolute;
+    inset: 0 auto 0 12%;
+    width: 1px;
+    background: rgba(236, 99, 0, .2);
+}
+.study-book__preview {
+    position: absolute;
+    inset: 10% 10% 10% 20%;
+    overflow: hidden;
+    border-radius: 4px;
+    opacity: .78;
+}
+.study-book__preview img { width: 100%; height: 100%; object-fit: cover; }
+.study-book__cover {
+    position: absolute;
+    inset: 0 5% 0 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12% 11% 11% 17%;
+    overflow: hidden;
+    border-radius: 4px 14px 14px 4px;
+    color: var(--study-book-ink);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--study-book-color), white 16%), var(--study-book-color) 68%, color-mix(in srgb, var(--study-book-color), black 20%));
+    box-shadow: inset 1px 0 rgba(255,255,255,.24), inset -2px 0 rgba(20,15,10,.14), 0 9px 18px rgba(38,29,20,.2);
+    transform: rotateY(0deg) translateZ(2px);
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    transition: transform 620ms cubic-bezier(.2,.6,.3,1), box-shadow 620ms cubic-bezier(.2,.6,.3,1);
+    will-change: transform;
+}
+.study-book__spine {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 10%;
+    background: linear-gradient(90deg, rgba(20,15,10,.35), rgba(255,255,255,.12), rgba(20,15,10,.18));
+    border-right: 1px solid rgba(255,255,255,.18);
+}
+.study-book__brand {
+    font-size: clamp(6px, 1.4vw, 10px);
+    line-height: 1.2;
+    font-weight: 900;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    opacity: .82;
+}
+.study-book__title {
+    display: -webkit-box;
+    max-height: 58%;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow-wrap: anywhere;
+    font-size: clamp(12px, 2.5vw, 22px);
+    line-height: 1.08;
+    font-weight: 900;
+    text-transform: uppercase;
+    text-shadow: 0 1px 1px rgba(0,0,0,.12);
+}
+.study-book:hover .study-book__cover,
+.group:hover .study-book__cover {
+    transform: rotateY(-24deg) translateZ(2px);
+    box-shadow: inset 1px 0 rgba(255,255,255,.24), inset -2px 0 rgba(20,15,10,.14), 10px 12px 20px rgba(38,29,20,.22);
+}
+.study-book--saved-note .study-book__cover {
+    transform: rotateY(-8deg) translateZ(2px);
+}
+.study-book--compact {
+    transform: scale(.9);
+    transform-origin: center;
+}
+.study-book--saved-note:hover .study-book__cover,
+.group:hover .study-book--saved-note .study-book__cover {
+    transform: rotateY(-38deg) translateZ(2px);
+}
+
+/* ToDAHora styling for the floating Excalidraw drawing toolbar. */
+.notes-excalidraw-surface .Island.App-toolbar {
+    --island-bg-color: rgba(255, 253, 247, .96);
+    --icon-fill-color: #473c33;
+    --keybinding-color: #9a8872;
+    --button-hover-bg: #f4ebdd;
+    --button-active-border: #ec6300;
+    --color-surface-primary-container: #ffead7;
+    --color-on-primary-container: #b54d08;
+    padding: 5px;
+    border: 1px solid #e8deca;
+    border-radius: 16px;
+    background: var(--island-bg-color) !important;
+    box-shadow: 0 12px 28px rgba(20, 15, 10, .18);
+    backdrop-filter: blur(14px);
+}
+.notes-excalidraw-surface .Island.App-toolbar .ToolIcon__icon {
+    border-radius: 10px;
+    transition: background-color .16s ease, color .16s ease, transform .16s ease;
+}
+.notes-excalidraw-surface .Island.App-toolbar .ToolIcon__icon:hover {
+    transform: translateY(-1px);
+}
+.notes-excalidraw-surface .Island.App-toolbar .ToolIcon__keybinding {
+    bottom: 2px;
+    right: 3px;
+    padding: 0 3px;
+    border-radius: 4px;
+    background: rgba(71, 60, 51, .07);
+    color: var(--keybinding-color);
+    font-size: 8px;
+    line-height: 1.2;
+}
+.dark .notes-excalidraw-surface .Island.App-toolbar {
+    --island-bg-color: rgba(39, 37, 32, .96);
+    --icon-fill-color: #eee7cf;
+    --keybinding-color: #b8aa8b;
+    --button-hover-bg: rgba(255, 255, 255, .08);
+    --button-active-border: #ff832a;
+    --color-surface-primary-container: rgba(236, 99, 0, .2);
+    --color-on-primary-container: #ffc77a;
+    border-color: rgba(244, 235, 221, .16);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .34);
+}
+.dark .notes-excalidraw-surface .Island.App-toolbar .ToolIcon__keybinding {
+    background: rgba(244, 235, 221, .1);
+}
+/* Make Excalidraw's canvas menu match ToDAHora and stay usable on touch. */
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-container {
+    width: min(20rem, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    max-height: min(68dvh, 34rem);
+    padding: 8px;
+    overflow-y: auto;
+    border: 1px solid #e8deca;
+    border-radius: 18px;
+    background: rgba(255, 253, 247, .98) !important;
+    color: #473c33;
+    box-shadow: 0 16px 40px rgba(20, 15, 10, .24);
+    backdrop-filter: blur(16px);
+}
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item-base {
+    min-height: 44px;
+    font-size: .9rem;
+    color: #473c33;
+}
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item,
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item-bare {
+    height: auto;
+    min-height: 44px;
+    margin: 2px 0;
+    padding: 7px 10px;
+    border-radius: 11px;
+}
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item svg,
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item-bare svg {
+    flex: 0 0 auto;
+    color: #8a7968;
+}
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item__shortcut {
+    color: #8a7968;
+    font-size: .75rem;
+    opacity: 1;
+}
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-group:not(:first-child) {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eee6d6;
+}
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-group-title {
+    margin: 4px 4px 8px;
+    color: #9a5b2c;
+    font-size: .68rem;
+    font-weight: 900;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item:hover,
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item:focus-visible,
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item-bare:hover,
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item-bare:focus-visible {
+    background-color: #f4ebdd;
+}
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item:focus-visible,
+.notes-excalidraw-surface .dropdown-menu .dropdown-menu-item-bare:focus-visible {
+    outline: 2px solid #ec6300;
+    outline-offset: 1px;
+}
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-container {
+    border-color: rgba(244, 235, 221, .16);
+    background: rgba(39, 37, 32, .98) !important;
+    color: #eee7cf;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, .42);
+}
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-item-base {
+    color: #eee7cf;
+}
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-item svg,
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-item-bare svg,
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-item__shortcut {
+    color: #c9bea5;
+}
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-group:not(:first-child) {
+    border-top-color: rgba(244, 235, 221, .12);
+}
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-group-title {
+    color: #ffad70;
+}
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-item:hover,
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-item:focus-visible,
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-item-bare:hover,
+.dark .notes-excalidraw-surface .dropdown-menu .dropdown-menu-item-bare:focus-visible {
+    background-color: rgba(255, 255, 255, .08);
+}
+/* Larger hit areas make the drawing controls comfortable with touch and Pencil. */
+@media (pointer: coarse) {
+    .notes-excalidraw-surface .Island.App-toolbar .ToolIcon__icon,
+    .notes-excalidraw-surface .App-toolbar-container .ToolIcon__icon {
+        width: 44px !important;
+        height: 44px !important;
+    }
+    .notes-excalidraw-surface .Island.App-toolbar .ToolIcon__icon svg,
+    .notes-excalidraw-surface .App-toolbar-container .ToolIcon__icon svg {
+        width: 21px;
+        height: 21px;
+    }
+    .notes-excalidraw-surface .Island.App-toolbar .ToolIcon__keybinding {
+        display: none;
+    }
+}
+@media (max-width: 600px) {
+    .notes-excalidraw-surface .Island.App-toolbar {
+        max-width: calc(100vw - 28px);
+        overflow-x: auto;
+    }
+    .notes-excalidraw-surface .Island.App-toolbar .ToolIcon__keybinding {
+        display: none;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .study-book__cover { transition-duration: 1ms; }
+}
+
+/* Keep the performance dashboard readable when the app's manual dark theme is on. */
+.dark .performance-view {
+    background: #1c1712;
+    color: #f4ebdd;
+}
+.dark .performance-view [class*="bg-white"],
+.dark .performance-view [class*="bg-[#fdfbf7]"],
+.dark .performance-view [class*="bg-[#f7f3ed]"] {
+    background-color: #272019;
+}
+.dark .performance-view [class*="bg-[#fff6e8]"] {
+    background-color: #3a2f22;
+}
+.dark .performance-view [class*="text-[#473c33]"] {
+    color: #f4ebdd;
+}
+.dark .performance-view [class*="text-[#a79c8e]"],
+.dark .performance-view [class*="text-[#8f8375]"] {
+    color: #c2b6a6;
+}
+.dark .performance-view [class*="border-[#eee6d6]"],
+.dark .performance-view [class*="border-[#e9e0d4]"] {
+    border-color: rgba(244, 235, 221, .14);
+}

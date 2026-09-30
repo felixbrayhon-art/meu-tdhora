@@ -28,7 +28,7 @@ const PerformanceView: React.FC<PerformanceViewProps> = ({ attempts, folders, sm
       totalCorrect,
       totalErrors,
       uniqueFolders,
-      accuracy: accuracy.toFixed(2),
+      accuracy: totalQuestions > 0 ? accuracy.toFixed(1) : '—',
       totalAttempts: attempts.length,
     };
   }, [attempts]);
@@ -127,7 +127,7 @@ const PerformanceView: React.FC<PerformanceViewProps> = ({ attempts, folders, sm
   const hasPerformanceData = overallStats.totalQuestions > 0;
 
   return (
-    <div className="min-h-full overflow-x-hidden bg-[#f7f3ed] pb-24 font-sans text-[#473c33]">
+    <div className="performance-view min-h-full overflow-x-hidden bg-[#f7f3ed] pb-24 font-sans text-[#473c33]">
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -165,7 +165,7 @@ const PerformanceView: React.FC<PerformanceViewProps> = ({ attempts, folders, sm
                 <h3 className="mt-3 text-3xl font-black text-[#94b866] tracking-tight">{overallStats.totalCorrect}</h3>
               </div>
               <div className="rounded-2xl border border-[#eee6d6] bg-[#fdfbf7] p-4">
-                <p className="text-[10px] font-black text-[#a79c8e] uppercase tracking-widest">Matérias estudadas</p>
+                <p className="text-[10px] font-black text-[#a79c8e] uppercase tracking-widest">Pastas com treino</p>
                 <h3 className="mt-3 text-3xl font-black text-[#473c33] tracking-tight">{overallStats.uniqueFolders}</h3>
               </div>
               <div className="rounded-2xl border border-[#f4dede] bg-[#fff8f8] p-4">
@@ -200,8 +200,8 @@ const PerformanceView: React.FC<PerformanceViewProps> = ({ attempts, folders, sm
                   )}
                   <div className="absolute inset-0 flex items-center justify-center text-center">
                     <div>
-                      <span className="block text-3xl font-black text-[#473c33]">{overallStats.accuracy}%</span>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-[#a79c8e]">aproveitamento</span>
+                      <span className="block text-3xl font-black text-[#473c33]">{overallStats.accuracy}{hasPerformanceData ? '%' : ''}</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#a79c8e]">{hasPerformanceData ? 'aproveitamento' : 'sem treinos ainda'}</span>
                     </div>
                   </div>
                 </div>

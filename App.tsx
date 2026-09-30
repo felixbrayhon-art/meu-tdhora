@@ -1,49 +1,68 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { AppView, TimerMode, Flashcard, FlashcardFolder, UserStats, QuizFolder, Notebook, QuizAttempt, StudyPlan, DailyHistory, StudySubject, StudySession, Activity, QuizQuestion, StudyProfile, FocusSettings, EditalConfig, SmartRevisionSystem, SmartRevisionItem, ErrorVaultItem, SocialState, StudyCycle, StudyCycleStep, HandwrittenNote, NoteFolder } from './types';
 import Header from './components/Header';
 import Hub from './components/Hub';
-import TimerView from './components/TimerView';
-import FlashcardView from './components/FlashcardView';
-import AIView from './components/AIView';
-import MaterialsManager from './components/MaterialsManager';
-import QuizPlayer from './components/QuizPlayer';
-import TDHQuestoes from './components/TDHQuestoes';
-import StudyPlanView from './components/StudyPlanView';
-import ProfileView from './components/ProfileView';
-import CommunityView from './components/CommunityView';
 import LoginModal from './components/LoginModal';
 import SplashScreen from './components/SplashScreen';
 import FishCompanion from './components/FishCompanion';
 import BuildTag from './components/BuildTag';
 import OnboardingFlow from './components/OnboardingFlow';
 import ProfileSelection from './components/ProfileSelection';
-import FocusModeView from './components/FocusModeView';
-import FishCatalog from './components/FishCatalog';
-import VadeMecumView from './components/VadeMecumView';
-import NotesView from './components/NotesView';
-import AdminQuestionReview from './components/AdminQuestionReview';
-import VRMethodView from './components/VRMethodView';
 import { checkIsAdmin } from './services/questionBankService';
-import DynamicTimer from './components/DynamicTimer';
-import EditalSetup from './components/EditalSetup';
-import EditalView from './components/EditalView';
-import SmartRevisionView from './components/SmartRevisionView';
-import SocialModule from './components/SocialModule';
-import StudyCycleView from './components/StudyCycleView';
-import GuidedLessonView from './components/GuidedLessonView';
-import PerformanceView from './components/PerformanceView';
 import Sidebar from './components/Sidebar';
-import SavedGuidedLessonsView from './components/SavedGuidedLessonsView';
-import { DriveReader } from './components/DriveReader';
+
+const TimerView = lazy(() => import('./components/TimerView'));
+const FlashcardView = lazy(() => import('./components/FlashcardView'));
+const AIView = lazy(() => import('./components/AIView'));
+const MaterialsManager = lazy(() => import('./components/MaterialsManager'));
+const QuizPlayer = lazy(() => import('./components/QuizPlayer'));
+const TDHQuestoes = lazy(() => import('./components/TDHQuestoes'));
+const StudyPlanView = lazy(() => import('./components/StudyPlanView'));
+const ProfileView = lazy(() => import('./components/ProfileView'));
+const CommunityView = lazy(() => import('./components/CommunityView'));
+const FocusModeView = lazy(() => import('./components/FocusModeView'));
+const FishCatalog = lazy(() => import('./components/FishCatalog'));
+const VadeMecumView = lazy(() => import('./components/VadeMecumView'));
+const NotesView = lazy(() => import('./components/NotesView'));
+const AdminQuestionReview = lazy(() => import('./components/AdminQuestionReview'));
+const VRMethodView = lazy(() => import('./components/VRMethodView'));
+const DynamicTimer = lazy(() => import('./components/DynamicTimer'));
+const EditalSetup = lazy(() => import('./components/EditalSetup'));
+const EditalView = lazy(() => import('./components/EditalView'));
+const SmartRevisionView = lazy(() => import('./components/SmartRevisionView'));
+const SocialModule = lazy(() => import('./components/SocialModule'));
+const StudyCycleView = lazy(() => import('./components/StudyCycleView'));
+const GuidedLessonView = lazy(() => import('./components/GuidedLessonView'));
+const PerformanceView = lazy(() => import('./components/PerformanceView'));
+const SavedGuidedLessonsView = lazy(() => import('./components/SavedGuidedLessonsView'));
+const DriveReader = lazy(() => import('./components/DriveReader').then(({ DriveReader: Component }) => ({ default: Component })));
 
 const LOFI_RELAX_URL = 'https://stream.zeno.fm/0r0xa792kwzuv';
 const MPB_LOFI_URL = 'https://stream.zeno.fm/f978v6v6h0huv';
 const RAIN_SOUND_URL = 'https://www.soundjay.com/nature/rain-01.mp3';
 
+const APP_VIEW_IDS: AppView[] = [
+  'HUB', 'TIMER', 'FLASHCARDS', 'AI_DIRECT', 'MATERIALS', 'QUIZ_PLAYER', 'TDH_QUESTOES',
+  'STUDY_PLAN', 'PROFILE', 'COMMUNITY', 'FOCUS_MODE', 'DYNAMIC_TIMER', 'EDITAL_SETUP',
+  'EDITAL_VIEW', 'SMART_REVISION', 'ERROR_VAULT', 'SOCIAL_MODULE', 'STUDY_CYCLE',
+  'FISH_CATALOG', 'GUIDED_LESSON', 'PERFORMANCE', 'SAVED_GUIDED_LESSONS', 'DRIVE_READER',
+  'VADE_MECUM', 'NOTES', 'ADMIN_QUESTION_REVIEW', 'VR_METHOD',
+];
+const STUDY_VIEWS: AppView[] = [
+  'STUDY_CYCLE', 'FLASHCARDS', 'DYNAMIC_TIMER', 'TDH_QUESTOES', 'DRIVE_READER',
+  'MATERIALS', 'QUIZ_PLAYER', 'GUIDED_LESSON', 'TIMER', 'FOCUS_MODE', 'VR_METHOD',
+];
+
+const readViewFromUrl = (): AppView => {
+  const value = new URLSearchParams(window.location.search).get('view');
+  return APP_VIEW_IDS.includes(value as AppView) ? (value as AppView) : 'HUB';
+};
+
 import { auth, googleProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, db, handleFirestoreError, OperationType, FirebaseUser, cleanData } from './src/lib/firebase';
 import { doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 import { CharacterProvider } from './contexts/CharacterContext';
 import { syncPublicProfile } from './services/socialService';
+import { addLocalDays, toLocalDateKey } from './utils/localDate';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -66,7 +85,37 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isStorageFull, setIsStorageFull] = useState(false);
   const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<AppView>('HUB');
+  const [currentView, setCurrentViewState] = useState<AppView>(readViewFromUrl);
+  const viewHistoryRef = useRef<AppView[]>([currentView]);
+  const [isRevisionNoticeDismissed, setIsRevisionNoticeDismissed] = useState(false);
+  const setCurrentView = useCallback((view: AppView) => {
+    const stack = viewHistoryRef.current;
+    if (stack[stack.length - 1] === view) return;
+    if (stack.length > 1 && stack[stack.length - 2] === view) {
+      window.history.back();
+      return;
+    }
+
+    setCurrentViewState(view);
+    setIsRevisionNoticeDismissed(false);
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view);
+    window.history.pushState({ ...window.history.state, appView: view }, '', `${url.pathname}${url.search}${url.hash}`);
+    stack.push(view);
+  }, []);
+
+  useEffect(() => {
+    const syncViewWithHistory = () => {
+      const nextView = readViewFromUrl();
+      const stack = viewHistoryRef.current;
+      if (stack.length > 1 && stack[stack.length - 2] === nextView) stack.pop();
+      else if (stack[stack.length - 1] !== nextView) stack.push(nextView);
+      setIsRevisionNoticeDismissed(false);
+      setCurrentViewState(nextView);
+    };
+    window.addEventListener('popstate', syncViewWithHistory);
+    return () => window.removeEventListener('popstate', syncViewWithHistory);
+  }, []);
   const [timerMode, setTimerMode] = useState<TimerMode>(TimerMode.POMODORO);
   const [showGlobalBar, setShowGlobalBar] = useState(true);
 
@@ -232,18 +281,13 @@ const App: React.FC = () => {
   } | null>(null);
   const [prefillQuiz, setPrefillQuiz] = useState<string | null>(null);
 
-  const [tempBypass, setTempBypass] = useState<boolean>(false);
-
   const getPendingRevisionsCount = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = toLocalDateKey();
     return smartSystem.queue.filter((item) => item.status === 'PENDING' && item.scheduledDate <= todayStr).length;
   };
 
-  useEffect(() => {
-    if (currentView === 'HUB') {
-      setTempBypass(false);
-    }
-  }, [currentView]);
+  const pendingRevisionCount = getPendingRevisionsCount();
+  const showRevisionNotice = STUDY_VIEWS.includes(currentView) && pendingRevisionCount > 0 && !isRevisionNoticeDismissed;
 
   // States for Sidebar Navigation
   const [tdhQuestionSession, setTDHQuestionSession] = useState(false);
@@ -661,7 +705,7 @@ const App: React.FC = () => {
   };
 
   const logStudyMinutes = (minutes: number) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateKey();
     setHistory((prev) => ({ ...prev, [today]: (prev[today] || 0) + minutes }));
     addXP(minutes * 2);
 
@@ -703,10 +747,7 @@ const App: React.FC = () => {
   };
 
   const scheduleRevision = (topic: string, subjectName: string) => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const d1Date = tomorrow.toISOString().split('T')[0];
+    const d1Date = addLocalDays(new Date(), 1);
 
     const d1: SmartRevisionItem = {
       id: Math.random().toString(36).substr(2, 9),
@@ -748,13 +789,11 @@ const App: React.FC = () => {
         const nextInterval = intervals[item.intervalLevel] || 0;
 
         if (nextInterval > 0) {
-          const nextDate = new Date();
-          nextDate.setDate(nextDate.getDate() + nextInterval);
           const newItem: SmartRevisionItem = {
             ...item,
             id: Math.random().toString(36).substr(2, 9),
             intervalLevel: nextInterval as any,
-            scheduledDate: nextDate.toISOString().split('T')[0],
+            scheduledDate: addLocalDays(new Date(), nextInterval),
             status: 'PENDING',
             createdAt: Date.now(),
           };
@@ -763,13 +802,11 @@ const App: React.FC = () => {
         updateHeat(item.subjectName, 10);
       } else {
         // Re-schedule 1st Revision (Day 1) tomorrow
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
         const retryItem: SmartRevisionItem = {
           ...item,
           id: Math.random().toString(36).substr(2, 9),
           intervalLevel: 1,
-          scheduledDate: tomorrow.toISOString().split('T')[0],
+          scheduledDate: addLocalDays(new Date(), 1),
           status: 'PENDING',
           createdAt: Date.now(),
         };
@@ -858,7 +895,7 @@ const App: React.FC = () => {
     }));
   };
 
-  const handleSaveToNotebook = (folderId: string, notebookName: string, questions: QuizQuestion[], summary?: string) => {
+  const handleSaveToNotebook = (folderId: string, notebookName: string, questions: QuizQuestion[], summary?: string, notebookColor?: string, folderColor?: string) => {
     let targetFolderId = folderId;
 
     setFolders((prev) => {
@@ -870,6 +907,7 @@ const App: React.FC = () => {
         const newFolder: QuizFolder = {
           id: Math.random().toString(36).substr(2, 9),
           name: newName,
+          color: folderColor || '#f4ad2d',
           topic: newName,
           notebooks: [],
           createdAt: Date.now(),
@@ -888,6 +926,7 @@ const App: React.FC = () => {
               n.id === existingNotebook.id
                 ? {
                     ...n,
+                    color: notebookColor || n.color,
                     questions: [...n.questions, ...questions],
                     summary: summary || n.summary,
                   }
@@ -898,6 +937,7 @@ const App: React.FC = () => {
           const newNotebook: Notebook = {
             id: Math.random().toString(36).substr(2, 9),
             name: notebookName,
+            color: notebookColor || '#f97316',
             questions,
             summary,
             createdAt: Date.now(),
@@ -914,7 +954,7 @@ const App: React.FC = () => {
   // e nome do caderno no próprio TDHQuestoes; aqui só resolvemos esse destino
   // e já abrimos o QuizPlayer nele, sem passar pela tela de prática que
   // existia dentro do TDHQuestoes.
-  const handleStartFilteredQuiz = (topic: string, subject: string | undefined, questions: QuizQuestion[], folderId: string, notebookName: string) => {
+  const handleStartFilteredQuiz = (topic: string, subject: string | undefined, questions: QuizQuestion[], folderId: string, notebookName: string, notebookColor?: string, folderColor?: string) => {
     if (!questions.length) return;
     const isNewFolder = folderId.startsWith('NEW:');
     const newFolderName = isNewFolder ? folderId.replace('NEW:', '') : null;
@@ -925,18 +965,19 @@ const App: React.FC = () => {
     const newNotebook: Notebook = {
       id: notebookId,
       name: notebookName,
+      color: notebookColor || existingNotebook?.color || existingFolder?.color || '#f97316',
       questions,
       createdAt: Date.now(),
     };
 
     setFolders((prev) => {
       if (isNewFolder) {
-        return [...prev, { id: targetFolderId, name: newFolderName!, topic: newFolderName!, notebooks: [newNotebook], createdAt: Date.now() }];
+        return [...prev, { id: targetFolderId, name: newFolderName!, color: folderColor || '#f4ad2d', topic: newFolderName!, notebooks: [newNotebook], createdAt: Date.now() }];
       }
       return prev.map((f) => {
         if (f.id !== targetFolderId) return f;
         if (existingNotebook) {
-          return { ...f, notebooks: f.notebooks.map((n) => (n.id === existingNotebook.id ? { ...n, questions: [...n.questions, ...questions] } : n)) };
+          return { ...f, notebooks: f.notebooks.map((n) => (n.id === existingNotebook.id ? { ...n, color: notebookColor || n.color, questions: [...n.questions, ...questions] } : n)) };
         }
         return { ...f, notebooks: [...f.notebooks, newNotebook] };
       });
@@ -1150,7 +1191,7 @@ const App: React.FC = () => {
             <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop />
 
             {showGlobalBar && !isQuestionSession && (
-              <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[150] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500">
+              <div className="fixed left-1/2 -translate-x-1/2 z-[150] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500" style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
                 {isStorageFull && !user && <div className="bg-red-500 text-white text-[10px] font-black uppercase tracking-widest py-1 px-4 rounded-t-xl mb-[-10px] mx-auto w-fit shadow-lg animate-bounce">⚠️ Memória do Navegador Cheia! Entre com o Google para salvar na nuvem</div>}
                 <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl rounded-[35px] p-2 flex items-center justify-between gap-3 relative">
                   <button onClick={handleCloseGlobalBar} className="absolute -top-3 -right-3 w-8 h-8 bg-white shadow-md border border-gray-100 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 transition-all hover:scale-110 z-20" title="Parar atividades e fechar">
@@ -1199,98 +1240,26 @@ const App: React.FC = () => {
               </div>
             )}
 
-            <main className="max-w-[1400px] min-h-full mx-auto px-4 py-8 relative">
-              {(() => {
-                const STUDY_VIEWS = ['STUDY_CYCLE', 'FLASHCARDS', 'DYNAMIC_TIMER', 'TDH_QUESTOES', 'DRIVE_READER', 'MATERIALS', 'QUIZ_PLAYER', 'GUIDED_LESSON', 'TIMER', 'FOCUS_MODE', 'VR_METHOD'];
-                const isStudyView = STUDY_VIEWS.includes(currentView);
-                const pendingCount = getPendingRevisionsCount();
+            <main className="max-w-[1400px] min-h-full mx-auto px-4 pt-8 relative" style={{ paddingBottom: showGlobalBar && !isQuestionSession ? 'calc(10rem + env(safe-area-inset-bottom, 0px))' : '2rem' }}>
+              {showRevisionNotice && (
+                <aside role="status" className="mb-5 flex flex-col gap-3 rounded-2xl border border-[#e5d7bd] bg-[#fff8ec] px-4 py-3 text-[#473c33] shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-[#65533d] dark:bg-[#2b241b] dark:text-[#f4ebdd]">
+                  <p className="text-sm font-semibold">
+                    <span className="font-black">{pendingRevisionCount} {pendingRevisionCount === 1 ? 'revisão pendente' : 'revisões pendentes'}.</span>{' '}
+                    Você pode revisar agora ou continuar estudando.
+                  </p>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button onClick={() => setCurrentView('SMART_REVISION')} className="rounded-xl bg-[#e96f34] px-4 py-2 text-xs font-black text-white transition hover:bg-[#d8612b]">
+                      Abrir revisão
+                    </button>
+                    <button onClick={() => setIsRevisionNoticeDismissed(true)} aria-label="Dispensar aviso de revisão" className="rounded-xl px-3 py-2 text-xs font-bold text-[#725442] hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e96f34] dark:text-[#d8c8b2] dark:hover:bg-white/10">
+                      Agora não
+                    </button>
+                  </div>
+                </aside>
+              )}
 
-                if (isStudyView && pendingCount > 0 && !tempBypass) {
-                  return (
-                    <div className="max-w-3xl mx-auto my-12 bg-white rounded-[40px] p-8 md:p-14 shadow-2xl border border-red-100 flex flex-col items-center text-center relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-red-100/30 blur-3xl rounded-full" />
-                      <div className="absolute -bottom-8 -left-8 w-64 h-64 bg-[#fff0d5]/30 blur-3xl rounded-full" />
-
-                      <div className="w-24 h-24 bg-red-50 text-red-500 rounded-[30px] border-2 border-red-100 flex items-center justify-center text-4xl mb-8 relative z-10 animate-bounce">🛑</div>
-
-                      <span className="bg-red-50 text-red-600 px-4 py-1.5 rounded-full font-black text-[10px] tracking-widest uppercase mb-4 relative z-10">Peixe-IA Guia: Bloqueio de Segurança</span>
-
-                      <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight mb-4 uppercase tracking-tighter relative z-10">Revisão Espaçada Obrigatória!</h2>
-
-                      <p className="text-gray-500 text-sm font-semibold max-w-xl mb-8 leading-relaxed relative z-10">
-                        O algoritmo do seu cronograma detectou{' '}
-                        <span className="text-[#fec868] font-black">
-                          {pendingCount} {pendingCount === 1 ? 'revisão pendente' : 'revisões pendentes'}
-                        </span>{' '}
-                        hoje pela <span className="text-red-500 font-extrabold text-[#EF4444]">Regra de Revisão Espaçada (24/7/30)</span>. Consolidar o que já estudou impede a sobrecarga cognitiva e o esquecimento de dados cruciais para as suas provas!
-                      </p>
-
-                      <div className="bg-slate-50 border border-slate-100 p-6 rounded-3xl w-full max-w-lg text-left mb-8 space-y-4 relative z-10">
-                        <h4 className="text-xs font-black uppercase text-[#473c33] tracking-wider mb-2 flex items-center gap-2">🔄 Entendendo o Ciclo de Foco (Regra 24/7/30):</h4>
-                        <ul className="text-xs text-gray-500 space-y-2 font-semibold">
-                          <li className="flex gap-2">
-                            <span className="text-[#fecc73] font-black">⚡</span>
-                            <span>
-                              <strong>1ª Revisão (até 24h):</strong> Essencial em até 24 horas após o primeiro contato para deter a queda mais acentuada de fixação neurológica.
-                            </span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-[#fecc73] font-black">📅</span>
-                            <span>
-                              <strong>2ª Revisão (7 dias):</strong> Executada em até 7 dias após a primeira revisão para consolidar os blocos iniciais de memória.
-                            </span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-[#fecc73] font-black">🧠</span>
-                            <span>
-                              <strong>3ª Revisão (30 dias):</strong> Executada em até 30 dias após a segunda revisão, transferindo as informações das matérias de provas de forma sólida para a memória de longo prazo.
-                            </span>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-lg h-14 relative z-10">
-                        <button
-                          onClick={() => {
-                            setCurrentView('SMART_REVISION');
-                          }}
-                          className="flex-1 bg-[#fec868] hover:bg-[#fecc73] text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl shadow-[#fff0d5]/60 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
-                        >
-                          🚀 Iniciar Revisões Pendentes ({pendingCount})
-                        </button>
-
-                        <button onClick={() => setCurrentView('HUB')} className="px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-widest rounded-2xl transition-all">
-                          Voltar ao Hub
-                        </button>
-                      </div>
-
-                      <div className="mt-8 border-t border-gray-100 pt-6 w-full max-w-lg flex flex-col items-center justify-center relative z-10">
-                        <label className="flex items-start gap-3 cursor-pointer text-left text-[11px] text-gray-400 font-bold select-none max-w-md">
-                          <input
-                            type="checkbox"
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setTempBypass(true);
-                              }
-                            }}
-                            className="mt-0.5 rounded border-gray-300 text-[#fec868] focus:ring-[#fecc73] w-4 h-4"
-                          />
-                          <span>Estou ciente de que pular a revisão reduz a fixação em até 70% e declaro emergência de estudo para liberar este bloqueio temporariamente.</span>
-                        </label>
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-
-              {!(() => {
-                const STUDY_VIEWS = ['STUDY_CYCLE', 'FLASHCARDS', 'DYNAMIC_TIMER', 'TDH_QUESTOES', 'DRIVE_READER', 'MATERIALS', 'QUIZ_PLAYER', 'GUIDED_LESSON', 'TIMER', 'FOCUS_MODE', 'VR_METHOD'];
-                const isStudyView = STUDY_VIEWS.includes(currentView);
-                const pendingCount = getPendingRevisionsCount();
-                return isStudyView && pendingCount > 0 && !tempBypass;
-              })() && (
-                <>
+              <>
+                <Suspense fallback={<div role="status" className="flex min-h-[45vh] flex-col items-center justify-center gap-3 text-sm font-bold text-[#725442] dark:text-[#c2b6a6]"><span className="h-8 w-8 animate-spin rounded-full border-4 border-[#e96f34]/20 border-t-[#e96f34]" aria-hidden="true" />Carregando ferramenta…</div>}>
                   {currentView === 'HUB' && (
                     <Hub
                       setView={setCurrentView}
@@ -1438,7 +1407,7 @@ const App: React.FC = () => {
                       onRenameFolder={(folderId, name) =>
                         setFolders((prev) => prev.map((folder) => (folder.id === folderId ? { ...folder, name } : folder)))
                       }
-                      onCreateNotebook={(fid, name) =>
+                      onCreateNotebook={(fid, name, color) =>
                         setFolders((prev) =>
                           prev.map((f) =>
                             f.id === fid
@@ -1449,6 +1418,7 @@ const App: React.FC = () => {
                                     {
                                       id: Math.random().toString(36).substr(2, 9),
                                       name,
+                                      color: color || '#f97316',
                                       questions: [],
                                       createdAt: Date.now(),
                                     },
@@ -1456,6 +1426,13 @@ const App: React.FC = () => {
                                 }
                               : f,
                           ),
+                        )
+                      }
+                      onUpdateNotebook={(fid, nid, changes) =>
+                        setFolders((prev) =>
+                          prev.map((folder) => folder.id === fid
+                            ? { ...folder, notebooks: folder.notebooks.map((notebook) => notebook.id === nid ? { ...notebook, ...changes } : notebook) }
+                            : folder),
                         )
                       }
                       onDeleteFolder={(fid) => setFolders((prev) => prev.filter((f) => f.id !== fid))}
@@ -1669,6 +1646,7 @@ const App: React.FC = () => {
                         setNotes((prev) => prev.map((n) => (n.folderId === id ? { ...n, folderId: undefined } : n)));
                       }}
                       onRenameFolder={(id, name) => setNoteFolders((prev) => prev.map((f) => (f.id === id ? { ...f, name } : f)))}
+                      onUpdateFolderColor={(id, color) => setNoteFolders((prev) => prev.map((f) => (f.id === id ? { ...f, color } : f)))}
                       onBack={() => setCurrentView('HUB')}
                     />
                   )}
@@ -1707,8 +1685,8 @@ const App: React.FC = () => {
                     />
                   )}
                   {currentView === 'DRIVE_READER' && <DriveReader onBack={() => setCurrentView('HUB')} studyProfile={stats.studyProfile} activeChannel={activeChannel} setActiveChannel={setActiveChannel} isPlayingRain={isPlayingRain} setIsPlayingRain={setIsPlayingRain} audioVolume={audioVolume} setAudioVolume={setAudioVolume} />}
+                </Suspense>
                 </>
-              )}
             </main>
           </div>
         </div>
