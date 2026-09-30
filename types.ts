@@ -172,6 +172,8 @@ export type GuidedLessonStepType = 'OPENING' | 'OVERVIEW' | 'NARRATIVE' | 'CONCE
 export interface GuidedLessonStep {
   type: GuidedLessonStepType;
   content: string;
+  /** Exact excerpts from content that the alternate guided-lesson view should underline. */
+  keyPoints?: string[];
   pauseAfterMilliseconds?: number;
 }
 

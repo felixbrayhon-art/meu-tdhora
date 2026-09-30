@@ -1489,6 +1489,7 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
       IMPORTANTE:
       - Divida em blocos pequenos e impactantes.
       - O fluxo deve ser lógico: História -> Conceito -> Pergunta -> Resposta -> Associação.
+      - Em cada passo, inclua "keyPoints": de 1 a 3 trechos curtos copiados literalmente do próprio "content", escolhendo definições, regras, relações de causa e efeito ou conclusões essenciais. Não reescreva os trechos; se não houver um destaque útil, retorne um array vazio.
       - Não use emojis.
 
       Retorne em JSON rigoroso.`;
@@ -1505,6 +1506,7 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
           properties: {
             type: { type: 'string' },
             content: { type: 'string' },
+            keyPoints: { type: 'array', items: { type: 'string' } },
             pauseAfterMilliseconds: { type: 'number' },
           },
           required: ['type', 'content'],
@@ -1546,6 +1548,7 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
                 properties: {
                   type: { type: Type.STRING },
                   content: { type: Type.STRING },
+                  keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
                   pauseAfterMilliseconds: { type: Type.NUMBER }
                 },
                 required: ["type", "content"]

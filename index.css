@@ -750,81 +750,15 @@ html.dark .glass-card {
     box-shadow: inset 12px 0 18px -14px rgba(41, 32, 22, 0.42);
 }
 
-/* Optional GSAP-powered, page-by-page study view for Guided Lessons. */
-.guided-notebook-spread {
-    -webkit-perspective: 1600px;
-    perspective: 1600px;
-    -webkit-transform-style: preserve-3d;
-    transform-style: preserve-3d;
-    isolation: isolate;
-}
-
-.guided-notebook-page,
-.guided-notebook-cover {
-    background-color: #fffaf0;
-    background-image: repeating-linear-gradient(
-        to bottom,
-        transparent 0,
-        transparent 34px,
-        rgba(222, 203, 173, 0.38) 35px,
-        transparent 36px
-    );
-}
-
-.guided-notebook-page {
-    min-height: 0;
-}
-
-.guided-notebook-cover {
-    background-color: #f5ead8;
-}
-
-.guided-notebook-copy {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(156, 134, 102, 0.45) transparent;
-}
-
-.guided-notebook-flip-sheet {
-    position: absolute;
-    inset-block: 0;
-    right: 0;
-    z-index: 10;
-    width: 50%;
-    transform-style: preserve-3d;
-    -webkit-transform-style: preserve-3d;
-    pointer-events: none;
-    will-change: transform;
-}
-
-.guided-notebook-flip-face {
-    position: absolute;
-    inset: 0;
-    overflow: clip;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-}
-
-.guided-notebook-flip-face > .guided-notebook-page {
-    height: 100%;
-}
-
-.guided-notebook-flip-face .guided-notebook-copy {
-    overflow: clip;
-}
-
-.guided-notebook-flip-front {
-    box-shadow: inset -14px 0 20px -16px rgba(71, 60, 51, 0.48);
-}
-
-.guided-notebook-flip-back {
-    transform: rotateY(180deg);
-    box-shadow: inset 14px 0 20px -16px rgba(71, 60, 51, 0.4);
-}
-
-@media (max-width: 767px) {
-    .guided-notebook-flip-sheet {
-        width: 100%;
-    }
+/* GSAP reveals exact key excerpts in the alternate Guided Lesson reader. */
+.guided-key-point {
+    text-decoration-line: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 0.14em;
+    text-underline-offset: 0.18em;
+    text-decoration-skip-ink: none;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
 }
 
 @keyframes vade-page-turn-next {
