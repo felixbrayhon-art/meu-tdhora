@@ -761,6 +761,50 @@ html.dark .glass-card {
     -webkit-box-decoration-break: clone;
 }
 
+/* Maintain readable ink and cohesive surfaces when the app's dark theme is on. */
+html.dark .guided-highlight-view {
+    background-color: #24251f !important;
+    color: #f2efd2 !important;
+}
+
+html.dark .guided-highlight-intro,
+html.dark .guided-highlight-card {
+    background-color: #303129 !important;
+    border-color: rgba(242, 239, 210, 0.13) !important;
+}
+
+html.dark .guided-highlight-copy,
+html.dark .guided-highlight-intro h2,
+html.dark .guided-highlight-finish h3 {
+    color: #f2efd2 !important;
+}
+
+html.dark .guided-highlight-description,
+html.dark .guided-highlight-intro .guided-highlight-description,
+html.dark .guided-highlight-finish p {
+    color: #c8c5a9 !important;
+}
+
+html.dark .guided-highlight-label {
+    color: #f3a06c !important;
+}
+
+html.dark .guided-highlight-badge,
+html.dark .guided-highlight-count {
+    background-color: #3a3b32 !important;
+    border-color: rgba(242, 239, 210, 0.16) !important;
+    color: #f2efd2 !important;
+}
+
+html.dark .guided-highlight-finish {
+    background-color: #30372a !important;
+    border-color: rgba(177, 199, 123, 0.28) !important;
+}
+
+html.dark .guided-highlight-finish > svg {
+    color: #b1c77b !important;
+}
+
 @keyframes vade-page-turn-next {
     0% { transform: translate3d(0, 0, 1px) rotateY(0deg); }
     100% { transform: translate3d(0, 0, 1px) rotateY(-180deg); }
