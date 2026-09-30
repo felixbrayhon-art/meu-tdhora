@@ -527,45 +527,45 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
           </motion.div>
         )}
       </div> : (
-        <main ref={highlightViewRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-10" onScroll={(event) => {
+        <main ref={highlightViewRef} className="min-h-0 flex-1 overflow-y-auto bg-[#f5efe5] px-4 py-6 text-[#473c33] sm:px-8 sm:py-10" onScroll={(event) => {
           const element = event.currentTarget;
           const available = element.scrollHeight - element.clientHeight;
           setHighlightProgress(available > 0 ? (element.scrollTop / available) * 100 : 100);
         }}>
-          <div className="mx-auto max-w-4xl">
-            <div className="mb-8 rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:mb-10 sm:p-7">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-6 rounded-3xl border border-[#e5d9c8] bg-white p-5 shadow-[0_8px_24px_rgba(71,60,51,0.07)] sm:mb-8 sm:p-7">
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#fdad74]">Resumo visual da aula</p>
-                  <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">Pontos importantes</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/65">Acompanhe a explicação completa. Os trechos sublinhados marcam conceitos, regras e ideias para guardar.</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#bd5628]">Resumo visual da aula</p>
+                  <h2 className="mt-2 text-2xl font-black tracking-tight text-[#473c33] sm:text-3xl">Pontos importantes</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#76695b] sm:text-base">Acompanhe a explicação completa. Os trechos sublinhados marcam conceitos, regras e ideias para guardar.</p>
                 </div>
-                <span className="rounded-full border border-[#fecc73]/25 bg-[#fecc73]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#fed386]">{lessonSteps.length} etapas</span>
+                <span className="rounded-full border border-[#efdbb9] bg-[#fff6e7] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#80531b]">{lessonSteps.length} etapas</span>
               </div>
             </div>
 
             <div className="space-y-4 sm:space-y-5">
               {lessonSteps.map((step, index) => (
-                <article key={`${step.type}-${index}`} className={`rounded-3xl border p-5 shadow-lg shadow-black/10 sm:p-7 ${step.type === 'QUESTION_PAUSE' ? 'border-[#fecc73]/20 bg-[#fecc73]/[0.06]' : step.type === 'ANALOGY' ? 'border-[#fdad74]/20 bg-[#fdad74]/[0.05]' : 'border-white/[0.08] bg-white/[0.035]'}`}>
+                <article key={`${step.type}-${index}`} className={`rounded-3xl border p-5 shadow-[0_5px_16px_rgba(71,60,51,0.06)] sm:p-7 ${step.type === 'QUESTION_PAUSE' ? 'border-[#ead5a9] bg-[#fff8e9]' : step.type === 'ANALOGY' ? 'border-[#edc9b3] bg-[#fff4ed]' : 'border-[#e6ddcf] bg-white'}`}>
                   <div className="mb-4 flex items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.08] text-xs font-black text-[#fed386]">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f4ecdf] text-xs font-black text-[#80531b]">{String(index + 1).padStart(2, '0')}</span>
                     <div className="min-w-0">
-                      <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#fdad74]">{stepLabels[step.type] || 'Explicação'}</p>
-                      {getKeyPoints(step).length > 0 && <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-white/40">{getKeyPoints(step).length} {getKeyPoints(step).length === 1 ? 'ponto-chave' : 'pontos-chave'}</p>}
+                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#b64f26]">{stepLabels[step.type] || 'Explicação'}</p>
+                      {getKeyPoints(step).length > 0 && <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-[#867968]">{getKeyPoints(step).length} {getKeyPoints(step).length === 1 ? 'ponto-chave' : 'pontos-chave'}</p>}
                     </div>
                   </div>
-                  <p className={`whitespace-pre-line leading-[1.85] text-white/85 ${step.type === 'OPENING' ? 'text-xl font-bold sm:text-2xl' : step.type === 'CONCEPT' || step.type === 'REINFORCEMENT' ? 'text-base font-medium sm:text-lg' : 'text-sm sm:text-base'}`}>
+                  <p className={`whitespace-pre-line leading-[1.8] text-[#40372f] ${step.type === 'OPENING' ? 'text-xl font-bold sm:text-2xl' : step.type === 'CONCEPT' || step.type === 'REINFORCEMENT' ? 'text-lg font-medium sm:text-xl' : 'text-base sm:text-lg'}`}>
                     {renderStepContent(step)}
                   </p>
                 </article>
               ))}
             </div>
 
-            <div className="my-8 flex flex-col items-center gap-4 rounded-3xl border border-[#b1c77b]/20 bg-[#b1c77b]/[0.07] px-6 py-8 text-center sm:my-10">
-              <CheckCircle2 className="h-10 w-10 text-[#b1c77b]" />
+            <div className="my-8 flex flex-col items-center gap-4 rounded-3xl border border-[#cfddb5] bg-[#f1f6e9] px-6 py-8 text-center sm:my-10">
+              <CheckCircle2 className="h-10 w-10 text-[#718c49]" />
               <div>
-                <h3 className="text-lg font-black text-white">Fim da explicação</h3>
-                <p className="mt-1 text-sm text-white/60">Revise os trechos sublinhados antes de encerrar a aula.</p>
+                <h3 className="text-lg font-black text-[#354326]">Fim da explicação</h3>
+                <p className="mt-1 text-sm text-[#62734b]">Revise os trechos sublinhados antes de encerrar a aula.</p>
               </div>
               <button type="button" onClick={() => onComplete(5)} className="inline-flex items-center gap-2 rounded-2xl bg-[#b1c77b] px-5 py-3 text-xs font-black uppercase tracking-wider text-[#303b1c] shadow-lg transition hover:brightness-105">Concluir aula <ChevronRight className="h-4 w-4" /></button>
             </div>
