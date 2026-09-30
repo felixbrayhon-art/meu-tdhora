@@ -23,6 +23,7 @@
     "clsx": "^2.1.1",
     "dompurify": "^3.4.15",
     "firebase": "^11.3.1",
+    "gsap": "^3.15.0",
     "jspdf": "^2.5.2",
     "motion": "^12.38.0",
     "perfect-freehand": "^1.2.3",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Play, Pause, RotateCcw, Brain, CheckCircle2, ChevronRight, BookOpen, Download, Bookmark, BookmarkCheck } from './icons';
+import { gsap } from 'gsap';
 import { GuidedLesson, GuidedLessonStep, StudyProfile, ExplanationStyle, SavedGuidedLesson } from '../types';
 import { generateGuidedLesson } from '../services/geminiService';
 import BookLoader from './BookLoader';
@@ -32,9 +33,43 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
   const [isPaused, setIsPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [studyView, setStudyView] = useState<'immersive' | 'notebook'>(() => {
+    try {
+      return localStorage.getItem('guidedLessonStudyView') === 'notebook' ? 'notebook' : 'immersive';
+    } catch {
+      return 'immersive';
+    }
+  });
+  const [notebookPage, setNotebookPage] = useState(0);
+  const [pageTurnDirection, setPageTurnDirection] = useState<'next' | 'previous'>('next');
+  const [isTurningPage, setIsTurningPage] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const pageTurnRef = useRef<HTMLDivElement>(null);
+  const pageTurnTweenRef = useRef<gsap.core.Tween | null>(null);
   const lastPushedStepIndexRef = useRef<number>(-1);
+  const stepLabels: Record<GuidedLessonStep['type'], string> = {
+    OPENING: 'Abertura',
+    OVERVIEW: 'Visão geral',
+    NARRATIVE: 'Explicação',
+    CONCEPT: 'Conceito-chave',
+    QUESTION_PAUSE: 'Pausa para pensar',
+    REINFORCEMENT: 'Fixação',
+    ANALOGY: 'Analogia',
+    CLOSING_APPLICATION: 'Aplicação prática',
+  };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('guidedLessonStudyView', studyView);
+    } catch {
+      // Keep the selected view for this session if storage is unavailable.
+    }
+  }, [studyView]);
+
+  useEffect(() => () => {
+    pageTurnTweenRef.current?.kill();
+  }, []);
 
   useEffect(() => {
     // Check if current lesson is already saved
@@ -137,6 +172,10 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
   };
 
   const startLesson = (s: string, t: string) => {
+    setNotebookPage(0);
+    setCurrentStepIndex(0);
+    setDisplayedSteps([]);
+    lastPushedStepIndexRef.current = -1;
     setActiveSubject(s);
     setActiveTopic(t);
   };
@@ -164,7 +203,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
   }, [activeSubject, activeTopic, profile, explanationStyle, initialLesson]);
 
   useEffect(() => {
-    if (!lesson || isPaused) return;
+    if (!lesson || isPaused || studyView !== 'immersive') return;
 
     if (currentStepIndex < lesson.steps.length) {
       const step = lesson.steps[currentStepIndex];
@@ -189,16 +228,74 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
 
       return () => clearTimeout(timer);
     }
-  }, [currentStepIndex, lesson, isPaused]);
+  }, [currentStepIndex, lesson, isPaused, studyView]);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (studyView === 'immersive' && scrollRef.current) {
       scrollRef.current.scrollTo({
         top: scrollRef.current.scrollHeight,
         behavior: 'smooth',
       });
     }
-  }, [displayedSteps]);
+  }, [displayedSteps, studyView]);
+
+  const turnNotebookPage = (direction: 'next' | 'previous') => {
+    if (!lesson || isTurningPage) return;
+    const targetIndex = notebookPage + (direction === 'next' ? 1 : -1);
+    if (targetIndex < 0 || targetIndex >= lesson.steps.length) return;
+
+    setPageTurnDirection(direction);
+    setIsTurningPage(true);
+    requestAnimationFrame(() => {
+      const sheet = pageTurnRef.current;
+      if (!sheet) {
+        setNotebookPage(targetIndex);
+        setIsTurningPage(false);
+        return;
+      }
+
+      gsap.set(sheet, { rotationY: 0, transformOrigin: 'left center', force3D: true });
+      pageTurnTweenRef.current = gsap.to(sheet, {
+        rotationY: direction === 'next' ? -180 : 180,
+        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 0.78,
+        ease: 'power3.inOut',
+        force3D: true,
+        onComplete: () => {
+          setNotebookPage(targetIndex);
+          gsap.set(sheet, { clearProps: 'transform,transformOrigin' });
+          pageTurnTweenRef.current = null;
+          setIsTurningPage(false);
+        },
+      });
+    });
+  };
+
+  const renderNotebookPage = (step: GuidedLessonStep | undefined, index: number, back = false) => (
+    <div className={`guided-notebook-page ${back ? 'guided-notebook-page-back' : ''}`}>
+      <div className="flex h-full flex-col px-6 py-7 sm:px-10 sm:py-9">
+        <div className="flex items-center justify-between gap-4 border-b border-[#d9cbb6] pb-4 text-[10px] font-black uppercase tracking-[0.2em] text-[#aa8862]">
+          <span className="truncate">{activeSubject}</span>
+          <span className="shrink-0">{String(index + 1).padStart(2, '0')} / {String(lesson?.steps.length || 0).padStart(2, '0')}</span>
+        </div>
+        {step ? (
+          <div className="guided-notebook-copy min-h-0 flex-1 overflow-y-auto py-8 sm:py-10">
+            <p className="mb-4 text-[10px] font-black uppercase tracking-[0.24em] text-[#dd692f]">{stepLabels[step.type]}</p>
+            <h2 className="mb-6 font-serif text-2xl font-bold leading-tight text-[#473c33] sm:text-3xl">{activeTopic}</h2>
+            <p className="whitespace-pre-line font-serif text-base leading-[1.9] text-[#51483e] sm:text-lg">{step.content}</p>
+            {step.type === 'QUESTION_PAUSE' && <p className="mt-8 rounded-2xl border border-[#e9d6b6] bg-[#fff4df] p-4 text-sm font-semibold text-[#8d6635]">Faça uma pausa e tente responder com suas próprias palavras antes de virar a página.</p>}
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 items-center justify-center text-center font-serif text-[#9c8b74]">
+            <p>Fim deste caderno. Você pode voltar para rever os pontos da aula.</p>
+          </div>
+        )}
+        <div className="flex items-center justify-between border-t border-[#d9cbb6] pt-3 text-[10px] font-bold uppercase tracking-widest text-[#9c8b74]">
+          <span>ToDAHora • Aula Guiada</span>
+          <span>{index + 1}</span>
+        </div>
+      </div>
+    </div>
+  );
 
   if (!activeSubject || !activeTopic) {
     return (
@@ -332,37 +429,50 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
     );
   }
 
+  const lessonSteps = lesson?.steps || [];
+  const notebookTargetIndex = notebookPage + (pageTurnDirection === 'next' ? 1 : -1);
+  const notebookCurrentStep = lessonSteps[notebookPage];
+  const notebookTargetStep = lessonSteps[notebookTargetIndex];
+  const lessonProgress = lessonSteps.length
+    ? studyView === 'notebook'
+      ? ((notebookPage + 1) / lessonSteps.length) * 100
+      : (currentStepIndex / lessonSteps.length) * 100
+    : 0;
+
   return (
     <div className="absolute inset-0 z-[200] flex flex-col h-full bg-[#473c33] text-slate-100 font-sans selection:bg-[#fecc73]/30 overflow-hidden">
       {/* Header Imersivo */}
-      <header className="p-6 flex items-center justify-between border-b border-white/5 bg-[#473c33]/40 backdrop-blur-2xl sticky top-0 z-20">
-        <button onClick={onBack} className="p-3 hover:bg-white/10 rounded-2xl transition-colors active:scale-95 group">
+      <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-white/5 bg-[#473c33]/40 px-4 py-3 backdrop-blur-2xl sm:flex-nowrap sm:p-6">
+        <button onClick={onBack} className="group shrink-0 rounded-2xl p-3 transition-colors hover:bg-white/10 active:scale-95">
           <ChevronLeft className="w-7 h-7 text-white/50 group-hover:text-white" />
         </button>
-        <div className="text-center flex-1">
+        <div className="order-3 flex w-full min-w-0 flex-none flex-col items-center text-center sm:order-none sm:w-auto sm:flex-1">
           <div className="flex items-center justify-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-[#fecc73] animate-pulse"></span>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#fed386]">IMERSÃO ATIVA</span>
+            <span className={`h-2 w-2 rounded-full bg-[#fecc73] ${studyView === 'immersive' ? 'animate-pulse' : ''}`}></span>
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#fed386] sm:text-[10px] sm:tracking-[0.3em]">{studyView === 'immersive' ? 'IMERSÃO ATIVA' : 'CADERNO DE ESTUDO'}</span>
           </div>
-          <h1 className="text-lg font-black uppercase tracking-tighter text-white">
+          <h1 className="max-w-full truncate text-sm font-black uppercase tracking-tighter text-white sm:text-lg">
             {activeSubject} • {activeTopic}
           </h1>
+          <div className="mt-2 inline-flex rounded-xl border border-white/10 bg-black/10 p-1" role="group" aria-label="Visualização da aula">
+            <button type="button" aria-pressed={studyView === 'immersive'} disabled={isTurningPage} onClick={() => setStudyView('immersive')} className={`rounded-lg px-3 py-1.5 text-[9px] font-black uppercase tracking-wider transition-colors sm:px-4 sm:text-[10px] ${studyView === 'immersive' ? 'bg-[#fecc73] text-[#473c33]' : 'text-white/60 hover:text-white'} disabled:opacity-50`}>Imersão</button>
+            <button type="button" aria-pressed={studyView === 'notebook'} disabled={isTurningPage} onClick={() => setStudyView('notebook')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[9px] font-black uppercase tracking-wider transition-colors sm:px-4 sm:text-[10px] ${studyView === 'notebook' ? 'bg-[#fecc73] text-[#473c33]' : 'text-white/60 hover:text-white'} disabled:opacity-50`}><BookOpen className="h-3.5 w-3.5" /> Caderno</button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={toggleSaveLesson} className={`p-3 rounded-2xl transition-all active:scale-90 ${isSaved ? 'bg-[#fecc73] text-white' : 'bg-white/10 text-white/50 hover:text-white hover:bg-white/20'}`} title={isSaved ? 'Salvo no App' : 'Salvar no App (Offline)'}>
+        <div className="flex shrink-0 items-center gap-2">
+          <button onClick={toggleSaveLesson} className={`rounded-xl p-2 transition-all active:scale-90 sm:rounded-2xl sm:p-3 ${isSaved ? 'bg-[#fecc73] text-white' : 'bg-white/10 text-white/50 hover:text-white hover:bg-white/20'}`} title={isSaved ? 'Salvo no App' : 'Salvar no App (Offline)'}>
             {isSaved ? <BookmarkCheck className="w-7 h-7" /> : <Bookmark className="w-7 h-7" />}
           </button>
-          <button onClick={downloadPDF} className="p-3 bg-white/10 text-white/50 hover:text-white hover:bg-white/20 rounded-2xl transition-all active:scale-90" title="Baixar em PDF">
+          <button onClick={downloadPDF} className="rounded-xl bg-white/10 p-2 text-white/50 transition-all hover:bg-white/20 hover:text-white active:scale-90 sm:rounded-2xl sm:p-3" title="Baixar em PDF">
             <Download className="w-7 h-7" />
           </button>
-          <button onClick={() => setIsPaused(!isPaused)} className={`p-3 rounded-2xl transition-all shadow-xl active:scale-90 ${isPaused ? 'bg-[#fdad74] text-white animate-pulse' : 'bg-white/10 text-white/50 hover:text-white'}`}>
-            {isPaused ? <Play className="w-7 h-7" /> : <Pause className="w-7 h-7" />}
-          </button>
+          {studyView === 'immersive' && <button onClick={() => setIsPaused(!isPaused)} aria-label={isPaused ? 'Retomar aula automática' : 'Pausar aula automática'} title={isPaused ? 'Retomar aula' : 'Pausar aula'} className={`rounded-xl p-2 transition-all shadow-xl active:scale-90 sm:rounded-2xl sm:p-3 ${isPaused ? 'bg-[#fdad74] text-white animate-pulse' : 'bg-white/10 text-white/50 hover:text-white'}`}>
+            {isPaused ? <Play className="h-5 w-5 sm:h-7 sm:w-7" /> : <Pause className="h-5 w-5 sm:h-7 sm:w-7" />}
+          </button>}
         </div>
       </header>
 
-      {/* Área de Texto Autoscroll */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-20 space-y-20 scrollbar-none" style={{ scrollBehavior: 'smooth' }}>
+      {studyView === 'immersive' ? <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-20 space-y-20 scrollbar-none" style={{ scrollBehavior: 'smooth' }}>
         <AnimatePresence initial={false}>
           {displayedSteps.map((step, idx) => (
             <motion.div key={`${step.type}-${idx}`} initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className={`max-w-2xl mx-auto relative ${step.type === 'QUESTION_PAUSE' ? 'bg-[#fecc73]/5 border-2 border-[#fecc73]/20 p-10 rounded-[40px] shadow-2xl' : step.type === 'ANALOGY' ? 'bg-[#fdad74]/5 border-2 border-[#fdad74]/20 p-10 rounded-[40px] shadow-2xl shadow-[#ac4800]/20' : ''}`}>
@@ -427,21 +537,58 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
             </button>
           </motion.div>
         )}
-      </div>
+      </div> : (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-3 py-4 sm:gap-5 sm:px-8 sm:py-6">
+          <div className="flex w-full max-w-6xl items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.18em] text-[#fed386]">
+            <span className="truncate">Caderno da aula • {activeSubject}</span>
+            <span className="shrink-0">Folha {notebookPage + 1} de {lessonSteps.length}</span>
+          </div>
+          <section className="guided-notebook-spread relative grid min-h-0 w-full max-w-6xl flex-1 overflow-clip rounded-[22px] border-[8px] border-[#332a24] bg-[#fff9ed] shadow-[0_24px_60px_rgba(0,0,0,.35)] sm:rounded-[30px] sm:border-[12px] md:grid-cols-2" aria-label="Caderno interativo da aula guiada">
+            <aside className="guided-notebook-cover relative hidden flex-col justify-between border-r border-[#e7d7bd] px-10 py-9 text-[#473c33] md:flex">
+              <div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#fecc73] text-[#473c33] shadow-md"><BookOpen className="h-6 w-6" /></div>
+                <p className="mt-8 text-[10px] font-black uppercase tracking-[0.24em] text-[#d86632]">Aula guiada</p>
+                <h2 className="mt-3 font-serif text-3xl font-black leading-tight">{activeTopic}</h2>
+                <p className="mt-3 text-sm font-semibold leading-relaxed text-[#786b5a]">Leia uma etapa por vez e avance quando estiver pronto. Seu modo de imersão continua disponível a qualquer momento.</p>
+              </div>
+              <div className="border-t border-[#d9cbb6] pt-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#9c8b74]">Trilha de estudo</p>
+                <div className="mt-3 flex flex-wrap gap-1.5" aria-label={`Etapa ${notebookPage + 1} de ${lessonSteps.length}`}>
+                  {lessonSteps.map((step, index) => <span key={`${step.type}-${index}`} className={`h-1.5 rounded-full transition-all ${index === notebookPage ? 'w-8 bg-[#e86c32]' : index < notebookPage ? 'w-3 bg-[#b1c77b]' : 'w-3 bg-[#ded1bd]'}`} />)}
+                </div>
+              </div>
+            </aside>
+            <div className="guided-notebook-page relative min-h-0 text-[#473c33] md:border-l md:border-[#f2e6d2]">
+              {renderNotebookPage(notebookCurrentStep, notebookPage)}
+            </div>
+            {isTurningPage && (
+              <div ref={pageTurnRef} className="guided-notebook-flip-sheet" aria-hidden="true">
+                <div className="guided-notebook-flip-face guided-notebook-flip-front">{renderNotebookPage(notebookCurrentStep, notebookPage)}</div>
+                <div className="guided-notebook-flip-face guided-notebook-flip-back">{renderNotebookPage(notebookTargetStep, notebookTargetIndex, true)}</div>
+              </div>
+            )}
+          </section>
+          <div className="flex w-full max-w-6xl items-center justify-between gap-3">
+            <button type="button" onClick={() => turnNotebookPage('previous')} disabled={notebookPage === 0 || isTurningPage} className="flex min-h-11 items-center gap-2 rounded-xl border border-white/15 px-4 py-2 text-xs font-black uppercase tracking-wider text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35"><ChevronLeft className="h-4 w-4" /> Anterior</button>
+            {notebookPage === lessonSteps.length - 1 && <button type="button" onClick={() => onComplete(5)} className="rounded-xl bg-[#b1c77b] px-4 py-2.5 text-xs font-black uppercase tracking-wider text-[#303b1c] shadow-lg transition hover:brightness-105">Concluir aula</button>}
+            <button type="button" onClick={() => turnNotebookPage('next')} disabled={notebookPage >= lessonSteps.length - 1 || isTurningPage} className="flex min-h-11 items-center gap-2 rounded-xl bg-[#fecc73] px-4 py-2 text-xs font-black uppercase tracking-wider text-[#473c33] transition hover:bg-[#f7bb54] disabled:cursor-not-allowed disabled:opacity-35">Próxima página <ChevronRight className="h-4 w-4" /></button>
+          </div>
+        </div>
+      )}
 
       {/* Indicador de Progresso Inferior */}
       <div className="p-8 bg-[#473c33]/60 backdrop-blur-2xl border-t border-white/5">
         <div className="max-w-2xl mx-auto space-y-4">
           <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
             <span>PROGRESSO DA JORNADA</span>
-            <span className="text-[#fecc73]">{Math.round((currentStepIndex / (lesson?.steps.length || 1)) * 100)}%</span>
+            <span className="text-[#fecc73]">{Math.round(lessonProgress)}%</span>
           </div>
           <div className="h-2 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
             <motion.div
               className="h-full bg-gradient-to-r from-[#fec868] to-[#fec868] rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]"
               initial={{ width: 0 }}
               animate={{
-                width: `${(currentStepIndex / (lesson?.steps.length || 1)) * 100}%`,
+                width: `${lessonProgress}%`,
               }}
               transition={{ duration: 0.5 }}
             />
