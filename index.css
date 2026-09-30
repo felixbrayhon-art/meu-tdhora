@@ -805,6 +805,63 @@ html.dark .guided-highlight-finish > svg {
     color: #b1c77b !important;
 }
 
+/* Keep the college curriculum editor compact, structured and legible in dark mode. */
+html.dark .curriculum-panel,
+html.dark .curriculum-period-control,
+html.dark .curriculum-template,
+html.dark .curriculum-editor {
+    background-color: #303129 !important;
+    border-color: var(--dark-border) !important;
+}
+
+html.dark .curriculum-panel h3,
+html.dark .curriculum-template h3,
+html.dark .curriculum-period-control span {
+    color: var(--dark-cream) !important;
+}
+
+html.dark .curriculum-period-control button,
+html.dark .curriculum-period-tab {
+    background-color: #35362e !important;
+    border-color: var(--dark-border) !important;
+    color: var(--dark-cream-muted) !important;
+}
+
+html.dark .curriculum-period-tab[aria-selected="true"] {
+    background-color: var(--dark-orange) !important;
+    border-color: var(--dark-orange) !important;
+    color: #fffaf0 !important;
+}
+
+html.dark .curriculum-subject-count {
+    background-color: #3a3b32 !important;
+    color: var(--dark-cream-muted) !important;
+}
+
+html.dark .curriculum-template p,
+html.dark .curriculum-panel p,
+html.dark .curriculum-editor p,
+html.dark .curriculum-editor span {
+    color: var(--dark-cream-muted) !important;
+}
+
+html.dark .curriculum-template > div > span {
+    background-color: #3a3b32 !important;
+    color: #f3a06c !important;
+}
+
+html.dark .curriculum-step-badge,
+html.dark .curriculum-total-count,
+html.dark .curriculum-editor-count {
+    background-color: #3a3b32 !important;
+    color: var(--dark-cream-muted) !important;
+}
+
+html.dark .curriculum-editor > div {
+    background-color: #35362e !important;
+    border-color: var(--dark-border) !important;
+}
+
 @keyframes vade-page-turn-next {
     0% { transform: translate3d(0, 0, 1px) rotateY(0deg); }
     100% { transform: translate3d(0, 0, 1px) rotateY(-180deg); }

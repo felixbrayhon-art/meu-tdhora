@@ -43,6 +43,11 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
     [key: string]: string;
   }>({});
 
+  const getPeriodSubjectCount = (periodNum: number) =>
+    (periodSubjectsText[periodNum] || '').split('\n').filter((line) => line.trim().length > 0).length;
+  const totalActivePeriodSubjects = Array.from({ length: numPeriods }, (_, index) => getPeriodSubjectCount(index + 1))
+    .reduce((total, count) => total + count, 0);
+
   const handleLoadMedicinaPeriod = (periodNum: number) => {
     const periodData = MEDICINA_CURRICULUM[periodNum];
     if (!periodData) return;
@@ -160,8 +165,8 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4">
-      <div className="flex justify-between items-center mb-12">
+    <div className="mx-auto max-w-5xl px-4 py-5 sm:py-7">
+      <div className="mb-5 flex items-center justify-between gap-4 sm:mb-6">
         <button onClick={onBack} className="text-gray-400 font-bold uppercase text-[10px] tracking-widest flex items-center gap-2 hover:text-[#473c33] transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
@@ -178,7 +183,7 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
 
       <CharacterTip id="edital-setup" message={studyProfile === 'FACULDADE' ? 'Vamos montar sua grade curricular! Liste as matérias de cada período (ou use um currículo pronto, se tiver), me diga a data da prova e quantas horas por dia você consegue estudar. No final eu monto um cronograma completo pra você.' : 'Vamos montar seu edital! Liste as matérias que vão cair na prova, a data do exame e quantas horas por dia você consegue estudar. No final eu transformo tudo isso num cronograma estratégico, sem você precisar organizar nada na mão.'} />
 
-      <div className="bg-white rounded-[50px] p-12 shadow-2xl border border-gray-100 relative overflow-hidden min-h-[500px]">
+      <div className="relative min-h-[500px] overflow-hidden rounded-[28px] border border-gray-100 bg-white p-5 shadow-xl sm:rounded-[36px] sm:p-8">
         {/* Progress Bar */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gray-50">
           <motion.div className="h-full bg-[#fecc73]" initial={{ width: '0%' }} animate={{ width: `${(step / 3) * 100}%` }} />
@@ -230,25 +235,27 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
                 </div>
               </motion.div>
             ) : studyProfile === 'FACULDADE' ? (
-              <motion.div key="step1-faculdade" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8 animate-in fade-in duration-300">
+              <motion.div key="step1-faculdade" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5 animate-in fade-in duration-300 sm:space-y-6">
                 <div className="space-y-2">
-                  <span className="bg-[#fff6e8] text-[#fec868] px-4 py-1.5 rounded-full font-black text-[10px] tracking-widest uppercase">Passo 1: Grade de Períodos e Disciplinas</span>
-                  <h2 className="text-4xl font-black uppercase tracking-tighter">Grade Curricular por Período</h2>
-                  <p className="text-gray-400 font-medium">Defina abaixo a quantidade de períodos de sua faculdade e liste as disciplinas semestre a semestre para organização perfeita focado em TDAH.</p>
+                  <span className="curriculum-step-badge inline-flex rounded-full bg-[#fff6e8] px-3 py-1 font-black text-[9px] uppercase tracking-[0.18em] text-[#a85c28]">Passo 1 de 3 · Grade curricular</span>
+                  <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">Organize suas disciplinas</h2>
+                  <p className="max-w-3xl text-sm font-medium leading-relaxed text-gray-500">Escolha quantos períodos tem o curso e preencha as disciplinas de cada um.</p>
                 </div>
 
                 {/* Sub-step A: Choose Quantity of Periods */}
-                <div className="bg-slate-50 p-6 rounded-[35px] border border-gray-100 space-y-4">
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div>
-                      <h4 className="font-extrabold text-[#473c33] uppercase text-xs tracking-wider flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-[#fecc73]" />
-                        1. Quantidade de Períodos do Curso:
-                      </h4>
-                      <p className="text-[11px] text-gray-400 font-bold">Como sua faculdade se divide? Escolha o número de períodos correspondente.</p>
+                <section className="curriculum-panel space-y-4 rounded-3xl border border-gray-100 bg-slate-50/80 p-4 sm:p-5" aria-labelledby="period-count-heading">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#fff0d5] text-[#b65f2e]"><Calendar className="h-4 w-4" /></span>
+                        <div>
+                          <h3 id="period-count-heading" className="font-extrabold text-[#473c33] uppercase text-xs tracking-wider">1. Quantos períodos tem seu curso?</h3>
+                          <p className="mt-0.5 text-[11px] font-medium text-gray-500">Você pode alterar essa quantidade depois.</p>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-3 bg-white p-2 border border-gray-100 rounded-2xl shrink-0">
+                    <div className="curriculum-period-control flex shrink-0 items-center gap-2 rounded-2xl border border-gray-200 bg-white p-1.5">
                       <button
                         type="button"
                         onClick={() => {
@@ -258,12 +265,14 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
                             setActivePeriodTab(nextVal);
                           }
                         }}
-                        className="w-10 h-10 bg-gray-50 hover:bg-gray-100 text-slate-800 rounded-xl flex items-center justify-center font-black transition-colors"
+                        aria-label="Diminuir quantidade de períodos"
+                        disabled={numPeriods <= 1}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 font-black text-slate-800 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         -
                       </button>
-                      <span className="text-xl font-black px-2 tabular-nums">
-                        {numPeriods} Semestre{numPeriods > 1 ? 's' : ''}
+                      <span className="min-w-[118px] px-2 text-center text-sm font-black tabular-nums text-[#473c33] sm:text-base">
+                        {numPeriods} período{numPeriods > 1 ? 's' : ''}
                       </span>
                       <button
                         type="button"
@@ -271,7 +280,9 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
                           const nextVal = Math.min(20, numPeriods + 1);
                           setNumPeriods(nextVal);
                         }}
-                        className="w-10 h-10 bg-gray-50 hover:bg-gray-100 text-slate-800 rounded-xl flex items-center justify-center font-black transition-colors"
+                        aria-label="Aumentar quantidade de períodos"
+                        disabled={numPeriods >= 20}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 font-black text-slate-800 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         +
                       </button>
@@ -279,7 +290,7 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
                   </div>
 
                   {/* Fast selection list */}
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  <div className="flex flex-wrap gap-2 border-t border-gray-200 pt-3" aria-label="Opções rápidas de duração do curso">
                     {[2, 4, 6, 8, 10, 12].map((pVal) => (
                       <button
                         type="button"
@@ -290,54 +301,64 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
                             setActivePeriodTab(pVal);
                           }
                         }}
-                        className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${numPeriods === pVal ? 'bg-[#fec868] text-white shadow-md shadow-[#fff0d5]/60' : 'bg-white hover:bg-gray-100 text-gray-500 border border-gray-100'}`}
+                        aria-pressed={numPeriods === pVal}
+                        className={`rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-wide transition-all ${numPeriods === pVal ? 'border-[#e96f34] bg-[#e96f34] text-white shadow-sm' : 'border-gray-200 bg-white text-gray-600 hover:border-[#e96f34]/50 hover:bg-[#fffaf4]'}`}
                       >
-                        {pVal} Períodos ({pVal / 2} Anos)
+                        {pVal} períodos <span className="font-semibold opacity-75">· {pVal / 2} anos</span>
                       </button>
                     ))}
                   </div>
-                </div>
+                </section>
 
                 {/* Medicina Pre-loaded course toggle */}
-                <div className="bg-gradient-to-r from-purple-50 to-[#fff6e8]/50 rounded-[30px] p-6 border border-purple-100 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-300">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-                      <h3 className="text-sm font-black uppercase tracking-wider text-purple-950">CURSO DE MEDICINA MODELO</h3>
+                <div className="curriculum-template flex flex-col gap-3 rounded-2xl border border-[#eadfcf] bg-[#fbf7f0] p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#fff0d5] text-[#b65f2e]"><Sparkles className="h-4 w-4" /></span>
+                    <div className="space-y-0.5">
+                      <h3 className="text-xs font-black uppercase tracking-wide text-[#473c33]">Matriz pronta · Medicina Multivix</h3>
+                      <p className="text-xs leading-relaxed text-gray-500">Preencha a grade modelo automaticamente ou continue digitando sua própria grade.</p>
                     </div>
-                    <p className="text-xs text-purple-700 font-medium font-bold">Deseja carregar a matriz nacional modelo de Medicina (Multivix)? Economize digitação.</p>
                   </div>
-                  <button type="button" onClick={() => setShowMedicinaSelector(true)} className="bg-purple-600 hover:bg-purple-700 text-white select-none px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-purple-100 transition-all hover:scale-105 active:scale-95">
-                    Abrir Matriz do Curso
+                  <button type="button" onClick={() => setShowMedicinaSelector(true)} className="shrink-0 rounded-xl bg-[#e96f34] px-4 py-2.5 text-[9px] font-black uppercase tracking-wider text-white transition-colors hover:bg-[#d8612b]">
+                    Usar matriz pronta
                   </button>
                 </div>
 
                 {/* Sub-step B: Per period disciplines tabs + editor */}
-                <div className="space-y-4">
-                  <h4 className="font-extrabold text-[#473c33] uppercase text-xs tracking-wider flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4 text-[#fecc73]" />
-                    2. Liste as disciplinas de cada período científico:
-                  </h4>
+                <section className="space-y-3" aria-labelledby="period-subjects-heading">
+                  <div className="flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                      <h3 id="period-subjects-heading" className="flex items-center gap-2 font-extrabold text-[#473c33] uppercase text-xs tracking-wider">
+                        <BookOpen className="h-4 w-4 text-[#e96f34]" />
+                        2. Disciplinas por período
+                      </h3>
+                      <p className="mt-1 text-[11px] font-medium text-gray-500">Selecione um período e digite uma disciplina por linha.</p>
+                    </div>
+                    <span className="curriculum-total-count rounded-full bg-[#f4f0e8] px-3 py-1 text-[10px] font-black text-[#6e6255]">{totalActivePeriodSubjects} disciplina{totalActivePeriodSubjects === 1 ? '' : 's'}</span>
+                  </div>
 
-                  {/* Horizontal Tabs List */}
-                  <div className="flex gap-2 overflow-x-auto pb-2 border-b border-gray-100 max-w-full">
+                  {/* Compact grid keeps every period visible without a clipped horizontal tab row. */}
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6" role="tablist" aria-label="Períodos do curso">
                     {Array.from({ length: numPeriods }).map((_, i) => {
                       const pNum = i + 1;
-                      const hasText = (periodSubjectsText[pNum] || '').trim().length > 0;
+                      const subjectCount = getPeriodSubjectCount(pNum);
                       return (
-                        <button type="button" key={pNum} onClick={() => setActivePeriodTab(pNum)} className={`px-4 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all shrink-0 flex items-center gap-1.5 border ${activePeriodTab === pNum ? 'bg-[#fec868] text-white border-[#fec868] shadow-lg shadow-[#fff0d5]/60' : 'bg-white hover:bg-gray-50 text-gray-500 border-gray-100'}`}>
-                          {pNum}º Período
-                          {hasText && <span className={`w-2 h-2 rounded-full ${activePeriodTab === pNum ? 'bg-white' : 'bg-[#b1c77b]'} animate-pulse`} />}
+                        <button type="button" role="tab" aria-selected={activePeriodTab === pNum} key={pNum} onClick={() => setActivePeriodTab(pNum)} className={`curriculum-period-tab flex min-h-12 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${activePeriodTab === pNum ? 'border-[#e96f34] bg-[#fff6ed] text-[#8a421f] shadow-sm' : 'border-gray-200 bg-white text-gray-600 hover:border-[#e96f34]/50 hover:bg-[#fffaf4]'}`}>
+                          <span className="text-[10px] font-black uppercase tracking-wide">{pNum}º período</span>
+                          <span className={`curriculum-subject-count shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold ${subjectCount ? 'bg-[#e9efda] text-[#526b32]' : 'bg-gray-100 text-gray-400'}`}>{subjectCount}</span>
                         </button>
                       );
                     })}
                   </div>
 
                   {/* Textarea for currently active editor */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center bg-gray-50/70 p-4 rounded-t-[24px] border-b border-gray-100">
-                      <span className="font-black uppercase text-xs text-[#fec868]">Editando Grade: {activePeriodTab}º Período acadêmico</span>
-                      <span className="text-[10px] font-extrabold text-[#473c33] uppercase tracking-widest bg-[#fff0d5]/60 px-2 py-0.5 rounded-md">{(periodSubjectsText[activePeriodTab] || '').split('\n').filter((l) => l.trim().length > 0).length} Disciplina(s)</span>
+                  <div className="curriculum-editor overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 bg-gray-50/70 px-4 py-3">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#b65f2e]">Editando período {activePeriodTab}</p>
+                        <p className="mt-0.5 text-xs font-semibold text-gray-600">Uma disciplina por linha</p>
+                      </div>
+                      <span className="curriculum-editor-count rounded-lg bg-[#f4f0e8] px-2.5 py-1 text-[10px] font-extrabold text-[#6e6255]">{getPeriodSubjectCount(activePeriodTab)} disciplina{getPeriodSubjectCount(activePeriodTab) === 1 ? '' : 's'} cadastrada{getPeriodSubjectCount(activePeriodTab) === 1 ? '' : 's'}</span>
                     </div>
                     <textarea
                       value={periodSubjectsText[activePeriodTab] || ''}
@@ -348,26 +369,24 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
                           [activePeriodTab]: val,
                         }));
                       }}
-                      placeholder={`Digite o nome de cada matéria por linha para o ${activePeriodTab}º Período...\nEx:\nAnatomia I\nSemiologia Prática\nSaúde da Família`}
-                      className="w-full h-52 bg-gray-50 border-2 border-transparent rounded-b-[24px] p-6 focus:outline-none focus:border-[#fecc73] font-bold transition-all text-gray-700"
+                      aria-label={`Disciplinas do período ${activePeriodTab}`}
+                      placeholder={`Ex.: Anatomia I\nSemiologia Prática\nSaúde da Família`}
+                      className="w-full min-h-40 resize-y bg-transparent px-4 py-4 text-sm font-medium leading-relaxed text-gray-700 placeholder:text-gray-400 focus:outline-none sm:min-h-44 sm:px-5"
                     />
                   </div>
-                </div>
+                </section>
 
                 {/* Final status / Next Step Actions */}
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-gray-100">
+                <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-center sm:text-left">
-                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Resumo Acumulado:</span>
-                    <p className="text-xs font-black text-gray-700 mt-0.5 uppercase tracking-tight">
-                      {Object.values(periodSubjectsText).reduce((acc, text) => {
-                        return acc + text.split('\n').filter((l) => l.trim().length > 0).length;
-                      }, 0)}{' '}
-                      Matérias totais em {numPeriods} Semestre(s)
+                    <span className="text-[9px] font-black uppercase tracking-[0.14em] text-gray-400">Resumo desta grade</span>
+                    <p className="mt-0.5 text-xs font-bold text-gray-700">
+                      {totalActivePeriodSubjects} disciplina{totalActivePeriodSubjects === 1 ? '' : 's'} em {numPeriods} período{numPeriods === 1 ? '' : 's'}
                     </p>
                   </div>
 
-                  <button onClick={handleStep1} disabled={Object.values(periodSubjectsText).every((t) => !t.trim())} className={`px-12 py-5 rounded-[25px] font-black uppercase tracking-widest shadow-xl transition-all ${!Object.values(periodSubjectsText).every((t) => !t.trim()) ? 'bg-[#fec868] text-white hover:scale-105 active:scale-95 shadow-[#fff0d5]/60' : 'bg-gray-100 text-gray-300'}`}>
-                    Confirmar Grades e Matérias
+                  <button onClick={handleStep1} disabled={totalActivePeriodSubjects === 0} className="rounded-2xl bg-[#e96f34] px-6 py-3.5 text-[10px] font-black uppercase tracking-wider text-white shadow-md transition hover:bg-[#d8612b] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none sm:min-w-60">
+                    Continuar com esta grade
                   </button>
                 </div>
               </motion.div>
