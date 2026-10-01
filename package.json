@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-pdf-assets.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copy-pdf-assets.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
@@ -26,6 +28,7 @@
     "gsap": "^3.15.0",
     "jspdf": "^2.5.2",
     "motion": "^12.38.0",
+    "pdfjs-dist": "^6.3.289",
     "perfect-freehand": "^1.2.3",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

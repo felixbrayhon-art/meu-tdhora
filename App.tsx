@@ -36,6 +36,7 @@ const GuidedLessonView = lazy(() => import('./components/GuidedLessonView'));
 const PerformanceView = lazy(() => import('./components/PerformanceView'));
 const SavedGuidedLessonsView = lazy(() => import('./components/SavedGuidedLessonsView'));
 const DriveReader = lazy(() => import('./components/DriveReader').then(({ DriveReader: Component }) => ({ default: Component })));
+const DigitalNotebookView = lazy(() => import('./components/DigitalNotebookView'));
 
 const LOFI_RELAX_URL = 'https://stream.zeno.fm/0r0xa792kwzuv';
 const MPB_LOFI_URL = 'https://stream.zeno.fm/f978v6v6h0huv';
@@ -46,11 +47,11 @@ const APP_VIEW_IDS: AppView[] = [
   'STUDY_PLAN', 'PROFILE', 'COMMUNITY', 'FOCUS_MODE', 'DYNAMIC_TIMER', 'EDITAL_SETUP',
   'EDITAL_VIEW', 'SMART_REVISION', 'ERROR_VAULT', 'SOCIAL_MODULE', 'STUDY_CYCLE',
   'FISH_CATALOG', 'GUIDED_LESSON', 'PERFORMANCE', 'SAVED_GUIDED_LESSONS', 'DRIVE_READER',
-  'VADE_MECUM', 'NOTES', 'ADMIN_QUESTION_REVIEW', 'VR_METHOD',
+  'VADE_MECUM', 'NOTES', 'ADMIN_QUESTION_REVIEW', 'VR_METHOD', 'DIGITAL_NOTEBOOK',
 ];
 const STUDY_VIEWS: AppView[] = [
   'STUDY_CYCLE', 'FLASHCARDS', 'DYNAMIC_TIMER', 'TDH_QUESTOES', 'DRIVE_READER',
-  'MATERIALS', 'QUIZ_PLAYER', 'GUIDED_LESSON', 'TIMER', 'FOCUS_MODE', 'VR_METHOD',
+  'MATERIALS', 'QUIZ_PLAYER', 'GUIDED_LESSON', 'TIMER', 'FOCUS_MODE', 'VR_METHOD', 'DIGITAL_NOTEBOOK',
 ];
 
 const readViewFromUrl = (): AppView => {
@@ -1685,6 +1686,7 @@ const App: React.FC = () => {
                     />
                   )}
                   {currentView === 'DRIVE_READER' && <DriveReader onBack={() => setCurrentView('HUB')} studyProfile={stats.studyProfile} activeChannel={activeChannel} setActiveChannel={setActiveChannel} isPlayingRain={isPlayingRain} setIsPlayingRain={setIsPlayingRain} audioVolume={audioVolume} setAudioVolume={setAudioVolume} />}
+                  {currentView === 'DIGITAL_NOTEBOOK' && <DigitalNotebookView key={user?.uid || 'guest'} owner={user?.uid || 'guest'} onBack={() => setCurrentView('HUB')} />}
                 </Suspense>
                 </>
             </main>

@@ -72,6 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
     { id: 'VADE_MECUM' as AppView, label: 'Vade Mecum', icon: Scale },
     { id: 'DRIVE_READER' as AppView, label: 'Biblioteca Drive', icon: Folder },
     { id: 'NOTES' as AppView, label: 'Anotações', icon: PenLine },
+    { id: 'DIGITAL_NOTEBOOK' as AppView, label: 'Caderno Digital', icon: BookOpen },
     { id: 'TDH_QUESTOES' as AppView, label: 'TDHQuestões', icon: FileText },
     { id: 'AI_DIRECT' as AppView, label: 'Aula Direta', icon: Zap },
     { id: 'GUIDED_LESSON' as AppView, label: 'Aula Guiada', icon: BookOpen },
