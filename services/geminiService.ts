@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle } from "../types";
+import { auth } from "../src/lib/firebase";
 
 const ai = new GoogleGenAI({ 
   apiKey: process.env.GEMINI_API_KEY || ''
@@ -104,13 +105,17 @@ const safeAIJsonParse = (text: string) => {
   }
 };
 
-// Helper for calling AI with automatic retries for transient errors (503/500/429)
-// Without a fallback configured, Gemini is the user's only shot, so it's
-// worth patiently riding out a 429/503 with the original long backoff. With
-// OPENROUTER_API_KEY set, that ~60s of waiting (4 retries x ~15s for quota
-// errors) just delays reaching a fallback that can usually answer in
-// seconds — fail over fast instead.
-const generateContentWithRetry = async (params: any, maxRetries = OPENROUTER_API_KEY ? 2 : 5) => {
+// Keep Gemini retries short so network, provider, or malformed-response
+// failures advance quickly to the next AI provider.
+const generateContentWithRetry = async (params: any, maxRetries = 2) => {
+  if (FREELLMAPI_ENABLED && getPreferredAIProvider() === 'freellmapi') {
+    try {
+      return await generateFreeLLMAPIContent(params);
+    } catch (error) {
+      console.warn('[ai] FreeLLMAPI selecionado, mas indisponível; tentando Gemini:', error);
+    }
+  }
+
   let delay = 2000;
   let lastError;
 
@@ -193,19 +198,84 @@ const OPENROUTER_RACE_BATCH_SIZE = 3;
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
 const GROQ_TIMEOUT_MS = 20000;
+const FREELLMAPI_TIMEOUT_MS = 56000;
+const FREELLMAPI_ENABLED = process.env.FREELLMAPI_ENABLED === 'true';
 
-const isTransientAIError = (error: any): boolean => {
-  const errorObj = error?.error || error;
-  const errorMessage = String(errorObj?.message || error?.message || error || '').toLowerCase();
-  const errorStatus = String(errorObj?.code || errorObj?.status || error?.status || '');
-  return errorStatus === '429' || errorStatus === '503' || errorStatus === '500' ||
-    errorMessage.includes('429') || errorMessage.includes('503') ||
-    errorMessage.includes('resource_exhausted') || errorMessage.includes('unavailable') ||
-    errorMessage.includes('api key');
+// Every failed AI generation should try the next configured provider, including
+// network/timeout errors and malformed or incomplete model output.
+const shouldTryProviderFallbacks = (error: any): boolean =>
+  error?.name !== 'AbortError' && error?.name !== 'CanceledError';
+
+const requestFreeLLMAPI = async (body: Record<string, unknown>): Promise<any> => {
+  if (!FREELLMAPI_ENABLED) throw new Error('FreeLLMAPI não foi configurado no servidor.');
+  const user = auth.currentUser;
+  if (!user) throw new Error('Entre na sua conta Google para usar o FreeLLMAPI.');
+
+  const idToken = await user.getIdToken();
+  const response = await fetch('/api/freellmapi', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(FREELLMAPI_TIMEOUT_MS),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = typeof data?.error === 'string' ? data.error : `HTTP ${response.status}`;
+    throw new Error(`FreeLLMAPI: ${message}`);
+  }
+  return { ...data, routedVia: response.headers.get('x-routed-via') || undefined };
 };
 
-const shouldTryOpenRouterFallback = (error: any): boolean =>
-  (!!GROQ_API_KEY || !!OPENROUTER_API_KEY) && isTransientAIError(error);
+const readFreeLLMAPIText = (data: any): string => {
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content === 'string') return content.trim();
+  if (Array.isArray(content)) return content.map((part) => typeof part?.text === 'string' ? part.text : '').join('').trim();
+  return '';
+};
+
+const callFreeLLMAPIJson = async (
+  systemInstruction: string | undefined,
+  userPrompt: string,
+  schema: any,
+  schemaName: string,
+  validate?: (parsed: any) => boolean,
+): Promise<any> => {
+  const data = await requestFreeLLMAPI({
+    messages: [
+      ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+      { role: 'user', content: userPrompt },
+    ],
+    response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: false, schema } },
+    temperature: 0.3,
+    max_tokens: 24000,
+  });
+  const text = readFreeLLMAPIText(data);
+  if (!text) throw new Error('FreeLLMAPI retornou uma resposta vazia.');
+  const parsed = safeAIJsonParse(text);
+  if (validate && !validate(parsed)) throw new Error('FreeLLMAPI retornou conteúdo incompleto.');
+  console.warn(`[fallback] Gemini indisponível; FreeLLMAPI respondeu${data.routedVia ? ` via ${data.routedVia}` : ''}.`);
+  return parsed;
+};
+
+const callFreeLLMAPIText = async (
+  systemInstruction: string | undefined,
+  messages: { role: string, content: string }[],
+  temperature = 0.6,
+): Promise<string> => {
+  const data = await requestFreeLLMAPI({
+    messages: [...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []), ...messages],
+    temperature,
+    max_tokens: 8000,
+  });
+  const text = readFreeLLMAPIText(data);
+  if (!text) throw new Error('FreeLLMAPI retornou uma resposta vazia.');
+  console.warn(`[fallback] Gemini indisponível; FreeLLMAPI respondeu${data.routedVia ? ` via ${data.routedVia}` : ''}.`);
+  return text;
+};
 
 // Runs `attempt(model)` for OPENROUTER_FALLBACK_MODELS in batches of
 // OPENROUTER_RACE_BATCH_SIZE, racing each batch with Promise.any so the
@@ -236,6 +306,58 @@ const toJsonSchema = (googleSchema: any): any => {
   if (items) out.items = toJsonSchema(items);
   return out;
 };
+
+const getPreferredAIProvider = (): 'gemini' | 'freellmapi' => {
+  try {
+    const stats = JSON.parse(localStorage.getItem('focus_stats') || '{}');
+    return stats?.aiProvider === 'freellmapi' ? 'freellmapi' : 'gemini';
+  } catch {
+    return 'gemini';
+  }
+};
+
+const contentToMessages = (contents: any): { role: string; content: string }[] => {
+  if (typeof contents === 'string') return [{ role: 'user', content: contents }];
+  if (!Array.isArray(contents)) return [];
+  return contents.map((item: any) => {
+    const role = item?.role === 'model' || item?.role === 'assistant' ? 'assistant' : 'user';
+    const parts = Array.isArray(item?.parts) ? item.parts : [];
+    const content = typeof item === 'string'
+      ? item
+      : typeof item?.content === 'string'
+        ? item.content
+        : parts.map((part: any) => typeof part?.text === 'string' ? part.text : '').join('\n');
+    return { role, content };
+  }).filter((message) => message.content.trim());
+};
+
+async function generateFreeLLMAPIContent(params: any): Promise<{ text: string }> {
+  const config = params?.config || {};
+  const systemInstruction = typeof config.systemInstruction === 'string' ? config.systemInstruction : undefined;
+  const messages = [
+    ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+    ...contentToMessages(params?.contents),
+  ];
+  if (messages.length === 0) throw new Error('A solicitação não contém texto compatível com o FreeLLMAPI.');
+
+  const schema = config.responseSchema ? toJsonSchema(config.responseSchema) : undefined;
+  const responseFormat = config.responseMimeType === 'application/json'
+    ? schema
+      ? { type: 'json_schema', json_schema: { name: 'todahora_response', strict: false, schema } }
+      : { type: 'json_object' }
+    : undefined;
+  const requestedTokens = Number(config.maxOutputTokens);
+  const data = await requestFreeLLMAPI({
+    messages,
+    ...(responseFormat ? { response_format: responseFormat } : {}),
+    temperature: typeof config.temperature === 'number' ? config.temperature : 0.5,
+    max_tokens: Number.isFinite(requestedTokens) ? Math.min(Math.max(requestedTokens, 256), 24000) : 8000,
+  });
+  const text = readFreeLLMAPIText(data);
+  if (!text) throw new Error('FreeLLMAPI retornou uma resposta vazia.');
+  console.info(`[ai] Resposta gerada pelo FreeLLMAPI${data.routedVia ? ` via ${data.routedVia}` : ''}.`);
+  return { text };
+}
 
 const callOpenRouterJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
   return raceOpenRouterModels(async (model) => {
@@ -385,11 +507,19 @@ const callGroqText = async (systemInstruction: string | undefined, messages: { r
   throw lastError || new Error('Groq indisponível.');
 };
 
-// Single entry point every function's catch block calls: Groq first (its own
-// reliable hardware), OpenRouter's free-model race second. Keeps each of the
-// 17 call sites down to one call instead of two nested try/catches.
+// FreeLLMAPI is the first automatic fallback when Gemini is the selected
+// provider. If FreeLLMAPI itself was selected, it already had its primary
+// attempt in generateContentWithRetry, so do not repeat a slow failed call.
 const tryJsonFallbacks = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
   let lastError: any;
+  if (FREELLMAPI_ENABLED && getPreferredAIProvider() !== 'freellmapi') {
+    try {
+      return await callFreeLLMAPIJson(systemInstruction, userPrompt, schema, schemaName, validate);
+    } catch (e) {
+      lastError = e;
+      console.warn('[fallback] FreeLLMAPI falhou, tentando outros provedores:', e);
+    }
+  }
   if (GROQ_API_KEY) {
     try {
       return await callGroqJson(systemInstruction, userPrompt, schema, schemaName, validate);
@@ -410,6 +540,14 @@ const tryJsonFallbacks = async (systemInstruction: string | undefined, userPromp
 
 const tryTextFallbacks = async (systemInstruction: string | undefined, messages: { role: string, content: string }[], temperature = 0.6): Promise<string> => {
   let lastError: any;
+  if (FREELLMAPI_ENABLED && getPreferredAIProvider() !== 'freellmapi') {
+    try {
+      return await callFreeLLMAPIText(systemInstruction, messages, temperature);
+    } catch (e) {
+      lastError = e;
+      console.warn('[fallback] FreeLLMAPI falhou, tentando outros provedores:', e);
+    }
+  }
   if (GROQ_API_KEY) {
     try {
       return await callGroqText(systemInstruction, messages, temperature);
@@ -557,7 +695,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, studyContentPrompt, toJsonSchema(studyContentSchema), 'study_content');
       } catch (fallbackError) {
@@ -647,7 +785,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, examQuestionsPrompt, examQuestionsJsonSchema, 'exam_questions');
       } catch (fallbackError) {
@@ -675,7 +813,7 @@ export const identifyQuestionCount = async (text: string) => {
     const count = parseInt(response.text?.trim().replace(/[^0-9]/g, '') || "0");
     return isNaN(count) ? 0 : count;
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         const fallbackText = await tryTextFallbacks(undefined, [{ role: 'user', content: countPrompt }], 0.1);
         const count = parseInt(fallbackText?.trim().replace(/[^0-9]/g, '') || "0");
@@ -799,7 +937,7 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error: any) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, parsePastedPrompt, parsePastedJsonSchema, 'parsed_questions');
       } catch (fallbackError) {
@@ -835,7 +973,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
     });
     return response.text + " "; // Minor change to make it unique
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         const openRouterHistory = history.map(h => ({
           role: h.role === 'model' ? 'assistant' : 'user',
@@ -885,7 +1023,7 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, evocationPrompt, toJsonSchema(evocationSchema), 'evocation_analysis');
       } catch (fallbackError) {
@@ -936,7 +1074,7 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
     }
     throw new AIError("Resposta vazia da IA.");
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         const fallbackSchema = {
           type: 'object',
@@ -996,7 +1134,7 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, editalTopicsPrompt, toJsonSchema(editalTopicsSchema), 'edital_topics');
       } catch (fallbackError) {
@@ -1064,7 +1202,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, microThemePrompt, toJsonSchema(microThemeSchema), 'micro_theme_validation');
       } catch (fallbackError) {
@@ -1110,7 +1248,7 @@ export const explainStuckTopic = async (topic: string, profile: StudyProfile = '
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, stuckTopicPrompt, toJsonSchema(stuckTopicSchema), 'stuck_topic_explanation');
       } catch (fallbackError) {
@@ -1210,7 +1348,7 @@ export const optimizeStudyPlan = async (
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, studyPlanPrompt, toJsonSchema(studyPlanSchema), 'study_plan');
       } catch (fallbackError) {
@@ -1293,7 +1431,7 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, recoveryPrompt, toJsonSchema(recoverySchema), 'recovery_plan');
       } catch (fallbackError) {
@@ -1348,7 +1486,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, proactiveAdvicePrompt, toJsonSchema(proactiveAdviceSchema), 'proactive_advice');
       } catch (fallbackError) {
@@ -1377,7 +1515,7 @@ export const getDailyBibleMotivation = async (): Promise<string> => {
     });
     return response.text?.trim() || DEFAULT_MOTIVATION;
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         const fallbackText = await tryTextFallbacks(undefined, [{ role: 'user', content: bibleMotivationPrompt }], 0.7);
         return fallbackText?.trim() || DEFAULT_MOTIVATION;
@@ -1452,7 +1590,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryJsonFallbacks(undefined, studyCyclePrompt, toJsonSchema(studyCycleSchema), 'study_cycle');
       } catch (fallbackError) {
@@ -1566,14 +1704,12 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
     return parsed;
   } catch (error: any) {
     const isTruncation = error?.message === 'GUIDED_LESSON_TRUNCATED';
-    if (isTruncation || shouldTryOpenRouterFallback(error)) {
+    if (isTruncation || shouldTryProviderFallbacks(error)) {
       if (isTruncation) console.warn('[guided_lesson] Resposta do Gemini veio cortada, tentando fallback.');
-      if (OPENROUTER_API_KEY) {
-        try {
-          return await tryJsonFallbacks(undefined, guidedLessonPrompt, guidedLessonJsonSchema, 'guided_lesson', validateGuidedLesson);
-        } catch (fallbackError) {
-          console.error('Fallback OpenRouter também falhou em generateGuidedLesson:', fallbackError);
-        }
+      try {
+        return await tryJsonFallbacks(undefined, guidedLessonPrompt, guidedLessonJsonSchema, 'guided_lesson', validateGuidedLesson);
+      } catch (fallbackError) {
+        console.error('Os fallbacks de IA também falharam em generateGuidedLesson:', fallbackError);
       }
     }
     if (isTruncation) throw new AIError('A IA gerou uma aula incompleta. Tente novamente.');
@@ -1597,7 +1733,7 @@ Seu objetivo é explicar o fragmento de texto ou o assunto fornecido de forma di
     });
     return response.text || "Sem resposta da IA.";
   } catch (error) {
-    if (shouldTryOpenRouterFallback(error)) {
+    if (shouldTryProviderFallbacks(error)) {
       try {
         return await tryTextFallbacks(systemInstruction, [{ role: 'user', content: quickExplanationPrompt }], 0.5);
       } catch (fallbackError) {

@@ -276,6 +276,7 @@ export interface UserStats {
   lastStudyDate?: string;
   studyProfile?: StudyProfile;
   explanationStyle?: ExplanationStyle;
+  aiProvider?: 'gemini' | 'freellmapi';
   questionProfileStyle?: string;
   fontSizeMultiplier?: number; // 1, 1.25, 1.5
   heroScenario?: 'quarto' | 'estudio' | 'biblioteca' | 'quarto-3d' | 'estudio-3d' | 'biblioteca-3d' | 'solido'; // cenário de fundo do card principal do Hub

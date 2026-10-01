@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserStats, StudyProfile, ExplanationStyle, getFishRank } from '../types';
 import FishLogo from './FishLogo';
 import AvatarBuilder from './AvatarBuilder';
@@ -57,10 +57,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
   const [revealCharacterId, setRevealCharacterId] = useState<string | null>(null);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
   const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>(stats.explanationStyle || 'TECNICA');
+  const [aiProvider, setAiProvider] = useState<NonNullable<UserStats['aiProvider']>>(stats.aiProvider || 'gemini');
   const [questionProfileStyle, setQuestionProfileStyle] = useState(stats.questionProfileStyle || '');
   const [fontSizeMultiplier, setFontSizeMultiplier] = useState(stats.fontSizeMultiplier || 1);
   const [heroScenario, setHeroScenario] = useState(stats.heroScenario || 'quarto');
   const [heroTintColor, setHeroTintColor] = useState(stats.heroTintColor);
+  const [freeLLMAPIAvailable, setFreeLLMAPIAvailable] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/freellmapi', { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => setFreeLLMAPIAvailable(data?.enabled === true))
+      .catch(() => setFreeLLMAPIAvailable(false));
+    return () => controller.abort();
+  }, []);
 
   const currentRank = getFishRank(stats.totalDaysStudied);
 
@@ -72,6 +83,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
       characterId,
       studyProfile: profile,
       explanationStyle,
+      aiProvider,
       questionProfileStyle,
       fontSizeMultiplier,
       heroScenario,
@@ -239,6 +251,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
             </div>
 
             <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Provedor de IA</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button type="button" aria-pressed={aiProvider === 'gemini'} onClick={() => setAiProvider('gemini')} className={`rounded-2xl border-2 p-4 text-left transition-all ${aiProvider === 'gemini' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
+                  <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">Google Gemini</span>
+                  <span className="mt-1 block text-[10px] font-medium text-gray-500">Provedor atual do app</span>
+                </button>
+                <button type="button" aria-pressed={aiProvider === 'freellmapi'} disabled={!freeLLMAPIAvailable || !isLoggedIn} onClick={() => setAiProvider('freellmapi')} className={`rounded-2xl border-2 p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${aiProvider === 'freellmapi' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
+                  <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">FreeLLMAPI</span>
+                  <span className="mt-1 block text-[10px] font-medium text-gray-500">{!freeLLMAPIAvailable ? 'Aguardando configuração no servidor' : !isLoggedIn ? 'Entre com Google para usar' : 'Roteamento multi provedores'}</span>
+                </button>
+              </div>
+              <p className="mt-3 text-[10px] font-medium text-gray-400">Quando selecionado, o FreeLLMAPI será priorizado. Se estiver indisponível, o Gemini assume automaticamente.</p>
+            </div>
+
+            <div>
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Mentoria por IA</label>
               <div className="bg-[#fff6e8]/50 p-6 rounded-[30px] border border-[#fff0d5] flex items-center justify-between group hover:bg-[#fff6e8] transition-all">
                 <div className="flex items-center gap-4">
@@ -300,6 +327,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
               characterId: revealCharacterId,
               studyProfile: profile,
               explanationStyle,
+              aiProvider,
               questionProfileStyle,
               fontSizeMultiplier,
               heroScenario,
