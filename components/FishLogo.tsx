@@ -36,24 +36,21 @@ const FishLogo: React.FC<FishLogoProps> = ({
   hideIcon = false,
   darkBg = false
 }) => {
-
   return (
     <div className={`flex items-center gap-2 select-none ${className}`}>
       {!hideIcon && (
         <div className="relative w-12 h-12 flex-shrink-0 group flex items-center justify-center">
           <svg
-            viewBox="0 0 100 64"
+            viewBox="21 0 78 78"
             className="w-full h-auto transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500 drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]"
             role="img"
             aria-label="Bandeira do Brasil nas cores do ToDAHora"
           >
-            <path d="M8 12Q8 7 14 7h72q6 0 6 6v38q0 6-6 6H14q-6 0-6-6V12Z" fill="#628a46" />
-            <path d="m50 12 34 20-34 20-34-20 34-20Z" fill="#eab308" />
-            <circle cx="50" cy="32" r="11" fill="#473c33" />
-            <path d="M40 29q10-5 20 0" fill="none" stroke="#f2efd2" strokeWidth="2.4" strokeLinecap="round" />
-            <circle cx="48" cy="34" r="1.3" fill="#f2efd2" />
-            <circle cx="54" cy="37" r="1.2" fill="#ed6b2f" />
-            <circle cx="52" cy="29" r="1.2" fill="#f2efd2" />
+            <circle cx="60" cy="39" r="32" fill="#ed6b2f" />
+            <circle cx="60" cy="39" r="26" fill="#628a46" stroke="#eab308" strokeWidth="2.5" />
+            <path d="m60 19 31 20-31 20-31-20 31-20Z" fill="#eab308" />
+            <circle cx="60" cy="39" r="12" fill="#473c33" />
+            <path d="M47 37Q60 31 73 37" fill="none" stroke="#f2efd2" strokeWidth="2.8" strokeLinecap="round" />
           </svg>
         </div>
       )}
