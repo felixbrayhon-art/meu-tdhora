@@ -394,18 +394,23 @@ html.dark .glass-card {
 
 /* Fold the profile-selection spread open in 3D on wider screens. */
 #profile-selection-screen .profile-book-page-left,
-#profile-selection-screen .profile-book-page-right {
+#profile-selection-screen .profile-book-page-right,
+#avatar-selection-screen .profile-book-page-left,
+#avatar-selection-screen .profile-book-page-right {
+    -webkit-transform-style: preserve-3d;
     transform-style: preserve-3d;
     transition: transform 350ms ease-out;
 }
 
 @media (min-width: 768px) {
-    #profile-selection-screen .profile-book-page-left {
+    #profile-selection-screen .profile-book-page-left,
+    #avatar-selection-screen .profile-book-page-left {
         transform: rotateY(-10deg);
         transform-origin: right center;
     }
 
-    #profile-selection-screen .profile-book-page-right {
+    #profile-selection-screen .profile-book-page-right,
+    #avatar-selection-screen .profile-book-page-right {
         transform: rotateY(10deg);
         transform-origin: left center;
     }
@@ -413,7 +418,9 @@ html.dark .glass-card {
 
 @media (prefers-reduced-motion: reduce) {
     #profile-selection-screen .profile-book-page-left,
-    #profile-selection-screen .profile-book-page-right {
+    #profile-selection-screen .profile-book-page-right,
+    #avatar-selection-screen .profile-book-page-left,
+    #avatar-selection-screen .profile-book-page-right {
         transition: none;
     }
 }
