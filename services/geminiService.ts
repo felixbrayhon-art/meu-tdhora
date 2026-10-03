@@ -2,6 +2,7 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { applySourceGuard } from './topicSource';
 import { gatherSources, sourcesPromptBlock } from './lessonSources';
+import { buildVerifiedQuestions } from './questionQuality';
 import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle, IllustratedLesson } from "../types";
 import { auth } from "../src/lib/firebase";
 
@@ -671,7 +672,7 @@ const getTimeContext = () => {
   return `Contexto Temporal Atual: hoje é ${now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. Horário: ${now.toLocaleTimeString('pt-BR')}.`;
 };
 
-export const generateStudyContent = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Explique de forma técnica e objetiva com mapeamento lógico passo a passo.') => {
+const requestStudyContent = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile, explanationStyle: ExplanationStyle) => {
   const profileContext = profile === 'CONCURSO' 
     ? "Foco em editais públicos e lei seca. Linguagem técnica."
     : profile === 'FACULDADE'
@@ -806,7 +807,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
   }
 };
 
-export const generateExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => {
+const requestExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile, banca: string | undefined, explanationStyle: ExplanationStyle, questionProfileStyle: string, extraInstructions: string) => {
   const profileStyle = profile === 'CONCURSO'
     ? "estilo Concursos Públicos de alto nível (FCC/CESPE/FGV), complexas, baseadas em doutrina, jurisprudência e lei seca."
     : profile === 'FACULDADE'
@@ -820,6 +821,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
       Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E).
       ${profileInstruction}
       Não use emojis. Seja extremamente objetivo e rápido na resposta.
+      ${extraInstructions}
 
       INSTRUÇÃO PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES ("explanation"):
       ${explanationStyle}
@@ -893,6 +895,91 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
         return handleAIError(fallbackError);
       }
     }
+    return handleAIError(error);
+  }
+};
+
+
+// The free provider tiers cap tokens per minute, and verifying questions needs several calls in a row. When a call
+// is refused for rate limit, wait for the window to reopen and try again instead of giving up on the verification.
+const isRateLimitError = (error: any): boolean =>
+  error?.status === 429 || /\b429\b|rate[ _-]?limit|RESOURCE_EXHAUSTED|Limite de Cota/i.test(String(error?.message ?? error));
+
+const withRateLimitRetry = async <T,>(task: () => Promise<T>, attempts = 3, waitMs = 20000): Promise<T> => {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await task();
+    } catch (error) {
+      if (attempt >= attempts || !isRateLimitError(error)) throw error;
+      console.warn(`[ai] limite de uso atingido; nova tentativa em ${Math.round(waitMs / 1000)} s (${attempt}/${attempts - 1}).`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+};
+
+// Public entry point: grounds the questions in official text, audits citations, has an independent judge answer each
+// question blind, repairs explanations and replaces rejected questions (see services/questionQuality.ts).
+const judgeJson = async (prompt: string, schema: any, name: string): Promise<any> => {
+  try {
+    const response = await generateContentWithRetry({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      // Small output budget: the judge only returns a short verdict per question, and a large max_tokens
+      // makes Groq's free tier reject the request for exceeding its per-minute limit.
+      config: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0, maxOutputTokens: 2500 },
+    });
+    return safeAIJsonParse(response.text);
+  } catch (error) {
+    if (shouldTryProviderFallbacks(error)) return tryJsonFallbacks(undefined, prompt, toJsonSchema(schema), name);
+    throw error;
+  }
+};
+
+
+// "Estudar com IA": the lesson itself stays as generated, but its quiz goes through the same grounding, audit and
+// independent check as the simulados (services/questionQuality.ts). If that check cannot run, the lesson is
+// returned as it was: the study content is never blocked by the verification.
+export const generateStudyContent = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Explique de forma técnica e objetiva com mapeamento lógico passo a passo.') => {
+  const content = await requestStudyContent(topic, technique, numQuestions, profile, explanationStyle);
+  if (!Array.isArray(content?.quiz) || content.quiz.length === 0) return content;
+  try {
+    const lengths = content.quiz.map((q: any) => (Array.isArray(q?.options) ? q.options.length : 0));
+    const optionCount = [4, 5].sort((x, y) => lengths.filter((n: number) => n === y).length - lengths.filter((n: number) => n === x).length)[0];
+    let useOriginal = true;
+    const { questions, report } = await buildVerifiedQuestions({
+      topic,
+      count: numQuestions,
+      optionCount,
+      Type,
+      judge: (prompt, schema, name) => withRateLimitRetry(() => judgeJson(prompt, schema, name)),
+      generate: async (count, extra) => {
+        if (useOriginal) { useOriginal = false; return content.quiz; }
+        return withRateLimitRetry(() => requestExamQuestions(topic, count, profile, undefined, explanationStyle, '', extra));
+      },
+    });
+    console.info('[quiz] auditoria:', report);
+    return questions.length > 0 ? { ...content, quiz: questions } : content;
+  } catch (error) {
+    console.warn('[quiz] verificação indisponível; mantendo o quiz gerado.', error);
+    return content;
+  }
+};
+
+export const generateExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => {
+  try {
+    const { questions, report } = await buildVerifiedQuestions({
+      topic,
+      count: numQuestions,
+      Type,
+      judge: (prompt, schema, name) => withRateLimitRetry(() => judgeJson(prompt, schema, name)),
+      generate: (count, extra) => withRateLimitRetry(() => requestExamQuestions(topic, count, profile, banca, explanationStyle, questionProfileStyle, extra)),
+    });
+    console.info('[questoes] auditoria:', report);
+    if (questions.length === 0) {
+      throw new AIError('Não consegui gerar questões confiáveis sobre esse assunto agora. Tente de novo ou reformule o assunto.');
+    }
+    return { questions };
+  } catch (error) {
     return handleAIError(error);
   }
 };
@@ -1251,7 +1338,7 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
   }
 };
 
-export const generateMicroThemeValidation = async (topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
+const requestMicroThemeQuestions = async (topic: string, count: number, profile: StudyProfile, explanationStyle: ExplanationStyle, extraInstructions: string) => {
   const profileStyle = profile === 'CONCURSO'
     ? "Foco em lei seca, doutrina e jurisprudência nível concurso."
     : profile === 'FACULDADE'
@@ -1263,7 +1350,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
       ${profileStyle}
 
       REQUISITOS:
-      - 3 Questões inéditas, de alta qualidade para testar se o aluno realmente fixou o tópico na memória de longo prazo.
+      - ${count} Questões inéditas, de alta qualidade para testar se o aluno realmente fixou o tópico na memória de longo prazo.
       - Múltipla escolha (A a D).
       - Linguagem direta e estimulante para o cérebro atípico (TDAH).
 
@@ -1274,6 +1361,8 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
 
       Abuse da formatação Markdown (negrito, bullet points, quebras de linha duplas) para deixar a leitura fácil e rápida. Profundidade 10/10.
 
+      ${extraInstructions}
+
       Retorne em JSON:`;
 
   const microThemeSchema = {
@@ -1281,6 +1370,8 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
     properties: {
       questions: {
         type: Type.ARRAY,
+        minItems: count,
+        maxItems: count,
         items: {
           type: Type.OBJECT,
           properties: {
@@ -1316,6 +1407,26 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
         return handleAIError(fallbackError);
       }
     }
+    return handleAIError(error);
+  }
+};
+
+export const generateMicroThemeValidation = async (topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
+  try {
+    const { questions, report } = await buildVerifiedQuestions({
+      topic,
+      count: 3,
+      optionCount: 4,
+      Type,
+      judge: (prompt, schema, name) => withRateLimitRetry(() => judgeJson(prompt, schema, name)),
+      generate: (count, extra) => withRateLimitRetry(() => requestMicroThemeQuestions(topic, count, profile, explanationStyle, extra)),
+    });
+    console.info('[revisao] auditoria:', report);
+    if (questions.length === 0) {
+      throw new AIError('Não consegui montar uma revisão confiável sobre esse assunto agora. Tente de novo em instantes.');
+    }
+    return { questions };
+  } catch (error) {
     return handleAIError(error);
   }
 };

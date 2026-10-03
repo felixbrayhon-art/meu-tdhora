@@ -294,6 +294,17 @@ export interface Activity {
   bubbles: number;
 }
 
+// How an AI-generated question was checked before reaching the student.
+//   verified   - an independent pass reached the same answer and quoted the official text (see source/evidence)
+//   consistent - an independent pass agreed, but no official text was available for the topic
+//   unverified - the check could not run; confirm in your own material
+export interface QuestionVerification {
+  status: 'verified' | 'consistent' | 'unverified';
+  source?: string;
+  evidence?: string;
+  note?: string;
+}
+
 export interface QuizQuestion {
   id: string;
   question: string;
@@ -306,6 +317,7 @@ export interface QuizQuestion {
   userCommentary?: string;
   explanationImages?: string[];
   explanationImageSizes?: string[];
+  verification?: QuestionVerification;
   // Optional exam metadata, carried through from PublishedQuestion when the
   // source question bank has it (see Método VR) — absent for every other
   // question source (AI-generated, ENEM, pasted, etc).

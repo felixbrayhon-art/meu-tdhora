@@ -92,10 +92,14 @@ export const scoreArticle = (article: LawArticle, topicTokens: string[]): number
 // ---- Official text helpers (Vade Mecum) --------------------------------
 // Dispositivo markers inside a flattened article: "Art. 157 -", "§ 2º-A",
 // "Parágrafo único", incisos ("VII -", "VI  se", "I  (revogado)") and alíneas ("a)").
-const MARKER_RE = /(?:^|(?<=[\s;:.)]))(Art\.\s*\d+[ºo°]?(?:-[A-Z])?|[IVXLC]{1,6}(?=\s*[-–—(]|\s{2,}|\s+se\b)|[a-z]\)(?=\s))|(?:^|(?<=[.)]\s))(§\s*\d+[ºo°]?(?:-[A-Z])?|Parágrafo único)/g;
-// A paragraph only starts after a sentence end or an amendment note, never in
-// cross-references such as "inciso II do § 3º".
-const PARAGRAPH_START_RE = /(?:^|(?<=[.)]\s))(§\s*\d+[ºo°]?(?:-[A-Z])?|Parágrafo único)/g;
+// A "§" starts a paragraph unless it is a cross-reference: preceded by "do/da/no/ao/o/a/de/em/e/ou", by a comma
+// ("art. 129, § 3º") or by "art.". Rubricas such as "Homicídio qualificado § 2º" are real paragraph starts.
+const NOT_XREF = '(?<!\\b(?:do|da|dos|das|no|na|nos|nas|ao|aos|pelo|pela|o|a|os|as|de|em|e|ou|art\\.?|artigos?)\\s+)(?<!,\\s*)';
+const MARKER_RE = new RegExp(
+  `(?:^|(?<=[\\s;:.)]))(Art\\.\\s*\\d+[ºo°]?(?:-[A-Z])?|[IVXLC]{1,6}(?=\\s*[-–—(]|\\s{2,}|\\s+se\\b)|[a-z]\\)(?=\\s))|${NOT_XREF}(?:^|(?<=\\s))(§\\s*\\d+[ºo°]?(?:-[A-Z])?|Parágrafo único)`,
+  'g',
+);
+const PARAGRAPH_START_RE = new RegExp(`${NOT_XREF}(?:^|(?<=\\s))(§\\s*\\d+[ºo°]?(?:-[A-Z])?|Parágrafo único)`, 'g');
 
 const stripRubrica = (texto: string): string => texto.replace(/[\u0096\u0097]/g, '–').replace(/^.*?(?=\bArt\.\s*\d)/, '').trim();
 
@@ -284,6 +288,119 @@ export const fetchWikidataFacts = async (_subject: string, topic: string): Promi
 
   if (lines.length < 2) return null;
   return { kind: 'wikidata', title: name, url: `https://www.wikidata.org/wiki/${candidate.id}`, text: lines.join('\n') };
+};
+
+
+// ------------------------------------------------- Sources for question banks
+const TERM_STOP = new Set(['uso', 'regras', 'regra', 'conceito', 'conceitos', 'principais', 'tipos', 'noções', 'nocoes', 'geral', 'sobre', 'segundo', 'conforme']);
+const splitTopicTerms = (topic: string): string[] =>
+  topic
+    .replace(/\bart(?:igos?|s?\.)?\.?\s*\d+[^\s,;)]*/gi, ' ')
+    .split(/[,;()]|\s+e\s+|\s+ou\s+|\s[-–]\s/i)
+    .map((term) => term.trim())
+    .filter((term) => term.length >= 4);
+
+// Retrieves the official articles a question set should rest on: explicit "art. N" in the topic plus
+// every article whose heading (rubrica) matches one of the topic's terms (e.g. "furto", "roubo").
+const PENAL_ALIASES: Record<string, string> = {
+  'dolo eventual': '18', 'dolo direto': '18', 'culpa consciente': '18', 'culpa inconsciente': '18', 'crime doloso': '18', 'crime culposo': '18',
+  'erro de tipo': '20', 'erro de proibicao': '21', 'tentativa': '14', 'desistencia voluntaria': '15', 'arrependimento eficaz': '15',
+  'arrependimento posterior': '16', 'crime impossivel': '17', 'estado de necessidade': '24', 'legitima defesa': '25',
+  'coacao moral': '22', 'obediencia hierarquica': '22', 'inimputabilidade': '26', 'embriaguez': '28', 'concurso de pessoas': '29',
+  'concurso material': '69', 'concurso formal': '70', 'crime continuado': '71', 'reincidencia': '63', 'relacao de causalidade': '13',
+};
+
+export const fetchLegalSourceForQuestions = async (subject: string, topic: string): Promise<TopicSource | null> => {
+  const subjectNorm = normalize(subject);
+  const topicNorm = normalize(topic);
+  const explicit = Array.from(topicNorm.matchAll(/\bart(?:igos?|s?\.)?\.?\s*(\d+)/g)).map((m) => m[1]);
+  if (!LEGAL_RE.test(subjectNorm) && !LEGAL_RE.test(topicNorm) && explicit.length === 0) return null;
+
+  const wanted = LAWS.filter((law) => law.appliesTo.test(`${subjectNorm} ${topicNorm}`));
+  const laws = wanted.length > 0 ? wanted : LAWS;
+  // Doctrinal names the Código Penal never writes ("erro de proibição" is art. 21, "dolo eventual" is art. 18).
+  for (const [alias, num] of Object.entries(PENAL_ALIASES)) {
+    if (topicNorm.includes(alias) && !explicit.includes(num)) explicit.push(num);
+  }
+  const termTokens = splitTopicTerms(topic)
+    .map((term) => tokens(term).filter((t) => !STOPWORDS.has(t) && !TERM_STOP.has(t) && !/^\d+$/.test(t)))
+    .filter((list) => list.length > 0);
+
+  const picked = new Map<string, { law: LawFile; article: LawArticle; score: number }>();
+  for (const law of laws) {
+    const articles = await loadLaw(law.id);
+    for (const article of articles) {
+      let score = 0;
+      if (explicit.some((num) => article.numero === num || article.numero.startsWith(`${num}-`))) score = 200;
+      else score = Math.max(0, ...termTokens.map((list) => scoreArticle(article, list)).filter((value) => value >= 100));
+      if (score > 0) picked.set(`${law.id}:${article.numero}`, { law, article, score });
+    }
+  }
+  // Concept topics ("dolo", "culpa") live in the caput of an article without a matching rubrica (art. 18 says
+  // "doloso"): when the strict pass finds little, accept caput-level matches too.
+  if (picked.size < 2) {
+    for (const law of laws) {
+      const articles = await loadLaw(law.id);
+      for (const article of articles) {
+        const key = `${law.id}:${article.numero}`;
+        if (picked.has(key)) continue;
+        const loose = Math.max(0, ...termTokens.map((list) => scoreArticle(article, list)).filter((value) => value >= 40 && value < 100));
+        if (loose > 0 && picked.size < 6) picked.set(key, { law, article, score: loose });
+      }
+    }
+  }
+  if (picked.size === 0) return null;
+
+  const best = Array.from(picked.values()).sort((a, b) => b.score - a.score).slice(0, 6);
+  const perArticle = best.length === 1 ? 5000 : 2200;
+  const chosen = best.map((b) => ({ label: b.law.label, numero: b.article.numero, text: stripRubrica(b.article.texto).replace(/\s+/g, ' ').slice(0, perArticle) }));
+  return {
+    kind: 'lei',
+    title: `${Array.from(new Set(chosen.map((c) => c.label))).join(' e ')}, art. ${chosen.map((c) => c.numero).join(', ')}`,
+    url: best[0].law.url,
+    articles: chosen.map((c) => c.numero),
+    laws: chosen,
+    text: chosen.map((c) => `${c.label}, Art. ${c.numero}: ${c.text}`).join('\n\n'),
+  };
+};
+
+// Encyclopedic sources for factual (non-law) topics: one article per main term of the topic. The search uses the
+// term alone (adding the school subject buries short titles such as "Crase") and accepts close titles
+// ("Biomas do Brasil" for "biomas brasileiros") by comparing word stems.
+const stem = (word: string): string => word.slice(0, 5);
+const scoreTitleByTerm = (title: string, termTokens: string[]): number => {
+  const titleStems = tokens(title).map(stem);
+  const matched = termTokens.filter((t) => titleStems.includes(stem(t))).length;
+  if (matched === 0 || matched / termTokens.length < 0.5) return 0;
+  return 100 * (matched / termTokens.length) - (titleStems.length - matched) * 5;
+};
+
+const fetchArticleForTerm = async (term: string): Promise<TopicSource | null> => {
+  const termTokens = tokens(term).filter((t) => !STOPWORDS.has(t) && !TERM_STOP.has(t));
+  if (termTokens.length === 0) return null;
+  const search = await wikiGet({ action: 'query', list: 'search', srsearch: term, srlimit: '6' });
+  const hits: { title: string }[] = search?.query?.search ?? [];
+  const best = hits
+    .map((hit, index) => ({ title: hit.title, score: scoreTitleByTerm(hit.title, termTokens), index }))
+    .filter((candidate) => candidate.score >= 45)
+    .sort((x, y) => y.score - x.score || x.index - y.index)[0];
+  if (!best) return null;
+  const page = await wikiGet({ action: 'query', prop: 'extracts', explaintext: '1', exsectionformat: 'plain', redirects: '1', titles: best.title });
+  const first: any = Object.values(page?.query?.pages ?? {})[0];
+  const text: string = (first?.extract ?? '').trim();
+  if (text.length < 800 || /pode referir-se a|desambigua/i.test(text.slice(0, 400))) return null;
+  const title: string = first.title ?? best.title;
+  return { kind: 'wikipedia', title, url: `https://pt.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`, text: text.slice(0, 3500) };
+};
+
+export const fetchFactSourcesForQuestions = async (_subject: string, topic: string): Promise<TopicSource[]> => {
+  const terms = splitTopicTerms(topic)
+    .map((term) => tokens(term).filter((t) => !STOPWORDS.has(t) && !TERM_STOP.has(t)).join(' '))
+    .filter((term) => term.length >= 4);
+  const unique = Array.from(new Set(terms)).slice(0, 3);
+  const found = await Promise.all(unique.map((term) => fetchArticleForTerm(term).catch(() => null)));
+  const seen = new Set<string>();
+  return found.filter((src): src is TopicSource => !!src && !seen.has(src.url) && !!seen.add(src.url));
 };
 
 // ---------------------------------------------------------------- Aggregate
