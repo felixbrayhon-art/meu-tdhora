@@ -152,16 +152,16 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
 
   return (
     <div className="flex-1 w-full flex flex-col bg-[#FDFBF7] text-[#473c33] h-full dark:bg-[#1c1712] dark:text-[#f4ebdd]" style={{ overflowY: 'auto' }}>
-      <div className="bg-white px-8 py-8 md:py-10 shadow-sm border-b border-gray-100 flex-shrink-0 flex items-center justify-between sticky top-0 z-30 dark:bg-[#272019] dark:border-white/[0.08]">
-        <div>
-          <h2 className="font-logo text-3xl text-gray-900 flex items-center gap-3 dark:text-[#f4ebdd]">
+      <div className="bg-white px-5 sm:px-8 py-6 md:py-10 shadow-sm border-b border-gray-100 flex-shrink-0 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30 dark:bg-[#272019] dark:border-white/[0.08]">
+        <div className="min-w-0 max-w-full">
+          <h2 className="font-logo text-2xl sm:text-3xl text-gray-900 flex items-center gap-3 dark:text-[#f4ebdd]">
             <Scale className="w-8 h-8 text-[#fdad74]" />
             Vade Mecum
           </h2>
           <select
             value={lawId}
             onChange={(e) => { cancelPageTurn(); setLawId(e.target.value); }}
-            className="mt-1 text-gray-500 font-medium tracking-wide uppercase text-sm bg-transparent border-none focus:outline-none cursor-pointer hover:text-gray-700 dark:text-[#c2baa0] dark:hover:text-white"
+            className="mt-1 max-w-full min-h-[44px] text-gray-500 font-medium tracking-wide uppercase text-sm bg-transparent border-none focus:outline-none cursor-pointer hover:text-gray-700 dark:text-[#c2baa0] dark:hover:text-white"
           >
             {VADE_MECUM_LAWS.map((law) => (
               <option key={law.id} value={law.id}>{law.name}</option>
@@ -169,7 +169,7 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
           </select>
         </div>
 
-        <button onClick={onBack} className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors uppercase tracking-widest text-sm dark:bg-[#3a2f22] dark:text-[#f4ebdd] dark:hover:bg-[#493a29]">
+        <button onClick={onBack} className="min-h-[44px] px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors uppercase tracking-widest text-sm dark:bg-[#3a2f22] dark:text-[#f4ebdd] dark:hover:bg-[#493a29]">
           Voltar
         </button>
       </div>
@@ -186,10 +186,10 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
             <p className="px-2 pt-1 text-sm text-[#9b9183] dark:text-[#aaa58e]">A escolha fica salva neste dispositivo.</p>
           </div>
           <div className="flex rounded-xl bg-[#f6f1e8] p-1 dark:bg-[#20211c]" role="group" aria-label="Formato de leitura do Vade Mecum">
-            <button type="button" aria-pressed={readingMode === 'list'} onClick={() => { cancelPageTurn(); setReadingMode('list'); }} className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${readingMode === 'list' ? 'bg-[#473c33] text-white shadow-sm dark:bg-[#e86c32] dark:text-white' : 'text-[#766b5c] hover:bg-white dark:text-[#c2baa0] dark:hover:bg-white/5'}`}>
+            <button type="button" aria-pressed={readingMode === 'list'} onClick={() => { cancelPageTurn(); setReadingMode('list'); }} className={`rounded-lg px-4 py-2 min-h-[44px] text-sm font-bold transition-colors ${readingMode === 'list' ? 'bg-[#473c33] text-white shadow-sm dark:bg-[#e86c32] dark:text-white' : 'text-[#766b5c] hover:bg-white dark:text-[#c2baa0] dark:hover:bg-white/5'}`}>
               Lista
             </button>
-            <button type="button" aria-pressed={readingMode === 'book'} onClick={() => setReadingMode('book')} className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${readingMode === 'book' ? 'bg-[#473c33] text-white shadow-sm dark:bg-[#e86c32] dark:text-white' : 'text-[#766b5c] hover:bg-white dark:text-[#c2baa0] dark:hover:bg-white/5'}`}>
+            <button type="button" aria-pressed={readingMode === 'book'} onClick={() => setReadingMode('book')} className={`rounded-lg px-4 py-2 min-h-[44px] text-sm font-bold transition-colors ${readingMode === 'book' ? 'bg-[#473c33] text-white shadow-sm dark:bg-[#e86c32] dark:text-white' : 'text-[#766b5c] hover:bg-white dark:text-[#c2baa0] dark:hover:bg-white/5'}`}>
               Livro aberto
             </button>
           </div>

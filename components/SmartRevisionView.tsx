@@ -7,6 +7,7 @@ import LoadingFish from './LoadingFish';
 import CharacterTip from './CharacterTip';
 import ForgettingCurve from './ForgettingCurve';
 import { toLocalDateKey } from '../utils/localDate';
+import { CalendarCheck, ChevronLeft, ArrowRight, AlertTriangle, Zap } from './icons';
 
 interface SmartRevisionViewProps {
   items: SmartRevisionItem[];
@@ -431,10 +432,8 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
 
   return (
     <div className="max-w-6xl mx-auto py-12 px-6 pb-32">
-      <button onClick={onBack} className="mb-8 text-gray-400 font-black uppercase text-[10px] tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-        </svg>
+      <button onClick={onBack} className="min-h-[44px] mb-6 text-[#725442] dark:text-[#c8c5a9] font-black uppercase text-xs tracking-widest flex items-center gap-2 hover:text-[#473c33] dark:hover:text-[#f2efd2] transition-colors">
+        <ChevronLeft className="w-4 h-4" />
         VOLTAR AO HUB
       </button>
 
@@ -442,58 +441,70 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
         <div className="lg:col-span-8 space-y-12">
-          <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#fec868] rounded-2xl flex items-center justify-center text-white shadow-xl">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+          <header className="flex flex-col gap-6">
+            <div className="flex items-start gap-4">
+              <div
+                className="mt-1 flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-[#e96f34]/15 text-[#e96f34]"
+                style={{ ['--icon-shadow' as string]: '#7d3a1b' }}
+              >
+                <CalendarCheck className="h-7 w-7" />
               </div>
-              <div>
-                <h1 className="font-logo text-4xl">REVISÃO ESPAÇADA (24/7/30)</h1>
-                <p className="text-gray-400 font-medium">Ciclo neurocientífico calibrado pela regra 24h / 7 dias / 30 dias para fixação de provas.</p>
+              <div className="min-w-0">
+                <h1 className="font-logo text-3xl sm:text-4xl uppercase leading-none tracking-wide text-[#473c33] dark:text-[#f2efd2]">
+                  Revisão <span className="text-[#e96f34] dark:text-[#f08a52]">espaçada</span>
+                </h1>
+                <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#e96f34]/15 px-3 py-1 text-xs font-black uppercase tracking-widest text-[#bf4f1b] dark:text-[#f08a52]">
+                  Regra 24h · 7 dias · 30 dias
+                </p>
+                <p className="mt-3 max-w-xl text-sm font-medium leading-relaxed text-[#725442] dark:text-[#c8c5a9]">
+                  Ciclo neurocientífico para fixar o conteúdo: cada assunto volta no momento em que o cérebro mais esquece.
+                </p>
               </div>
             </div>
 
-            <div className="flex bg-gray-100 p-1.5 rounded-[22px] shadow-inner">
-              <button onClick={() => setActiveSubTab('LIST')} className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'LIST' ? 'bg-white text-[#fec868] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-                Lista
-              </button>
-              <button onClick={() => setActiveSubTab('CALENDAR')} className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'CALENDAR' ? 'bg-white text-[#fec868] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-                Calendário
-              </button>
-              <button onClick={() => setActiveSubTab('STRATEGY')} className={`px-6 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'STRATEGY' ? 'bg-white text-[#fec868] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-                Estratégia
-              </button>
+            <div role="tablist" aria-label="Visão da revisão" className="flex w-full gap-1 rounded-[22px] border border-[#e8dcc8] bg-[#f4ebdd] p-1.5 dark:border-white/10 dark:bg-[#2d2e27] sm:w-fit">
+              {([['LIST', 'Lista'], ['CALENDAR', 'Calendário'], ['STRATEGY', 'Estratégia']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  role="tab"
+                  aria-selected={activeSubTab === key}
+                  onClick={() => setActiveSubTab(key)}
+                  className={`min-h-[44px] flex-1 rounded-[18px] px-5 text-xs font-black uppercase tracking-widest transition-all sm:flex-none ${activeSubTab === key ? 'bg-[#bf4f1b] text-white shadow-sm' : 'text-[#725442] hover:bg-black/5 dark:text-[#c8c5a9] dark:hover:bg-white/5'}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </header>
 
           <AnimatePresence mode="wait">
             {activeSubTab === 'LIST' ? (
               <motion.section key="list" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-                <h3 className="text-xl font-black text-[#473c33] flex items-center gap-3">
-                  VALIDAÇÕES DE HOJE
-                  <span className="bg-[#fff0d5] text-[#fec868] text-[10px] font-black px-3 py-1 rounded-full">{itemsToday.length}</span>
+                <h3 className="font-logo text-xl uppercase tracking-wide text-[#473c33] dark:text-[#f2efd2] flex items-center gap-3">
+                  Validações de hoje
+                  <span className="rounded-full bg-[#e96f34] px-3 py-1 text-xs font-black tabular-nums text-white">{itemsToday.length}</span>
                 </h3>
 
                 {itemsToday.length === 0 ? (
-                  <div className="bg-gray-50 rounded-[40px] p-12 text-center border-2 border-dashed border-gray-200">
-                    <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Parabéns! Nenhuma validação pendente por agora.</p>
+                  <div className="rounded-[32px] border-2 border-dashed border-[#d9ccb4] bg-[#fdfbf7] p-12 text-center dark:border-white/15 dark:bg-white/[0.03]">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[18px] bg-[#e96f34]/15 text-[#e96f34]" style={{ ['--icon-shadow' as string]: '#7d3a1b' }}>
+                      <CalendarCheck className="h-7 w-7" />
+                    </div>
+                    <p className="font-logo text-lg uppercase tracking-wide text-[#473c33] dark:text-[#f2efd2]">Tudo em dia</p>
+                    <p className="mt-2 text-sm font-medium text-[#725442] dark:text-[#c8c5a9]">Nenhuma validação pendente por agora.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {itemsToday.map((item) => (
-                      <button key={item.id} onClick={() => startValidation(item)} className="group bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-all text-left relative overflow-hidden">
+                      <button key={item.id} onClick={() => startValidation(item)} className="group bg-white dark:bg-[#2d2e27] p-6 rounded-[28px] border border-[#efe6d6] dark:border-white/[0.07] shadow-sm hover:shadow-xl hover:border-[#e96f34]/40 transition-all text-left relative overflow-hidden">
                         <div className="flex justify-between items-start mb-4">
-                          <span className="text-[10px] font-black text-[#fec868] bg-[#fff6e8] px-3 py-1 rounded-full uppercase ">{item.intervalLevel === 1 ? '⚡ 1ª REVISÃO (24h)' : item.intervalLevel === 7 ? '📅 2ª REVISÃO (7 dias)' : item.intervalLevel === 30 ? '🧠 3ª REVISÃO (30 dias)' : `REVISÃO DIA ${item.intervalLevel}`}</span>
-                          <div className="p-2 bg-gray-50 rounded-xl group-hover:bg-[#fec868] group-hover:text-white transition-colors">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
+                          <span className="text-xs font-black text-[#bf4f1b] dark:text-[#f08a52] bg-[#e96f34]/12 px-3 py-1 rounded-full uppercase ">{item.intervalLevel === 1 ? '⚡ 1ª REVISÃO (24h)' : item.intervalLevel === 7 ? '📅 2ª REVISÃO (7 dias)' : item.intervalLevel === 30 ? '🧠 3ª REVISÃO (30 dias)' : `REVISÃO DIA ${item.intervalLevel}`}</span>
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e96f34]/12 text-[#e96f34] transition-colors group-hover:bg-[#bf4f1b] group-hover:text-white">
+                            <Zap className="w-5 h-5" />
                           </div>
                         </div>
-                        <h4 className="font-black text-lg text-[#473c33] mb-1 leading-tight group-hover:translate-x-1 transition-transform">{item.topic}</h4>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.subjectName}</p>
+                        <h4 className="font-logo text-lg text-[#473c33] dark:text-[#f2efd2] mb-1 leading-tight group-hover:translate-x-1 transition-transform">{item.topic}</h4>
+                        <p className="text-xs font-bold text-[#725442] dark:text-[#c8c5a9] uppercase tracking-widest">{item.subjectName}</p>
 
                         <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-[#fec868]/5 blur-2xl rounded-full group-hover:bg-[#fec868]/10 transition-all"></div>
                       </button>
@@ -565,32 +576,28 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
         </div>
 
         <div className="lg:col-span-4 space-y-8">
-          <div className="bg-red-50 rounded-[40px] p-8 border border-red-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shadow-lg">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+          <div className="rounded-[32px] border border-[#a94432]/25 bg-[#fbeee9] p-8 dark:border-[#a94432]/40 dark:bg-[#2d2e27]">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#a94432]/15 text-[#a94432] dark:text-[#e58a76]" style={{ ['--icon-shadow' as string]: 'rgba(125,58,27,0.45)' }}>
+                <AlertTriangle className="w-6 h-6" />
               </div>
-              <h3 className="font-black text-red-600 text-xl tracking-tight">COFRE DE ERROS</h3>
+              <h3 className="font-logo text-xl uppercase tracking-wide text-[#a94432] dark:text-[#e58a76]">Cofre de erros</h3>
             </div>
 
-            <p className="text-red-900/60 text-sm font-medium mb-8 leading-relaxed">Assuntos com falhas recentes. A validação tripla limpa o cofre.</p>
+            <p className="mb-6 text-sm font-medium leading-relaxed text-[#725442] dark:text-[#c8c5a9]">Assuntos com falhas recentes. A validação tripla limpa o cofre.</p>
 
             <div className="space-y-3">
               {vaultPending.length === 0 ? (
-                <p className="text-center py-6 text-[10px] font-black text-red-300 uppercase tracking-widest">Cofre vázio. Foco total!</p>
+                <p className="rounded-2xl border border-dashed border-[#a94432]/30 py-6 text-center text-xs font-black uppercase tracking-widest text-[#a94432] dark:text-[#e58a76]">Cofre vazio. Foco total!</p>
               ) : (
                 vaultPending.map((v) => (
-                  <button key={v.id} onClick={() => startVaultResolution(v)} className={`w-full text-left p-5 rounded-3xl border transition-all flex justify-between items-center ${v.isStuck ? 'bg-[#473c33] border-transparent text-white' : 'bg-white border-red-100 text-[#473c33] hover:bg-red-100/50'}`}>
+                  <button key={v.id} onClick={() => startVaultResolution(v)} className={`w-full min-h-[44px] text-left p-5 rounded-3xl border transition-all flex justify-between items-center ${v.isStuck ? 'bg-[#473c33] border-transparent text-white' : 'bg-white dark:bg-[#34352d] border-[#a94432]/20 text-[#473c33] dark:text-[#f2efd2] hover:border-[#a94432]/50'}`}>
                     <div>
                       <h5 className="font-bold text-sm leading-tight">{v.topic}</h5>
-                      <p className={`text-[9px] font-black uppercase tracking-widest ${v.isStuck ? 'text-[#fed386]' : 'text-red-400'}`}>{v.isStuck ? '🎯 TRAVADO - VER EXPLICAÇÃO' : `${v.errorCount} FALHAS`}</p>
+                      <p className={`text-xs font-black uppercase tracking-widest ${v.isStuck ? 'text-[#fed386]' : 'text-[#a94432] dark:text-[#e58a76]'}`}>{v.isStuck ? '🎯 TRAVADO - VER EXPLICAÇÃO' : `${v.errorCount} FALHAS`}</p>
                     </div>
-                    <div className={`p-2 rounded-xl ${v.isStuck ? 'bg-[#fed386] text-[#473c33]' : 'bg-red-50 text-red-500'}`}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${v.isStuck ? 'bg-[#fed386] text-[#473c33]' : 'bg-[#a94432]/12 text-[#a94432] dark:text-[#e58a76]'}`}>
+                      <ArrowRight className="w-4 h-4" />
                     </div>
                   </button>
                 ))

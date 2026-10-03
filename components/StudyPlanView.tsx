@@ -205,19 +205,19 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
     <div className="max-w-4xl mx-auto pb-20 animate-in fade-in duration-700">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-8 px-2">
-        <button onClick={onBack} className="p-3 hover:bg-gray-100 rounded-2xl transition-all">
+        <button onClick={onBack} aria-label="Voltar" className="p-3 hover:bg-gray-100 rounded-2xl transition-all">
           <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <div className="flex bg-white shadow-xl shadow-gray-100/50 border border-gray-100 p-1.5 rounded-[22px]">
-          <button onClick={() => setActiveTab('DASHBOARD')} className={`px-8 py-3 rounded-2xl text-[11px] font-black tracking-widest transition-all ${activeTab === 'DASHBOARD' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
+          <button onClick={() => setActiveTab('DASHBOARD')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'DASHBOARD' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
             DASHBOARD
           </button>
-          <button onClick={() => setActiveTab('CRONOGRAMA')} className={`px-8 py-3 rounded-2xl text-[11px] font-black tracking-widest transition-all ${activeTab === 'CRONOGRAMA' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
+          <button onClick={() => setActiveTab('CRONOGRAMA')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'CRONOGRAMA' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
             CRONOGRAMA
           </button>
-          <button onClick={() => setActiveTab('SETUP')} className={`px-8 py-3 rounded-2xl text-[11px] font-black tracking-widest transition-all ${activeTab === 'SETUP' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
+          <button onClick={() => setActiveTab('SETUP')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'SETUP' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
             AJUSTES
           </button>
         </div>

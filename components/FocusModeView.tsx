@@ -15,7 +15,7 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({ settings, onUpdate, onBac
   return (
     <div className="max-w-3xl mx-auto py-10 text-[#473c33] dark:text-[#f4ebdd] animate-in fade-in duration-700">
       <div className="flex justify-between items-center mb-12">
-        <button onClick={onBack} className="text-gray-400 dark:text-[#b9ad9c] font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:text-gray-600 dark:hover:text-white transition-colors">
+        <button onClick={onBack} className="min-h-[44px] text-gray-400 dark:text-[#b9ad9c] font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:text-gray-600 dark:hover:text-white transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
           </svg>

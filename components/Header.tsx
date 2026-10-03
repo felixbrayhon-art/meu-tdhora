@@ -7,18 +7,19 @@ interface HeaderProps {
   onLogoClick: () => void;
   isAIEnabled: boolean;
   isDarkMode: boolean;
+  compact?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ stats, onLogoClick, isAIEnabled, isDarkMode }) => {
+const Header: React.FC<HeaderProps> = ({ stats, onLogoClick, isAIEnabled, isDarkMode, compact = false }) => {
   return (
-    <header className="bg-white dark:bg-[#272019] border-b border-gray-100 dark:border-white/[0.06] py-4 px-6 flex items-center justify-between sticky top-0 z-50 shadow-sm dark:shadow-none">
-      <div className="flex items-center gap-6 lg:gap-8">
+    <header className={`${compact ? '' : 'app-header-pattern '}relative isolate overflow-hidden bg-white dark:bg-[#272019] border-b border-gray-100 dark:border-white/[0.06] ${compact ? 'py-2' : 'py-4'} px-6 flex items-center justify-between sticky top-0 z-50 shadow-sm dark:shadow-none`}>
+      <div className="relative z-10 flex items-center gap-6 lg:gap-8">
         <button onClick={onLogoClick} className="hover:opacity-80 transition-opacity active:scale-95 shrink-0" title="Ir para o Hub">
           <FishLogo days={stats.totalDaysStudied} darkBg={isDarkMode} className="scale-75 md:scale-90 lg:scale-100 origin-left" />
         </button>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="relative z-10 flex items-center gap-4">
         <div className="hidden sm:flex items-center gap-1.5 bg-[#fff1e8] dark:bg-[#3a2f22] text-[#ff832a] dark:text-[#d9772b] px-3 py-1.5 rounded-full font-bold text-xs uppercase tracking-tighter">DIAS estendidos: {stats.totalDaysStudied}</div>
         <div className="flex items-center gap-1.5 bg-[#fff6e8] dark:bg-[#3a2f22] text-[#ffb22a] dark:text-[#d9772b] px-3 py-1.5 rounded-full font-bold text-xs uppercase tracking-tighter">RITMO: {stats.streak}</div>
 

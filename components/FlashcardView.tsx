@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Flashcard, FlashcardFolder, StudyProfile, EditalConfig } from '../types';
 import { generateStudyContent } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
@@ -28,6 +28,7 @@ interface FlashcardViewProps {
 type ManagedView = 'FOLDERS' | 'FOLDER_DETAIL' | 'REVIEW';
 
 const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards, folders, setFolders, onBack, studyProfile, strategicMode, editalConfig, onReviewBatchComplete, selectedFolderId, setSelectedFolderId, viewMode, setViewMode }) => {
+  const shouldReduceMotion = useReducedMotion();
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
@@ -55,7 +56,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
     correctAnswerIndex: 0,
     topic: '',
   });
-  const [newFolder, setNewFolder] = useState({ name: '', color: '#f97316' });
+  const [newFolder, setNewFolder] = useState({ name: '', color: '#d9772b' });
 
   // Review State
   const [reviewQueue, setReviewQueue] = useState<string[]>([]);
@@ -236,19 +237,19 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
         <AnimatePresence mode="wait">
           {viewMode === 'FOLDERS' && (
             <motion.div key="folders" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-12">
-              <div className="flex justify-between items-center bg-[#473c33]/40 backdrop-blur-2xl p-8 rounded-[40px] border border-white/5 shadow-2xl">
-                <div className="flex items-center gap-6">
-                  <button onClick={onBack} className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90">
+              <div className="flex flex-wrap justify-between items-center gap-4 bg-[#473c33]/40 backdrop-blur-2xl p-5 sm:p-8 rounded-[40px] border border-white/5 shadow-2xl">
+                <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+                  <button onClick={onBack} aria-label="Voltar" className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90">
                     <ChevronLeft className="w-6 h-6 text-white/50 group-hover:text-white" />
                   </button>
                   <div>
-                    <h1 className="font-logo text-4xl uppercase leading-none">
+                    <h1 className="font-logo text-3xl sm:text-4xl uppercase leading-none tracking-wide">
                       Flash<span className="text-[#fdad74]">Cards</span>
                     </h1>
-                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">SISTEMA REPETIÇÃO ESPAÇADA (SRS)</p>
+                    <p className="text-xs font-bold text-[#c8c5a9] uppercase tracking-widest mt-2">Revisão espaçada · repetição no ponto certo</p>
                   </div>
                 </div>
-                <button onClick={() => { setEditingFolderId(null); setNewFolder({ name: '', color: '#f97316' }); setShowAddFolderModal(true); }} className="bg-[#fdad74] text-white p-4 rounded-2xl hover:bg-[#fdb887] transition-all shadow-lg active:scale-90 flex items-center gap-2 group">
+                <button onClick={() => { setEditingFolderId(null); setNewFolder({ name: '', color: '#f97316' }); setShowAddFolderModal(true); }} aria-label="Nova pasta" className="bg-[#fdad74] text-white p-4 rounded-2xl hover:bg-[#fdb887] transition-all shadow-lg active:scale-90 flex items-center gap-2 group">
                   <FolderPlus className="w-6 h-6" />
                   <span className="hidden md:inline font-black text-xs uppercase tracking-widest">Nova Pasta</span>
                 </button>
@@ -256,13 +257,13 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {/* Quick Review Card */}
-                <button onClick={() => startReview('all')} className="group relative overflow-hidden bg-[#e96f34] hover:bg-[#f07b40] p-10 rounded-[50px] text-left shadow-2xl transition-all hover:scale-[1.03] active:scale-95">
+                <button onClick={() => startReview('all')} className="group relative overflow-hidden bg-gradient-to-br from-[#bf4f1b] to-[#d9772b] p-10 pb-14 rounded-[50px] text-left shadow-2xl transition-all hover:scale-[1.03] active:scale-95">
                   <div className="relative z-10">
-                    <h3 className="text-3xl font-black mb-1 uppercase tracking-tighter leading-none">REVISÃO GERAL</h3>
-                    <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-10">Todos os cards pendentes</p>
+                    <h3 className="font-logo text-3xl mb-2 uppercase tracking-wide leading-none text-[#fff6e8]">Revisão geral</h3>
+                    <p className="text-[#fff6e8]/90 text-xs font-bold uppercase tracking-widest mb-10">Todos os cards pendentes</p>
                     <div className="flex items-center gap-4">
-                      <span className="text-6xl font-black">{dueCountOverall}</span>
-                      <div className="text-[10px] font-black uppercase text-white/80 leading-tight">
+                      <span className="font-logo text-6xl text-[#fff6e8]">{dueCountOverall}</span>
+                      <div className="text-xs font-black uppercase text-[#fff6e8]/90 leading-tight">
                         Cards
                         <br />
                         Para Hoje
@@ -272,6 +273,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                   <div className="absolute -top-4 -right-4 p-8 opacity-20 transform group-hover:scale-125 group-hover:rotate-12 transition-all duration-500">
                     <RotateCcw className="w-32 h-32" />
                   </div>
+                  <div aria-hidden="true" className="card-strip absolute bottom-5 left-10 right-10 text-[#fff6e8]" />
                 </button>
 
                 {/* Folder List */}
@@ -282,13 +284,13 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                         setSelectedFolderId(folder.id);
                         setViewMode('FOLDER_DETAIL');
                       }}
-                      className="w-full h-full bg-white/5 backdrop-blur-xl p-10 rounded-[50px] text-left border border-white/5 hover:border-[#fdad74]/30 transition-all hover:scale-[1.02] shadow-2xl overflow-hidden relative"
+                      className="w-full h-full bg-[#2d2e27] p-10 rounded-[50px] text-left border border-white/[0.06] hover:border-[#e96f34]/40 transition-all hover:scale-[1.02] shadow-2xl overflow-hidden relative"
                     >
                       <div className="w-24 shrink-0">
                         <StudyBook3D title={folder.name} color={folder.color} />
                       </div>
-                      <h3 className="text-2xl font-black uppercase tracking-tighter leading-none mb-1 text-white group-hover:text-[#fdad74] transition-colors">{folder.name}</h3>
-                      <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">{flashcards.filter((f) => f.folderId === folder.id).length} Cards Totais</p>
+                      <h3 className="font-logo text-2xl uppercase tracking-wide leading-none mb-2 mt-3 text-[#f2efd2] group-hover:text-[#f08a52] transition-colors">{folder.name}</h3>
+                      <p className="text-[#c8c5a9] text-xs font-bold uppercase tracking-widest">{flashcards.filter((f) => f.folderId === folder.id).length} Cards Totais</p>
 
                       {getFolderDueCount(folder.id) > 0 && (
                         <div className="mt-8 flex items-center gap-2">
@@ -311,7 +313,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                         setNewFolder({ name: folder.name, color: folder.color });
                         setShowAddFolderModal(true);
                       }}
-                      className="absolute top-8 left-8 p-3 bg-white/10 text-white/70 rounded-2xl opacity-0 group-hover:opacity-100 hover:bg-white hover:text-[#473c33] transition-all z-20"
+                      className="absolute top-8 left-8 min-h-[44px] min-w-[44px] p-3 bg-white/10 text-white/70 rounded-2xl opacity-0 group-hover:opacity-100 hover:bg-white hover:text-[#473c33] transition-all z-20"
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
@@ -323,7 +325,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                           setFlashcards((prev) => prev.filter((c) => c.folderId !== folder.id));
                         }
                       }}
-                      className="absolute top-8 right-8 p-3 bg-red-500/10 text-red-500 rounded-2xl opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all z-20 cursor-pointer"
+                      aria-label="Excluir pasta" className="absolute top-8 right-8 min-h-[44px] min-w-[44px] p-3 bg-red-500/10 text-red-500 rounded-2xl opacity-0 max-md:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all z-20 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -347,7 +349,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
             <motion.div key="folder-detail" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12">
               <div className="flex justify-between items-center bg-[#473c33]/40 backdrop-blur-2xl p-8 rounded-[40px] border border-white/5 shadow-2xl">
                 <div className="flex items-center gap-6">
-                  <button onClick={() => setViewMode('FOLDERS')} className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90">
+                  <button onClick={() => setViewMode('FOLDERS')} aria-label="Voltar às pastas" className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90">
                     <ChevronLeft className="w-6 h-6 text-white/50 group-hover:text-white" />
                   </button>
                   <div>
@@ -474,103 +476,110 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                             </div>
 
                             {/* Immersive Card */}
-                            <motion.div layout onClick={() => setShowAnswer(!showAnswer)} className={`min-h-[500px] w-full rounded-[60px] p-12 md:p-20 shadow-3xl cursor-pointer transition-all duration-700 border-2 relative overflow-hidden flex flex-col justify-center ${showAnswer ? 'bg-white border-white text-[#473c33]' : 'bg-white/5 border-white/10 text-white hover:border-[#fdad74]/50'}`}>
-                              <AnimatePresence mode="wait">
-                                {!showAnswer ? (
-                                  <motion.div key="question" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col h-full items-center text-center">
+                            <div
+                              className="flashcard-flip-scene"
+                              role="button"
+                              tabIndex={0}
+                              aria-label={showAnswer ? 'Mostrar pergunta do flashcard' : 'Virar flashcard e mostrar resposta'}
+                              onClick={() => setShowAnswer((visible) => !visible)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  setShowAnswer((visible) => !visible);
+                                }
+                              }}
+                            >
+                              <motion.div
+                                className="flashcard-flipper"
+                                animate={{ rotateY: showAnswer ? 180 : 0 }}
+                                transition={{ duration: shouldReduceMotion ? 0 : 0.76, ease: [0.22, 0.68, 0.15, 1] }}
+                              >
+                                <div className="flashcard-face flashcard-face--question" aria-hidden={showAnswer}>
+                                  <div className="flashcard-face__content items-center text-center">
                                     <div
-                                      className="text-[15px] font-normal text-[#473c33]/80 leading-relaxed mb-10 markdown-body overflow-y-auto max-h-[320px] custom-scrollbar selection:bg-[#fdad74]/50 px-4"
-                                      dangerouslySetInnerHTML={{
-                                        __html: currentCard?.question || '',
-                                      }}
+                                      className="text-[15px] font-normal leading-relaxed mb-10 markdown-body overflow-y-auto max-h-[320px] custom-scrollbar selection:bg-[#fdad74]/50 px-4"
+                                      dangerouslySetInnerHTML={{ __html: currentCard?.question || '' }}
                                     />
 
                                     {currentCard?.type === 'MULTIPLE_CHOICE' && (
                                       <div className="w-full space-y-4 max-w-lg">
                                         {currentCard?.options?.map((opt, idx) => (
-                                          <div key={idx} className="w-full text-left bg-white/5 border border-white/10 p-5 rounded-3xl text-sm font-bold opacity-60">
+                                          <div key={idx} className="w-full text-left bg-white/5 border border-white/10 p-5 rounded-3xl text-sm font-bold opacity-75">
                                             <span className="font-black text-[#fdad74] mr-3 uppercase">{String.fromCharCode(65 + idx)})</span> {opt}
                                           </div>
                                         ))}
-                                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 mt-8">Toque no card para revelar a resposta</p>
                                       </div>
                                     )}
 
-                                    {!currentCard?.type ||
-                                      (currentCard.type === 'SIMPLE' && (
-                                        <div className="mt-12 group flex items-center gap-4 text-white/20">
-                                          <Brain className="w-8 h-8 group-hover:text-[#fdad74] transition-colors animate-pulse" />
-                                          <span className="text-[10px] font-black uppercase tracking-[0.5em]">Processando...</span>
-                                        </div>
-                                      ))}
-                                  </motion.div>
-                                ) : (
-                                  <motion.div key="answer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col h-full space-y-10">
-                                    {/* Simple Answer */}
+                                    <div className="mt-auto pt-8 group flex items-center gap-3 text-white/45">
+                                      <Brain className="w-5 h-5 group-hover:text-[#fdad74] transition-colors" />
+                                      <span className="text-[10px] font-black uppercase tracking-[0.35em]">Toque para virar</span>
+                                    </div>
+                                  </div>
+                                  <div className="flashcard-face__edge" />
+                                  <div className="flashcard-face__shine" />
+                                </div>
+
+                                <div className="flashcard-face flashcard-face--answer" aria-hidden={!showAnswer}>
+                                  <div className="flashcard-face__content space-y-8">
                                     {(!currentCard?.type || currentCard.type === 'SIMPLE') && (
                                       <div className="text-center">
                                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6">RESPOSTA DIRETA</h4>
                                         <div
                                           className="text-lg md:text-xl font-normal tracking-tight text-[#473c33] markdown-body selection:bg-[#fed6ba]"
-                                          dangerouslySetInnerHTML={{
-                                            __html: currentCard?.answer || '',
-                                          }}
+                                          dangerouslySetInnerHTML={{ __html: currentCard?.answer || '' }}
                                         />
                                       </div>
                                     )}
 
-                                    {/* Result Display for MC */}
                                     {currentCard?.type === 'MULTIPLE_CHOICE' && (
                                       <div className="bg-[#b1c77b]/10 border border-[#b1c77b]/20 p-8 rounded-[40px] text-center">
-                                        <h4 className="text-[10px] font-black text-[#abc270] uppercase tracking-[0.4em] mb-4 text-center">GABARITO CONFIRMADO</h4>
+                                        <h4 className="text-[10px] font-black text-[#718b3f] uppercase tracking-[0.4em] mb-4 text-center">GABARITO CONFIRMADO</h4>
                                         <div className="text-lg md:text-xl font-normal text-[#473c33] leading-tight">
                                           {String.fromCharCode(65 + (currentCard.correctAnswerIndex || 0))}) {currentCard.options?.[currentCard.correctAnswerIndex || 0]}
                                         </div>
                                       </div>
                                     )}
 
-                                    {/* Explanation */}
                                     {currentCard?.explanation && (
-                                      <div className="bg-[#473c33]/5 p-10 rounded-[40px] border border-[#473c33]/5">
-                                        <div className="flex items-center gap-3 mb-6 text-[#fda769]">
+                                      <div className="bg-[#473c33]/5 p-8 md:p-10 rounded-[32px] border border-[#473c33]/5">
+                                        <div className="flex items-center gap-3 mb-5 text-[#fda769]">
                                           <HelpCircle className="w-5 h-5" />
                                           <span className="text-[10px] font-black uppercase tracking-[0.3em]">ANÁLISE TÉCNICA</span>
                                         </div>
                                         <div
                                           className="prose prose-base text-[#473c33] font-normal leading-[1.6] markdown-body selection:bg-[#fed6ba]"
-                                          dangerouslySetInnerHTML={{
-                                            __html: currentCard.explanation,
-                                          }}
+                                          dangerouslySetInnerHTML={{ __html: currentCard.explanation }}
                                         />
                                       </div>
                                     )}
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-
-                              {/* Decorative Elements */}
-                              <div className={`absolute top-0 left-0 w-2 h-full ${showAnswer ? 'bg-[#fdad74]' : 'bg-[#fdad74]/20'}`}></div>
-                            </motion.div>
+                                    <div className="mt-auto pt-2 text-center text-[10px] font-black uppercase tracking-[0.35em] text-[#473c33]/45">Toque para voltar à pergunta</div>
+                                  </div>
+                                  <div className="flashcard-face__edge" />
+                                  <div className="flashcard-face__shine" />
+                                </div>
+                              </motion.div>
+                            </div>
 
                             {/* Rating Controls */}
                             <AnimatePresence>
                               {showAnswer ? (
                                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-6 animate-in slide-in-from-bottom-4">
-                                  <button onClick={() => handleRate(0)} className="flex flex-col items-center gap-3 bg-red-500/10 border border-red-500/20 p-8 rounded-[40px] hover:bg-red-500 hover:text-white transition-all group active:scale-95">
+                                  <button onClick={() => handleRate(0)} className="flex flex-col items-center gap-3 bg-[#a94432]/15 border border-[#a94432]/35 p-8 rounded-[40px] hover:bg-[#a94432] hover:text-white transition-all group active:scale-95">
                                     <span className="text-3xl group-hover:scale-125 transition-transform">😫</span>
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500 group-hover:text-white">ERREI</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#e58a76] group-hover:text-white">ERREI</span>
                                   </button>
                                   <button onClick={() => handleRate(1)} className="flex flex-col items-center gap-3 bg-[#fdad74]/10 border border-[#fdad74]/20 p-8 rounded-[40px] hover:bg-[#fdad74] hover:text-white transition-all group active:scale-95">
                                     <span className="text-3xl group-hover:scale-125 transition-transform">🫤</span>
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#fdad74] group-hover:text-white">DIFÍCIL</span>
                                   </button>
-                                  <button onClick={() => handleRate(2)} className="flex flex-col items-center gap-3 bg-[#fecc73]/10 border border-[#fecc73]/20 p-8 rounded-[40px] hover:bg-[#fecc73] hover:text-white transition-all group active:scale-95">
+                                  <button onClick={() => handleRate(2)} className="flex flex-col items-center gap-3 bg-[#fecc73]/10 border border-[#fecc73]/20 p-8 rounded-[40px] hover:bg-[#fecc73] hover:text-[#473c33] transition-all group active:scale-95">
                                     <span className="text-3xl group-hover:scale-125 transition-transform">🙂</span>
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#fecc73] group-hover:text-white">BOM</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#fecc73] group-hover:text-[#473c33]">BOM</span>
                                   </button>
-                                  <button onClick={() => handleRate(3)} className="flex flex-col items-center gap-3 bg-[#b1c77b]/10 border border-[#b1c77b]/20 p-8 rounded-[40px] hover:bg-[#b1c77b] hover:text-white transition-all group active:scale-95">
+                                  <button onClick={() => handleRate(3)} className="flex flex-col items-center gap-3 bg-[#b1c77b]/10 border border-[#b1c77b]/20 p-8 rounded-[40px] hover:bg-[#b1c77b] hover:text-[#2f3a1c] transition-all group active:scale-95">
                                     <span className="text-3xl group-hover:scale-125 transition-transform">😎</span>
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#b1c77b] group-hover:text-white">FÁCIL</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#b1c77b] group-hover:text-[#2f3a1c]">FÁCIL</span>
                                   </button>
                                 </motion.div>
                               ) : (
@@ -622,6 +631,19 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                   </div>
                 </div>
                 <CustomColorField dark label="Cor da capa" color={newFolder.color} onChange={(color) => setNewFolder((prev) => ({ ...prev, color }))} />
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Cores da paleta">
+                  {['#c96c4a', '#d9772b', '#d8a53a', '#7d7a36', '#446b4e', '#8a9a7b', '#2e4a54', '#725442', '#a94432', '#d98b7b'].map((swatch) => (
+                    <button
+                      key={swatch}
+                      type="button"
+                      aria-label={`Cor ${swatch}`}
+                      aria-pressed={newFolder.color.toLowerCase() === swatch}
+                      onClick={() => setNewFolder((prev) => ({ ...prev, color: swatch }))}
+                      className={`h-10 w-10 rounded-xl border-2 transition-transform hover:scale-110 ${newFolder.color.toLowerCase() === swatch ? 'border-[#f2efd2] scale-110' : 'border-white/10'}`}
+                      style={{ backgroundColor: swatch }}
+                    />
+                  ))}
+                </div>
                 <div className="flex gap-4 pt-6">
                   <button type="button" onClick={() => { setShowAddFolderModal(false); setEditingFolderId(null); }} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-gray-500 hover:text-white transition-colors uppercase">
                     Cancelar

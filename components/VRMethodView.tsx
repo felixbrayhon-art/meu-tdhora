@@ -46,7 +46,8 @@ const VRMethodView: React.FC<VRMethodViewProps> = ({ uid, onBack }) => {
       <div className="bg-white px-6 md:px-10 py-6 shadow-sm border-b border-gray-100 flex-shrink-0 flex items-center gap-3 sticky top-0 z-30">
         <button
           onClick={() => (selectedSubject ? setSelectedSubject(null) : onBack())}
-          className="p-2 -ml-2 rounded-xl text-gray-500 hover:bg-gray-100"
+          aria-label="Voltar"
+          className="p-3 -ml-2 rounded-xl text-gray-500 hover:bg-gray-100"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
