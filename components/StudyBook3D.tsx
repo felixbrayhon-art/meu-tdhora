@@ -7,6 +7,14 @@ interface StudyBook3DProps {
   preview?: React.ReactNode;
 }
 
+// Older folders were saved with bright default colors; show them in the app's earthy palette.
+const EARTHY: Record<string, string> = {
+  '#f97316': '#d9772b', '#3b82f6': '#2e4a54', '#ef4444': '#a94432', '#22c55e': '#446b4e', '#10b981': '#446b4e',
+  '#8b5cf6': '#725442', '#a855f7': '#725442', '#eab308': '#d8a53a', '#f59e0b': '#d8a53a', '#ec4899': '#d98b7b',
+  '#14b8a6': '#446b4e', '#06b6d4': '#2e4a54', '#6366f1': '#2e4a54',
+};
+const toEarthy = (hex: string) => EARTHY[hex.toLowerCase()] ?? hex;
+
 const getInkColor = (hex: string) => {
   const normalized = hex.replace('#', '');
   if (!/^[0-9a-f]{6}$/i.test(normalized)) return '#fffaf0';
@@ -18,7 +26,9 @@ const getInkColor = (hex: string) => {
 };
 
 /** A compact, CSS-only 3D book cover inspired by the supplied rotating-book demo. */
-const StudyBook3D: React.FC<StudyBook3DProps> = ({ title, color, className = '', preview }) => (
+const StudyBook3D: React.FC<StudyBook3DProps> = ({ title, color: rawColor, className = '', preview }) => {
+  const color = toEarthy(rawColor);
+  return (
   <div
     className={`study-book ${className}`}
     style={{ '--study-book-color': color, '--study-book-ink': getInkColor(color) } as React.CSSProperties}
@@ -34,6 +44,7 @@ const StudyBook3D: React.FC<StudyBook3DProps> = ({ title, color, className = '',
       <strong className="study-book__title">{title || 'Sem título'}</strong>
     </div>
   </div>
-);
+  );
+};
 
 export default StudyBook3D;

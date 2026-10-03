@@ -57,12 +57,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
   const [revealCharacterId, setRevealCharacterId] = useState<string | null>(null);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
   const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>(stats.explanationStyle || 'TECNICA');
-  const [aiProvider, setAiProvider] = useState<NonNullable<UserStats['aiProvider']>>(stats.aiProvider || 'gemini');
+  const [aiProvider, setAiProvider] = useState<NonNullable<UserStats['aiProvider']>>(stats.aiProvider || 'auto');
   const [questionProfileStyle, setQuestionProfileStyle] = useState(stats.questionProfileStyle || '');
   const [fontSizeMultiplier, setFontSizeMultiplier] = useState(stats.fontSizeMultiplier || 1);
   const [heroScenario, setHeroScenario] = useState(stats.heroScenario || 'quarto');
   const [heroTintColor, setHeroTintColor] = useState(stats.heroTintColor);
   const [freeLLMAPIAvailable, setFreeLLMAPIAvailable] = useState(false);
+  const localFreeLLMPreview = import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -95,7 +98,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
   return (
     <>
       <div className="max-w-4xl mx-auto py-10 animate-in fade-in slide-in-from-bottom-6 duration-500 px-4">
-        <button onClick={onBack} className="mb-12 text-gray-400 font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors">
+        <button onClick={onBack} className="min-h-[44px] mb-12 text-gray-400 font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
           </svg>
@@ -180,7 +183,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Cor do Peixe</label>
               <div className="grid grid-cols-5 gap-4">
                 {AVATAR_OPTIONS.map((opt) => (
-                  <button key={opt.color} onClick={() => setSelectedColor(opt.color)} className={`aspect-square rounded-2xl flex items-center justify-center transition-all ${selectedColor === opt.color ? 'ring-4 ring-[#fed386] ring-offset-4 scale-110' : 'opacity-60 grayscale hover:opacity-100 hover:grayscale-0'}`} style={{ backgroundColor: opt.color }}>
+                  <button key={opt.color} onClick={() => setSelectedColor(opt.color)} aria-label={`Cor do avatar ${opt.color}`} aria-pressed={selectedColor === opt.color} className={`aspect-square rounded-2xl flex items-center justify-center transition-all ${selectedColor === opt.color ? 'ring-4 ring-[#fed386] ring-offset-4 scale-110' : 'opacity-60 grayscale hover:opacity-100 hover:grayscale-0'}`} style={{ backgroundColor: opt.color }}>
                     <FishLogo iconOnly primaryColor="white" className="scale-50" days={stats.totalDaysStudied} />
                   </button>
                 ))}
@@ -213,7 +216,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
               <div className="grid grid-cols-6 gap-4">
                 {HERO_TINT_OPTIONS.map((opt) => (
                   <button key={opt.name} onClick={() => setHeroTintColor(opt.color || undefined)} title={opt.name} className={`aspect-square rounded-2xl flex items-center justify-center transition-all border-2 ${heroTintColor === opt.color || (!heroTintColor && !opt.color) ? 'ring-4 ring-[#fed386] ring-offset-2 scale-110 border-transparent' : 'border-gray-100 opacity-70 hover:opacity-100'}`} style={{ backgroundColor: opt.color || '#E5E7EB' }}>
-                    {!opt.color && <span className="text-[8px] font-black uppercase text-gray-500">Padrão</span>}
+                    {!opt.color && <span className="text-xs font-black uppercase" style={{ color: '#473c33' }}>Padrão</span>}
                   </button>
                 ))}
               </div>
@@ -253,16 +256,28 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
             <div>
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Provedor de IA</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button type="button" aria-pressed={aiProvider === 'auto'} onClick={() => setAiProvider('auto')} className={`rounded-2xl border-2 p-4 text-left transition-all ${aiProvider === 'auto' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
+                  <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">Automático</span>
+                  <span className="mt-1 block text-[10px] font-medium text-gray-500">Groq → OpenRouter → FreeLLMAPI → Gemini</span>
+                </button>
+                <button type="button" aria-pressed={aiProvider === 'groq'} onClick={() => setAiProvider('groq')} className={`rounded-2xl border-2 p-4 text-left transition-all ${aiProvider === 'groq' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
+                  <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">Groq</span>
+                  <span className="mt-1 block text-[10px] font-medium text-gray-500">Hardware próprio, respostas rápidas</span>
+                </button>
+                <button type="button" aria-pressed={aiProvider === 'openrouter'} onClick={() => setAiProvider('openrouter')} className={`rounded-2xl border-2 p-4 text-left transition-all ${aiProvider === 'openrouter' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
+                  <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">OpenRouter</span>
+                  <span className="mt-1 block text-[10px] font-medium text-gray-500">Pool de modelos gratuitos</span>
+                </button>
                 <button type="button" aria-pressed={aiProvider === 'gemini'} onClick={() => setAiProvider('gemini')} className={`rounded-2xl border-2 p-4 text-left transition-all ${aiProvider === 'gemini' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
                   <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">Google Gemini</span>
-                  <span className="mt-1 block text-[10px] font-medium text-gray-500">Provedor atual do app</span>
+                  <span className="mt-1 block text-[10px] font-medium text-gray-500">Google, usado por último no modo automático</span>
                 </button>
-                <button type="button" aria-pressed={aiProvider === 'freellmapi'} disabled={!freeLLMAPIAvailable || !isLoggedIn} onClick={() => setAiProvider('freellmapi')} className={`rounded-2xl border-2 p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${aiProvider === 'freellmapi' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
+                <button type="button" aria-pressed={aiProvider === 'freellmapi'} disabled={!freeLLMAPIAvailable || (!isLoggedIn && !localFreeLLMPreview)} onClick={() => setAiProvider('freellmapi')} className={`rounded-2xl border-2 p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${aiProvider === 'freellmapi' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
                   <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">FreeLLMAPI</span>
-                  <span className="mt-1 block text-[10px] font-medium text-gray-500">{!freeLLMAPIAvailable ? 'Aguardando configuração no servidor' : !isLoggedIn ? 'Entre com Google para usar' : 'Roteamento multi provedores'}</span>
+                  <span className="mt-1 block text-[10px] font-medium text-gray-500">{!freeLLMAPIAvailable ? 'Aguardando configuração no servidor' : !isLoggedIn && localFreeLLMPreview ? 'Disponível nesta prévia local' : !isLoggedIn ? 'Entre com Google para usar' : 'Roteamento multi provedores'}</span>
                 </button>
               </div>
-              <p className="mt-3 text-[10px] font-medium text-gray-400">Quando selecionado, o FreeLLMAPI será priorizado. Se estiver indisponível, o Gemini assume automaticamente.</p>
+              <p className="mt-3 text-[10px] font-medium text-gray-400">O provedor escolhido é tentado primeiro. Se estiver indisponível, o app cai automaticamente para os outros, na ordem Groq → OpenRouter → FreeLLMAPI → Gemini.</p>
             </div>
 
             <div>
@@ -277,7 +292,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
                     <p className="text-[10px] font-bold text-gray-400 leading-none">Insights dinâmicos e geração de conteúdo</p>
                   </div>
                 </div>
-                <button onClick={() => setIsAIEnabled(!isAIEnabled)} className={`w-14 h-8 rounded-full relative transition-all duration-300 ${isAIEnabled ? 'bg-[#fecc73]' : 'bg-gray-300'}`}>
+                <button type="button" role="switch" aria-checked={isAIEnabled} aria-label="Mentoria por IA" onClick={() => setIsAIEnabled(!isAIEnabled)} className={`w-14 h-8 rounded-full relative transition-all duration-300 before:absolute before:-inset-y-2 before:inset-x-0 before:content-[''] ${isAIEnabled ? 'bg-[#fecc73]' : 'bg-gray-300'}`}>
                   <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all duration-300 ${isAIEnabled ? 'left-7' : 'left-1'}`} />
                 </button>
               </div>

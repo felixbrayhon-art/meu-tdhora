@@ -1,6 +1,8 @@
 
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
-import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle } from "../types";
+import { applySourceGuard } from './topicSource';
+import { gatherSources, sourcesPromptBlock } from './lessonSources';
+import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle, IllustratedLesson } from "../types";
 import { auth } from "../src/lib/firebase";
 
 const ai = new GoogleGenAI({ 
@@ -26,6 +28,10 @@ const handleAIError = (error: any) => {
   const errorObj = error?.error || error;
   const errorMessage = errorObj?.message || error?.message || String(error);
   const errorStatus = errorObj?.code || errorObj?.status || error?.status || 0;
+
+  if (String(errorMessage).startsWith('FreeLLMAPI:')) {
+    throw new AIError(String(errorMessage), errorStatus || undefined, 'FREELLMAPI_ERROR');
+  }
   
   if (errorStatus === 429 || String(errorStatus) === '429' || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
     throw new AIError("Limite de Cota do Google Gemini atingido. O Google limita o uso gratuito. Aguarde 1 a 2 minutos e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
@@ -108,12 +114,25 @@ const safeAIJsonParse = (text: string) => {
 // Keep Gemini retries short so network, provider, or malformed-response
 // failures advance quickly to the next AI provider.
 const generateContentWithRetry = async (params: any, maxRetries = 2) => {
-  if (FREELLMAPI_ENABLED && getPreferredAIProvider() === 'freellmapi') {
+  // Providers ranked ahead of Gemini are tried in order; if all of them fail
+  // the Gemini loop below runs and the callers' fallbacks cover what remains.
+  let lastProviderError: unknown;
+  for (const providerId of getProviderOrder()) {
+    if (providerId === 'gemini') break;
+    if (!isProviderConfigured(providerId)) continue;
     try {
+      if (providerId === 'groq') return await generateGroqContent(params);
+      if (providerId === 'openrouter') return await generateOpenRouterContent(params);
       return await generateFreeLLMAPIContent(params);
     } catch (error) {
-      console.warn('[ai] FreeLLMAPI selecionado, mas indisponível; tentando Gemini:', error);
+      lastProviderError = error;
+      console.warn(`[ai] ${providerId} indisponível; tentando o próximo provedor:`, error);
     }
+  }
+
+  // Gemini is optional: without its key there is nothing to retry, so report the last provider error right away.
+  if (!process.env.GEMINI_API_KEY) {
+    throw lastProviderError ?? new Error('Nenhum provedor de IA está configurado neste app.');
   }
 
   let delay = 2000;
@@ -144,7 +163,7 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
         const isQuota = errorStatus === "429" || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED');
         // Exponential backoff with jitter
         const jitter = Math.random() * 1000;
-        const retryDelay = OPENROUTER_API_KEY ? (1500 + jitter) : ((isQuota ? 15000 : delay) + jitter);
+        const retryDelay = OPENROUTER_ENABLED ? (1500 + jitter) : ((isQuota ? 15000 : delay) + jitter);
 
         console.warn(`IA ocupada ou limite atingido (Tentativa ${i + 1}/${maxRetries}). Tentando novamente em ${Math.round(retryDelay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
@@ -167,7 +186,9 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
 // thinkingmachines/inkling(-small) and the coding-only models (poolside,
 // cohere/north-mini-code) are excluded: the former 403s outside an agentic
 // harness, the latter are coding-specialized and add no value here.
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+// Provider keys are no longer in the browser bundle: Groq and OpenRouter go through /api/ai (server-side).
+// These flags only tell the client whether the server has the provider configured.
+const OPENROUTER_ENABLED = Boolean(process.env.OPENROUTER_ENABLED);
 const OPENROUTER_FALLBACK_MODELS = [
   'nvidia/nemotron-3-super-120b-a12b:free',
   'nvidia/nemotron-3.5-lightning:free',
@@ -195,29 +216,40 @@ const OPENROUTER_RACE_BATCH_SIZE = 3;
 // the primary's is already spent). Confirmed against this account's actual
 // /openai/v1/models listing — Groq's catalog changes over time, so re-check
 // that endpoint if either model ever 404s with "does not exist".
-const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const GROQ_ENABLED = Boolean(process.env.GROQ_ENABLED);
+
+// Groq and OpenRouter calls go through our own server (/api/ai) so the provider keys never reach the browser.
+// FreeLLMAPI needs a signed-in user; Groq/OpenRouter also work for visitors (the server rate-limits them).
+const canUseAIProxy = (): boolean => import.meta.env.DEV || !!auth?.currentUser;
+
+const aiProxyFetch = async (provider: 'groq' | 'openrouter', init: { body: string; signal?: AbortSignal }): Promise<Response> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = await auth?.currentUser?.getIdToken().catch(() => null);
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return fetch(`/api/ai?provider=${provider}`, { method: 'POST', headers, body: init.body, signal: init.signal });
+};
+
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
 const GROQ_TIMEOUT_MS = 20000;
 const FREELLMAPI_TIMEOUT_MS = 56000;
-const FREELLMAPI_ENABLED = process.env.FREELLMAPI_ENABLED === 'true';
-
+// FreeLLMAPI is reached through our own server (/api/freellmapi): the gateway URL and key stay in server
+// environment variables. The browser only gets a flag saying whether the server has it configured.
+const FREELLMAPI_ENABLED = Boolean(process.env.FREELLMAPI_ENABLED);
 // Every failed AI generation should try the next configured provider, including
 // network/timeout errors and malformed or incomplete model output.
 const shouldTryProviderFallbacks = (error: any): boolean =>
   error?.name !== 'AbortError' && error?.name !== 'CanceledError';
 
 const requestFreeLLMAPI = async (body: Record<string, unknown>): Promise<any> => {
-  if (!FREELLMAPI_ENABLED) throw new Error('FreeLLMAPI não foi configurado no servidor.');
-  const user = auth.currentUser;
-  if (!user) throw new Error('Entre na sua conta Google para usar o FreeLLMAPI.');
-
-  const idToken = await user.getIdToken();
+  if (!FREELLMAPI_ENABLED) throw new Error('FreeLLMAPI não foi configurado neste app.');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = await auth?.currentUser?.getIdToken().catch(() => null);
+  if (token) headers.Authorization = `Bearer ${token}`;
+  else if (!import.meta.env.DEV) throw new Error('Entre na sua conta Google para usar o FreeLLMAPI.');
+  // The server picks the model, checks that this account is allowed and holds the gateway key.
   const response = await fetch('/api/freellmapi', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${idToken}`,
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(FREELLMAPI_TIMEOUT_MS),
   });
@@ -244,12 +276,16 @@ const callFreeLLMAPIJson = async (
   schemaName: string,
   validate?: (parsed: any) => boolean,
 ): Promise<any> => {
+  const jsonPrompt = `${userPrompt}\n\nFormato de saída obrigatório: retorne somente um objeto JSON válido, sem Markdown ou texto antes/depois. Siga este schema e os nomes de campos exatamente (${schemaName}):\n${JSON.stringify(schema)}`;
   const data = await requestFreeLLMAPI({
     messages: [
       ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
-      { role: 'user', content: userPrompt },
+      { role: 'user', content: jsonPrompt },
     ],
-    response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: false, schema } },
+    // Groq's OpenAI-compatible JSON Schema mode rejects otherwise valid
+    // outputs for this model. JSON object mode keeps the response parseable;
+    // the schema is included explicitly in the prompt and validated locally.
+    response_format: { type: 'json_object' },
     temperature: 0.3,
     max_tokens: 24000,
   });
@@ -307,13 +343,34 @@ const toJsonSchema = (googleSchema: any): any => {
   return out;
 };
 
-const getPreferredAIProvider = (): 'gemini' | 'freellmapi' => {
+type AIProviderId = 'groq' | 'openrouter' | 'freellmapi' | 'gemini';
+
+// Default priority: Groq (fast, own hardware) → OpenRouter → FreeLLMAPI → Gemini.
+const DEFAULT_PROVIDER_ORDER: AIProviderId[] = ['groq', 'openrouter', 'freellmapi', 'gemini'];
+
+const getPreferredAIProvider = (): AIProviderId | 'auto' => {
   try {
     const stats = JSON.parse(localStorage.getItem('focus_stats') || '{}');
-    return stats?.aiProvider === 'freellmapi' ? 'freellmapi' : 'gemini';
+    const provider = stats?.aiProvider;
+    return provider === 'groq' || provider === 'openrouter' || provider === 'freellmapi' || provider === 'gemini' ? provider : 'auto';
   } catch {
-    return 'gemini';
+    return 'auto';
   }
+};
+
+// The chosen provider goes first; the rest keep the default order.
+const getProviderOrder = (): AIProviderId[] => {
+  const preferred = getPreferredAIProvider();
+  return preferred === 'auto'
+    ? DEFAULT_PROVIDER_ORDER
+    : [preferred, ...DEFAULT_PROVIDER_ORDER.filter((id) => id !== preferred)];
+};
+
+const isProviderConfigured = (id: AIProviderId): boolean => {
+  if (id === 'groq') return GROQ_ENABLED;
+  if (id === 'openrouter') return OPENROUTER_ENABLED;
+  if (id === 'freellmapi') return FREELLMAPI_ENABLED && canUseAIProxy();
+  return true;
 };
 
 const contentToMessages = (contents: any): { role: string; content: string }[] => {
@@ -334,18 +391,23 @@ const contentToMessages = (contents: any): { role: string; content: string }[] =
 async function generateFreeLLMAPIContent(params: any): Promise<{ text: string }> {
   const config = params?.config || {};
   const systemInstruction = typeof config.systemInstruction === 'string' ? config.systemInstruction : undefined;
-  const messages = [
+  const messages: { role: string; content: string }[] = [
     ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
     ...contentToMessages(params?.contents),
   ];
   if (messages.length === 0) throw new Error('A solicitação não contém texto compatível com o FreeLLMAPI.');
 
   const schema = config.responseSchema ? toJsonSchema(config.responseSchema) : undefined;
-  const responseFormat = config.responseMimeType === 'application/json'
-    ? schema
-      ? { type: 'json_schema', json_schema: { name: 'todahora_response', strict: false, schema } }
-      : { type: 'json_object' }
-    : undefined;
+  const wantsJson = config.responseMimeType === 'application/json';
+  if (wantsJson && schema) {
+    const schemaInstruction = `\n\nResponda somente com um objeto JSON válido, sem Markdown nem texto adicional. Siga este schema e preserve exatamente os nomes dos campos:\n${JSON.stringify(schema)}`;
+    const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user');
+    if (lastUserMessage) lastUserMessage.content += schemaInstruction;
+  }
+  // The FreeLLMAPI router's OpenAI-compatible JSON Schema mode can reject valid
+  // outputs from some routed models. JSON object mode is more broadly supported;
+  // the requested schema is included in the prompt and parsed by the app.
+  const responseFormat = wantsJson ? { type: 'json_object' } : undefined;
   const requestedTokens = Number(config.maxOutputTokens);
   const data = await requestFreeLLMAPI({
     messages,
@@ -359,12 +421,77 @@ async function generateFreeLLMAPIContent(params: any): Promise<{ text: string }>
   return { text };
 }
 
+async function generateGroqContent(params: any): Promise<{ text: string }> {
+  const config = params?.config || {};
+  const systemInstruction = typeof config.systemInstruction === 'string' ? config.systemInstruction : undefined;
+  const messages = [
+    ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+    ...contentToMessages(params?.contents),
+  ];
+  if (messages.length === 0) throw new Error('A solicitação não contém texto compatível com o Groq.');
+
+  const schema = config.responseSchema ? toJsonSchema(config.responseSchema) : undefined;
+  const responseFormat = config.responseMimeType === 'application/json' && schema
+    ? { type: 'json_schema', json_schema: { name: 'todahora_response', schema, strict: false } }
+    : undefined;
+  const requestedTokens = Number(config.maxOutputTokens);
+  let lastError: any;
+  for (const model of GROQ_MODELS) {
+    try {
+      const text = await callGroqModel(model, {
+        messages,
+        ...(responseFormat ? { response_format: responseFormat } : {}),
+        temperature: typeof config.temperature === 'number' ? config.temperature : 0.5,
+        max_tokens: Number.isFinite(requestedTokens) ? Math.min(Math.max(requestedTokens, 256), 24000) : 8000,
+      });
+      console.info(`[ai] Resposta gerada pelo Groq (${model}).`);
+      return { text };
+    } catch (e: any) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('Groq indisponível.');
+}
+
+async function generateOpenRouterContent(params: any): Promise<{ text: string }> {
+  const config = params?.config || {};
+  const systemInstruction = typeof config.systemInstruction === 'string' ? config.systemInstruction : undefined;
+  const messages = [
+    ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+    ...contentToMessages(params?.contents),
+  ];
+  if (messages.length === 0) throw new Error('A solicitação não contém texto compatível com o OpenRouter.');
+
+  const schema = config.responseSchema ? toJsonSchema(config.responseSchema) : undefined;
+  const responseFormat = config.responseMimeType === 'application/json' && schema
+    ? { type: 'json_schema', json_schema: { name: 'todahora_response', strict: true, schema } }
+    : undefined;
+  const requestedTokens = Number(config.maxOutputTokens);
+  return raceOpenRouterModels(async (model) => {
+    const res = await aiProxyFetch('openrouter', {
+      body: JSON.stringify({
+        model,
+        messages,
+        ...(responseFormat ? { response_format: responseFormat } : {}),
+        reasoning: { enabled: false },
+        temperature: typeof config.temperature === 'number' ? config.temperature : 0.5,
+        max_tokens: Number.isFinite(requestedTokens) ? Math.min(Math.max(requestedTokens, 256), 24000) : 8000,
+      }),
+      signal: AbortSignal.timeout(OPENROUTER_PER_MODEL_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`OpenRouter (${model}) HTTP ${res.status}`);
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content;
+    if (!text) throw new Error(`OpenRouter (${model}) retornou vazio`);
+    console.info(`[ai] Resposta gerada pelo OpenRouter (${model}).`);
+    return { text };
+  });
+}
+
 const callOpenRouterJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
   return raceOpenRouterModels(async (model) => {
     try {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+      const res = await aiProxyFetch('openrouter', {
         body: JSON.stringify({
           model,
           messages: [
@@ -405,9 +532,7 @@ const callOpenRouterJson = async (systemInstruction: string | undefined, userPro
 const callOpenRouterText = async (systemInstruction: string | undefined, messages: { role: string, content: string }[], temperature = 0.6): Promise<string> => {
   return raceOpenRouterModels(async (model) => {
     try {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+      const res = await aiProxyFetch('openrouter', {
         body: JSON.stringify({
           model,
           messages: [...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []), ...messages],
@@ -438,9 +563,7 @@ const callOpenRouterText = async (systemInstruction: string | undefined, message
 // backup model exists purely so a spent daily quota on the primary doesn't
 // take the whole Groq attempt down with it.
 const callGroqModel = async (model: string, body: Record<string, any>): Promise<string> => {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+  const res = await aiProxyFetch('groq', {
     body: JSON.stringify({ model, ...body }),
     signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
   });
@@ -507,32 +630,20 @@ const callGroqText = async (systemInstruction: string | undefined, messages: { r
   throw lastError || new Error('Groq indisponível.');
 };
 
-// FreeLLMAPI is the first automatic fallback when Gemini is the selected
-// provider. If FreeLLMAPI itself was selected, it already had its primary
-// attempt in generateContentWithRetry, so do not repeat a slow failed call.
+// Used when Gemini failed (or returned unusable output): every configured
+// provider except Gemini is tried in priority order (chosen one first, then
+// Groq → OpenRouter → FreeLLMAPI).
 const tryJsonFallbacks = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
   let lastError: any;
-  if (FREELLMAPI_ENABLED && getPreferredAIProvider() !== 'freellmapi') {
+  for (const providerId of getProviderOrder()) {
+    if (providerId === 'gemini' || !isProviderConfigured(providerId)) continue;
     try {
+      if (providerId === 'groq') return await callGroqJson(systemInstruction, userPrompt, schema, schemaName, validate);
+      if (providerId === 'openrouter') return await callOpenRouterJson(systemInstruction, userPrompt, schema, schemaName, validate);
       return await callFreeLLMAPIJson(systemInstruction, userPrompt, schema, schemaName, validate);
     } catch (e) {
       lastError = e;
-      console.warn('[fallback] FreeLLMAPI falhou, tentando outros provedores:', e);
-    }
-  }
-  if (GROQ_API_KEY) {
-    try {
-      return await callGroqJson(systemInstruction, userPrompt, schema, schemaName, validate);
-    } catch (e) {
-      lastError = e;
-      console.warn('[fallback] Groq falhou, tentando OpenRouter:', e);
-    }
-  }
-  if (OPENROUTER_API_KEY) {
-    try {
-      return await callOpenRouterJson(systemInstruction, userPrompt, schema, schemaName, validate);
-    } catch (e) {
-      lastError = e;
+      console.warn(`[fallback] ${providerId} falhou, tentando o próximo provedor:`, e);
     }
   }
   throw lastError || new Error('Nenhum fallback de IA disponível.');
@@ -540,27 +651,15 @@ const tryJsonFallbacks = async (systemInstruction: string | undefined, userPromp
 
 const tryTextFallbacks = async (systemInstruction: string | undefined, messages: { role: string, content: string }[], temperature = 0.6): Promise<string> => {
   let lastError: any;
-  if (FREELLMAPI_ENABLED && getPreferredAIProvider() !== 'freellmapi') {
+  for (const providerId of getProviderOrder()) {
+    if (providerId === 'gemini' || !isProviderConfigured(providerId)) continue;
     try {
+      if (providerId === 'groq') return await callGroqText(systemInstruction, messages, temperature);
+      if (providerId === 'openrouter') return await callOpenRouterText(systemInstruction, messages, temperature);
       return await callFreeLLMAPIText(systemInstruction, messages, temperature);
     } catch (e) {
       lastError = e;
-      console.warn('[fallback] FreeLLMAPI falhou, tentando outros provedores:', e);
-    }
-  }
-  if (GROQ_API_KEY) {
-    try {
-      return await callGroqText(systemInstruction, messages, temperature);
-    } catch (e) {
-      lastError = e;
-      console.warn('[fallback] Groq falhou, tentando OpenRouter:', e);
-    }
-  }
-  if (OPENROUTER_API_KEY) {
-    try {
-      return await callOpenRouterText(systemInstruction, messages, temperature);
-    } catch (e) {
-      lastError = e;
+      console.warn(`[fallback] ${providerId} falhou, tentando o próximo provedor:`, e);
     }
   }
   throw lastError || new Error('Nenhum fallback de IA disponível.');
@@ -700,6 +799,7 @@ export const generateStudyContent = async (topic: string, technique: string, num
         return await tryJsonFallbacks(undefined, studyContentPrompt, toJsonSchema(studyContentSchema), 'study_content');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateStudyContent:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -790,6 +890,7 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
         return await tryJsonFallbacks(undefined, examQuestionsPrompt, examQuestionsJsonSchema, 'exam_questions');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateExamQuestions:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -942,6 +1043,7 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
         return await tryJsonFallbacks(undefined, parsePastedPrompt, parsePastedJsonSchema, 'parsed_questions');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em parsePastedQuestions:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -982,6 +1084,7 @@ export const chatWithFish = async (message: string, history: { role: string, par
         return await tryTextFallbacks(fishSystemInstruction, [...openRouterHistory, { role: 'user', content: message }], 0.7);
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em chatWithFish:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -1028,6 +1131,7 @@ export const analyzeEvocation = async (text: string, profile: StudyProfile = 'VE
         return await tryJsonFallbacks(undefined, evocationPrompt, toJsonSchema(evocationSchema), 'evocation_analysis');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em analyzeEvocation:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -1100,6 +1204,7 @@ export const generateQuestionsFromAnalysis = async (analysis: any, profile: Stud
         return result.questions;
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateQuestionsFromAnalysis:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -1139,6 +1244,7 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
         return await tryJsonFallbacks(undefined, editalTopicsPrompt, toJsonSchema(editalTopicsSchema), 'edital_topics');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em extractTopicsFromEdital:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -1207,6 +1313,7 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
         return await tryJsonFallbacks(undefined, microThemePrompt, toJsonSchema(microThemeSchema), 'micro_theme_validation');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateMicroThemeValidation:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -1253,6 +1360,7 @@ export const explainStuckTopic = async (topic: string, profile: StudyProfile = '
         return await tryJsonFallbacks(undefined, stuckTopicPrompt, toJsonSchema(stuckTopicSchema), 'stuck_topic_explanation');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em explainStuckTopic:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -1353,6 +1461,7 @@ export const optimizeStudyPlan = async (
         return await tryJsonFallbacks(undefined, studyPlanPrompt, toJsonSchema(studyPlanSchema), 'study_plan');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em optimizeStudyPlan:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -1436,6 +1545,7 @@ export const identifyAndProgramRecovery = async (topic: string, missedQuestions:
         return await tryJsonFallbacks(undefined, recoveryPrompt, toJsonSchema(recoverySchema), 'recovery_plan');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em identifyAndProgramRecovery:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -1491,6 +1601,7 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
         return await tryJsonFallbacks(undefined, proactiveAdvicePrompt, toJsonSchema(proactiveAdviceSchema), 'proactive_advice');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em getProactiveAdvice:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -1595,6 +1706,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
         return await tryJsonFallbacks(undefined, studyCyclePrompt, toJsonSchema(studyCycleSchema), 'study_cycle');
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateStudyCycle:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);
@@ -1710,10 +1822,214 @@ export const generateGuidedLesson = async (subject: string, topic: string, profi
         return await tryJsonFallbacks(undefined, guidedLessonPrompt, guidedLessonJsonSchema, 'guided_lesson', validateGuidedLesson);
       } catch (fallbackError) {
         console.error('Os fallbacks de IA também falharam em generateGuidedLesson:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     if (isTruncation) throw new AIError('A IA gerou uma aula incompleta. Tente novamente.');
     return handleAIError(error);
+  }
+};
+
+// Local AI (Ollama). Only used when the app runs on this machine's
+// localhost (dev), where the daemon at :11434 is reachable from the browser.
+const OLLAMA_URL = 'http://localhost:11434';
+const OLLAMA_PREFERRED_MODELS = ['qwen3:4b-instruct-2507-q4_K_M', 'qwen3:4b'];
+const OLLAMA_TIMEOUT_MS = 600000;
+
+const findOllamaModel = async (): Promise<string | null> => {
+  if (typeof window === 'undefined' || !['localhost', '127.0.0.1'].includes(window.location.hostname)) return null;
+  try {
+    const res = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(1500) });
+    if (!res.ok) return null;
+    const names: string[] = ((await res.json())?.models ?? []).map((m: any) => m?.name).filter(Boolean);
+    return OLLAMA_PREFERRED_MODELS.find((m) => names.includes(m)) ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const callOllamaJson = async (model: string, prompt: string, schema: any, validate: (parsed: any) => boolean): Promise<any> => {
+  const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      stream: false,
+      keep_alive: '10m',
+      format: schema,
+      messages: [{ role: 'user', content: prompt }],
+      options: { temperature: 0.3, num_ctx: 8192, num_predict: 4500 },
+    }),
+    signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
+  const text = (await res.json())?.message?.content;
+  if (!text) throw new Error('Ollama retornou vazio');
+  const parsed = safeAIJsonParse(text);
+  if (!validate(parsed)) throw new Error('Ollama retornou conteúdo incompleto');
+  console.info(`[living_lesson] Aula gerada pela IA local (${model}).`);
+  return parsed;
+};
+
+export const generateLivingLesson = async (subject: string, topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
+  const sources = await gatherSources(subject, topic);
+  const sourceBlock = sourcesPromptBlock(sources);
+  const profileContext = profile === 'CONCURSO'
+    ? "Foco em editais públicos, doutrina e lei seca. Linguagem técnica e objetiva."
+    : profile === 'FACULDADE'
+    ? "Foco em disciplinas de nível superior. Linguagem estruturada e cientificamente aprofundada."
+    : "Foco em ENEM e grandes vestibulares. Linguagem didática e interdisciplinar.";
+
+  const livingLessonPrompt = `${getTimeContext()}
+      PEDIDO DO ALUNO (obrigatório, não mude): MATÉRIA = "${subject}"; ASSUNTO = "${topic}".
+      Gere uma AULA VIVA exatamente sobre o ASSUNTO "${topic}" dentro da MATÉRIA "${subject}" (use o significado do assunto próprio dessa matéria), no formato de página ilustrada de livro/enciclopédia, dividida em exatamente 3 PÁGINAS. Nunca troque de assunto, nem trate de um tema vizinho.
+      ${profileContext}
+      Estilo de explicação pedido pelo aluno: ${explanationStyle}
+
+      REGRAS GERAIS:
+      - Todo o texto deve ser ORIGINAL, escrito por você em português do Brasil. Nunca copie trechos de livros ou materiais protegidos.
+      - Cada parágrafo deve ter de 3 a 4 frases completas e informativas (nada de parágrafos de uma frase), com linguagem simples, pensados para quem tem TDAH.
+      - Em datas use o formato brasileiro por extenso (ex.: "14 de julho de 1789" ou apenas o ano). Os "labels" do quadro "timeline" devem ser curtos (ano ou data curta).
+      - Não use emojis. Não invente fatos, datas, leis, artigos ou autores: se não tiver certeza de um dado, não o inclua. Prefira MENOS itens (mínimo 3 por quadro) com dados corretos a mais itens com dados duvidosos. Nunca numere os itens dentro do texto (a numeração é automática).
+      - "section" é o nome do capítulo ou área maior a que o tema pertence (ex.: "O Realismo no Brasil").
+      - "seeAlso" lista de 3 a 5 temas relacionados da própria matéria.
+
+      PÁGINA 1 (visão geral):
+      - "lead": 2 a 3 frases que resumem o tema e despertam interesse.
+      - "quote": por padrão, uma frase curta e original, escrita por você, com a ideia central do tema, com "author" igual a "Ideia central". Só use uma citação de terceiros se for literal, famosa, e você tiver certeza absoluta da obra e do autor (ex.: um verso ou trecho clássico em Literatura); nesse caso "author" no formato "Autor, Obra". Nunca atribua lemas, slogans ou frases a documentos, leis ou pessoas se não tiver certeza da fonte.
+      - "boxes": exatamente 1 quadro do tipo "table" com 4 linhas (label curto + explicação de 1 frase), título curto.
+      - "sections": 2 seções com "heading" curto e 2 parágrafos cada.
+
+      PÁGINA 2 (aprofundamento):
+      - "boxes": 1 quadro "steps" com 4 a 5 etapas (processo, sequência ou raciocínio do tema) e 1 quadro "timeline" com 4 a 5 marcos em ordem (datas reais; se o tema não tiver datas, use etapas ou conceitos em ordem lógica no campo label, curtos).
+      - "sections": 1 seção com 2 parágrafos.
+      - "profile": inclua APENAS se houver uma PESSOA central ao tema (autor, cientista, personagem histórica real) — nunca para leis, documentos, eventos ou conceitos. Campos: name (nome da pessoa), role (função em poucas palavras), bio de até 3 frases, works com 3 a 5 itens year+title (obras ou feitos reais e datados dessa pessoa). Se não houver uma pessoa central, omita "profile" por completo.
+
+      PÁGINA 3 (revisão):
+      - "boxes": 1 quadro "table" com título "Para fixar" e 4 linhas com os pontos essenciais.
+      - "sections": 1 seção "Como cai em prova" com 2 parágrafos práticos para o perfil do aluno.
+
+      Em páginas sem "lead" ou "quote", omita esses campos.
+      ${sourceBlock}
+      Retorne em JSON rigoroso.`;
+
+  const boxGoogleSchema = {
+    type: Type.OBJECT,
+    properties: {
+      kind: { type: Type.STRING },
+      title: { type: Type.STRING },
+      items: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { label: { type: Type.STRING }, text: { type: Type.STRING } }, required: ['label', 'text'] } },
+    },
+    required: ['kind', 'title', 'items'],
+  };
+  const livingLessonGoogleSchema = {
+    type: Type.OBJECT,
+    properties: {
+      subject: { type: Type.STRING },
+      topic: { type: Type.STRING },
+      section: { type: Type.STRING },
+      seeAlso: { type: Type.ARRAY, items: { type: Type.STRING } },
+      pages: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            lead: { type: Type.STRING },
+            quote: { type: Type.OBJECT, properties: { text: { type: Type.STRING }, author: { type: Type.STRING } }, required: ['text', 'author'] },
+            boxes: { type: Type.ARRAY, items: boxGoogleSchema },
+            sections: {
+              type: Type.ARRAY,
+              items: { type: Type.OBJECT, properties: { heading: { type: Type.STRING }, paragraphs: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ['heading', 'paragraphs'] },
+            },
+            profile: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                role: { type: Type.STRING },
+                bio: { type: Type.STRING },
+                works: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { year: { type: Type.STRING }, title: { type: Type.STRING } }, required: ['year', 'title'] } },
+              },
+              required: ['name', 'role', 'bio', 'works'],
+            },
+          },
+          required: ['boxes', 'sections'],
+        },
+      },
+    },
+    required: ['subject', 'topic', 'section', 'seeAlso', 'pages'],
+  };
+
+  const validateLivingLesson = (parsed: any): boolean => {
+    const fail = (reason: string) => {
+      console.warn(`[living_lesson] resposta recusada: ${reason}`);
+      return false;
+    };
+    const pages = parsed?.pages;
+    if (!Array.isArray(pages) || pages.length < 2) return fail('menos de 2 páginas');
+    if (!Array.isArray(parsed?.seeAlso)) return fail('sem seeAlso');
+    const wanted = String(topic).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+    const haystack = JSON.stringify(pages).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (wanted.length > 0 && wanted.filter((w) => haystack.includes(w)).length < Math.ceil(wanted.length / 2)) return fail('fora do assunto pedido');
+    for (const [i, page] of pages.entries()) {
+      if (!Array.isArray(page?.sections) || page.sections.length === 0) return fail(`página ${i + 1} sem seções`);
+      for (const sec of page.sections) {
+        if (typeof sec?.heading !== 'string' || !Array.isArray(sec?.paragraphs) || sec.paragraphs.length === 0) return fail(`seção inválida na página ${i + 1}`);
+        for (const para of sec.paragraphs) {
+          if (typeof para !== 'string') return fail('parágrafo não é texto');
+          if (para.length < 60) return fail(`parágrafo curto demais (${para.length} caracteres)`);
+          if (looksTruncated(para)) return fail('parágrafo cortado no meio');
+        }
+      }
+      if (!Array.isArray(page?.boxes)) return fail(`página ${i + 1} sem boxes`);
+      for (const box of page.boxes) {
+        if (!['table', 'steps', 'timeline'].includes(box?.kind) || !Array.isArray(box?.items) || box.items.length === 0) return fail(`quadro inválido na página ${i + 1}`);
+        if (!box.items.every((it: any) => typeof it?.label === 'string' && typeof it?.text === 'string')) return fail('item de quadro sem label/text');
+      }
+    }
+    return true;
+  };
+
+  const generateOnline = async (): Promise<IllustratedLesson> => {
+    try {
+      const response = await generateContentWithRetry({
+        model: DEFAULT_MODEL,
+        contents: livingLessonPrompt,
+        config: { responseMimeType: 'application/json', maxOutputTokens: 25000, responseSchema: livingLessonGoogleSchema },
+      });
+      const parsed = safeAIJsonParse(response.text);
+      if (!validateLivingLesson(parsed)) throw new Error('LIVING_LESSON_INVALID');
+      return applySourceGuard({ ...parsed, subject, topic }, sources);
+    } catch (error: any) {
+      const isInvalid = error?.message === 'LIVING_LESSON_INVALID';
+      if (isInvalid || shouldTryProviderFallbacks(error)) {
+        try {
+          const fallbackLesson = await tryJsonFallbacks(undefined, livingLessonPrompt, toJsonSchema(livingLessonGoogleSchema), 'living_lesson', validateLivingLesson);
+          return applySourceGuard({ ...fallbackLesson, subject, topic }, sources);
+        } catch (fallbackError) {
+          console.error('Os fallbacks de IA também falharam em generateLivingLesson:', fallbackError);
+          return handleAIError(fallbackError);
+        }
+      }
+      return handleAIError(error);
+    }
+  };
+
+  try {
+    return await generateOnline();
+  } catch (onlineError) {
+    // Last resort: the local model, only when the app runs on this machine.
+    const localModel = await findOllamaModel();
+    if (!localModel) throw onlineError;
+    try {
+      const compactPrompt = `${livingLessonPrompt.replace(sourceBlock, sourcesPromptBlock(sources, 0.4))}
+      MODO COMPACTO: parágrafos de 2 a 3 frases; quadros com no máximo 4 itens; no máximo 2 seções por página; não repita informações entre páginas.`;
+      const local = await callOllamaJson(localModel, compactPrompt, toJsonSchema(livingLessonGoogleSchema), validateLivingLesson);
+      console.warn(`[living_lesson] Provedores online falharam; aula gerada pela IA local (${localModel}).`);
+      return applySourceGuard({ ...local, subject, topic }, sources);
+    } catch (localError) {
+      console.warn('[living_lesson] IA local também falhou:', localError);
+      throw onlineError;
+    }
   }
 };
 
@@ -1738,6 +2054,7 @@ Seu objetivo é explicar o fragmento de texto ou o assunto fornecido de forma di
         return await tryTextFallbacks(systemInstruction, [{ role: 'user', content: quickExplanationPrompt }], 0.5);
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em getQuickExplanation:', fallbackError);
+        return handleAIError(fallbackError);
       }
     }
     return handleAIError(error);

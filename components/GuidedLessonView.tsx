@@ -293,7 +293,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
         <div className="mx-auto flex min-h-full w-full max-w-5xl items-center justify-center">
           <section className="w-full overflow-hidden rounded-[32px] border border-[#e9e0d4] bg-white shadow-[0_18px_48px_rgba(71,60,51,0.14)]">
             <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#eee6d6] px-5 py-4 sm:px-7">
-              <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
+              <button onClick={onBack} className="min-h-[44px] inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
                 <ChevronLeft className="h-4 w-4" />
                 Voltar
               </button>
@@ -410,7 +410,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
             <button onClick={() => fetchLesson(activeSubject, activeTopic)} className="flex items-center gap-3 bg-white text-[#473c33] px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-xl">
               <RotateCcw className="w-5 h-5" /> Tentar Novamente
             </button>
-            <button onClick={onBack} className="flex items-center gap-3 bg-white/10 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-white/20 transition-all">
+            <button onClick={onBack} className="min-h-[44px] flex items-center gap-3 bg-white/10 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-white/20 transition-all">
               <ChevronLeft className="w-5 h-5" /> Voltar
             </button>
           </div>

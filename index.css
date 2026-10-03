@@ -14,6 +14,41 @@ body {
     background-color: #1c1712;
     color: #f4ebdd;
 }
+
+/* A quiet terracotta geometric texture gives the global bar a paper-like
+   signature while keeping the logo, status chips, and controls readable. */
+.app-header-pattern::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: url("/sul-americano-triangulos.svg");
+    background-repeat: repeat;
+    background-size: 72px 48px;
+    background-position: center;
+    opacity: 0.12;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%);
+}
+
+.dark .app-header-pattern::before {
+    opacity: 0.2;
+}
+
+.app-header-pattern::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(105deg, rgba(217, 119, 43, 0.055), transparent 38%, transparent 72%, rgba(254, 178, 42, 0.025));
+}
+
+.dark .app-header-pattern::after {
+    background: linear-gradient(105deg, rgba(217, 119, 43, 0.08), transparent 38%, transparent 72%, rgba(254, 178, 42, 0.035));
+}
+
 .font-logo { font-family: 'Righteous', sans-serif; }
 .gradient-yellow { background: linear-gradient(135deg, #FACC15 0%, #EAB308 100%); }
 .gradient-orange { background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); }
@@ -296,7 +331,7 @@ html.dark .glass-card {
 
 /* Keep success and focus greens, but deepen the light sage for dark surfaces. */
 .dark [class~="bg-[#abc270]"] {
-    background-color: #657a40 !important;
+    background-color: #526634 !important;
 }
 
 .dark [class~="bg-white/5"],
@@ -385,7 +420,8 @@ html.dark .glass-card {
 .dark [class~="text-[#d88b2f]"],
 .dark [class~="text-[#c9773e]"],
 .dark [class~="dark:text-[#d9772b]"] {
-    color: var(--dark-orange) !important;
+    /* A touch lighter than the fill orange so small orange text keeps 4.5:1 on dark cards. */
+    color: #f08a52 !important;
 }
 
 .dark [class~="text-[#596b2a]"] {
@@ -422,6 +458,127 @@ html.dark .glass-card {
     #avatar-selection-screen .profile-book-page-left,
     #avatar-selection-screen .profile-book-page-right {
         transition: none;
+    }
+}
+
+/* Branded 3D flip for active-recall flashcards. */
+.flashcard-flip-scene {
+    width: 100%;
+    height: min(70vh, 640px);
+    min-height: 500px;
+    perspective: 1700px;
+    -webkit-perspective: 1700px;
+    outline: none;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.flashcard-flip-scene:focus-visible {
+    border-radius: 44px;
+    box-shadow: 0 0 0 3px rgba(253, 173, 116, .75);
+}
+
+.flashcard-flipper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.flashcard-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 44px;
+    padding: clamp(1.5rem, 5vw, 5rem);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    isolation: isolate;
+}
+
+.flashcard-face--question {
+    color: #f2efd2;
+    background:
+        radial-gradient(ellipse at 82% 4%, rgba(253, 173, 116, .13), transparent 32%),
+        linear-gradient(145deg, #35362e, #292a25 76%);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, .28), inset 0 1px rgba(255, 255, 255, .08);
+}
+
+.flashcard-face--answer {
+    transform: rotateY(180deg);
+    color: #473c33;
+    border-color: rgba(71, 60, 51, .12);
+    background:
+        radial-gradient(ellipse at 90% 2%, rgba(253, 173, 116, .24), transparent 36%),
+        linear-gradient(145deg, #fffefa, #f7f0e5);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, .24), inset 0 1px rgba(255, 255, 255, .9);
+}
+
+.dark .flashcard-face--answer,
+.dark .flashcard-face--answer .markdown-body,
+.dark .flashcard-face--answer .markdown-body *,
+.dark .flashcard-face--answer .prose,
+.dark .flashcard-face--answer .prose * {
+    color: #473c33 !important;
+}
+
+.dark .flashcard-face--answer .text-gray-400 {
+    color: #85776a !important;
+}
+
+.flashcard-face__content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    justify-content: center;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.flashcard-face--question .markdown-body,
+.flashcard-face--question .markdown-body * {
+    color: #f2efd2;
+}
+
+.flashcard-face--question .markdown-body a {
+    color: #fdad74;
+}
+
+.flashcard-face__edge {
+    position: absolute;
+    z-index: 0;
+    inset: 0 auto 0 0;
+    width: 8px;
+    background: linear-gradient(180deg, #fecc73, #f06d32 54%, #b1c77b);
+    box-shadow: 2px 0 14px rgba(240, 109, 50, .22);
+}
+
+.flashcard-face__shine {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(112deg, transparent 28%, rgba(255, 255, 255, .045) 49%, transparent 68%);
+}
+
+@media (max-width: 640px) {
+    .flashcard-flip-scene {
+        height: min(68vh, 620px);
+        min-height: 460px;
+    }
+
+    .flashcard-face {
+        border-radius: 32px;
+        padding: 1.5rem;
     }
 }
 
@@ -958,8 +1115,9 @@ html.dark .curriculum-editor > div {
     overflow: hidden;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 4;
-    overflow-wrap: anywhere;
-    font-size: clamp(12px, 2.5vw, 22px);
+    overflow-wrap: break-word;
+    hyphens: none;
+    font-size: clamp(11px, 2.5vw, 16px);
     line-height: 1.08;
     font-weight: 900;
     text-transform: uppercase;
@@ -1168,4 +1326,69 @@ html.dark .curriculum-editor > div {
 .dark .performance-view [class*="border-[#eee6d6]"],
 .dark .performance-view [class*="border-[#e9e0d4]"] {
     border-color: rgba(244, 235, 221, .14);
+}
+
+
+/* Readability floor: no text below 12px anywhere (easier on tired eyes, TDAH-friendly). */
+.text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: 12px; }
+
+/* Comfortable tap height for text fields and selects (checkbox, radio, range and color stay compact). */
+main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]), main select { min-height: 44px; }
+
+/* Contrast: white text needs a darker fill than the brand orange (3.1:1 -> 4.8:1),
+   and dark text on the light gold fills (white on gold is only 1.4:1). */
+.bg-\[\#e96f34\].text-white { background-color: #bf4f1b; }
+.bg-\[\#fed386\].text-white, .bg-\[\#fecc73\].text-white, .bg-\[\#fec868\].text-white, .bg-\[\#fdad74\].text-white { color: #473c33; }
+/* Dark theme remaps those golds to the orange accent; white text then needs the deeper orange fill. */
+.dark [class~="bg-[#fed386]"].text-white,
+.dark [class~="bg-[#fecc73]"].text-white,
+.dark [class~="bg-[#fec868]"].text-white,
+.dark [class~="bg-[#fdad74]"].text-white { background-color: #bf4f1b !important; color: #ffffff; }
+
+/* Tap height for uppercase action/back buttons and the dismiss-hint buttons. */
+main button[class*="uppercase"], button[aria-label="Dispensar dica"] { min-height: 44px; }
+button[aria-label="Dispensar dica"] { min-width: 44px; }
+
+/* Light theme: pale gold/peach text is meant for dark cards; on light surfaces it needs a deeper tone.
+   Anything inside a white-text (dark) container keeps the original light gold. */
+html:not(.dark) .text-\[\#fecc73\],
+html:not(.dark) .text-\[\#fec868\] { color: #96590a; }
+html:not(.dark) .text-\[\#fdad74\] { color: #b4531a; }
+html:not(.dark) .text-white .text-\[\#fecc73\],
+html:not(.dark) .text-white .text-\[\#fec868\],
+html:not(.dark) [class*="bg-[#473c33]"] .text-\[\#fecc73\],
+html:not(.dark) [class*="bg-[#473c33]"] .text-\[\#fec868\] { color: #fecc73; }
+html:not(.dark) .text-white .text-\[\#fdad74\],
+html:not(.dark) [class*="bg-[#473c33]"] .text-\[\#fdad74\] { color: #fdad74; }
+
+/* Thin triangle strip at the top of section views. The SVG is used as a mask so the colour can follow the theme
+   and differ from the orange header band above it. */
+.section-strip {
+    --strip-color: #8fa77a;
+    height: 12px;
+    opacity: 0.7;
+    background-color: var(--strip-color);
+    -webkit-mask: url("/sul-americano-triangulos.svg") repeat-x center / auto 100%;
+    mask: url("/sul-americano-triangulos.svg") repeat-x center / auto 100%;
+}
+html:not(.dark) .section-strip { --strip-color: #7a8f5f; opacity: 0.8; }
+
+/* Hub card icon tiles: soft terracotta tile with the "tom sobre tom" icon shadow (see components/icons). */
+main [class~="w-12"][class~="h-12"][class~="relative"][class~="z-10"][class~="shadow-sm"] {
+    --icon-shadow: rgba(150, 89, 10, 0.4);
+}
+.dark main [class~="w-12"][class~="h-12"][class~="relative"][class~="z-10"][class~="shadow-sm"] {
+    --icon-shadow: #7d3a1b;
+    background-color: rgba(233, 111, 52, 0.16) !important;
+    color: #e96f34 !important;
+    box-shadow: none;
+}
+
+/* Thin triangle strip drawn in the text colour (used inside cards). */
+.card-strip {
+    height: 10px;
+    background-color: currentColor;
+    opacity: 0.35;
+    -webkit-mask: url("/sul-americano-triangulos.svg") repeat-x left center / auto 100%;
+    mask: url("/sul-americano-triangulos.svg") repeat-x left center / auto 100%;
 }

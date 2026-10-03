@@ -229,7 +229,7 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
   return (
     <div className="mx-auto max-w-5xl px-4 py-5 sm:py-7">
       <div className="mb-5 flex items-center justify-between gap-4 sm:mb-6">
-        <button onClick={onBack} className="text-gray-400 font-bold uppercase text-[10px] tracking-widest flex items-center gap-2 hover:text-[#473c33] transition-colors">
+        <button onClick={onBack} className="min-h-[44px] text-gray-400 font-bold uppercase text-[10px] tracking-widest flex items-center gap-2 hover:text-[#473c33] transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
           </svg>

@@ -94,7 +94,7 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({ onBack, edital, current
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-8">
-        <button onClick={onBack} className="text-gray-400 font-black text-xs tracking-widest uppercase flex items-center gap-2 hover:text-gray-600">
+        <button onClick={onBack} className="min-h-[44px] text-gray-400 font-black text-xs tracking-widest uppercase flex items-center gap-2 hover:text-gray-600">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
           </svg>

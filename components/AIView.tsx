@@ -134,11 +134,11 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
           <div className="w-full max-w-6xl mx-auto py-2 md:py-4">
             <section className="overflow-hidden rounded-[32px] border border-[#e9e0d4] bg-white shadow-[0_18px_48px_rgba(71,60,51,0.14)]">
               <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#eee6d6] px-5 py-4 sm:px-7">
-                <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
+                <button onClick={onBack} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
                   Voltar ao Hub
                 </button>
-                <div className="flex items-center gap-2 rounded-full bg-[#fff6e8] px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#d88b2f]">
+                <div className="flex items-center gap-2 rounded-full bg-[#fff6e8] px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#8f5614] dark:text-[#f5a46f]">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-[#f5b84b]" />
                   {strategicMode ? 'Mergulho estratégico' : 'Exploração ilimitada'}
                 </div>
@@ -207,7 +207,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                   <div className="mt-5 rounded-2xl border border-[#eee6d6] bg-[#fdfbf7] p-4">
                     <div className="flex items-center justify-between gap-3">
                       <label className="text-[10px] font-black uppercase tracking-widest text-[#725442]">Questões no caderno</label>
-                      <span className="rounded-full bg-[#fff6e8] px-3 py-1 text-sm font-black text-[#d88b2f]">{numQuestions}</span>
+                      <span className="rounded-full bg-[#fff6e8] px-3 py-1 text-sm font-black text-[#8f5614] dark:text-[#f5a46f]">{numQuestions}</span>
                     </div>
                     <input type="range" min="3" max="15" value={numQuestions} onChange={(e) => setNumQuestions(Number(e.target.value))} className="mt-4 h-2 w-full cursor-pointer rounded-full accent-[#e5a83e]" />
                     <div className="mt-2 flex justify-between text-[9px] font-bold uppercase tracking-wider text-[#b7ac9e]"><span>3 questões</span><span>15 questões</span></div>
@@ -241,7 +241,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                   <span className="text-[#fecc73] text-[10px] font-black tracking-[0.4em] uppercase mb-1">Dossiê Ativo</span>
                   <span className="text-white font-black tracking-tighter uppercase">{topic}</span>
                 </div>
-                <button onClick={onBack} className="bg-white/10 text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-[0.4em] uppercase hover:bg-red-500 transition-all active:scale-95">
+                <button onClick={onBack} className="min-h-[44px] bg-white/10 text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-[0.4em] uppercase hover:bg-red-500 transition-all active:scale-95">
                   SAIR
                 </button>
               </div>

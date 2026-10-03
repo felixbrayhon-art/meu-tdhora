@@ -902,7 +902,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
         {!questions.length ? (
           <div className="py-2">
-            <button onClick={onBack} className="mb-4 text-gray-500 font-black uppercase text-[10px] tracking-[0.25em] flex items-center gap-2 hover:text-[#473c33] transition-all group">
+            <button onClick={onBack} className="min-h-[44px] mb-4 text-gray-500 font-black uppercase text-[10px] tracking-[0.25em] flex items-center gap-2 hover:text-[#473c33] transition-all group">
               <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
               ABANDONAR SIMULADO
             </button>
