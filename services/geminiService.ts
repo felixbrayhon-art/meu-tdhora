@@ -156,7 +156,7 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
         const isQuota = errorStatus === "429" || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED');
         // Exponential backoff with jitter
         const jitter = Math.random() * 1000;
-        const retryDelay = OPENROUTER_API_KEY ? (1500 + jitter) : ((isQuota ? 15000 : delay) + jitter);
+        const retryDelay = OPENROUTER_ENABLED ? (1500 + jitter) : ((isQuota ? 15000 : delay) + jitter);
 
         console.warn(`IA ocupada ou limite atingido (Tentativa ${i + 1}/${maxRetries}). Tentando novamente em ${Math.round(retryDelay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
@@ -179,7 +179,9 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
 // thinkingmachines/inkling(-small) and the coding-only models (poolside,
 // cohere/north-mini-code) are excluded: the former 403s outside an agentic
 // harness, the latter are coding-specialized and add no value here.
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+// Provider keys are no longer in the browser bundle: Groq and OpenRouter go through /api/ai (server-side).
+// These flags only tell the client whether the server has the provider configured.
+const OPENROUTER_ENABLED = Boolean(process.env.OPENROUTER_ENABLED);
 const OPENROUTER_FALLBACK_MODELS = [
   'nvidia/nemotron-3-super-120b-a12b:free',
   'nvidia/nemotron-3.5-lightning:free',
@@ -207,7 +209,19 @@ const OPENROUTER_RACE_BATCH_SIZE = 3;
 // the primary's is already spent). Confirmed against this account's actual
 // /openai/v1/models listing — Groq's catalog changes over time, so re-check
 // that endpoint if either model ever 404s with "does not exist".
-const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const GROQ_ENABLED = Boolean(process.env.GROQ_ENABLED);
+
+// Groq and OpenRouter calls go through our own server (/api/ai) so the provider keys never reach the browser.
+// The server requires a signed-in user (the local dev server skips that check).
+const canUseAIProxy = (): boolean => import.meta.env.DEV || !!auth?.currentUser;
+
+const aiProxyFetch = async (provider: 'groq' | 'openrouter', init: { body: string; signal?: AbortSignal }): Promise<Response> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = await auth?.currentUser?.getIdToken().catch(() => null);
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return fetch(`/api/ai?provider=${provider}`, { method: 'POST', headers, body: init.body, signal: init.signal });
+};
+
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
 const GROQ_TIMEOUT_MS = 20000;
 const FREELLMAPI_TIMEOUT_MS = 56000;
@@ -365,8 +379,8 @@ const getProviderOrder = (): AIProviderId[] => {
 };
 
 const isProviderConfigured = (id: AIProviderId): boolean => {
-  if (id === 'groq') return !!GROQ_API_KEY;
-  if (id === 'openrouter') return !!OPENROUTER_API_KEY;
+  if (id === 'groq') return GROQ_ENABLED && canUseAIProxy();
+  if (id === 'openrouter') return OPENROUTER_ENABLED && canUseAIProxy();
   if (id === 'freellmapi') return FREELLMAPI_ENABLED;
   return true;
 };
@@ -466,9 +480,7 @@ async function generateOpenRouterContent(params: any): Promise<{ text: string }>
     : undefined;
   const requestedTokens = Number(config.maxOutputTokens);
   return raceOpenRouterModels(async (model) => {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+    const res = await aiProxyFetch('openrouter', {
       body: JSON.stringify({
         model,
         messages,
@@ -491,9 +503,7 @@ async function generateOpenRouterContent(params: any): Promise<{ text: string }>
 const callOpenRouterJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
   return raceOpenRouterModels(async (model) => {
     try {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+      const res = await aiProxyFetch('openrouter', {
         body: JSON.stringify({
           model,
           messages: [
@@ -534,9 +544,7 @@ const callOpenRouterJson = async (systemInstruction: string | undefined, userPro
 const callOpenRouterText = async (systemInstruction: string | undefined, messages: { role: string, content: string }[], temperature = 0.6): Promise<string> => {
   return raceOpenRouterModels(async (model) => {
     try {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+      const res = await aiProxyFetch('openrouter', {
         body: JSON.stringify({
           model,
           messages: [...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []), ...messages],
@@ -567,9 +575,7 @@ const callOpenRouterText = async (systemInstruction: string | undefined, message
 // backup model exists purely so a spent daily quota on the primary doesn't
 // take the whole Groq attempt down with it.
 const callGroqModel = async (model: string, body: Record<string, any>): Promise<string> => {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+  const res = await aiProxyFetch('groq', {
     body: JSON.stringify({ model, ...body }),
     signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
   });

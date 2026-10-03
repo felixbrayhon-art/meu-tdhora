@@ -3,6 +3,9 @@
   "functions": {
     "api/freellmapi.ts": {
       "maxDuration": 60
+    },
+    "api/ai.ts": {
+      "maxDuration": 60
     }
   }
 }
