@@ -116,6 +116,7 @@ const safeAIJsonParse = (text: string) => {
 const generateContentWithRetry = async (params: any, maxRetries = 2) => {
   // Providers ranked ahead of Gemini are tried in order; if all of them fail
   // the Gemini loop below runs and the callers' fallbacks cover what remains.
+  let lastProviderError: unknown;
   for (const providerId of getProviderOrder()) {
     if (providerId === 'gemini') break;
     if (!isProviderConfigured(providerId)) continue;
@@ -124,8 +125,14 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
       if (providerId === 'openrouter') return await generateOpenRouterContent(params);
       return await generateFreeLLMAPIContent(params);
     } catch (error) {
+      lastProviderError = error;
       console.warn(`[ai] ${providerId} indisponível; tentando o próximo provedor:`, error);
     }
+  }
+
+  // Gemini is optional: without its key there is nothing to retry, so report the last provider error right away.
+  if (!process.env.GEMINI_API_KEY) {
+    throw lastProviderError ?? new Error('Nenhum provedor de IA está configurado neste app.');
   }
 
   let delay = 2000;
@@ -212,7 +219,7 @@ const OPENROUTER_RACE_BATCH_SIZE = 3;
 const GROQ_ENABLED = Boolean(process.env.GROQ_ENABLED);
 
 // Groq and OpenRouter calls go through our own server (/api/ai) so the provider keys never reach the browser.
-// The server requires a signed-in user (the local dev server skips that check).
+// FreeLLMAPI needs a signed-in user; Groq/OpenRouter also work for visitors (the server rate-limits them).
 const canUseAIProxy = (): boolean => import.meta.env.DEV || !!auth?.currentUser;
 
 const aiProxyFetch = async (provider: 'groq' | 'openrouter', init: { body: string; signal?: AbortSignal }): Promise<Response> => {
@@ -360,8 +367,8 @@ const getProviderOrder = (): AIProviderId[] => {
 };
 
 const isProviderConfigured = (id: AIProviderId): boolean => {
-  if (id === 'groq') return GROQ_ENABLED && canUseAIProxy();
-  if (id === 'openrouter') return OPENROUTER_ENABLED && canUseAIProxy();
+  if (id === 'groq') return GROQ_ENABLED;
+  if (id === 'openrouter') return OPENROUTER_ENABLED;
   if (id === 'freellmapi') return FREELLMAPI_ENABLED && canUseAIProxy();
   return true;
 };

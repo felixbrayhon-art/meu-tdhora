@@ -4,8 +4,8 @@ import firebaseConfig from '../firebase-applet-config.json' with { type: 'json' 
 // Server-side gateway for Groq and OpenRouter. The provider keys live only in
 // server environment variables (GROQ_API_KEY, OPENROUTER_API_KEY — never with a
 // VITE_ prefix) so they are not shipped in the public JavaScript. Callers must
-// be signed in; on a local dev machine (non-production, loopback host) the
-// login check is skipped so the app works without signing in.
+// be signed in, or be a visitor using the app from its own origin within a rate limit;
+// on a local dev machine (non-production, loopback host) both checks are skipped.
 
 type ApiRequest = IncomingMessage & { body?: unknown };
 type Provider = 'groq' | 'openrouter';
@@ -73,6 +73,44 @@ const isLocalDev = (request: ApiRequest): boolean => {
   return ['localhost', '127.0.0.1', '[::1]', '::1'].includes(host);
 };
 
+
+// Best-effort guardrails for visitors. A serverless instance keeps this in memory, so it is a speed bump
+// rather than a hard quota: signed-in users are the fully protected path.
+const GUEST_WINDOW_MS = 10 * 60 * 1000;
+const GUEST_MAX_REQUESTS = 60;
+const guestHits = new Map<string, { count: number; resetAt: number }>();
+
+const clientIp = (request: ApiRequest): string => {
+  const forwarded = request.headers['x-forwarded-for'];
+  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim();
+  return first || request.socket?.remoteAddress || 'unknown';
+};
+
+const allowGuest = (request: ApiRequest): boolean => {
+  const now = Date.now();
+  if (guestHits.size > 5000) for (const [key, hit] of guestHits) if (hit.resetAt < now) guestHits.delete(key);
+  const key = clientIp(request);
+  const hit = guestHits.get(key);
+  if (!hit || hit.resetAt < now) {
+    guestHits.set(key, { count: 1, resetAt: now + GUEST_WINDOW_MS });
+    return true;
+  }
+  hit.count += 1;
+  return hit.count <= GUEST_MAX_REQUESTS;
+};
+
+// Browsers always send Origin on a cross-site or same-site POST; it must match the host serving the app.
+const isSameOrigin = (request: ApiRequest): boolean => {
+  const origin = request.headers.origin;
+  const host = request.headers.host;
+  if (typeof origin !== 'string' || typeof host !== 'string') return false;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+};
+
 const providerFromUrl = (request: ApiRequest): Provider | null => {
   try {
     const value = new URL(request.url || '', 'http://localhost').searchParams.get('provider');
@@ -130,13 +168,22 @@ export const handleAIRequest = async (request: ApiRequest, response: ServerRespo
 
   if (!isLocalDev(request)) {
     const idToken = getAuthorizationToken(request);
-    if (!idToken) return sendJson(response, 401, { error: 'Entre na sua conta para usar este provedor de IA.' });
-    try {
-      if (!(await verifyFirebaseToken(idToken))) {
-        return sendJson(response, 401, { error: 'Sua sessão expirou. Entre novamente para continuar.' });
+    if (idToken) {
+      // Signed-in users: the Firebase token must be valid.
+      try {
+        if (!(await verifyFirebaseToken(idToken))) {
+          return sendJson(response, 401, { error: 'Sua sessão expirou. Entre novamente para continuar.' });
+        }
+      } catch {
+        return sendJson(response, 503, { error: 'Não foi possível validar sua sessão agora.' });
       }
-    } catch {
-      return sendJson(response, 503, { error: 'Não foi possível validar sua sessão agora.' });
+    } else {
+      // Visitors (no login) can still use the app, as before, but only from the app itself and within a rate limit.
+      if (!isSameOrigin(request)) return sendJson(response, 403, { error: 'Origem não permitida.' });
+      if (!allowGuest(request)) {
+        response.setHeader('Retry-After', String(Math.ceil(GUEST_WINDOW_MS / 1000)));
+        return sendJson(response, 429, { error: 'Muitos pedidos em pouco tempo. Tente de novo em alguns minutos.' });
+      }
     }
   }
 
