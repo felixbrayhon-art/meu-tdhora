@@ -120,7 +120,7 @@ const FishCatalog: React.FC<FishCatalogProps> = ({ onBack }) => {
           <p className="text-gray-500 mt-1 font-medium tracking-wide uppercase text-sm">TDAH Ora Study</p>
         </div>
 
-        <button onClick={onBack} className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors uppercase tracking-widest text-sm">
+        <button onClick={onBack} className="min-h-[44px] px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors uppercase tracking-widest text-sm">
           Voltar
         </button>
       </div>

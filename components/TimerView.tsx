@@ -36,7 +36,7 @@ const TimerView: React.FC<TimerViewProps> = ({ isActive, setIsActive, seconds, s
   return (
     <div className="animate-in fade-in zoom-in-95 duration-500 flex flex-col items-center py-10">
       <div className="w-full flex justify-between items-center mb-8">
-        <button onClick={onBack} className="text-gray-400 font-bold uppercase text-xs tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors">
+        <button onClick={onBack} className="min-h-[44px] text-gray-400 font-bold uppercase text-xs tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
           </svg>
@@ -76,6 +76,7 @@ const TimerView: React.FC<TimerViewProps> = ({ isActive, setIsActive, seconds, s
             onClick={() => {
               if (!isEditing) setIsActive(!isActive);
             }}
+            aria-label={isActive ? 'Pausar cronômetro' : 'Iniciar cronômetro'}
             className={`w-28 h-28 rounded-[40px] text-white flex items-center justify-center shadow-2xl transition-all hover:scale-105 active:scale-95 ${isEditing ? 'bg-gray-200 cursor-not-allowed' : themeColor}`}
           >
             {isActive ? (

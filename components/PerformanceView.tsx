@@ -136,7 +136,7 @@ const PerformanceView: React.FC<PerformanceViewProps> = ({ attempts, folders, sm
             <h1 className="mt-1 text-2xl md:text-3xl font-black tracking-tight text-[#473c33]">Desempenho</h1>
             <p className="mt-1 text-sm font-medium text-[#8f8375]">Veja sua evolução e escolha onde concentrar o próximo treino.</p>
           </div>
-          <button onClick={onBack} className="flex items-center gap-2 text-[#725442] hover:text-[#473c33] transition-colors font-black uppercase text-[10px] tracking-[0.16em] bg-white px-4 py-3 rounded-2xl border border-[#e9e0d4] shadow-[0_6px_18px_rgba(71,60,51,0.06)]">
+          <button onClick={onBack} className="min-h-[44px] flex items-center gap-2 text-[#725442] hover:text-[#473c33] transition-colors font-black uppercase text-[10px] tracking-[0.16em] bg-white px-4 py-3 rounded-2xl border border-[#e9e0d4] shadow-[0_6px_18px_rgba(71,60,51,0.06)]">
             <ChevronLeft className="w-5 h-5" />
             Voltar ao Hub
           </button>
@@ -149,7 +149,7 @@ const PerformanceView: React.FC<PerformanceViewProps> = ({ attempts, folders, sm
               <h2 className="text-lg font-black text-[#473c33] uppercase tracking-tight">Desempenho geral</h2>
               <p className="mt-1 text-xs font-medium text-[#a79c8e]">Um resumo do seu histórico de respostas.</p>
             </div>
-            <span className="rounded-full bg-[#fff6e8] px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#d87b32]">
+            <span className="rounded-full bg-[#fff6e8] px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#e8934d]">
               {overallStats.totalAttempts} {overallStats.totalAttempts === 1 ? 'treino' : 'treinos'}
             </span>
           </div>
@@ -169,7 +169,7 @@ const PerformanceView: React.FC<PerformanceViewProps> = ({ attempts, folders, sm
                 <h3 className="mt-3 text-3xl font-black text-[#473c33] tracking-tight">{overallStats.uniqueFolders}</h3>
               </div>
               <div className="rounded-2xl border border-[#f4dede] bg-[#fff8f8] p-4">
-                <p className="text-[10px] font-black text-[#d97979] uppercase tracking-widest">Erros</p>
+                <p className="text-[10px] font-black text-[#ea9393] uppercase tracking-widest">Erros</p>
                 <h3 className="mt-3 text-3xl font-black text-[#e45d5d] tracking-tight">{overallStats.totalErrors}</h3>
               </div>
             </div>

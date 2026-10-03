@@ -1,5 +1,5 @@
 
-export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON' | 'PERFORMANCE' | 'SAVED_GUIDED_LESSONS' | 'DRIVE_READER' | 'VADE_MECUM' | 'NOTES' | 'ADMIN_QUESTION_REVIEW' | 'VR_METHOD' | 'DIGITAL_NOTEBOOK';
+export type AppView = 'HUB' | 'TIMER' | 'FLASHCARDS' | 'AI_DIRECT' | 'MATERIALS' | 'QUIZ_PLAYER' | 'TDH_QUESTOES' | 'STUDY_PLAN' | 'PROFILE' | 'COMMUNITY' | 'FOCUS_MODE' | 'DYNAMIC_TIMER' | 'EDITAL_SETUP' | 'EDITAL_VIEW' | 'SMART_REVISION' | 'ERROR_VAULT' | 'SOCIAL_MODULE' | 'STUDY_CYCLE' | 'FISH_CATALOG' | 'GUIDED_LESSON' | 'PERFORMANCE' | 'SAVED_GUIDED_LESSONS' | 'DRIVE_READER' | 'VADE_MECUM' | 'NOTES' | 'ADMIN_QUESTION_REVIEW' | 'VR_METHOD' | 'DIGITAL_NOTEBOOK' | 'LIVING_LESSON';
 
 // --- Question bank import pipeline (admin-only) ---
 // Populated by worker/ (a local Python script, not a hosted service — see
@@ -276,7 +276,7 @@ export interface UserStats {
   lastStudyDate?: string;
   studyProfile?: StudyProfile;
   explanationStyle?: ExplanationStyle;
-  aiProvider?: 'gemini' | 'freellmapi';
+  aiProvider?: 'auto' | 'groq' | 'openrouter' | 'freellmapi' | 'gemini';
   questionProfileStyle?: string;
   fontSizeMultiplier?: number; // 1, 1.25, 1.5
   heroScenario?: 'quarto' | 'estudio' | 'biblioteca' | 'quarto-3d' | 'estudio-3d' | 'biblioteca-3d' | 'solido'; // cenário de fundo do card principal do Hub
@@ -517,4 +517,29 @@ export interface VRSession {
   finishedAt?: number;
   totalQuestions: number;
   totalCorrect: number;
+}
+
+
+// "Aula Ilustrada": encyclopedic-magazine style lesson (pull quote, info
+// boxes, profile sidebar, "veja também"). Content is always original,
+// AI-written text; only the page layout is inspired by illustrated books.
+export interface IllustratedLessonBox {
+  kind: 'table' | 'steps' | 'timeline' | 'law';
+  title: string;
+  items: { label: string; text: string }[];
+}
+export interface IllustratedLessonPage {
+  lead?: string;
+  quote?: { text: string; author: string };
+  boxes: IllustratedLessonBox[];
+  sections: { heading: string; paragraphs: string[] }[];
+  profile?: { name: string; role: string; bio: string; works: { year: string; title: string }[] };
+}
+export interface IllustratedLesson {
+  subject: string;
+  topic: string;
+  section: string;
+  seeAlso: string[];
+  pages: IllustratedLessonPage[];
+  sources?: { kind: 'wikipedia' | 'wikilivros' | 'lei' | 'wikidata'; title: string; url: string }[];
 }

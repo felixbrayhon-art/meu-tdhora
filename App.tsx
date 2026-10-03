@@ -7,6 +7,7 @@ import SplashScreen from './components/SplashScreen';
 import FishCompanion from './components/FishCompanion';
 import BuildTag from './components/BuildTag';
 import OnboardingFlow from './components/OnboardingFlow';
+import AvatarBuilder from './components/AvatarBuilder';
 import ProfileSelection from './components/ProfileSelection';
 import { checkIsAdmin } from './services/questionBankService';
 import Sidebar from './components/Sidebar';
@@ -33,6 +34,7 @@ const SmartRevisionView = lazy(() => import('./components/SmartRevisionView'));
 const SocialModule = lazy(() => import('./components/SocialModule'));
 const StudyCycleView = lazy(() => import('./components/StudyCycleView'));
 const GuidedLessonView = lazy(() => import('./components/GuidedLessonView'));
+const LivingLessonView = lazy(() => import('./components/LivingLessonView'));
 const PerformanceView = lazy(() => import('./components/PerformanceView'));
 const SavedGuidedLessonsView = lazy(() => import('./components/SavedGuidedLessonsView'));
 const DriveReader = lazy(() => import('./components/DriveReader').then(({ DriveReader: Component }) => ({ default: Component })));
@@ -47,7 +49,7 @@ const APP_VIEW_IDS: AppView[] = [
   'STUDY_PLAN', 'PROFILE', 'COMMUNITY', 'FOCUS_MODE', 'DYNAMIC_TIMER', 'EDITAL_SETUP',
   'EDITAL_VIEW', 'SMART_REVISION', 'ERROR_VAULT', 'SOCIAL_MODULE', 'STUDY_CYCLE',
   'FISH_CATALOG', 'GUIDED_LESSON', 'PERFORMANCE', 'SAVED_GUIDED_LESSONS', 'DRIVE_READER',
-  'VADE_MECUM', 'NOTES', 'ADMIN_QUESTION_REVIEW', 'VR_METHOD', 'DIGITAL_NOTEBOOK',
+  'VADE_MECUM', 'NOTES', 'ADMIN_QUESTION_REVIEW', 'VR_METHOD', 'DIGITAL_NOTEBOOK', 'LIVING_LESSON',
 ];
 const STUDY_VIEWS: AppView[] = [
   'STUDY_CYCLE', 'FLASHCARDS', 'DYNAMIC_TIMER', 'TDH_QUESTOES', 'DRIVE_READER',
@@ -80,6 +82,9 @@ const App: React.FC = () => {
   const isProfilePreview =
     ['localhost', '127.0.0.1'].includes(window.location.hostname) &&
     new URLSearchParams(window.location.search).get('previewProfile') === '1';
+  const isAvatarPreview =
+    ['localhost', '127.0.0.1'].includes(window.location.hostname) &&
+    new URLSearchParams(window.location.search).get('previewAvatar') === '1';
   const [isGoogleLoginLoading, setIsGoogleLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -194,6 +199,21 @@ const App: React.FC = () => {
     topic: string;
     initialLesson?: any;
   } | null>(null);
+  // Kept in sessionStorage so reloading the Aula Viva page repeats the same request.
+  const [lessonDockOpen, setLessonDockOpen] = useState(false);
+  const [livingLessonData, setLivingLessonData] = useState<{ subject: string; topic: string } | null>(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('living_lesson_request') || 'null');
+      return saved && typeof saved.subject === 'string' && typeof saved.topic === 'string' ? saved : null;
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    try {
+      if (livingLessonData) sessionStorage.setItem('living_lesson_request', JSON.stringify(livingLessonData));
+    } catch { /* storage unavailable: lesson still works, just not after reload */ }
+  }, [livingLessonData]);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>(() => {
     return safeJsonParse('focus_activities', []);
@@ -293,6 +313,11 @@ const App: React.FC = () => {
   // States for Sidebar Navigation
   const [tdhQuestionSession, setTDHQuestionSession] = useState(false);
   const isQuestionSession = currentView === 'QUIZ_PLAYER' || (currentView === 'TDH_QUESTOES' && tdhQuestionSession);
+  // Reading/writing views (Aula Viva, Vade Mecum, notebooks): no mascot over the text, compact header, collapsed timer.
+  const isFocusLesson = currentView === 'LIVING_LESSON' || currentView === 'VADE_MECUM' || currentView === 'DIGITAL_NOTEBOOK' || currentView === 'NOTES';
+  useEffect(() => {
+    if (!isFocusLesson) setLessonDockOpen(false);
+  }, [isFocusLesson]);
   const [materialsSelectedFolderId, setMaterialsSelectedFolderId] = useState<string | null>(null);
   const [materialsSelectedNotebookId, setMaterialsSelectedNotebookId] = useState<string | null>(null);
   const [flashcardsSelectedFolderId, setFlashcardsSelectedFolderId] = useState<string | null>(null);
@@ -1107,6 +1132,22 @@ const App: React.FC = () => {
         <BuildTag />
       </>
     );
+  if (isAvatarPreview)
+    return (
+      <>
+        <AvatarBuilder
+          initialCharacterId={stats.characterId}
+          confirmLabel="Prévia do personagem"
+          onSave={() => undefined}
+          onClose={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('previewAvatar');
+            window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+          }}
+        />
+        <BuildTag />
+      </>
+    );
   if (!stats.studyProfile)
     return (
       <>
@@ -1183,7 +1224,7 @@ const App: React.FC = () => {
             </div>
           )}
           {!isQuestionSession && <header className="shrink-0 z-50">
-            <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} />
+            <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} compact={isFocusLesson} />
           </header>}
 
           <div className="flex-1 overflow-y-auto custom-scrollbar relative">
@@ -1191,7 +1232,28 @@ const App: React.FC = () => {
             <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop />
             <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop />
 
-            {showGlobalBar && !isQuestionSession && (
+            {showGlobalBar && isFocusLesson && !lessonDockOpen && (
+              <button
+                type="button"
+                onClick={() => setLessonDockOpen(true)}
+                aria-label="Abrir relógio e sons"
+                className="fixed right-4 z-[150] flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#cfc9a2] bg-white/95 text-xs font-black tabular-nums text-[#473c33] shadow-xl backdrop-blur-xl dark:border-white/20 dark:bg-[#2d2e27] dark:text-[#f2efd2]"
+                style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
+              >
+                {formatMiniTime(globalTimerSeconds)}
+              </button>
+            )}
+            {showGlobalBar && isFocusLesson && lessonDockOpen && (
+              <button
+                type="button"
+                onClick={() => setLessonDockOpen(false)}
+                className="fixed right-4 z-[151] min-h-[44px] rounded-full bg-[#e96f34] px-4 text-xs font-black uppercase tracking-wide text-white shadow-lg"
+                style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
+              >
+                Recolher relógio
+              </button>
+            )}
+            {showGlobalBar && !isQuestionSession && (!isFocusLesson || lessonDockOpen) && (
               <div className="fixed left-1/2 -translate-x-1/2 z-[150] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500" style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
                 {isStorageFull && !user && <div className="bg-red-500 text-white text-[10px] font-black uppercase tracking-widest py-1 px-4 rounded-t-xl mb-[-10px] mx-auto w-fit shadow-lg animate-bounce">⚠️ Memória do Navegador Cheia! Entre com o Google para salvar na nuvem</div>}
                 <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl rounded-[35px] p-2 flex items-center justify-between gap-3 relative">
@@ -1241,7 +1303,7 @@ const App: React.FC = () => {
               </div>
             )}
 
-            <main className="max-w-[1400px] min-h-full mx-auto px-4 pt-8 relative" style={{ paddingBottom: showGlobalBar && !isQuestionSession ? 'calc(10rem + env(safe-area-inset-bottom, 0px))' : '2rem' }}>
+            <main className="max-w-[1400px] min-h-full mx-auto px-4 pt-8 relative" style={{ paddingBottom: showGlobalBar && !isQuestionSession && !isFocusLesson ? 'calc(10rem + env(safe-area-inset-bottom, 0px))' : '2rem' }}>
               {showRevisionNotice && (
                 <aside role="status" className="mb-5 flex flex-col gap-3 rounded-2xl border border-[#e5d7bd] bg-[#fff8ec] px-4 py-3 text-[#473c33] shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-[#65533d] dark:bg-[#2b241b] dark:text-[#f4ebdd]">
                   <p className="text-sm font-semibold">
@@ -1278,6 +1340,7 @@ const App: React.FC = () => {
                       editalConfig={editalConfig}
                       setStrategicMode={setStrategicMode}
                       setGuidedLessonData={setGuidedLessonData}
+                      setLivingLessonData={setLivingLessonData}
                       smartRevisionItems={smartSystem.queue}
                       isAIEnabled={isAIEnabled}
                       user={user}
@@ -1673,6 +1736,16 @@ const App: React.FC = () => {
                       }}
                     />
                   )}
+                  {currentView === 'LIVING_LESSON' && (
+                    <LivingLessonView
+                      subject={livingLessonData?.subject || ''}
+                      topic={livingLessonData?.topic || ''}
+                      profile={stats.studyProfile || 'VESTIBULAR'}
+                      explanationStyle={stats.explanationStyle}
+                      onBack={() => setCurrentView('HUB')}
+                    />
+                  )}
+
                   {currentView === 'SAVED_GUIDED_LESSONS' && (
                     <SavedGuidedLessonsView
                       onOpenLesson={(subject, topic, lesson) => {
@@ -1689,11 +1762,14 @@ const App: React.FC = () => {
                   {currentView === 'DIGITAL_NOTEBOOK' && <DigitalNotebookView key={user?.uid || 'guest'} owner={user?.uid || 'guest'} onBack={() => setCurrentView('HUB')} />}
                 </Suspense>
                 </>
+              {currentView !== 'LIVING_LESSON' && !isQuestionSession && (
+                <div aria-hidden="true" className="section-strip mt-10" />
+              )}
             </main>
           </div>
         </div>
 
-        {!isQuestionSession && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} />}
+        {!isQuestionSession && !isFocusLesson && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} />}
         <BuildTag />
         <LoginModal
           isOpen={isLoginModalOpen}

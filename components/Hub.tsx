@@ -3,7 +3,7 @@ import { AppView, TimerMode, UserStats, HubCategory, EditalConfig, SmartRevision
 import MemoryHeatmap from './MemoryHeatmap';
 import { getProactiveAdvice } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, BarChart3, Bookmark, ClipboardList, Zap, FileText, Smile, Heart, Cloud, ArrowRight, PenLine, RotateCcw, Copy, Briefcase, Folder, Clock, Calendar, Bell, AlertTriangle, Scale, Search } from './icons';
+import { ScrollText, BookOpen, BarChart3, Bookmark, ClipboardList, Zap, FileText, Smile, Heart, Cloud, ArrowRight, PenLine, RotateCcw, Copy, Briefcase, Folder, Clock, Calendar, Bell, AlertTriangle, Scale, Search } from './icons';
 import MotivationView from './MotivationView';
 
 interface HubProps {
@@ -18,6 +18,7 @@ interface HubProps {
   editalConfig: EditalConfig;
   setStrategicMode: (s: boolean) => void;
   setGuidedLessonData: (data: { subject: string; topic: string }) => void;
+  setLivingLessonData: (data: { subject: string; topic: string }) => void;
   smartRevisionItems: SmartRevisionItem[];
   isAIEnabled: boolean;
   user: any; // FirebaseUser
@@ -29,13 +30,15 @@ interface HubProps {
   isAdmin?: boolean;
 }
 
-const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats, activeChannel, setActiveChannel, isPlayingRain, setIsPlayingRain, editalConfig, setStrategicMode, setGuidedLessonData, smartRevisionItems, isAIEnabled, isSyncing, attempts, folders, smartSystem, isAdmin }) => {
+const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats, activeChannel, setActiveChannel, isPlayingRain, setIsPlayingRain, editalConfig, setStrategicMode, setGuidedLessonData, setLivingLessonData, smartRevisionItems, isAIEnabled, isSyncing, attempts, folders, smartSystem, isAdmin }) => {
   const [activeTab, setActiveTab] = useState<HubCategory>('ESTUDO');
   const [copyFeedback, setCopyFeedback] = useState(false);
 
   // Guided Lesson Input States
   const [guidedSubject, setGuidedSubject] = useState('');
   const [guidedTopic, setGuidedTopic] = useState('');
+  const [livingSubject, setLivingSubject] = useState('');
+  const [livingTopic, setLivingTopic] = useState('');
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -79,33 +82,33 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
 
       <nav aria-label="Navegação do painel" className="sticky top-3 z-20 hidden w-full max-w-full items-center justify-center gap-2 overflow-x-auto rounded-[24px] border border-[#e9e0d4] bg-white p-2 shadow-[0_8px_22px_rgba(71,60,51,0.07)] no-scrollbar scroll-smooth dark:border-white/[0.06] dark:bg-[#272019] dark:shadow-none xl:flex">
         <div role="tablist" aria-label="Seções do painel" onKeyDown={handleHubTabKeyDown} className="flex shrink-0 items-center gap-1">
-        <button role="tab" tabIndex={activeTab === 'ESTUDO' ? 0 : -1} aria-selected={activeTab === 'ESTUDO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('ESTUDO')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'ESTUDO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+        <button role="tab" tabIndex={activeTab === 'ESTUDO' ? 0 : -1} aria-selected={activeTab === 'ESTUDO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('ESTUDO')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'ESTUDO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
           <BookOpen className="w-4 h-4" />
           Estudo
         </button>
-        <button role="tab" tabIndex={activeTab === 'EDITAL' ? 0 : -1} aria-selected={activeTab === 'EDITAL'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('EDITAL')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'EDITAL' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+        <button role="tab" tabIndex={activeTab === 'EDITAL' ? 0 : -1} aria-selected={activeTab === 'EDITAL'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('EDITAL')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'EDITAL' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
           <FileText className="w-4 h-4" />
           {stats.studyProfile === 'FACULDADE' ? 'Grade' : 'Edital'}
         </button>
-        <button role="tab" tabIndex={activeTab === 'ORGANIZACAO' ? 0 : -1} aria-selected={activeTab === 'ORGANIZACAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('ORGANIZACAO')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'ORGANIZACAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+        <button role="tab" tabIndex={activeTab === 'ORGANIZACAO' ? 0 : -1} aria-selected={activeTab === 'ORGANIZACAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('ORGANIZACAO')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'ORGANIZACAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
           <ClipboardList className="w-4 h-4" />
           Organização
         </button>
-        <button role="tab" tabIndex={activeTab === 'RELAXE' ? 0 : -1} aria-selected={activeTab === 'RELAXE'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('RELAXE')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'RELAXE' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+        <button role="tab" tabIndex={activeTab === 'RELAXE' ? 0 : -1} aria-selected={activeTab === 'RELAXE'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('RELAXE')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'RELAXE' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
           <Smile className="w-4 h-4" />
           Relaxe
         </button>
-        <button role="tab" tabIndex={activeTab === 'REVISAO' ? 0 : -1} aria-selected={activeTab === 'REVISAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('REVISAO')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'REVISAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+        <button role="tab" tabIndex={activeTab === 'REVISAO' ? 0 : -1} aria-selected={activeTab === 'REVISAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('REVISAO')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'REVISAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
           <Zap className="w-4 h-4" />
           Revisão IA
         </button>
-        <button role="tab" tabIndex={activeTab === 'MOTIVACAO' ? 0 : -1} aria-selected={activeTab === 'MOTIVACAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('MOTIVACAO')} className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] transition-all ${activeTab === 'MOTIVACAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
+        <button role="tab" tabIndex={activeTab === 'MOTIVACAO' ? 0 : -1} aria-selected={activeTab === 'MOTIVACAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('MOTIVACAO')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'MOTIVACAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
           <Heart className="w-4 h-4" />
           Motivação
         </button>
         </div>
         <div aria-hidden="true" className="h-8 w-px shrink-0 bg-[#e9e0d4] dark:bg-white/10" />
-        <button onClick={() => setView('PERFORMANCE')} className="shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-[11px] text-[#8f8375] transition-all hover:bg-[#f7f3ed] hover:text-[#473c33] dark:text-[#c2baa0] dark:hover:bg-[#3a2f22] dark:hover:text-[#f4ebdd]">
+        <button onClick={() => setView('PERFORMANCE')} className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs text-[#8f8375] transition-all hover:bg-[#f7f3ed] hover:text-[#473c33] dark:text-[#c2baa0] dark:hover:bg-[#3a2f22] dark:hover:text-[#f4ebdd]">
           <BarChart3 className="w-4 h-4" />
           Desempenho
         </button>
@@ -255,7 +258,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Arquivo da Grade' : 'Arquivo Estratégico') : 'Resumos & Cadernos'}</p>
                 </button>
 
-                <button onClick={() => setView('DRIVE_READER')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-gradient-to-br from-[#473c33] to-[#473c33] dark:from-[#d9772b] dark:to-[#d9772b] text-white shadow-xl dark:shadow-none border-0'}`}>
+                <button onClick={() => setView('DRIVE_READER')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-gradient-to-br from-[#473c33] to-[#473c33] dark:from-[#2e2519] dark:to-[#2e2519] text-white shadow-xl dark:shadow-none border-0 dark:border dark:border-white/[0.06]'}`}>
                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fec868] text-white shadow-md'}`}>
                     <Folder className="w-7 h-7" />
                   </div>
@@ -386,7 +389,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                             setView('GUIDED_LESSON');
                           }
                         }}
-                        className="bg-[#fecc73] hover:bg-[#fec868] text-white p-2 rounded-xl transition-all"
+                        aria-label="Criar Aula Guiada" className="bg-[#fecc73] hover:bg-[#fec868] text-white min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition-all"
                       >
                         <ArrowRight className="w-5 h-5" />
                       </button>
@@ -395,6 +398,51 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
 
                   <div className="absolute -right-4 -bottom-4 transition-opacity">
                     <BookOpen className="w-32 h-32 text-black/5 group-hover:text-black/10" />
+                  </div>
+                </div>
+
+                <div className="text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all animate-in zoom-in-95 duration-300 delay-200 shadow-2xl dark:shadow-none bg-gradient-to-br from-[#473c33] to-[#473c33] dark:from-[#d9772b] dark:to-[#d9772b]">
+                  <div className="mb-6 w-12 h-12 bg-white/10 text-[#fed386] rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10">
+                    <ScrollText className="w-7 h-7" />
+                  </div>
+                  <h2 className="font-logo text-3xl mb-2 uppercase leading-none">
+                    AULA <span className="text-[#fff6e8]">VIVA</span>
+                  </h2>
+                  <p className="text-[#fff6e8]/90 text-xs font-bold uppercase tracking-widest mb-6">Aula em páginas, com quadros e linha do tempo</p>
+
+                  <div className="flex flex-col gap-2 relative z-10">
+                    <input type="text" placeholder="Matéria (Ex: Literatura)" value={livingSubject} onChange={(e) => setLivingSubject(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#fecc73] transition-all placeholder:text-white/75 text-white" />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Assunto (Ex: Dom Casmurro)"
+                        value={livingTopic}
+                        onChange={(e) => setLivingTopic(e.target.value)}
+                        className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#fecc73] transition-all placeholder:text-white/75 text-white"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && livingSubject.trim() && livingTopic.trim()) {
+                            setLivingLessonData({ subject: livingSubject.trim(), topic: livingTopic.trim() });
+                            setView('LIVING_LESSON');
+                          }
+                        }}
+                      />
+                      <button
+                        aria-label="Criar Aula Viva"
+                        onClick={() => {
+                          if (livingSubject.trim() && livingTopic.trim()) {
+                            setLivingLessonData({ subject: livingSubject.trim(), topic: livingTopic.trim() });
+                            setView('LIVING_LESSON');
+                          }
+                        }}
+                        className="bg-[#fecc73] hover:bg-[#fec868] text-white min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition-all"
+                      >
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="absolute -right-4 -bottom-4 transition-opacity">
+                    <ScrollText className="w-32 h-32 text-black/5 group-hover:text-black/10" />
                   </div>
                 </div>
 
@@ -547,7 +595,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
       <footer className="pt-12 mt-12 border-t border-gray-100 dark:border-white/[0.06] text-center animate-in fade-in duration-1000">
         <div className="max-w-2xl mx-auto space-y-4">
           <p className="text-gray-500 dark:text-[#a89680] font-medium text-sm leading-relaxed px-6">
-            Olá, eu sou o <span className="text-[#473c33] dark:text-[#f4ebdd] font-black ">Brayhon</span>. Desenvolvi este app como um <span className="text-[#fecc73] dark:text-[#d9772b] font-bold">cardume seguro</span> para nossas mentes neurodivergentes. Eu também tenho <span className="text-[#fdad74] dark:text-[#d9772b] font-bold">TDAH</span> e sei que o nosso foco não é quebrado, ele apenas funciona em uma frequência diferente.
+            Olá, eu sou o <span className="text-[#473c33] dark:text-[#f4ebdd] font-black ">Brayhon</span>. Desenvolvi este app como um <span className="text-[#fecc73] dark:text-[#e8894a] font-bold">cardume seguro</span> para nossas mentes neurodivergentes. Eu também tenho <span className="text-[#fdad74] dark:text-[#d9772b] font-bold">TDAH</span> e sei que o nosso foco não é quebrado, ele apenas funciona em uma frequência diferente.
           </p>
           <p className="text-gray-300 dark:text-[#7d6f5c] font-bold text-[10px] uppercase tracking-[0.3em]">Criado com propósito • TDAH ORA</p>
         </div>

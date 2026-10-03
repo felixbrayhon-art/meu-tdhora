@@ -195,7 +195,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
           Bloco Imutável <span className="text-[#abc270]">Concluído!</span>
         </h2>
         <p className="text-gray-400 font-bold max-w-sm">Dossiê processado, questões resolvidas e erros analisados. Você está em outro nível.</p>
-        <button onClick={onBack} className="bg-[#473c33] text-white px-10 py-5 rounded-[25px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
+        <button onClick={onBack} className="min-h-[44px] bg-[#473c33] text-white px-10 py-5 rounded-[25px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
           Voltar ao Hub
         </button>
       </div>
@@ -205,7 +205,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-8">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#e9e0d4] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(71,60,51,0.06)]">
-        <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
+        <button onClick={onBack} className="min-h-[44px] inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
           </svg>
