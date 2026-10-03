@@ -51,6 +51,12 @@ const verifyFirebaseToken = async (idToken: string): Promise<string | null> => {
   return data.users?.[0]?.localId || null;
 };
 
+const isLocalDev = (request: ApiRequest): boolean => {
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) return false;
+  const host = String(request.headers.host || '').split(':')[0];
+  return ['localhost', '127.0.0.1', '[::1]', '::1'].includes(host);
+};
+
 const getFreeLLMAPIEndpoint = (): URL | null => {
   const configuredUrl = process.env.FREELLMAPI_BASE_URL?.trim();
   if (!configuredUrl) return null;
@@ -132,14 +138,15 @@ export const handleFreeLLMAPIRequest = async (request: ApiRequest, response: Ser
   }
 
   const idToken = getAuthorizationToken(request);
-  if (!idToken) return sendJson(response, 401, { error: 'Entre na sua conta para usar este provedor de IA.' });
+  const skipLogin = !idToken && isLocalDev(request);
+  if (!idToken && !skipLogin) return sendJson(response, 401, { error: 'Entre na sua conta para usar este provedor de IA.' });
 
   try {
-    const uid = await verifyFirebaseToken(idToken);
-    if (!uid) {
+    const uid = skipLogin ? '' : await verifyFirebaseToken(idToken as string);
+    if (!skipLogin && !uid) {
       return sendJson(response, 401, { error: 'Sua sessão expirou. Entre novamente para continuar.' });
     }
-    if (!allowedUids.includes(uid)) {
+    if (!skipLogin && !allowedUids.includes(uid)) {
       return sendJson(response, 403, { error: 'Este provedor adicional não está habilitado para esta conta.' });
     }
   } catch (error) {

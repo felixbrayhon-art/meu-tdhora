@@ -225,44 +225,25 @@ const aiProxyFetch = async (provider: 'groq' | 'openrouter', init: { body: strin
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
 const GROQ_TIMEOUT_MS = 20000;
 const FREELLMAPI_TIMEOUT_MS = 56000;
-// Temporary browser-side integration. The key is bundled into the client until
-// this gateway is moved behind a hosted server-side endpoint.
-const FREELLMAPI_BASE_URL = (import.meta.env.VITE_FREELLMAPI_BASE_URL || '').replace(/\/+$/, '');
-const FREELLMAPI_API_KEY = import.meta.env.VITE_FREELLMAPI_API_KEY || '';
-const FREELLMAPI_ALLOWED_UIDS = (import.meta.env.VITE_FREELLMAPI_ALLOWED_UIDS || '').split(',').map((uid) => uid.trim()).filter(Boolean);
-const FREELLMAPI_MODEL = import.meta.env.VITE_FREELLMAPI_MODEL || 'auto';
-const FREELLMAPI_ENABLED = import.meta.env.VITE_FREELLMAPI_ENABLED === 'true';
-// The local preview is bound to loopback and intentionally has the provider key
-// available in its local environment. Allow its owner to test generation without
-// first syncing a Google account; production still requires an authenticated UID.
-const isLocalFreeLLMPreview = (): boolean =>
-  import.meta.env.DEV &&
-  typeof window !== 'undefined' &&
-  ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname) &&
-  FREELLMAPI_ALLOWED_UIDS.length > 0;
-
+// FreeLLMAPI is reached through our own server (/api/freellmapi): the gateway URL and key stay in server
+// environment variables. The browser only gets a flag saying whether the server has it configured.
+const FREELLMAPI_ENABLED = Boolean(process.env.FREELLMAPI_ENABLED);
 // Every failed AI generation should try the next configured provider, including
 // network/timeout errors and malformed or incomplete model output.
 const shouldTryProviderFallbacks = (error: any): boolean =>
   error?.name !== 'AbortError' && error?.name !== 'CanceledError';
 
 const requestFreeLLMAPI = async (body: Record<string, unknown>): Promise<any> => {
-  if (!FREELLMAPI_ENABLED || !FREELLMAPI_BASE_URL || !FREELLMAPI_API_KEY) {
-    throw new Error('FreeLLMAPI não foi configurado neste app.');
-  }
-  const user = auth.currentUser;
-  if (!user && !isLocalFreeLLMPreview()) throw new Error('Entre na sua conta Google para usar o FreeLLMAPI.');
-  if (user && !FREELLMAPI_ALLOWED_UIDS.includes(user.uid)) {
-    throw new Error('Este provedor adicional não está habilitado para esta conta.');
-  }
-  const apiRoot = FREELLMAPI_BASE_URL.endsWith('/v1') ? FREELLMAPI_BASE_URL : `${FREELLMAPI_BASE_URL}/v1`;
-  const response = await fetch(`${apiRoot}/chat/completions`, {
+  if (!FREELLMAPI_ENABLED) throw new Error('FreeLLMAPI não foi configurado neste app.');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = await auth?.currentUser?.getIdToken().catch(() => null);
+  if (token) headers.Authorization = `Bearer ${token}`;
+  else if (!import.meta.env.DEV) throw new Error('Entre na sua conta Google para usar o FreeLLMAPI.');
+  // The server picks the model, checks that this account is allowed and holds the gateway key.
+  const response = await fetch('/api/freellmapi', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${FREELLMAPI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ model: FREELLMAPI_MODEL, ...body }),
+    headers,
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(FREELLMAPI_TIMEOUT_MS),
   });
 
@@ -381,7 +362,7 @@ const getProviderOrder = (): AIProviderId[] => {
 const isProviderConfigured = (id: AIProviderId): boolean => {
   if (id === 'groq') return GROQ_ENABLED && canUseAIProxy();
   if (id === 'openrouter') return OPENROUTER_ENABLED && canUseAIProxy();
-  if (id === 'freellmapi') return FREELLMAPI_ENABLED;
+  if (id === 'freellmapi') return FREELLMAPI_ENABLED && canUseAIProxy();
   return true;
 };
 

@@ -11,9 +11,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, __dirname, '');
-    // Temporary browser-side FreeLLMAPI credentials. This intentionally exposes
-    // the key in the built JavaScript until the gateway is moved to a hosted
-    // server-side integration.
+    // FreeLLMAPI credentials stay in the server process (api/freellmapi.ts); the browser only gets a flag.
     const freellmapiBaseUrl = process.env.FREELLMAPI_BASE_URL || env.FREELLMAPI_BASE_URL || '';
     const freellmapiApiKey = process.env.FREELLMAPI_API_KEY || env.FREELLMAPI_API_KEY || '';
     const freellmapiAllowedUids = process.env.FREELLMAPI_ALLOWED_UIDS || env.FREELLMAPI_ALLOWED_UIDS || '';
@@ -68,6 +66,7 @@ export default defineConfig(({ mode }) => {
         'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY),
         'process.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || env.GEMINI_API_KEY),
         'process.env.API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY),
+        'process.env.FREELLMAPI_ENABLED': JSON.stringify(Boolean(freellmapiBaseUrl && freellmapiApiKey && freellmapiAllowedUids.trim())),
         'process.env.OPENROUTER_ENABLED': JSON.stringify(Boolean(openrouterKey)),
         'process.env.GROQ_ENABLED': JSON.stringify(Boolean(groqKey)),
         __BUILD_STAMP__: JSON.stringify(new Date().toISOString()),
