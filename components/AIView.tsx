@@ -247,6 +247,13 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
               </div>
             </div>
 
+            {result.quizVerificationNotice && (
+              <div role="status" className="mb-8 flex items-start gap-3 rounded-2xl border border-amber-300/20 bg-amber-200/10 px-5 py-4 text-sm font-medium leading-relaxed text-amber-100">
+                <span aria-hidden="true" className="mt-0.5 shrink-0 text-[#fecc73]">●</span>
+                <p><strong className="font-black">Questões não exibidas:</strong> {result.quizVerificationNotice}</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start pb-32">
               <div className="lg:col-span-8 space-y-12">
                 {/* RESUMO EXPANDIDO */}

@@ -917,8 +917,8 @@ const withRateLimitRetry = async <T,>(task: () => Promise<T>, attempts = 3, wait
   }
 };
 
-// Public entry point: grounds the questions in official text, audits citations, has an independent judge answer each
-// question blind, repairs explanations and replaces rejected questions (see services/questionQuality.ts).
+// Public entry point: grounds questions in reference text, checks the answer with reversed choices, reviews every
+// explanation claim, and regenerates rejected questions. Unverified output is never released.
 const judgeJson = async (prompt: string, schema: any, name: string): Promise<any> => {
   try {
     const response = await generateContentWithRetry({
@@ -936,9 +936,7 @@ const judgeJson = async (prompt: string, schema: any, name: string): Promise<any
 };
 
 
-// "Estudar com IA": the lesson itself stays as generated, but its quiz goes through the same grounding, audit and
-// independent check as the simulados (services/questionQuality.ts). If that check cannot run, the lesson is
-// returned as it was: the study content is never blocked by the verification.
+// "Estudar com IA": the lesson stays available if quiz validation fails, but unverified quiz items are removed.
 export const generateStudyContent = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Explique de forma técnica e objetiva com mapeamento lógico passo a passo.') => {
   const content = await requestStudyContent(topic, technique, numQuestions, profile, explanationStyle);
   if (!Array.isArray(content?.quiz) || content.quiz.length === 0) return content;
@@ -958,10 +956,22 @@ export const generateStudyContent = async (topic: string, technique: string, num
       },
     });
     console.info('[quiz] auditoria:', report);
-    return questions.length > 0 ? { ...content, quiz: questions } : content;
+    return questions.length > 0
+      ? { ...content, quiz: questions, quizVerificationNotice: undefined }
+      : {
+          ...content,
+          quiz: [],
+          quizVerificationNotice: report.sources.length === 0
+            ? 'As questões foram omitidas porque não encontrei uma fonte confiável para conferir esse assunto. Tente especificar melhor o tema.'
+            : 'As questões foram omitidas porque o gabarito e a explicação não passaram pela conferência. Tente novamente ou escolha outro tema.',
+        };
   } catch (error) {
-    console.warn('[quiz] verificação indisponível; mantendo o quiz gerado.', error);
-    return content;
+    console.warn('[quiz] verificação indisponível; questões não exibidas.', error);
+    return {
+      ...content,
+      quiz: [],
+      quizVerificationNotice: 'As questões foram omitidas porque não foi possível conferir o gabarito e a explicação. Tente novamente em instantes.',
+    };
   }
 };
 
@@ -976,7 +986,12 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
     });
     console.info('[questoes] auditoria:', report);
     if (questions.length === 0) {
-      throw new AIError('Não consegui gerar questões confiáveis sobre esse assunto agora. Tente de novo ou reformule o assunto.');
+      const message = report.sources.length === 0
+        ? 'Não encontrei uma fonte confiável para verificar esse assunto. Especifique melhor o tema ou tente novamente.'
+        : report.judgeAvailable
+          ? 'As questões geradas não passaram pela conferência de resposta e explicação. Tente outro recorte do assunto.'
+          : 'Não foi possível concluir a conferência independente agora. Nenhuma questão foi liberada; tente novamente em instantes.';
+      throw new AIError(message);
     }
     return { questions };
   } catch (error) {

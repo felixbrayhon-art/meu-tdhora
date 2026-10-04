@@ -348,14 +348,20 @@ const runJudge = async (questions: RawQuestion[], sources: TopicSource[], judge:
     try {
       const parsed = await judge(judgePrompt(slice, sources, optionCount, notes), judgeSchema(Type), 'question_judge');
       const results: any[] = Array.isArray(parsed?.results) ? parsed.results : [];
+      if (results.length !== slice.length) return null;
+      const byIndex = new Map<number, Verdict>();
       for (const r of results) {
         const i = Number(r?.index);
-        if (Number.isInteger(i) && i >= 0 && i < slice.length) {
-          verdicts.push({ index: start + i, chosen: Number(r.chosen), ambiguous: !!r.ambiguous, evidence: String(r.evidence ?? ''), rationale: String(r.rationale ?? '') });
-        }
+        const chosen = Number(r?.chosen);
+        if (!Number.isInteger(i) || i < 0 || i >= slice.length || byIndex.has(i) ||
+            !Number.isInteger(chosen) || chosen < -1 || chosen >= optionCount ||
+            typeof r?.ambiguous !== 'boolean' || typeof r?.evidence !== 'string' || typeof r?.rationale !== 'string') return null;
+        byIndex.set(i, { index: start + i, chosen, ambiguous: r.ambiguous, evidence: r.evidence, rationale: r.rationale });
       }
+      if (byIndex.size !== slice.length) return null;
+      for (let i = 0; i < slice.length; i++) verdicts.push(byIndex.get(i)!);
     } catch {
-      return null; // judge unavailable: caller falls back to "unverified" instead of blocking the user
+      return null;
     }
   }
   return verdicts;
@@ -395,8 +401,13 @@ const reviewSchema = (Type: any) => ({
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
-              properties: { text: { type: Type.STRING }, verdict: { type: Type.STRING }, why: { type: Type.STRING } },
-              required: ['text', 'verdict', 'why'],
+              properties: {
+                text: { type: Type.STRING },
+                verdict: { type: Type.STRING },
+                why: { type: Type.STRING },
+                sentenceIndices: { type: Type.ARRAY, items: { type: Type.INTEGER } },
+              },
+              required: ['text', 'verdict', 'why', 'sentenceIndices'],
             },
           },
           keyWrong: { type: Type.BOOLEAN },
@@ -413,12 +424,13 @@ ${questionSourcesBlock(sources)}${notes}
 POSTURA: NÃO tente justificar o gabarito. Gabaritos e explicações gerados por IA frequentemente trocam conceitos vizinhos (dolo direto x eventual, erro de tipo x erro de proibição, elemento subjetivo do tipo x da culpabilidade) e atribuem a um artigo o que ele não diz.
 
 Para cada questão:
-1. Divida a EXPLICAÇÃO em afirmações atômicas (de 2 a 6). Cada afirmação diz uma coisa só (ex.: "o erro de tipo exclui X", "o art. N trata de Y").
-2. Para cada afirmação, em "verdict" escreva exatamente "correta", "incorreta" ou "nao_confirmavel", checando-a de forma INDEPENDENTE contra a lei e as notas de doutrina (não contra o gabarito). Em "why", uma frase. Marque "incorreta" quando o conceito estiver trocado, o artigo não disser isso, ou a afirmação contrariar a lei ou a doutrina. Não marque "incorreta" só por ser curta ou omitir detalhes.
-3. "keyWrong" = true se a alternativa marcada no GABARITO não for a correta (ou se mais de uma ou nenhuma estiver correta).
+1. A EXPLICAÇÃO foi dividida em frases numeradas logo abaixo. Analise cada frase inteira e divida-a em afirmações atômicas (de 2 a 6). Cada afirmação diz uma coisa só (ex.: "o erro de tipo exclui X", "o art. N trata de Y").
+2. Em cada afirmação, inclua "sentenceIndices" com os índices (começando em 0) de TODAS as frases que ela analisa. A união desses índices precisa cobrir todas as frases da explicação; não ignore nenhuma.
+3. Para cada afirmação, em "verdict" escreva exatamente "correta", "incorreta" ou "nao_confirmavel", checando-a de forma INDEPENDENTE contra a lei e as notas de doutrina (não contra o gabarito). Em "why", uma frase. Marque "incorreta" quando o conceito estiver trocado, o artigo não disser isso, ou a afirmação contrariar a lei ou a doutrina. Não marque "incorreta" só por ser curta ou omitir detalhes.
+4. "keyWrong" = true se a alternativa marcada no GABARITO não for a correta (ou se mais de uma ou nenhuma estiver correta).
 
 QUESTÕES:
-${items.map(({ q, explanation }, i) => `Questão ${i}: ${q.question}\n${q.options.map((o, j) => `${LETTERS[j]}) ${stripLetter(o)}`).join('\n')}\nGABARITO: ${LETTERS[q.correctAnswer]}) ${stripLetter(q.options[q.correctAnswer])}\nEXPLICAÇÃO: ${explanation}`).join('\n\n')}`;
+${items.map(({ q, explanation }, i) => `Questão ${i}: ${q.question}\n${q.options.map((o, j) => `${LETTERS[j]}) ${stripLetter(o)}`).join('\n')}\nGABARITO: ${LETTERS[q.correctAnswer]}) ${stripLetter(q.options[q.correctAnswer])}\nFRASES DA EXPLICAÇÃO (índice zero-based):\n${splitSentences(explanation).map((sentence, index) => `[${index}] ${sentence}`).join('\n')}`).join('\n\n')}`;
 
 const runReview = async (items: { q: RawQuestion; explanation: string }[], sources: TopicSource[], judge: JudgeFn, Type: any, notes: string): Promise<Map<number, { agrees: boolean; keyWrong: boolean; problem: string }> | null> => {
   const out = new Map<number, { agrees: boolean; keyWrong: boolean; problem: string }>();
@@ -427,16 +439,32 @@ const runReview = async (items: { q: RawQuestion; explanation: string }[], sourc
     const slice = items.slice(start, start + CHUNK);
     try {
       const parsed = await judge(reviewPrompt(slice, sources, notes), reviewSchema(Type), 'explanation_review');
-      for (const r of (Array.isArray(parsed?.results) ? parsed.results : [])) {
+      const results: any[] = Array.isArray(parsed?.results) ? parsed.results : [];
+      if (results.length !== slice.length) return null;
+      const byIndex = new Map<number, { agrees: boolean; keyWrong: boolean; problem: string }>();
+      for (const r of results) {
         const i = Number(r?.index);
-        if (Number.isInteger(i) && i >= 0 && i < slice.length) {
-          const wrong = (Array.isArray(r.claims) ? r.claims : []).filter((c: any) => normalize(String(c?.verdict ?? '')).startsWith('incorret'));
-          const problem = wrong.map((c: any) => `${String(c.text ?? '').trim()} (${String(c.why ?? '').trim()})`).join(' | ');
-          out.set(start + i, { agrees: wrong.length === 0, keyWrong: r.keyWrong === true, problem });
-        }
+        if (!Number.isInteger(i) || i < 0 || i >= slice.length || byIndex.has(i) || typeof r?.keyWrong !== 'boolean' ||
+            !Array.isArray(r?.claims) || r.claims.length < 2 || r.claims.length > 6) return null;
+        const sentenceCount = splitSentences(slice[i].explanation).length;
+        const claims = r.claims.map((claim: any) => ({
+          text: typeof claim?.text === 'string' ? claim.text.trim() : '',
+          verdict: normalize(String(claim?.verdict ?? '')).trim(),
+          why: typeof claim?.why === 'string' ? claim.why.trim() : '',
+          sentenceIndices: Array.isArray(claim?.sentenceIndices) ? claim.sentenceIndices : [],
+        }));
+        if (claims.some((claim: any) => !claim.text || !claim.why || !['correta', 'incorreta', 'nao_confirmavel'].includes(claim.verdict) ||
+            claim.sentenceIndices.length === 0 || claim.sentenceIndices.some((index: any) => !Number.isInteger(index) || index < 0 || index >= sentenceCount))) return null;
+        const coveredSentences = new Set<number>(claims.flatMap((claim: any) => claim.sentenceIndices));
+        if (coveredSentences.size !== sentenceCount) return null;
+        const unresolved = claims.filter((claim: any) => claim.verdict !== 'correta');
+        const problem = unresolved.map((claim: any) => `${claim.text} (${claim.why})`).join(' | ');
+        byIndex.set(i, { agrees: unresolved.length === 0, keyWrong: r.keyWrong, problem });
       }
+      if (byIndex.size !== slice.length) return null;
+      for (let i = 0; i < slice.length; i++) out.set(start + i, byIndex.get(i)!);
     } catch {
-      return null; // reviewer unavailable: the deterministic checks still ran
+      return null;
     }
   }
   return out;
@@ -487,7 +515,6 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
   const optionCount = opts.optionCount ?? 5;
   const sources = await gatherQuestionSources(topic);
   const notes = doctrineNotes(topic);
-  const hasLaw = sources.some((s) => s.kind === 'lei');
   const report: QualityReport = {
     sources: sources.map((s) => s.title), rounds: 0, generated: 0, rejectedStructure: 0, rejectedCitations: 0,
     rejectedByJudge: 0, explanationsFixed: 0, verified: 0, consistent: 0, unverified: 0, judgeAvailable: true, reasons: [],
@@ -495,9 +522,14 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
   const note = (reason: string) => { if (report.reasons.length < 14) report.reasons.push(reason); };
 
   const accepted: FinalQuestion[] = [];
-  const pendingConsistent: { q: RawQuestion; explanation: string }[] = [];
-  const fallbackPool: FinalQuestion[] = []; // judge was unavailable: kept only as a last resort, flagged
   const avoid: string[] = [];
+
+  // Two model opinions can confidently agree on the same false claim when no reference is available.
+  // Refuse the batch before generation instead of presenting model-only explanations as checked.
+  if (sources.length === 0) {
+    note('nenhuma fonte confiável foi encontrada para o assunto');
+    return { questions: [], report };
+  }
 
   for (let round = 0; round < 3 && accepted.length < count; round++) {
     report.rounds = round + 1;
@@ -508,7 +540,7 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
     const list: RawQuestion[] = (Array.isArray(raw) ? raw : raw?.questions) ?? [];
     report.generated += list.length;
 
-    const candidates: { q: RawQuestion; explanation: string; edited: boolean }[] = [];
+    const candidates: { q: RawQuestion; explanation: string }[] = [];
     for (const original of list) {
       // Malformed items (missing text, options not a list) are rejected instead of crashing the whole batch.
       if (!original || typeof original.question !== 'string' || !Array.isArray(original.options)) { report.rejectedStructure++; continue; }
@@ -519,84 +551,80 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
       if (audit.problems.length > 0) { report.rejectedStructure++; note(`estrutura: ${audit.problems.join('; ')}`); continue; }
       const hardHits = audit.violations.filter((v) => v.where !== 'explanation');
       if (hardHits.length > 0) { report.rejectedCitations++; note(`${hardHits[0].where}: ${hardHits[0].reason}`); continue; }
-      candidates.push({ q, explanation: audit.fixedExplanation, edited: audit.fixedExplanation.trim() !== (q.explanation ?? '').trim() });
+      candidates.push({ q, explanation: audit.fixedExplanation });
     }
     if (candidates.length === 0) continue;
 
     const verdicts = await runJudge(candidates.map((c) => c.q), sources, judge, Type, optionCount, notes);
     if (!verdicts) {
       report.judgeAvailable = false;
-      for (const c of candidates) {
-        fallbackPool.push({ ...c.q, explanation: c.explanation || c.q.explanation, verification: { status: 'unverified', note: 'Não foi possível conferir esta questão agora.' } });
-      }
+      report.rejectedByJudge += candidates.length;
+      note('a análise independente retornou dados incompletos ou indisponíveis');
       break;
     }
 
-    type Passed = { c: { q: RawQuestion; explanation: string; edited: boolean }; verdict: Verdict; found: ReturnType<typeof sourceHasEvidence> };
-    const passed: Passed[] = [];
+    type FirstPass = { c: { q: RawQuestion; explanation: string }; found: NonNullable<ReturnType<typeof sourceHasEvidence>> };
+    const firstPass: FirstPass[] = [];
     candidates.forEach((c, i) => {
       const verdict = verdicts.find((v) => v.index === i);
       if (!verdict || verdict.ambiguous || verdict.chosen !== c.q.correctAnswer) { report.rejectedByJudge++; note('juiz não confirmou o gabarito'); return; }
       const found = verdict.evidence && evidenceSupportsAnswer(c.q, verdict.evidence) ? sourceHasEvidence(sources, verdict.evidence) : null;
-      // A question that cites an article, paragraph or inciso must be anchored in the official text. Doctrinal questions
-      // that cite nothing (dolo direto/eventual, culpa consciente) cannot be quoted from the statute, so they take the
-      // double-check path instead of being discarded.
-      const cites = extractCitations(`${c.q.question} ${c.explanation}`).length > 0;
-      if (hasLaw && !found && cites) { report.rejectedByJudge++; note('cita dispositivo mas sem trecho oficial que sustente a resposta'); return; }
-      passed.push({ c, verdict, found });
+      if (!found) { report.rejectedByJudge++; note('gabarito sem citação literal compatível com uma fonte recuperada'); return; }
+      firstPass.push({ c, found });
     });
 
-    // The key may be right while the explanation argues for another alternative (or misuses a concept). Check that,
-    // and when it fails rewrite the explanation from the judge's blind rationale, which agrees with the key.
-    const review = passed.length > 0 ? await runReview(passed.map((p) => ({ q: p.c.q, explanation: p.c.explanation })), sources, judge, Type, notes) : null;
-    passed.forEach((item, i) => {
-      const { c, verdict, found } = item;
+    // Check the answer a second time after reversing alternatives. A question survives only if both positions
+    // identify the same source-supported answer.
+    const flipped = firstPass.map(({ c }) => ({
+      ...c.q,
+      options: [...c.q.options].reverse(),
+      correctAnswer: optionCount - 1 - c.q.correctAnswer,
+    }));
+    const secondVerdicts = firstPass.length > 0 ? await runJudge(flipped, sources, judge, Type, optionCount, notes) : [];
+    if (firstPass.length > 0 && !secondVerdicts) {
+      report.judgeAvailable = false;
+      report.rejectedByJudge += firstPass.length;
+      note('a segunda conferência do gabarito retornou dados incompletos ou indisponíveis');
+      break;
+    }
+
+    const confirmed = firstPass.filter((item, i) => {
+      const verdict = secondVerdicts?.find((v) => v.index === i);
+      const flippedQuestion = flipped[i];
+      const found = verdict?.evidence && evidenceSupportsAnswer(flippedQuestion, verdict.evidence)
+        ? sourceHasEvidence(sources, verdict.evidence)
+        : null;
+      if (!verdict || verdict.ambiguous || verdict.chosen !== flippedQuestion.correctAnswer || !found) {
+        report.rejectedByJudge++;
+        note('a segunda análise não confirmou o mesmo gabarito com evidência literal');
+        return false;
+      }
+      return true;
+    });
+
+    // Every explanation claim must be explicitly marked correct. "Not confirmable", missing, and malformed review
+    // results are rejected; the previous fallback to the judge's own rationale bypassed this check.
+    const review = confirmed.length > 0 ? await runReview(confirmed.map(({ c }) => ({ q: c.q, explanation: c.explanation })), sources, judge, Type, notes) : new Map();
+    if (confirmed.length > 0 && !review) {
+      report.judgeAvailable = false;
+      report.rejectedByJudge += confirmed.length;
+      note('a revisão completa da explicação retornou dados incompletos ou indisponíveis');
+      break;
+    }
+    confirmed.forEach(({ c, found }, i) => {
       const contradiction = explanationContradictsKey({ ...c.q, explanation: c.explanation });
       const reviewed = review?.get(i);
-      if (reviewed?.keyWrong) { report.rejectedByJudge++; note(`gabarito contestado pelo revisor: ${reviewed.problem}`); return; }
-      const badExplanation = !!contradiction || (reviewed ? !reviewed.agrees : false);
-      let explanation = c.explanation;
-      if (badExplanation) {
-        note(`explicação trocada: ${contradiction ?? reviewed?.problem ?? 'divergia do gabarito'}`);
-        if (verdict.rationale.trim().length < 40) { report.rejectedByJudge++; return; }
-        explanation = verdict.rationale.trim();
-        report.explanationsFixed++;
-      } else if (c.edited && verdict.rationale.trim().length >= 40) {
-        // Sentences were cut out by the audit: what is left may read oddly ("Por isso..."), so rebuild it cleanly.
-        explanation = verdict.rationale.trim();
-        report.explanationsFixed++;
-      } else if (explanation.length < 60) {
-        explanation = [explanation, verdict.rationale].filter(Boolean).join(' ').trim();
+      if (!reviewed || reviewed.keyWrong || !reviewed.agrees || contradiction) {
+        report.rejectedByJudge++;
+        note(`explicação rejeitada: ${contradiction ?? reviewed?.problem ?? 'afirmação não confirmada'}`);
+        return;
       }
-      if (found) {
-        report.verified++;
-        explanation = `${explanation}\n\nBase${found.kind === 'lei' ? ' legal' : ''}: ${found.label}: «${found.excerpt}»`.trim();
-        accepted.push({ ...c.q, explanation, verification: { status: 'verified', source: found.label, evidence: found.excerpt } });
-      } else {
-        pendingConsistent.push({ q: c.q, explanation });
-      }
+      const explanation = `${c.explanation}\n\nBase${found.kind === 'lei' ? ' legal' : ''}: ${found.label}: «${found.excerpt}»`.trim();
+      report.verified++;
+      accepted.push({ ...c.q, explanation, verification: { status: 'verified', source: found.label, evidence: found.excerpt } });
     });
-
-    // Without an official text to quote, a single blind answer is weak evidence. Ask again with the options in reverse
-    // order: a question only passes when the judge lands on the same alternative both times (rules out position bias
-    // and lucky guesses).
-    if (pendingConsistent.length > 0) {
-      const flipped = pendingConsistent.map(({ q }) => ({ ...q, options: [...q.options].reverse(), correctAnswer: optionCount - 1 - q.correctAnswer }));
-      const second = await runJudge(flipped, sources, judge, Type, optionCount, notes);
-      pendingConsistent.forEach((item, i) => {
-        const verdict = second?.find((v) => v.index === i);
-        if (second && (!verdict || verdict.ambiguous || verdict.chosen !== optionCount - 1 - item.q.correctAnswer)) { report.rejectedByJudge++; return; }
-        report.consistent++;
-        accepted.push({ ...item.q, explanation: item.explanation, verification: { status: 'consistent', note: 'Conferida por duas análises independentes de IA; sem texto oficial recuperado. Confirme no seu material.' } });
-      });
-      pendingConsistent.length = 0;
-    }
   }
 
-  if (accepted.length < count && fallbackPool.length > 0) {
-    report.unverified = Math.min(fallbackPool.length, count - accepted.length);
-    accepted.push(...fallbackPool.slice(0, count - accepted.length));
-  }
   // Never show the same question twice (the rewrite of two bad explanations can converge on one text).
   const seen = new Set<string>();
   const unique = accepted.filter((item) => { const key = optionKey(item.question); if (seen.has(key)) return false; seen.add(key); return true; });
