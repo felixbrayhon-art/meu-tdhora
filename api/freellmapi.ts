@@ -5,6 +5,12 @@ type ApiRequest = IncomingMessage & { body?: unknown };
 
 const MAX_BODY_BYTES = 1_000_000;
 const REQUEST_TIMEOUT_MS = 45_000;
+// Some Vercel API-route type environments expose the one-argument fetch overload.
+// Keep the standard RequestInit call explicit so local and Vercel checks agree.
+const fetchWithOptions = globalThis.fetch as unknown as (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>;
 
 const sendJson = (response: ServerResponse, status: number, body: Record<string, unknown>) => {
   response.statusCode = status;
@@ -39,7 +45,7 @@ const getAuthorizationToken = (request: ApiRequest): string | null => {
 const verifyFirebaseToken = async (idToken: string): Promise<string | null> => {
   const apiKey = process.env.FIREBASE_API_KEY || firebaseConfig.apiKey;
   const lookupUrl = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`;
-  const response = await fetch(lookupUrl, {
+  const response = await fetchWithOptions(lookupUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ idToken }),
@@ -195,7 +201,7 @@ export const handleFreeLLMAPIRequest = async (request: ApiRequest, response: Ser
   response.once('close', onResponseClose);
 
   try {
-    const upstream = await fetch(endpoint, {
+    const upstream = await fetchWithOptions(endpoint, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,

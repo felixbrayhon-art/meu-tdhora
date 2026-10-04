@@ -12,6 +12,12 @@ type Provider = 'groq' | 'openrouter';
 
 const MAX_BODY_BYTES = 1_000_000;
 const REQUEST_TIMEOUT_MS = 55_000;
+// Some Vercel API-route type environments expose the one-argument fetch overload.
+// Keep the standard RequestInit call explicit so local and Vercel checks agree.
+const fetchWithOptions = globalThis.fetch as unknown as (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>;
 
 const PROVIDERS: Record<Provider, { url: string; envKey: string; allowModel: (model: string) => boolean }> = {
   groq: {
@@ -56,7 +62,7 @@ const getAuthorizationToken = (request: ApiRequest): string | null => {
 
 const verifyFirebaseToken = async (idToken: string): Promise<string | null> => {
   const apiKey = process.env.FIREBASE_API_KEY || firebaseConfig.apiKey;
-  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
+  const response = await fetchWithOptions(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ idToken }),
@@ -219,7 +225,7 @@ export const handleAIRequest = async (request: ApiRequest, response: ServerRespo
   response.once('close', onResponseClose);
 
   try {
-    const upstream = await fetch(PROVIDERS[provider].url, {
+    const upstream = await fetchWithOptions(PROVIDERS[provider].url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(body),
