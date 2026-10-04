@@ -197,12 +197,27 @@ export const handleAIRequest = async (request: ApiRequest, response: ServerRespo
   const body = normalizeRequest(provider, rawBody);
   if (!body) return sendJson(response, 400, { error: 'A solicitação está inválida.' });
 
+  const upstreamController = new AbortController();
+  const abortForDisconnect = () => {
+    if (!response.writableEnded && !upstreamController.signal.aborted) {
+      upstreamController.abort(new DOMException('Cliente desconectado.', 'AbortError'));
+    }
+  };
+  const timeout = setTimeout(() => {
+    if (!upstreamController.signal.aborted) {
+      upstreamController.abort(new DOMException('Tempo limite do provedor excedido.', 'TimeoutError'));
+    }
+  }, REQUEST_TIMEOUT_MS);
+  const onResponseClose = () => { if (!response.writableEnded) abortForDisconnect(); };
+  request.once('aborted', abortForDisconnect);
+  response.once('close', onResponseClose);
+
   try {
     const upstream = await fetch(PROVIDERS[provider].url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: upstreamController.signal,
     });
     const responseText = await upstream.text();
     response.statusCode = upstream.status;
@@ -210,9 +225,14 @@ export const handleAIRequest = async (request: ApiRequest, response: ServerRespo
     response.setHeader('Cache-Control', 'no-store');
     return response.end(responseText);
   } catch (error) {
-    const timedOut = error instanceof Error && error.name === 'TimeoutError';
+    const timedOut = upstreamController.signal.reason?.name === 'TimeoutError' || (error instanceof Error && error.name === 'TimeoutError');
+    if (response.destroyed || response.writableEnded || upstreamController.signal.reason?.name === 'AbortError') return;
     console.warn(`[ai:${provider}] Falha ao encaminhar solicitação${timedOut ? ' (timeout)' : ''}.`);
     return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? 'O provedor demorou demais para responder.' : 'Não foi possível conectar ao provedor.' });
+  } finally {
+    clearTimeout(timeout);
+    request.removeListener('aborted', abortForDisconnect);
+    response.removeListener('close', onResponseClose);
   }
 };
 

@@ -70,7 +70,17 @@ const getFreeLLMAPIEndpoint = (): URL | null => {
   baseUrl.search = '';
   baseUrl.hash = '';
   const basePath = baseUrl.pathname.replace(/\/+$/, '');
-  baseUrl.pathname = `${basePath}${basePath.endsWith('/v1') ? '' : '/v1'}/chat/completions`;
+  if (/\/v1\/models$/i.test(basePath)) {
+    baseUrl.pathname = `${basePath.replace(/\/models$/i, '')}/chat/completions`;
+  } else if (/\/v1\/chat\/completions$/i.test(basePath)) {
+    baseUrl.pathname = basePath;
+  } else if (/\/chat\/completions$/i.test(basePath)) {
+    baseUrl.pathname = basePath;
+  } else if (basePath.endsWith('/v1')) {
+    baseUrl.pathname = `${basePath}/chat/completions`;
+  } else {
+    baseUrl.pathname = `${basePath}/v1/chat/completions`;
+  }
   return baseUrl;
 };
 
@@ -169,6 +179,21 @@ export const handleFreeLLMAPIRequest = async (request: ApiRequest, response: Ser
   const body = normalizeRequest(rawBody);
   if (!body) return sendJson(response, 400, { error: 'A solicitação de conversa está inválida.' });
 
+  const upstreamController = new AbortController();
+  const abortForDisconnect = () => {
+    if (!response.writableEnded && !upstreamController.signal.aborted) {
+      upstreamController.abort(new DOMException('Cliente desconectado.', 'AbortError'));
+    }
+  };
+  const timeout = setTimeout(() => {
+    if (!upstreamController.signal.aborted) {
+      upstreamController.abort(new DOMException('Tempo limite do provedor excedido.', 'TimeoutError'));
+    }
+  }, REQUEST_TIMEOUT_MS);
+  const onResponseClose = () => { if (!response.writableEnded) abortForDisconnect(); };
+  request.once('aborted', abortForDisconnect);
+  response.once('close', onResponseClose);
+
   try {
     const upstream = await fetch(endpoint, {
       method: 'POST',
@@ -178,7 +203,7 @@ export const handleFreeLLMAPIRequest = async (request: ApiRequest, response: Ser
         Accept: 'application/json',
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: upstreamController.signal,
     });
 
     const responseText = await upstream.text();
@@ -189,9 +214,14 @@ export const handleFreeLLMAPIRequest = async (request: ApiRequest, response: Ser
     if (routedVia) response.setHeader('X-Routed-Via', routedVia);
     return response.end(responseText);
   } catch (error) {
-    const timedOut = error instanceof Error && error.name === 'TimeoutError';
+    const timedOut = upstreamController.signal.reason?.name === 'TimeoutError' || (error instanceof Error && error.name === 'TimeoutError');
+    if (response.destroyed || response.writableEnded || upstreamController.signal.reason?.name === 'AbortError') return;
     console.warn(`[FreeLLMAPI] Falha ao encaminhar solicitação${timedOut ? ' (timeout)' : ''}.`);
     return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? 'O FreeLLMAPI demorou demais para responder.' : 'Não foi possível conectar ao FreeLLMAPI.' });
+  } finally {
+    clearTimeout(timeout);
+    request.removeListener('aborted', abortForDisconnect);
+    response.removeListener('close', onResponseClose);
   }
 };
 
