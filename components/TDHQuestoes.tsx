@@ -9,6 +9,7 @@ import LoadingFish from './LoadingFish';
 import FilterDropdown from './FilterDropdown';
 import SaveToFolderModal from './SaveToFolderModal';
 import MarkdownContent from './MarkdownContent';
+import VerificationBadge from './VerificationBadge';
 import { RichTextEditor } from './RichTextEditor';
 
 // Reindexes an array of per-question indices (e.g. flagged, questionScratched, questionHighlighted)
@@ -1640,6 +1641,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                       </button>
                     )}
 
+                    <VerificationBadge verification={currentQ.verification} />
                     <MarkdownContent content={currentQ.explanation} fontSizeMultiplier={fontSizeMultiplier} />
 
                     {/* Imagens Adicionais do Usuário */}

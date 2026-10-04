@@ -3,6 +3,7 @@ import DOMPurify from 'dompurify';
 import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, Maximize2, Minimize2, Move, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen, Copy, CheckCircle2 } from './icons';
 import { QuizFolder, Notebook, QuizQuestion, ExplanationStyle } from '../types';
 import MarkdownContent from './MarkdownContent';
+import VerificationBadge from './VerificationBadge';
 import { RichTextEditor } from './RichTextEditor';
 import { MoveToNotebookModal } from './MoveToNotebookModal';
 import { updateQuestionExplanation } from '../services/questionBankService';
@@ -881,7 +882,10 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                     </div>
                   </div>
                 ) : (
-                  <MarkdownContent content={currentQ.explanation} />
+                  <>
+                    <VerificationBadge verification={currentQ.verification} />
+                    <MarkdownContent content={currentQ.explanation} />
+                  </>
                 )}
 
                 {/* Imagens Adicionais do Usuário */}

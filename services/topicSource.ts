@@ -13,6 +13,8 @@ export interface TopicSource {
   lawItems?: { label: string; text: string }[];
   // Official amendments (law number + year per dispositivo) read from the law text.
   lawChanges?: { label: string; text: string }[];
+  // Article-level text, used to check citations (paragraph/inciso) in generated questions.
+  laws?: { label: string; numero: string; text: string }[];
 }
 
 const WIKI_API = 'https://pt.wikipedia.org/w/api.php';
