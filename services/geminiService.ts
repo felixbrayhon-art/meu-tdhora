@@ -484,8 +484,12 @@ async function generateGroqContent(params: any): Promise<{ text: string }> {
       const text = await callGroqModel(model, {
         messages: requestMessages,
         ...(responseFormat ? { response_format: responseFormat } : {}),
+        // GPT-OSS can include its reasoning separately by default. Exclude it
+        // from the API response so only the answer reaches our JSON parser and
+        // avoid spending the completion budget on an unused field.
+        include_reasoning: false,
         temperature: typeof config.temperature === 'number' ? config.temperature : 0.5,
-        max_tokens: Number.isFinite(requestedTokens) ? Math.min(Math.max(requestedTokens, 256), 24000) : 8000,
+        max_completion_tokens: Number.isFinite(requestedTokens) ? Math.min(Math.max(requestedTokens, 256), 24000) : 8000,
       });
       console.info(`[ai] Resposta gerada pelo Groq (${model}).`);
       return { text };
@@ -640,8 +644,9 @@ const callGroqJson = async (systemInstruction: string | undefined, userPrompt: s
         // JSON mode is supported across both configured Groq models; the
         // complete schema is in the prompt and the app validates the result.
         response_format: { type: 'json_object' },
+        include_reasoning: false,
         temperature: 0.3,
-        max_tokens: Math.min(Math.max(maxTokens, 256), 24000),
+        max_completion_tokens: Math.min(Math.max(maxTokens, 256), 24000),
       });
       const parsed = safeAIJsonParse(text);
       if (validate && !validate(parsed)) {
@@ -666,8 +671,9 @@ const callGroqText = async (systemInstruction: string | undefined, messages: { r
     try {
       const text = await callGroqModel(model, {
         messages: [...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []), ...messages],
+        include_reasoning: false,
         temperature,
-        max_tokens: 8000,
+        max_completion_tokens: 8000,
       });
       console.warn(`[fallback] Gemini indisponível, resposta gerada via Groq (${model}).`);
       return text;

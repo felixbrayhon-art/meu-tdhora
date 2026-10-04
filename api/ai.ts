@@ -138,8 +138,11 @@ const normalizeRequest = (provider: Provider, input: unknown): Record<string, un
   if (typeof body.temperature === 'number' && Number.isFinite(body.temperature)) {
     normalized.temperature = Math.max(0, Math.min(2, body.temperature));
   }
-  if (typeof body.max_tokens === 'number' && Number.isFinite(body.max_tokens)) {
-    normalized.max_tokens = Math.max(1, Math.min(24_000, Math.floor(body.max_tokens)));
+  const requestedCompletionTokens = body.max_completion_tokens ?? body.max_tokens;
+  if (typeof requestedCompletionTokens === 'number' && Number.isFinite(requestedCompletionTokens)) {
+    const maxCompletionTokens = Math.max(1, Math.min(24_000, Math.floor(requestedCompletionTokens)));
+    if (provider === 'groq') normalized.max_completion_tokens = maxCompletionTokens;
+    else normalized.max_tokens = maxCompletionTokens;
   }
   if (body.response_format && typeof body.response_format === 'object' &&
       ['json_schema', 'json_object'].includes(body.response_format.type)) {
@@ -147,6 +150,9 @@ const normalizeRequest = (provider: Provider, input: unknown): Record<string, un
   }
   if (provider === 'openrouter' && body.reasoning && typeof body.reasoning === 'object' && typeof body.reasoning.enabled === 'boolean') {
     normalized.reasoning = { enabled: body.reasoning.enabled };
+  }
+  if (provider === 'groq' && typeof body.include_reasoning === 'boolean') {
+    normalized.include_reasoning = body.include_reasoning;
   }
   return normalized;
 };
