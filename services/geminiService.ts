@@ -474,15 +474,15 @@ async function generateGroqContent(params: any): Promise<{ text: string }> {
   if (messages.length === 0) throw new Error('A solicitação não contém texto compatível com o Groq.');
 
   const schema = config.responseSchema ? toJsonSchema(config.responseSchema) : undefined;
-  const responseFormat = config.responseMimeType === 'application/json' && schema
-    ? { type: 'json_schema', json_schema: { name: 'todahora_response', schema, strict: false } }
-    : undefined;
+  const wantsJson = config.responseMimeType === 'application/json' && schema;
+  const responseFormat = wantsJson ? { type: 'json_object' } : undefined;
+  const requestMessages = wantsJson ? addJsonSchemaInstructions(messages, schema, 'todahora_response') : messages;
   const requestedTokens = Number(config.maxOutputTokens);
   let lastError: any;
   for (const model of GROQ_MODELS) {
     try {
       const text = await callGroqModel(model, {
-        messages,
+        messages: requestMessages,
         ...(responseFormat ? { response_format: responseFormat } : {}),
         temperature: typeof config.temperature === 'number' ? config.temperature : 0.5,
         max_tokens: Number.isFinite(requestedTokens) ? Math.min(Math.max(requestedTokens, 256), 24000) : 8000,
@@ -506,15 +506,15 @@ async function generateOpenRouterContent(params: any): Promise<{ text: string }>
   if (messages.length === 0) throw new Error('A solicitação não contém texto compatível com o OpenRouter.');
 
   const schema = config.responseSchema ? toJsonSchema(config.responseSchema) : undefined;
-  const responseFormat = config.responseMimeType === 'application/json' && schema
-    ? { type: 'json_schema', json_schema: { name: 'todahora_response', strict: true, schema } }
-    : undefined;
+  const wantsJson = config.responseMimeType === 'application/json' && schema;
+  const responseFormat = wantsJson ? { type: 'json_object' } : undefined;
+  const requestMessages = wantsJson ? addJsonSchemaInstructions(messages, schema, 'todahora_response') : messages;
   const requestedTokens = Number(config.maxOutputTokens);
   return raceOpenRouterModels(async (model, raceSignal) => {
     const res = await aiProxyFetch('openrouter', {
       body: JSON.stringify({
         model,
-        messages,
+        messages: requestMessages,
         ...(responseFormat ? { response_format: responseFormat } : {}),
         reasoning: { enabled: false },
         temperature: typeof config.temperature === 'number' ? config.temperature : 0.5,
@@ -537,11 +537,11 @@ const callOpenRouterJson = async (systemInstruction: string | undefined, userPro
       const res = await aiProxyFetch('openrouter', {
         body: JSON.stringify({
           model,
-          messages: [
+          messages: addJsonSchemaInstructions([
             ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
             { role: 'user', content: userPrompt },
-          ],
-          response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: true, schema } },
+          ], schema, schemaName),
+          response_format: { type: 'json_object' },
           reasoning: { enabled: false }, // skip hidden reasoning trace: not needed for extraction/generation, and avoids it eating the completion budget on large payloads
           temperature: 0.3,
           max_tokens: Math.min(Math.max(maxTokens, 256), 24000),
@@ -570,6 +570,17 @@ const callOpenRouterJson = async (systemInstruction: string | undefined, userPro
       throw e;
     }
   });
+};
+
+// Several free provider routes reject JSON Schema constrained decoding with
+// HTTP 400. Use widely supported JSON mode, include the schema in the prompt,
+// and validate parsed output in the app instead.
+const addJsonSchemaInstructions = (messages: { role: string; content: string }[], schema: any, name: string) => {
+  const output = messages.map((message) => ({ ...message }));
+  const schemaInstruction = `\n\nReturn only one valid JSON object, with no Markdown or extra text. Match this JSON schema exactly (${name}):\n${JSON.stringify(schema)}`;
+  const lastUser = [...output].reverse().find((message) => message.role === 'user');
+  if (lastUser) lastUser.content += schemaInstruction;
+  return output;
 };
 
 const callOpenRouterText = async (systemInstruction: string | undefined, messages: { role: string, content: string }[], temperature = 0.6): Promise<string> => {
@@ -622,16 +633,13 @@ const callGroqJson = async (systemInstruction: string | undefined, userPrompt: s
   for (const model of GROQ_MODELS) {
     try {
       const text = await callGroqModel(model, {
-        messages: [
+        messages: addJsonSchemaInstructions([
           ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
           { role: 'user', content: userPrompt },
-        ],
-        // strict:true on Groq additionally demands every optional field be
-        // folded into `required` (OpenAI's structured-outputs rule) across
-        // all 17 existing schemas — not worth rewriting all of them just for
-        // constrained decoding when strict:false still gets solid schema
-        // adherence from a 120b model on a reliable, uncongested host.
-        response_format: { type: 'json_schema', json_schema: { name: schemaName, schema, strict: false } },
+        ], schema, schemaName),
+        // JSON mode is supported across both configured Groq models; the
+        // complete schema is in the prompt and the app validates the result.
+        response_format: { type: 'json_object' },
         temperature: 0.3,
         max_tokens: Math.min(Math.max(maxTokens, 256), 24000),
       });
@@ -898,6 +906,16 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
     },
     required: ['questions'],
   };
+  const maxQuestionOutputTokens = Math.min(7500, Math.max(3000, numQuestions * 750));
+  const isValidQuestionPayload = (value: any): boolean =>
+    Array.isArray(value?.questions) && value.questions.length > 0 && value.questions.every((question: any) =>
+      typeof question?.question === 'string' && question.question.trim().length > 0 &&
+      Array.isArray(question?.options) && question.options.length === 5 &&
+      question.options.every((option: any) => typeof option === 'string' && option.trim().length > 0) &&
+      Number.isInteger(question?.correctAnswer) && question.correctAnswer >= 0 && question.correctAnswer < 5 &&
+      typeof question?.explanation === 'string' && question.explanation.trim().length > 0 &&
+      typeof question?.memoryHint === 'string' && question.memoryHint.trim().length > 0,
+    );
 
   try {
     const response = await generateContentWithRetry({
@@ -905,6 +923,7 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
       contents: examQuestionsPrompt,
       config: {
         responseMimeType: "application/json",
+        maxOutputTokens: maxQuestionOutputTokens,
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -933,7 +952,7 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
   } catch (error) {
     if (shouldTryProviderFallbacks(error)) {
       try {
-        return await tryJsonFallbacks(undefined, examQuestionsPrompt, examQuestionsJsonSchema, 'exam_questions');
+        return await tryJsonFallbacks(undefined, examQuestionsPrompt, examQuestionsJsonSchema, 'exam_questions', isValidQuestionPayload, maxQuestionOutputTokens);
       } catch (fallbackError) {
         console.error('Fallback OpenRouter também falhou em generateExamQuestions:', fallbackError);
         return handleAIError(fallbackError);
