@@ -129,7 +129,50 @@ try {
   assert.equal(judgeCalls, 2, 'performs both original-order and reversed-order answer checks');
   assert(result.report.timingsMs.total >= result.report.timingsMs.answerVerification,
     'includes stage timings within the total elapsed time');
-  console.log('Question quality checks: 10 passed (including end-to-end verification).');
+
+  let requestedCandidates = 0;
+  let batchAnswerPasses = 0;
+  let batchReviews = 0;
+  const batchQuestions = Array.from({ length: 5 }, (_, index) => ({
+    ...validQuestion,
+    question: `Qual conduta caracteriza o furto do art. 155 no exemplo ${index + 1}?`,
+    explanation: 'O art. 155 define a subtração de coisa alheia móvel. O texto oficial confirma essa definição.',
+  }));
+  const batched = await buildVerifiedQuestions({
+    topic: 'Direito Penal - furto',
+    count: 5,
+    optionCount: 4,
+    Type: { OBJECT: 'OBJECT', ARRAY: 'ARRAY', INTEGER: 'INTEGER', BOOLEAN: 'BOOLEAN', STRING: 'STRING' },
+    generate: async (count) => { requestedCandidates = count; return batchQuestions; },
+    judge: async (prompt, _schema, name) => {
+      const size = Array.from(prompt.matchAll(/Questão \d+:/g)).length;
+      if (name === 'explanation_review') {
+        batchReviews += 1;
+        return { results: Array.from({ length: size }, (_, index) => ({
+          index,
+          keyWrong: false,
+          claims: [
+            { text: 'O art. 155 define a subtração de coisa alheia móvel.', verdict: 'correta', why: 'A definição está no caput.', sentenceIndices: [0] },
+            { text: 'O texto oficial confirma essa definição.', verdict: 'correta', why: 'A fonte recuperada contém a definição.', sentenceIndices: [1] },
+          ],
+        })) };
+      }
+      batchAnswerPasses += 1;
+      return { results: Array.from({ length: size }, (_, index) => ({
+        index,
+        chosen: batchAnswerPasses === 1 ? 0 : 3,
+        ambiguous: false,
+        evidence: 'Subtrair, para si ou para outrem, coisa alheia móvel',
+        rationale: 'O caput descreve essa conduta.',
+      })) };
+    },
+  });
+
+  assert.equal(requestedCandidates, 6, 'generates a small reserve instead of doubling a five-question request');
+  assert.equal(batched.questions.length, 5, 'still releases the full batch after verification');
+  assert.equal(batchAnswerPasses, 2, 'checks the whole candidate batch in one call per answer order');
+  assert.equal(batchReviews, 1, 'reviews five explanations together rather than splitting into extra calls');
+  console.log('Question quality checks: 14 passed (including end-to-end verification and batching).');
 } finally {
   globalThis.fetch = originalFetch;
 }

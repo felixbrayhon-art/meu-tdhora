@@ -442,7 +442,7 @@ ${items.map(({ q, explanation }, i) => `Questão ${i}: ${q.question}\n${q.option
 
 const runReview = async (items: { q: RawQuestion; explanation: string }[], sources: TopicSource[], judge: JudgeFn, Type: any, notes: string): Promise<Map<number, { agrees: boolean; keyWrong: boolean; problem: string }> | null> => {
   const out = new Map<number, { agrees: boolean; keyWrong: boolean; problem: string }>();
-  const CHUNK = 4;
+  const CHUNK = 6;
   for (let start = 0; start < items.length; start += CHUNK) {
     const slice = items.slice(start, start + CHUNK);
     try {
@@ -548,8 +548,11 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
   for (let round = 0; round < 3 && accepted.length < count; round++) {
     report.rounds = round + 1;
     const need = count - accepted.length;
-    // Roughly half of the candidates are rejected by the audit and the judge, so over-ask instead of looping.
-    const ask = Math.min(12, Math.max(need + 2, need * 2));
+    // Keep a small reserve, then replace only what the audit rejects. Asking
+    // twice as many questions used to multiply judge/review calls and exhaust
+    // free provider quotas before the requested batch could be completed.
+    const reserve = Math.min(2, Math.max(1, Math.ceil(need * 0.2)));
+    const ask = Math.min(8, need + reserve);
     const generationStartedAt = performance.now();
     const raw = await generate(ask, questionGenerationRules(sources, avoid, notes));
     report.timingsMs.generation += performance.now() - generationStartedAt;

@@ -127,6 +127,7 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
       return await generateFreeLLMAPIContent(params);
     } catch (error) {
       lastProviderError = error;
+      coolDownProviderAfterFailure(providerId, error);
       console.warn(`[ai] ${providerId} indisponível; tentando o próximo provedor:`, error);
     }
   }
@@ -236,6 +237,27 @@ const FREELLMAPI_TIMEOUT_MS = 56000;
 // FreeLLMAPI is reached through our own server (/api/freellmapi): the gateway URL and key stay in server
 // environment variables. The browser only gets a flag saying whether the server has it configured.
 const FREELLMAPI_ENABLED = Boolean(process.env.FREELLMAPI_ENABLED);
+// Keep failing providers out of the current session briefly so every stage of
+// a multi-pass question review does not repeat requests against a spent quota.
+const providerCooldownUntil = new Map<string, number>();
+const providerErrorText = (error: any): string => {
+  const messages = [error?.message, ...(Array.isArray(error?.errors) ? error.errors.map((item: any) => item?.message) : [])];
+  return messages.filter((item): item is string => typeof item === 'string').join(' | ');
+};
+const coolDownProviderAfterFailure = (providerId: string, error: any) => {
+  const message = providerErrorText(error);
+  const cooldownMs = /\b429\b|RESOURCE_EXHAUSTED|rate[ _-]?limit/i.test(message)
+    ? 60_000
+    : providerId === 'freellmapi' && /\b404\b|not found/i.test(message)
+      ? 5 * 60_000
+      : /\b(502|503|504)\b|TimeoutError|timed out|Failed to fetch/i.test(message)
+        ? 15_000
+        : 0;
+  if (!cooldownMs) return;
+  providerCooldownUntil.set(providerId, Date.now() + cooldownMs);
+  console.warn(`[ai] ${providerId} em pausa por ${Math.round(cooldownMs / 1000)}s após falha temporária.`);
+};
+const isProviderCoolingDown = (providerId: string): boolean => (providerCooldownUntil.get(providerId) ?? 0) > Date.now();
 // Every failed AI generation should try the next configured provider, including
 // network/timeout errors and malformed or incomplete model output.
 const shouldTryProviderFallbacks = (error: any): boolean =>
@@ -276,6 +298,7 @@ const callFreeLLMAPIJson = async (
   schema: any,
   schemaName: string,
   validate?: (parsed: any) => boolean,
+  maxTokens = 24000,
 ): Promise<any> => {
   const jsonPrompt = `${userPrompt}\n\nFormato de saída obrigatório: retorne somente um objeto JSON válido, sem Markdown ou texto antes/depois. Siga este schema e os nomes de campos exatamente (${schemaName}):\n${JSON.stringify(schema)}`;
   const data = await requestFreeLLMAPI({
@@ -288,7 +311,7 @@ const callFreeLLMAPIJson = async (
     // the schema is included explicitly in the prompt and validated locally.
     response_format: { type: 'json_object' },
     temperature: 0.3,
-    max_tokens: 24000,
+    max_tokens: Math.min(Math.max(maxTokens, 256), 24000),
   });
   const text = readFreeLLMAPIText(data);
   if (!text) throw new Error('FreeLLMAPI retornou uma resposta vazia.');
@@ -318,17 +341,35 @@ const callFreeLLMAPIText = async (
 // OPENROUTER_RACE_BATCH_SIZE, racing each batch with Promise.any so the
 // first model to succeed wins immediately instead of waiting on a stuck one.
 // Only moves to the next batch if every model in the current one fails.
-const raceOpenRouterModels = async <T,>(attempt: (model: string) => Promise<T>): Promise<T> => {
+const raceOpenRouterModels = async <T,>(attempt: (model: string, signal: AbortSignal) => Promise<T>): Promise<T> => {
   let lastError: any;
   for (let i = 0; i < OPENROUTER_FALLBACK_MODELS.length; i += OPENROUTER_RACE_BATCH_SIZE) {
     const batch = OPENROUTER_FALLBACK_MODELS.slice(i, i + OPENROUTER_RACE_BATCH_SIZE);
+    const controller = new AbortController();
     try {
-      return await Promise.any(batch.map(attempt));
+      const winner = await Promise.any(batch.map((model) => attempt(model, controller.signal)));
+      // Stop losing requests as soon as one valid model answers to avoid
+      // burning quota on background calls for every verification stage.
+      controller.abort();
+      return winner;
     } catch (aggregateError: any) {
-      lastError = aggregateError?.errors?.[aggregateError.errors.length - 1] ?? aggregateError;
+      controller.abort();
+      lastError = aggregateError;
     }
   }
   throw lastError || new Error('Fallback OpenRouter indisponível.');
+};
+
+const combineAbortSignals = (...signals: AbortSignal[]): AbortSignal => {
+  const controller = new AbortController();
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      break;
+    }
+    signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+  }
+  return controller.signal;
 };
 
 // Converts a Gemini-style responseSchema (Type.OBJECT/STRING/ARRAY/...) into
@@ -368,6 +409,7 @@ const getProviderOrder = (): AIProviderId[] => {
 };
 
 const isProviderConfigured = (id: AIProviderId): boolean => {
+  if (isProviderCoolingDown(id)) return false;
   if (id === 'groq') return GROQ_ENABLED;
   if (id === 'openrouter') return OPENROUTER_ENABLED;
   if (id === 'freellmapi') return FREELLMAPI_ENABLED && canUseAIProxy();
@@ -468,7 +510,7 @@ async function generateOpenRouterContent(params: any): Promise<{ text: string }>
     ? { type: 'json_schema', json_schema: { name: 'todahora_response', strict: true, schema } }
     : undefined;
   const requestedTokens = Number(config.maxOutputTokens);
-  return raceOpenRouterModels(async (model) => {
+  return raceOpenRouterModels(async (model, raceSignal) => {
     const res = await aiProxyFetch('openrouter', {
       body: JSON.stringify({
         model,
@@ -478,7 +520,7 @@ async function generateOpenRouterContent(params: any): Promise<{ text: string }>
         temperature: typeof config.temperature === 'number' ? config.temperature : 0.5,
         max_tokens: Number.isFinite(requestedTokens) ? Math.min(Math.max(requestedTokens, 256), 24000) : 8000,
       }),
-      signal: AbortSignal.timeout(OPENROUTER_PER_MODEL_TIMEOUT_MS),
+      signal: combineAbortSignals(raceSignal, AbortSignal.timeout(OPENROUTER_PER_MODEL_TIMEOUT_MS)),
     });
     if (!res.ok) throw new Error(`OpenRouter (${model}) HTTP ${res.status}`);
     const data = await res.json();
@@ -489,8 +531,8 @@ async function generateOpenRouterContent(params: any): Promise<{ text: string }>
   });
 }
 
-const callOpenRouterJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
-  return raceOpenRouterModels(async (model) => {
+const callOpenRouterJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean, maxTokens = 24000): Promise<any> => {
+  return raceOpenRouterModels(async (model, raceSignal) => {
     try {
       const res = await aiProxyFetch('openrouter', {
         body: JSON.stringify({
@@ -502,9 +544,9 @@ const callOpenRouterJson = async (systemInstruction: string | undefined, userPro
           response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: true, schema } },
           reasoning: { enabled: false }, // skip hidden reasoning trace: not needed for extraction/generation, and avoids it eating the completion budget on large payloads
           temperature: 0.3,
-          max_tokens: 24000, // parsePastedQuestions can extract many questions in one batch; keep headroom close to Gemini's own 25000 cap for the same call
+          max_tokens: Math.min(Math.max(maxTokens, 256), 24000),
         }),
-        signal: AbortSignal.timeout(OPENROUTER_PER_MODEL_TIMEOUT_MS),
+        signal: combineAbortSignals(raceSignal, AbortSignal.timeout(OPENROUTER_PER_MODEL_TIMEOUT_MS)),
       });
       if (!res.ok) { console.warn(`[fallback] ${model} falhou: HTTP ${res.status}`); throw new Error(`OpenRouter (${model}) HTTP ${res.status}`); }
       const data = await res.json();
@@ -531,7 +573,7 @@ const callOpenRouterJson = async (systemInstruction: string | undefined, userPro
 };
 
 const callOpenRouterText = async (systemInstruction: string | undefined, messages: { role: string, content: string }[], temperature = 0.6): Promise<string> => {
-  return raceOpenRouterModels(async (model) => {
+  return raceOpenRouterModels(async (model, raceSignal) => {
     try {
       const res = await aiProxyFetch('openrouter', {
         body: JSON.stringify({
@@ -541,7 +583,7 @@ const callOpenRouterText = async (systemInstruction: string | undefined, message
           temperature,
           max_tokens: 8000,
         }),
-        signal: AbortSignal.timeout(OPENROUTER_PER_MODEL_TIMEOUT_MS),
+        signal: combineAbortSignals(raceSignal, AbortSignal.timeout(OPENROUTER_PER_MODEL_TIMEOUT_MS)),
       });
       if (!res.ok) { console.warn(`[fallback] ${model} falhou: HTTP ${res.status}`); throw new Error(`OpenRouter (${model}) HTTP ${res.status}`); }
       const data = await res.json();
@@ -575,7 +617,7 @@ const callGroqModel = async (model: string, body: Record<string, any>): Promise<
   return text;
 };
 
-const callGroqJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
+const callGroqJson = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean, maxTokens = 24000): Promise<any> => {
   let lastError: any;
   for (const model of GROQ_MODELS) {
     try {
@@ -591,7 +633,7 @@ const callGroqJson = async (systemInstruction: string | undefined, userPrompt: s
         // adherence from a 120b model on a reliable, uncongested host.
         response_format: { type: 'json_schema', json_schema: { name: schemaName, schema, strict: false } },
         temperature: 0.3,
-        max_tokens: 24000,
+        max_tokens: Math.min(Math.max(maxTokens, 256), 24000),
       });
       const parsed = safeAIJsonParse(text);
       if (validate && !validate(parsed)) {
@@ -634,15 +676,16 @@ const callGroqText = async (systemInstruction: string | undefined, messages: { r
 // Used when Gemini failed (or returned unusable output): every configured
 // provider except Gemini is tried in priority order (chosen one first, then
 // Groq → OpenRouter → FreeLLMAPI).
-const tryJsonFallbacks = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean): Promise<any> => {
+const tryJsonFallbacks = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean, maxTokens = 24000): Promise<any> => {
   let lastError: any;
   for (const providerId of getProviderOrder()) {
     if (providerId === 'gemini' || !isProviderConfigured(providerId)) continue;
     try {
-      if (providerId === 'groq') return await callGroqJson(systemInstruction, userPrompt, schema, schemaName, validate);
-      if (providerId === 'openrouter') return await callOpenRouterJson(systemInstruction, userPrompt, schema, schemaName, validate);
-      return await callFreeLLMAPIJson(systemInstruction, userPrompt, schema, schemaName, validate);
+      if (providerId === 'groq') return await callGroqJson(systemInstruction, userPrompt, schema, schemaName, validate, maxTokens);
+      if (providerId === 'openrouter') return await callOpenRouterJson(systemInstruction, userPrompt, schema, schemaName, validate, maxTokens);
+      return await callFreeLLMAPIJson(systemInstruction, userPrompt, schema, schemaName, validate, maxTokens);
     } catch (e) {
+      coolDownProviderAfterFailure(providerId, e);
       lastError = e;
       console.warn(`[fallback] ${providerId} falhou, tentando o próximo provedor:`, e);
     }
@@ -659,6 +702,7 @@ const tryTextFallbacks = async (systemInstruction: string | undefined, messages:
       if (providerId === 'openrouter') return await callOpenRouterText(systemInstruction, messages, temperature);
       return await callFreeLLMAPIText(systemInstruction, messages, temperature);
     } catch (e) {
+      coolDownProviderAfterFailure(providerId, e);
       lastError = e;
       console.warn(`[fallback] ${providerId} falhou, tentando o próximo provedor:`, e);
     }
@@ -930,7 +974,7 @@ const judgeJson = async (prompt: string, schema: any, name: string): Promise<any
     });
     return safeAIJsonParse(response.text);
   } catch (error) {
-    if (shouldTryProviderFallbacks(error)) return tryJsonFallbacks(undefined, prompt, toJsonSchema(schema), name);
+    if (shouldTryProviderFallbacks(error)) return tryJsonFallbacks(undefined, prompt, toJsonSchema(schema), name, undefined, 2500);
     throw error;
   }
 };
