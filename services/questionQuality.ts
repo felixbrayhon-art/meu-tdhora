@@ -26,6 +26,14 @@ export type JudgeFn = (prompt: string, schema: any, name: string) => Promise<any
 
 export interface QualityReport {
   sources: string[];
+  /** Wall-clock time per quality stage. Contains no prompt, answer, or user text. */
+  timingsMs: {
+    sourceRetrieval: number;
+    generation: number;
+    answerVerification: number;
+    explanationReview: number;
+    total: number;
+  };
   rounds: number;
   generated: number;
   rejectedStructure: number;
@@ -513,10 +521,15 @@ const sourceHasEvidence = (sources: TopicSource[], evidence: string): { label: s
 export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ questions: FinalQuestion[]; report: QualityReport }> => {
   const { topic, count, generate, judge, Type } = opts;
   const optionCount = opts.optionCount ?? 5;
+  const totalStartedAt = performance.now();
+  const sourceStartedAt = performance.now();
   const sources = await gatherQuestionSources(topic);
+  const sourceRetrievalMs = performance.now() - sourceStartedAt;
   const notes = doctrineNotes(topic);
   const report: QualityReport = {
-    sources: sources.map((s) => s.title), rounds: 0, generated: 0, rejectedStructure: 0, rejectedCitations: 0,
+    sources: sources.map((s) => s.title),
+    timingsMs: { sourceRetrieval: sourceRetrievalMs, generation: 0, answerVerification: 0, explanationReview: 0, total: 0 },
+    rounds: 0, generated: 0, rejectedStructure: 0, rejectedCitations: 0,
     rejectedByJudge: 0, explanationsFixed: 0, verified: 0, consistent: 0, unverified: 0, judgeAvailable: true, reasons: [],
   };
   const note = (reason: string) => { if (report.reasons.length < 14) report.reasons.push(reason); };
@@ -528,6 +541,7 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
   // Refuse the batch before generation instead of presenting model-only explanations as checked.
   if (sources.length === 0) {
     note('nenhuma fonte confiável foi encontrada para o assunto');
+    report.timingsMs.total = performance.now() - totalStartedAt;
     return { questions: [], report };
   }
 
@@ -536,7 +550,9 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
     const need = count - accepted.length;
     // Roughly half of the candidates are rejected by the audit and the judge, so over-ask instead of looping.
     const ask = Math.min(12, Math.max(need + 2, need * 2));
+    const generationStartedAt = performance.now();
     const raw = await generate(ask, questionGenerationRules(sources, avoid, notes));
+    report.timingsMs.generation += performance.now() - generationStartedAt;
     const list: RawQuestion[] = (Array.isArray(raw) ? raw : raw?.questions) ?? [];
     report.generated += list.length;
 
@@ -555,7 +571,9 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
     }
     if (candidates.length === 0) continue;
 
+    const verificationStartedAt = performance.now();
     const verdicts = await runJudge(candidates.map((c) => c.q), sources, judge, Type, optionCount, notes);
+    report.timingsMs.answerVerification += performance.now() - verificationStartedAt;
     if (!verdicts) {
       report.judgeAvailable = false;
       report.rejectedByJudge += candidates.length;
@@ -580,7 +598,9 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
       options: [...c.q.options].reverse(),
       correctAnswer: optionCount - 1 - c.q.correctAnswer,
     }));
+    const secondVerificationStartedAt = performance.now();
     const secondVerdicts = firstPass.length > 0 ? await runJudge(flipped, sources, judge, Type, optionCount, notes) : [];
+    report.timingsMs.answerVerification += performance.now() - secondVerificationStartedAt;
     if (firstPass.length > 0 && !secondVerdicts) {
       report.judgeAvailable = false;
       report.rejectedByJudge += firstPass.length;
@@ -604,7 +624,9 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
 
     // Every explanation claim must be explicitly marked correct. "Not confirmable", missing, and malformed review
     // results are rejected; the previous fallback to the judge's own rationale bypassed this check.
+    const reviewStartedAt = performance.now();
     const review = confirmed.length > 0 ? await runReview(confirmed.map(({ c }) => ({ q: c.q, explanation: c.explanation })), sources, judge, Type, notes) : new Map();
+    report.timingsMs.explanationReview += performance.now() - reviewStartedAt;
     if (confirmed.length > 0 && !review) {
       report.judgeAvailable = false;
       report.rejectedByJudge += confirmed.length;
@@ -628,5 +650,6 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
   // Never show the same question twice (the rewrite of two bad explanations can converge on one text).
   const seen = new Set<string>();
   const unique = accepted.filter((item) => { const key = optionKey(item.question); if (seen.has(key)) return false; seen.add(key); return true; });
+  report.timingsMs.total = performance.now() - totalStartedAt;
   return { questions: unique.slice(0, count), report };
 };
