@@ -9,7 +9,8 @@
     "prebuild": "node scripts/copy-pdf-assets.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:quality": "node scripts/test-question-quality.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
