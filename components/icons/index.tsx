@@ -4,30 +4,108 @@ export interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: number | string;
 }
 
+type IconCrop = { x: number; y: number; width: number; height: number };
+
+// The supplied paper-cut sheet is a 4×5 grid with a final 6-icon strip.
+// Crop coordinates follow the original vector canvas so every use stays sharp.
+const paperCutIcons: Record<string, IconCrop> = {
+  ArrowLeft: { x: 124, y: 62, width: 207, height: 208 },
+  ArrowRight: { x: 217, y: 1142, width: 161, height: 188 },
+  LogOut: { x: 124, y: 62, width: 207, height: 208 },
+  Sun: { x: 350, y: 62, width: 203, height: 208 },
+  Home: { x: 571, y: 62, width: 204, height: 208 },
+  Timer: { x: 797, y: 62, width: 202, height: 208 },
+  Book: { x: 124, y: 285, width: 208, height: 198 },
+  BookOpen: { x: 124, y: 285, width: 208, height: 198 },
+  Layers: { x: 350, y: 285, width: 203, height: 198 },
+  Scale: { x: 571, y: 285, width: 204, height: 198 },
+  Folder: { x: 796, y: 285, width: 206, height: 198 },
+  FolderOpen: { x: 796, y: 285, width: 206, height: 198 },
+  FolderPlus: { x: 796, y: 285, width: 206, height: 198 },
+  Pencil: { x: 125, y: 496, width: 206, height: 204 },
+  PenLine: { x: 125, y: 496, width: 206, height: 204 },
+  Brush: { x: 125, y: 496, width: 206, height: 204 },
+  Trophy: { x: 351, y: 496, width: 202, height: 203 },
+  FileIcon: { x: 572, y: 496, width: 204, height: 203 },
+  FileText: { x: 572, y: 496, width: 204, height: 203 },
+  ClipboardList: { x: 796, y: 498, width: 206, height: 200 },
+  CheckSquare: { x: 796, y: 498, width: 206, height: 200 },
+  CheckCircle2: { x: 796, y: 498, width: 206, height: 200 },
+  CalendarCheck: { x: 796, y: 498, width: 206, height: 200 },
+  Smile: { x: 124, y: 712, width: 207, height: 199 },
+  Zap: { x: 350, y: 712, width: 203, height: 199 },
+  Heart: { x: 570, y: 712, width: 205, height: 199 },
+  BarChart3: { x: 796, y: 712, width: 206, height: 199 },
+  TrendingUp: { x: 796, y: 712, width: 206, height: 199 },
+  Bookmark: { x: 124, y: 924, width: 208, height: 196 },
+  BookmarkCheck: { x: 124, y: 924, width: 208, height: 196 },
+  Clock: { x: 352, y: 924, width: 201, height: 197 },
+  Brain: { x: 569, y: 924, width: 206, height: 197 },
+  User: { x: 795, y: 924, width: 206, height: 196 },
+  UserRound: { x: 795, y: 924, width: 206, height: 196 },
+  RotateCcw: { x: 41, y: 1142, width: 163, height: 190 },
+  Briefcase: { x: 390, y: 1142, width: 165, height: 188 },
+  Copy: { x: 567, y: 1141, width: 162, height: 189 },
+  GraduationCap: { x: 124, y: 285, width: 208, height: 198 },
+  Newspaper: { x: 922, y: 1142, width: 163, height: 189 },
+  Redo2: { x: 217, y: 1142, width: 161, height: 188 },
+  Search: { x: 743, y: 1142, width: 166, height: 188 },
+  Save: { x: 124, y: 924, width: 208, height: 196 },
+  SkipForward: { x: 217, y: 1142, width: 161, height: 188 },
+  ScrollText: { x: 922, y: 1142, width: 163, height: 189 },
+  Undo2: { x: 41, y: 1142, width: 163, height: 190 },
+};
+
+const paperCutSprite = '/coral-grid-icons.svg#color-';
+
 // Icon set: Lucide (https://lucide.dev, ISC license), vendored here so the app has no extra dependency.
 // Identity treatment: miter joins and square caps (sharp, angular strokes) instead of Lucide's rounded
 // defaults, and an optional "tom sobre tom" shadow: a copy of the icon offset by 1.3px behind it, drawn in
 // the CSS variable --icon-shadow. Where --icon-shadow is not set the shadow is transparent, so icons stay
 // single-stroke everywhere except where a container opts in (e.g. the Hub card tiles).
 const make = (name: string, body: string, filled = false) => {
-  const Icon = React.forwardRef<SVGSVGElement, IconProps>(({ size = '1em', strokeWidth = 2, ...props }, ref) => (
-    <svg
-      ref={ref}
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      strokeWidth={strokeWidth}
-      strokeLinecap="square"
-      strokeLinejoin="miter"
-      aria-hidden={props['aria-label'] ? undefined : true}
-      {...props}
-    >
-      <g stroke="var(--icon-shadow, transparent)" transform="translate(1.3 1.3)" dangerouslySetInnerHTML={{ __html: body }} />
-      <g stroke="currentColor" fill={filled ? 'currentColor' : 'none'} dangerouslySetInnerHTML={{ __html: body }} />
-    </svg>
-  ));
+  const crop = paperCutIcons[name];
+  const Icon = React.forwardRef<SVGSVGElement, IconProps>(({ size = '1em', strokeWidth = 2, ...props }, ref) => {
+    if (crop) {
+      return (
+        <svg
+          ref={ref}
+          xmlns="http://www.w3.org/2000/svg"
+          width={size}
+          height={size}
+          viewBox={`${crop.x} ${crop.y} ${crop.width} ${crop.height}`}
+          preserveAspectRatio="xMidYMid meet"
+          aria-hidden={props['aria-label'] ? undefined : true}
+          {...props}
+        >
+          <g>
+            <use href={`${paperCutSprite}1`} />
+            <use href={`${paperCutSprite}2`} />
+            <use href={`${paperCutSprite}3`} />
+          </g>
+        </svg>
+      );
+    }
+
+    return (
+      <svg
+        ref={ref}
+        xmlns="http://www.w3.org/2000/svg"
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        strokeWidth={strokeWidth}
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        aria-hidden={props['aria-label'] ? undefined : true}
+        {...props}
+      >
+        <g stroke="var(--icon-shadow, transparent)" transform="translate(1.3 1.3)" dangerouslySetInnerHTML={{ __html: body }} />
+        <g stroke="currentColor" fill={filled ? 'currentColor' : 'none'} dangerouslySetInnerHTML={{ __html: body }} />
+      </svg>
+    );
+  });
   Icon.displayName = name;
   return Icon;
 };
