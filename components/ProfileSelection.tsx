@@ -137,7 +137,7 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
                     Qual é o seu <span className="text-[#e96f34] dark:text-[#fec868]">objetivo?</span>
                   </h1>
                   <p className="mt-4 max-w-md text-sm font-semibold leading-6 text-[#725e4a] dark:text-[#d1c7b3] sm:text-base">
-                    Escolha seu perfil para deixar o ToDAHORA no ritmo da sua jornada.
+                    Escolha o perfil que mais combina com seus estudos.
                   </p>
                 </div>
 

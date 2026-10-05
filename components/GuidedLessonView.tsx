@@ -513,8 +513,8 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
               <CheckCircle2 className="w-12 h-12 text-[#b1c77b]" />
             </div>
             <div>
-              <h3 className="text-4xl font-black uppercase tracking-tighter leading-none mb-4">Ciclo de Explicação Concluído</h3>
-              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Você concluiu esta jornada de aprendizado.</p>
+              <h3 className="text-4xl font-black uppercase tracking-tighter leading-none mb-4">Aula concluída</h3>
+              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Você terminou esta aula.</p>
             </div>
             <button
               onClick={() => onComplete(5)} // Give a small reward for completion
@@ -575,7 +575,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
       <div className="border-t border-white/5 bg-[#473c33]/60 px-5 py-3 backdrop-blur-2xl sm:px-6">
         <div className="mx-auto max-w-2xl space-y-2">
           <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
-            <span>{studyView === 'immersive' ? 'PROGRESSO DA JORNADA' : 'LEITURA DOS PONTOS-CHAVE'}</span>
+            <span>{studyView === 'immersive' ? 'PROGRESSO DA AULA' : 'LEITURA DOS PONTOS-CHAVE'}</span>
             <span className="text-[#fecc73]">{Math.round(lessonProgress)}%</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full border border-white/5 bg-white/5 p-px">

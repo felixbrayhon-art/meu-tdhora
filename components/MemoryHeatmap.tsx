@@ -34,7 +34,7 @@ const MemoryHeatmap: React.FC<MemoryHeatmapProps> = ({ subjects, studyProfile = 
             </div>
           </div>
 
-          <p className="mt-4 text-[9px] font-bold text-gray-400 uppercase tracking-widest relative z-10 ">{subject.heat > 80 ? 'Mergulhando fundo - Retenção Máxima' : subject.heat > 40 ? 'Águas estáveis - Revisão programada' : 'Esfriando - Requer validação urgente'}</p>
+          <p className="mt-4 text-[9px] font-bold text-gray-400 uppercase tracking-widest relative z-10 ">{subject.heat > 80 ? 'Boa retenção' : subject.heat > 40 ? 'Revisão programada' : 'Revisão recomendada'}</p>
 
           {/* Background decoration */}
           <div className={`absolute -bottom-12 -right-12 w-32 h-32 blur-3xl rounded-full opacity-10 transition-all group-hover:opacity-20 ${subject.heat > 50 ? 'bg-[#fdad74]' : 'bg-[#fecc73]'}`} />

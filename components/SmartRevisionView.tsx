@@ -179,7 +179,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
   const nextMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
   const prevMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
 
-  if (loading) return <LoadingFish message="A IA está preparando sua micro-validação de elite..." />;
+  if (loading) return <LoadingFish message="Preparando sua revisão..." />;
 
   if (activeItem || activeVault) {
     if (recoveryPlan) {
@@ -322,12 +322,12 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
             {isSuccess ? '🔥' : '❄️'}
           </motion.div>
 
-          <h2 className="text-4xl font-black mb-4 tracking-tighter">{isSuccess ? 'VALIDAÇÃO CONCLUÍDA!' : 'QUASE LÁ! VAMOS REPETIR?'}</h2>
+          <h2 className="text-4xl font-black mb-4 tracking-tighter">{isSuccess ? 'REVISÃO CONCLUÍDA!' : 'QUASE LÁ! TENTE DE NOVO'}</h2>
 
-          <p className="text-gray-500 text-lg max-w-md mb-12 font-medium">{isSuccess ? `Você dominou este micro-tema. A barra de calor da matéria subiu!` : `Para garantir a retenção total, precisamos acertar todas as 3 questões. O tópico voltará para o início do ciclo.`}</p>
+          <p className="text-gray-500 text-lg max-w-md mb-12 font-medium">{isSuccess ? 'Você acertou todas as questões desta revisão.' : 'Você precisa acertar todas as questões para concluir esta revisão. O assunto voltará ao início do ciclo.'}</p>
 
           <button onClick={activeItem ? finishValidation : finishVault} className={`px-12 py-6 rounded-3xl font-black text-xl transition-all active:scale-95 shadow-2xl ${isSuccess ? 'bg-[#473c33] text-white hover:bg-[#473c33]' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>
-            {isSuccess ? 'CONTINUAR JORNADA' : 'VOLTAR PARA REVISÃO'}
+            {isSuccess ? 'CONTINUAR' : 'TENTAR NOVAMENTE'}
           </button>
         </div>
       );
@@ -411,7 +411,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
 
                 {currentQ.memoryHint && (
                   <div className="bg-[#fff1e8]/60 border border-[#fee6d5] p-6 rounded-[30px] text-[#733000]">
-                    <h5 className="font-black text-xs uppercase tracking-wider mb-2 flex items-center gap-2 text-[#ff832a]">⚡ Bizu de Elite (Âncora TDAH):</h5>
+                    <h5 className="font-black text-xs uppercase tracking-wider mb-2 flex items-center gap-2 text-[#ff832a]">⚡ Dica para lembrar:</h5>
                     <p className="text-xs font-bold leading-relaxed">{currentQ.memoryHint}</p>
                   </div>
                 )}
@@ -437,7 +437,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
         VOLTAR AO HUB
       </button>
 
-      <CharacterTip id="smart-revision" message="Aqui eu te lembro de revisar cada assunto em 3 momentos-chave (24h, 7 dias e 30 dias depois de aprender), porque é quando o cérebro mais esquece. Toda vez que você erra uma questão, ela também cai automaticamente no Cofre de Erros ali do lado — assim a gente sabe exatamente onde focar antes da prova." />
+      <CharacterTip id="smart-revision" message="Revise cada assunto em três momentos: 24 horas, 7 dias e 30 dias depois de estudá-lo. As questões que você errar ficam no Cofre de Erros para revisar depois." />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
         <div className="lg:col-span-8 space-y-12">

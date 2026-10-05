@@ -265,7 +265,7 @@ const SocialModule: React.FC<SocialModuleProps> = ({ myUid, myStats, isLoggedIn,
                 </svg>
               </div>
               <h3 className="text-2xl font-black tracking-tighter uppercase mb-4">CHAT BLOQUEADO PARA ESTUDO</h3>
-              <p className="text-gray-500 font-bold max-w-sm">Mergulho de foco ativo. O Peixe não deixa as bolhas sociais te distraírem agora. Termine seu bloco para conversar!</p>
+              <p className="text-gray-500 font-bold max-w-sm">Seu bloco de foco está ativo. Termine o cronômetro para voltar a conversar.</p>
             </div>
           )}
 

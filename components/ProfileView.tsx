@@ -258,7 +258,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button type="button" aria-pressed={aiProvider === 'auto'} onClick={() => setAiProvider('auto')} className={`rounded-2xl border-2 p-4 text-left transition-all ${aiProvider === 'auto' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
                   <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">Automático</span>
-                  <span className="mt-1 block text-[10px] font-medium text-gray-500">Groq → OpenRouter → FreeLLMAPI → Gemini</span>
+                  <span className="mt-1 block text-[10px] font-medium text-gray-500">Groq → FreeLLMAPI → OpenRouter → Gemini</span>
                 </button>
                 <button type="button" aria-pressed={aiProvider === 'groq'} onClick={() => setAiProvider('groq')} className={`rounded-2xl border-2 p-4 text-left transition-all ${aiProvider === 'groq' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
                   <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">Groq</span>
@@ -277,7 +277,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
                   <span className="mt-1 block text-[10px] font-medium text-gray-500">{!freeLLMAPIAvailable ? 'Aguardando configuração no servidor' : !isLoggedIn && localFreeLLMPreview ? 'Disponível nesta prévia local' : !isLoggedIn ? 'Entre com Google para usar' : 'Roteamento multi provedores'}</span>
                 </button>
               </div>
-              <p className="mt-3 text-[10px] font-medium text-gray-400">O provedor escolhido é tentado primeiro. Se estiver indisponível, o app cai automaticamente para os outros, na ordem Groq → OpenRouter → FreeLLMAPI → Gemini.</p>
+              <p className="mt-3 text-[10px] font-medium text-gray-400">O provedor escolhido é tentado primeiro. Se estiver indisponível, o app tenta os outros na ordem Groq → FreeLLMAPI → OpenRouter → Gemini.</p>
             </div>
 
             <div>

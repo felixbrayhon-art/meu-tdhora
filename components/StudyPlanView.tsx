@@ -212,7 +212,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
         </button>
         <div className="flex bg-white shadow-xl shadow-gray-100/50 border border-gray-100 p-1.5 rounded-[22px]">
           <button onClick={() => setActiveTab('DASHBOARD')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'DASHBOARD' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
-            DASHBOARD
+            RESUMO
           </button>
           <button onClick={() => setActiveTab('CRONOGRAMA')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'CRONOGRAMA' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
             CRONOGRAMA
@@ -226,14 +226,14 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
 
       {activeTab === 'DASHBOARD' ? (
         <div className="space-y-6">
-          {isOptimizing && <LoadingFish message={studyProfile === 'FACULDADE' ? 'IA analisando a grade curricular e calculando seu cronograma...' : 'IA analisando o edital e calculando seu cronograma...'} />}
+          {isOptimizing && <LoadingFish message={studyProfile === 'FACULDADE' ? 'Analisando sua grade e montando o cronograma...' : 'Analisando o edital e montando o cronograma...'} />}
 
           {/* AI Banner */}
           <div className="bg-[#473c33] p-8 rounded-[40px] text-white flex justify-between items-center group relative overflow-hidden">
             <div className="relative z-10">
-              <span className="text-[#fed386] text-[10px] font-black uppercase tracking-widest mb-2 block">DASHBOARD ESTRATÉGICO</span>
+              <span className="text-[#fed386] text-[10px] font-black uppercase tracking-widest mb-2 block">SEU PLANO DE ESTUDOS</span>
               <h2 className="text-3xl font-black tracking-tighter uppercase leading-none">
-                OTIMIZAÇÃO <span className="text-[#fed386]">POR IA</span>
+                CRONOGRAMA <span className="text-[#fed386]">PERSONALIZADO</span>
               </h2>
               <div className="mt-4 flex gap-4">
                 <div className="bg-white/10 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest backdrop-blur-md">{daysToExam !== null ? `${daysToExam} dias até a prova` : 'Sem data de prova'}</div>

@@ -194,7 +194,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
         <h2 className="text-4xl font-black uppercase tracking-tighter">
           Bloco Imutável <span className="text-[#abc270]">Concluído!</span>
         </h2>
-        <p className="text-gray-400 font-bold max-w-sm">Dossiê processado, questões resolvidas e erros analisados. Você está em outro nível.</p>
+        <p className="text-gray-400 font-bold max-w-sm">Você concluiu o bloco, respondeu às questões e revisou os erros.</p>
         <button onClick={onBack} className="min-h-[44px] bg-[#473c33] text-white px-10 py-5 rounded-[25px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
           Voltar ao Hub
         </button>
@@ -229,7 +229,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
         <AnimatePresence mode="wait">
           {isAnalyzing ? (
             <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <LoadingFish message="O Peixe está analisando sua memória..." submessage="Identificando acertos e pontos de melhoria" />
+              <LoadingFish message="Analisando suas respostas..." submessage="Separando o que você já lembra do que precisa revisar." />
             </motion.div>
           ) : phase === 'EVOCATION' && evocationAnalysis ? (
             <motion.div key="evocation-result" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-2xl space-y-6">
@@ -363,7 +363,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
             </motion.div>
           ) : isGeneratingQuestions ? (
             <motion.div key="gen-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <LoadingFish message="O Peixe está criando questões personalizadas..." submessage="Focando nos pontos que você esqueceu ou errou" />
+              <LoadingFish message="Preparando questões para praticar..." submessage="Vamos reforçar os pontos que você esqueceu ou errou." />
             </motion.div>
           ) : phase === 'PRACTICE' ? (
             <motion.div key="practice" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-4xl space-y-8">

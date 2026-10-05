@@ -476,7 +476,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
           </div>
 
           <button onClick={() => onComplete(score, questions.length)} className="w-full bg-white text-[#473c33] py-8 rounded-[30px] font-black text-xl hover:bg-[#fecc73] hover:text-white transition-all shadow-2xl active:scale-95 uppercase tracking-widest">
-            SALVAR JORNADA E CONTINUAR
+            SALVAR E CONTINUAR
           </button>
         </div>
       </div>
@@ -545,10 +545,10 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                   <button onClick={() => copyQuestionToClipboard(currentQ)} className={`p-2 rounded-lg transition-all active:scale-90 mr-1 ${copiedId === currentQ.id ? 'bg-[#b1c77b] text-white shadow-lg' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Copiar questão inteira" aria-label="Copiar questão inteira">
                     {copiedId === currentQ.id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => handleSelectiveMark('highlight')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentQ.id) ? 'bg-[#fff0d5] text-[#fec868] shadow-sm border border-[#ffe6b9]' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Destacar (Selecione texto ou clique para todo enunciado)" aria-label="Destacar texto">
+                  <button onClick={() => handleSelectiveMark('highlight')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentQ.id) ? 'bg-[#fff0d5] text-[#fec868] shadow-sm border border-[#ffe6b9]' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Destacar texto. Se nada estiver selecionado, o destaque vale para o enunciado todo." aria-label="Destacar texto">
                     <Highlighter className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleSelectiveMark('strike')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionScratched.includes(currentQ.id) ? 'bg-slate-200 text-slate-600 shadow-sm' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Rasurar (Selecione texto ou clique para todo enunciado)" aria-label="Rasurar texto">
+                  <button onClick={() => handleSelectiveMark('strike')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionScratched.includes(currentQ.id) ? 'bg-slate-200 text-slate-600 shadow-sm' : 'text-slate-300 hover:text-[#fecc73]'}`} title="Riscar texto. Se nada estiver selecionado, a marcação vale para o enunciado todo." aria-label="Riscar texto">
                     <PenLine className="w-4 h-4" />
                   </button>
                   <button
@@ -940,7 +940,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                   <div className="bg-[#fec868] p-10 rounded-[45px] border border-[#fecc73]/10 shadow-2xl relative overflow-hidden mt-12 group transition-all hover:">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
                     <p className="text-[11px] font-black text-white uppercase tracking-[0.5em] mb-6 flex items-center gap-4">
-                      <span className="text-2xl animate-bounce">⚡</span> BIZU DE MEMÓRIA (TDAH FOCUS)
+                      <span className="text-2xl animate-bounce">⚡</span> DICA DE MEMÓRIA
                     </p>
                     <MarkdownContent content={currentQ.memoryHint} isDark />
                   </div>

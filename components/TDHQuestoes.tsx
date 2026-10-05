@@ -870,7 +870,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     return (
       <div className="relative min-h-[calc(100dvh-12rem)] rounded-[32px] bg-[#473c33] flex flex-col items-center justify-center p-6">
         <div className="bg-white rounded-[50px] p-12 md:p-20 shadow-2xl flex flex-col items-center max-w-xl w-full">
-          <LoadingFish message={batchStatus ? `Extraindo Bloco ${batchStatus.current} de ${batchStatus.total}` : 'Arquitetando Simulado...'} submessage={batchStatus ? `A IA está processando seu texto em partes para não pular nenhuma questão.` : `IA preparando questões focadas em ${studyProfile === 'CONCURSO' ? 'Concursos de Elite' : studyProfile === 'FACULDADE' ? 'Graduação / Faculdade' : 'ENEM/Vestibular'}`} />
+          <LoadingFish message={batchStatus ? `Analisando parte ${batchStatus.current} de ${batchStatus.total}...` : 'Montando seu simulado...'} submessage={batchStatus ? 'Estamos analisando o texto em etapas para incluir todas as questões.' : `Preparando questões para ${studyProfile === 'CONCURSO' ? 'concursos' : studyProfile === 'FACULDADE' ? 'a faculdade' : 'o ENEM e vestibulares'}.`} />
 
           {batchStatus && (
             <div className="mt-8 w-full">
@@ -1426,10 +1426,10 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                       <button onClick={() => copyQuestionToClipboard(questions[currentIdx])} className={`p-2 rounded-lg transition-all active:scale-90 mr-1 ${copiedId === questions[currentIdx].id ? 'bg-[#abc270] text-white shadow-lg' : 'text-slate-300 hover:text-[#fec868]'}`} title="Copiar questão inteira">
                         {copiedId === questions[currentIdx].id ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => handleSelectiveMark('highlight')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentIdx) ? 'bg-[#fff0d5] text-[#fec868] shadow-sm border border-[#ffe6b9]' : 'text-slate-300 hover:text-[#fec868]'}`} title="Destacar (Selecione texto ou clique para todo enunciado)">
+                      <button onClick={() => handleSelectiveMark('highlight')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionHighlighted.includes(currentIdx) ? 'bg-[#fff0d5] text-[#fec868] shadow-sm border border-[#ffe6b9]' : 'text-slate-300 hover:text-[#fec868]'}`} title="Destacar texto. Se nada estiver selecionado, o destaque vale para o enunciado todo.">
                         <Highlighter className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleSelectiveMark('strike')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionScratched.includes(currentIdx) ? 'bg-slate-200 text-slate-600 shadow-sm' : 'text-slate-300 hover:text-[#fec868]'}`} title="Taxar (Selecione texto ou clique para todo enunciado)">
+                      <button onClick={() => handleSelectiveMark('strike')} className={`p-2 rounded-lg transition-all active:scale-90 ${questionScratched.includes(currentIdx) ? 'bg-slate-200 text-slate-600 shadow-sm' : 'text-slate-300 hover:text-[#fec868]'}`} title="Riscar texto. Se nada estiver selecionado, a marcação vale para o enunciado todo.">
                         <PenLine className="w-4 h-4" />
                       </button>
                       <button
@@ -1700,7 +1700,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                       <div className="bg-[#fec868] p-10 rounded-[45px] border border-[#fec868]/10 shadow-2xl relative overflow-hidden mt-12 group transition-all hover:">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
                         <p className="text-[11px] font-black text-white uppercase tracking-[0.5em] mb-6 flex items-center gap-4">
-                          <span className="text-2xl animate-bounce">⚡</span> BIZU DE MEMÓRIA (REDE NEURAL)
+                          <span className="text-2xl animate-bounce">⚡</span> DICA DE MEMÓRIA
                         </p>
                         <MarkdownContent content={currentQ.memoryHint} isDark fontSizeMultiplier={fontSizeMultiplier} />
                       </div>

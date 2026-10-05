@@ -40,11 +40,11 @@ const CommunityView: React.FC<CommunityViewProps> = ({ activities, onBack, onPos
           {/* Postagem Manual */}
           <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-xl mb-10 relative overflow-hidden group">
             <div className="absolute top-0 left-0 w-2 h-full bg-[#fed386]"></div>
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">O que você está mergulhando agora?</h3>
-            <textarea value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder="Ex: Destruindo Direito Penal hoje!" className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#fed386] transition-all resize-none h-24" />
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">O que você está estudando agora?</h3>
+            <textarea value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder="Ex.: Revisei furto e roubo hoje." className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#fed386] transition-all resize-none h-24" />
             <div className="flex justify-end mt-4">
               <button onClick={handlePost} disabled={!statusText.trim()} className="min-h-[44px] bg-[#fed386] text-white px-8 py-3 rounded-xl font-black text-xs shadow-lg shadow-[#fff0d5]/60 hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale">
-                PUBLICAR MERGULHO
+                COMPARTILHAR
               </button>
             </div>
           </div>
@@ -56,7 +56,7 @@ const CommunityView: React.FC<CommunityViewProps> = ({ activities, onBack, onPos
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <p className="font-bold text-sm">O cardume está focado! 14 peixes estão mergulhando agora.</p>
+              <p className="font-bold text-sm">Compartilhe seus estudos e acompanhe as atualizações da comunidade.</p>
             </div>
           </div>
 
@@ -75,7 +75,7 @@ const CommunityView: React.FC<CommunityViewProps> = ({ activities, onBack, onPos
                           hour: '2-digit',
                           minute: '2-digit',
                         })}{' '}
-                        • {act.type === 'STATUS' ? 'PENSAMENTO' : 'MERGULHO'}
+                        • {act.type === 'STATUS' ? 'ATUALIZAÇÃO' : 'ESTUDO'}
                       </p>
                     </div>
                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${act.type === 'EMERGENCY' ? 'bg-[#fff1e8] text-[#fda769]' : act.type === 'STATUS' ? 'bg-[#fff6e8] text-[#fec868]' : 'bg-[#fff6e8] text-[#fec868]'}`}>{act.type}</span>

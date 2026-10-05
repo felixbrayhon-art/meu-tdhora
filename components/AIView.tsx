@@ -60,7 +60,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
       console.error(error);
-      const msg = error.message || 'Erro ao mergulhar. Tente novamente.';
+      const msg = error.message || 'Não foi possível gerar o material. Tente novamente.';
       alert(msg);
     } finally {
       setLoading(false);
@@ -104,18 +104,18 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
         <div className="relative h-full min-h-[calc(100dvh-11rem)] w-full overflow-hidden rounded-[28px] border border-white/10 shadow-2xl flex flex-col items-center justify-center gap-6 animate-in fade-in duration-500">
           <BookLoader className="scale-[2.4] sm:scale-[3]" />
           <div className="text-center px-6 mt-4">
-            <p className="text-white font-black text-xl tracking-tight drop-shadow-md">Mergulhando mais fundo...</p>
-            <p className="text-white/70 text-[10px] font-bold uppercase tracking-[0.22em] leading-relaxed mt-2">A IA está organizando seu dossiê de alta performance</p>
+            <p className="text-white font-black text-xl tracking-tight drop-shadow-md">Preparando seu material...</p>
+            <p className="text-white/70 text-[10px] font-bold uppercase tracking-[0.22em] leading-relaxed mt-2">A IA está organizando a explicação, os exemplos e as questões.</p>
           </div>
           <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-4 p-4 sm:p-5 bg-[#473c33]/55 backdrop-blur-md border-b border-white/10">
-            <button onClick={onBack} className="shrink-0 p-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all" aria-label="Cancelar exploração" title="Voltar">
+            <button onClick={onBack} className="shrink-0 p-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all" aria-label="Voltar ao painel" title="Voltar">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             <div className="min-w-0 flex-1 text-center sm:text-left">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#fed386]">EXPLORAÇÃO ILIMITADA</p>
-              <h1 className="mt-1 text-sm sm:text-base font-black text-white truncate">Preparando seu dossiê</h1>
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#fed386]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'ESTUDO PELA GRADE' : 'ESTUDO PELO EDITAL') : 'ESTUDO POR TEMA'}</p>
+              <h1 className="mt-1 text-sm sm:text-base font-black text-white truncate">Preparando seu material</h1>
             </div>
             <div className="hidden sm:flex items-center gap-2 shrink-0 text-[9px] font-black uppercase tracking-widest text-white/60">
               <span className="w-2 h-2 rounded-full bg-[#fecc73] animate-pulse" />
@@ -140,7 +140,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                 </button>
                 <div className="flex items-center gap-2 rounded-full bg-[#fff6e8] px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#8f5614] dark:text-[#f5a46f]">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-[#f5b84b]" />
-                  {strategicMode ? 'Mergulho estratégico' : 'Exploração ilimitada'}
+                  {strategicMode ? (studyProfile === 'FACULDADE' ? 'Estudo pela grade' : 'Estudo pelo edital') : 'Estudo por tema'}
                 </div>
               </header>
 
@@ -149,9 +149,9 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fecc73] text-[#473c33] shadow-lg shadow-black/10">
                     <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18.5 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                   </div>
-                  <p className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-[#596b2a]">Dossiê de alto desempenho</p>
-                  <h1 className="mt-3 max-w-md text-3xl font-black uppercase leading-[0.98] tracking-tight text-[#473c33] sm:text-4xl">{strategicMode ? 'Mergulho estratégico' : 'Exploração ilimitada'}</h1>
-                  <p className="mt-5 max-w-md text-sm font-semibold leading-relaxed text-[#473c33]">{strategicMode ? 'Escolha uma matéria do seu edital e transforme o próximo tema em uma trilha de estudo objetiva.' : `Digite um tema e a IA cria um dossiê completo para ${studyProfile.toLowerCase()}, com resumo, exemplos e questões.`}</p>
+                  <p className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-[#596b2a]">Material de estudo</p>
+                  <h1 className="mt-3 max-w-md text-3xl font-black uppercase leading-[0.98] tracking-tight text-[#473c33] sm:text-4xl">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Estudo pela grade' : 'Estudo pelo edital') : 'Estudo por tema'}</h1>
+                  <p className="mt-5 max-w-md text-sm font-semibold leading-relaxed text-[#473c33]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Escolha uma disciplina da sua grade e um assunto para montar o material.' : 'Escolha uma matéria do seu edital e um assunto para montar o material.') : `Informe um tema para criar um material de estudo para ${studyProfile.toLowerCase()}, com resumo, exemplos e questões.`}</p>
                   <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                     <div className="rounded-2xl border border-[#f4f7ec]/70 bg-[#f4f7ec]/35 p-4">
                       <p className="text-[10px] font-black uppercase tracking-widest text-[#596b2a]">01</p>
@@ -160,8 +160,8 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                     </div>
                     <div className="rounded-2xl border border-[#f4f7ec]/70 bg-[#f4f7ec]/35 p-4">
                       <p className="text-[10px] font-black uppercase tracking-widest text-[#596b2a]">02</p>
-                      <p className="mt-2 text-sm font-black text-[#473c33]">Gere seu dossiê</p>
-                      <p className="mt-1 text-xs font-medium text-[#596b2a]">Receba uma trilha pronta para estudar.</p>
+                      <p className="mt-2 text-sm font-black text-[#473c33]">Crie seu material</p>
+                      <p className="mt-1 text-xs font-medium text-[#596b2a]">Receba um resumo, exemplos e questões.</p>
                     </div>
                   </div>
                 </div>
@@ -169,7 +169,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                 <div className="px-6 py-8 sm:px-10 sm:py-12">
                   <div className="mb-7">
                     <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#a79c8e]">Vamos começar</p>
-                    <h2 className="mt-2 text-2xl font-black tracking-tight text-[#473c33]">Defina seu próximo mergulho</h2>
+                    <h2 className="mt-2 text-2xl font-black tracking-tight text-[#473c33]">Escolha o que vai estudar</h2>
                     <p className="mt-2 text-sm font-medium leading-relaxed text-[#8f8375]">Ajuste o tema, a quantidade de questões e o estilo da explicação.</p>
                   </div>
 
@@ -199,7 +199,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                     </div>
                   ) : (
                     <label className="block">
-                      <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Tema do mergulho</span>
+                      <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Tema</span>
                       <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Ex.: Responsabilidade civil" className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" onKeyDown={(e) => e.key === 'Enter' && canGenerate && handleGenerate()} />
                     </label>
                   )}
@@ -220,7 +220,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                   </label>
 
                   <button onClick={() => handleGenerate()} disabled={!canGenerate} className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#473c33] px-5 py-4 text-xs font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_20px_rgba(71,60,51,0.18)] transition-all hover:bg-[#5a493f] disabled:cursor-not-allowed disabled:bg-[#d9d0c4] disabled:text-[#a79c8e] disabled:shadow-none">
-                    Iniciar dossiê
+                    Gerar material
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                   </button>
                 </div>
@@ -238,7 +238,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
               </button>
               <div className="flex items-center gap-6">
                 <div className="hidden md:flex flex-col items-end">
-                  <span className="text-[#fecc73] text-[10px] font-black tracking-[0.4em] uppercase mb-1">Dossiê Ativo</span>
+                  <span className="text-[#fecc73] text-[10px] font-black tracking-[0.4em] uppercase mb-1">Material pronto</span>
                   <span className="text-white font-black tracking-tighter uppercase">{topic}</span>
                 </div>
                 <button onClick={onBack} className="min-h-[44px] bg-white/10 text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-[0.4em] uppercase hover:bg-red-500 transition-all active:scale-95">
@@ -282,7 +282,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                       <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
-                      Extração de Elite: Ponto de Performance
+                      Ponto em destaque
                     </h4>
                     <div className="max-w-none">
                       <MarkdownContent content={result.deepDive} isDark />
@@ -377,10 +377,10 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                     <h3 className="text-3xl font-black mb-6 leading-none uppercase text-white tracking-tighter">
                       Gerar <span className="text-[#fecc73]">flashcards</span>
                     </h3>
-                    <p className="text-slate-500 text-xs mb-10 leading-relaxed font-black uppercase tracking-[0.3em]">IA extrai gatilhos de memória do dossiê para revisão imediata</p>
+                    <p className="text-slate-500 text-xs mb-10 leading-relaxed font-black uppercase tracking-[0.3em]">A IA identifica pontos importantes do material para ajudar você a revisar.</p>
 
                     <button onClick={handleGenerateFlashcards} disabled={generatingCards} className={`w-full py-8 rounded-[35px] font-black text-lg flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-95 ${generatingCards ? 'bg-white/5 text-gray-500 border border-white/5' : 'bg-white/5 text-white hover:bg-white/10 border-2 border-white/10'}`}>
-                      {generatingCards ? 'PROCESSANDO...' : 'EXTRAIR CARDS'}
+                      {generatingCards ? 'CRIANDO...' : 'CRIAR FLASHCARDS'}
                       {!generatingCards && (
                         <svg className="w-8 h-8 text-[#fecc73]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" />

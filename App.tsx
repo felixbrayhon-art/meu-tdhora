@@ -433,9 +433,11 @@ const App: React.FC = () => {
         }
       } else {
         console.error('Login failed', error);
-        setLoginError(error?.code === 'auth/network-request-failed'
-          ? 'Verifique sua conexão e tente entrar novamente.'
-          : 'Não foi possível entrar agora. Tente novamente em alguns instantes.');
+        setLoginError(error?.code === 'auth/unauthorized-domain'
+          ? `Este endereço (${window.location.hostname}) não está autorizado no Firebase Authentication. Adicione-o em Authentication → Settings → Authorized domains para entrar por este preview.`
+          : error?.code === 'auth/network-request-failed'
+            ? 'Verifique sua conexão e tente entrar novamente.'
+            : 'Não foi possível entrar agora. Tente novamente em alguns instantes.');
       }
     } finally {
       setIsGoogleLoginLoading(false);

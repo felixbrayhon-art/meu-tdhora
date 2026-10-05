@@ -10,7 +10,7 @@ interface LoadingFishProps {
   fullScreen?: boolean;
 }
 
-const LoadingFish: React.FC<LoadingFishProps> = ({ message = 'Ajustando o foco...', submessage = 'A IA está mergulhando no oceano de informações', fullScreen = false }) => {
+const LoadingFish: React.FC<LoadingFishProps> = ({ message = 'Ajustando o foco...', submessage = 'Estamos preparando seu conteúdo.', fullScreen = false }) => {
   const characterId = useCharacterId();
   const characterSrc = getLoadingSrc(characterId);
   const sceneSrc = getSceneSrc(characterId);

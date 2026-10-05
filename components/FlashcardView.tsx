@@ -229,7 +229,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
     }
   };
 
-  if (isGeneratingAI) return <LoadingFish message="PROCESSANDO CONHECIMENTO..." submessage="Sua rede neural está sendo moldada pela IA de elite" />;
+  if (isGeneratingAI) return <LoadingFish message="Criando seus flashcards..." submessage="A IA está organizando o conteúdo para você." />;
 
   return (
     <div className="relative z-10 bg-[#473c33] text-white selection:bg-[#fdad74]/30 font-sans min-h-[80vh] rounded-[40px] shadow-2xl overflow-hidden border border-white/5">
@@ -369,8 +369,8 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <button onClick={() => startReview(activeFolder.id)} className="lg:col-span-1 bg-[#f97316] text-white p-12 rounded-[50px] flex flex-col justify-between hover:scale-[1.02] transition-all shadow-3xl shadow-[#733000]/20 group relative overflow-hidden">
                   <div className="relative z-10">
-                    <h3 className="text-4xl font-black uppercase tracking-tighter leading-none mb-2">MERGULHAR AGORA</h3>
-                    <p className="text-white/60 text-[10px] uppercase font-black tracking-widest leading-tight">SRS ATIVO PARA ESTE MÓDULO</p>
+                    <h3 className="text-4xl font-black uppercase tracking-tighter leading-none mb-2">REVISAR AGORA</h3>
+                    <p className="text-white/60 text-[10px] uppercase font-black tracking-widest leading-tight">REVISÃO PROGRAMADA</p>
                   </div>
                   <div className="flex items-end justify-between mt-16 relative z-10">
                     <span className="text-8xl font-black tabular-nums">{getFolderDueCount(activeFolder.id)}</span>
@@ -747,9 +747,9 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
               </div>
 
               <h3 className="text-4xl font-black mb-4 uppercase tracking-tighter text-center">
-                Geração <span className="text-[#fdad74]">Mestre</span>
+                Flashcards <span className="text-[#fdad74]">com IA</span>
               </h3>
-              <p className="text-gray-500 text-xs mb-12 text-center leading-relaxed font-black uppercase tracking-[0.2em] px-4">{strategicMode ? (studyProfile === 'FACULDADE' ? 'O peixe-ia vai vasculhar sua grade curricular para criar os flashcards perfeitos.' : 'O peixe-ia vai vasculhar seu edital para criar os flashcards perfeitos.') : 'Defina o tema e a IA mergulhará fundo para trazer o conhecimento puro.'}</p>
+              <p className="text-gray-500 text-xs mb-12 text-center leading-relaxed font-black uppercase tracking-[0.2em] px-4">{strategicMode ? (studyProfile === 'FACULDADE' ? 'A IA vai usar as disciplinas da sua grade para criar flashcards de revisão.' : 'A IA vai usar as matérias do seu edital para criar flashcards de revisão.') : 'Informe um tema para criar flashcards com os principais conceitos.'}</p>
 
               <div className="space-y-8">
                 {strategicMode && editalConfig ? (
@@ -802,7 +802,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                     Cancelar
                   </button>
                   <button onClick={() => generateAICards()} disabled={strategicMode ? !selectedSubject || !selectedTopic : !aiTopic.trim()} className="flex-[2] bg-[#fdad74] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-3xl shadow-[#fdad74]/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed">
-                    Iniciar Mergulho
+                    Criar flashcards
                   </button>
                 </div>
               </div>

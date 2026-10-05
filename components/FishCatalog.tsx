@@ -15,7 +15,7 @@ const FISHES: FishInfo[] = [
   {
     id: 'guia',
     name: 'O Peixe-Guia',
-    description: "Representa o foco inabalável, o mergulho profundo no conhecimento e a harmonia entre TDAH e sucesso nos estudos. O peixe central de 'STUDY'.",
+    description: 'Representa foco e constância nos estudos.',
     source: 'TDAH Ora Study',
     colorClass: 'text-[#fdad74]',
     bgClass: 'bg-[#fff1e8] border-[#fed6ba]',
@@ -87,7 +87,7 @@ const FISHES: FishInfo[] = [
   {
     id: 'bulbo',
     name: 'Peixe-Bulbo',
-    description: 'Representa a inovação e as aulas IA-powered.',
+    description: 'Representa a inovação e as aulas criadas com IA.',
     source: 'Da Aula Direta e Icons',
     colorClass: 'text-[#fec868]',
     bgClass: 'bg-[#fff6e8] border-[#fedda1]',

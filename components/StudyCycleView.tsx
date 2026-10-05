@@ -42,7 +42,7 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({ onBack, edital, current
       setIsEditing(false);
     } catch (error: any) {
       console.error(error);
-      alert(error.message || 'Erro ao arquitetar ciclo neural.');
+      alert(error.message || 'Não foi possível montar o ciclo de estudos.');
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,7 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({ onBack, edital, current
   };
 
   if (loading) {
-    return <LoadingFish message="Algoritmo de Ciclo Neural ATIVADO..." submessage={studyProfile === 'FACULDADE' ? 'Equilibrando disciplinas e pesos da sua grade curricular para evitar o burnout.' : 'Equilibrando matérias e pesos do seu edital para evitar o burnout.'} />;
+    return <LoadingFish message="Montando seu ciclo de estudos..." submessage={studyProfile === 'FACULDADE' ? 'Organizando as disciplinas da sua grade.' : 'Organizando as matérias do seu edital.'} />;
   }
 
   return (

@@ -533,7 +533,7 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
               <div className="space-y-2">
                 <span className="bg-[#fff6e8] text-[#fec868] px-4 py-1.5 rounded-full font-black text-[10px] tracking-widest uppercase">{studyProfile === 'FACULDADE' ? 'Passo 3: período acadêmico' : 'Passo 3: Parâmetros'}</span>
                 <h2 className="text-4xl font-black uppercase tracking-tighter">{studyProfile === 'FACULDADE' ? 'Período, Provas & Horários' : 'Data & Intensidade'}</h2>
-                <p className="text-gray-400 font-medium font-bold text-xs">{studyProfile === 'FACULDADE' ? 'Selecione em qual período você está focando para que o motor neural acompanhe suas ementas.' : 'Configure sua rotina para que o Peixe calcule o ritmo de revisões focado.'}</p>
+                <p className="text-gray-400 font-medium font-bold text-xs">{studyProfile === 'FACULDADE' ? 'Selecione seu período para organizar as disciplinas da grade.' : 'Configure sua rotina para definir o ritmo das revisões.'}</p>
               </div>
 
               {studyProfile === 'FACULDADE' ? (

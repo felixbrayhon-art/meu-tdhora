@@ -27,26 +27,30 @@ const handleAIError = (error: any) => {
   
   // Extract error info from different formats the SDK might throw
   const errorObj = error?.error || error;
-  const errorMessage = errorObj?.message || error?.message || String(error);
+  const nestedMessages = Array.isArray(error?.errors)
+    ? error.errors.map((item: any) => item?.message).filter((message: unknown): message is string => typeof message === 'string')
+    : [];
+  const errorMessage = [errorObj?.message || error?.message || String(error), ...nestedMessages].join(' | ');
   const errorStatus = errorObj?.code || errorObj?.status || error?.status || 0;
+  const normalizedMessage = String(errorMessage).toLowerCase();
 
   if (String(errorMessage).startsWith('FreeLLMAPI:')) {
     throw new AIError(String(errorMessage), errorStatus || undefined, 'FREELLMAPI_ERROR');
   }
   
-  if (errorStatus === 429 || String(errorStatus) === '429' || errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
-    throw new AIError("Limite de Cota do Google Gemini atingido. O Google limita o uso gratuito. Aguarde 1 a 2 minutos e tente novamente.", 429, 'RESOURCE_EXHAUSTED');
+  if (String(errorStatus) === '429' || /\b429\b|RESOURCE_EXHAUSTED|rate[ _-]?limit|too many requests|insufficient_quota/i.test(errorMessage)) {
+    throw new AIError("Os provedores de IA atingiram um limite temporário de uso. Aguarde a cota renovar ou selecione outro provedor habilitado.", 429, 'PROVIDER_RATE_LIMIT');
   }
 
-  if (errorStatus === 503 || String(errorStatus) === '503' || errorMessage.includes('503') || errorMessage.includes('high demand') || errorMessage.includes('UNAVAILABLE')) {
-    throw new AIError("O servidor da IA está com alta demanda (Erro 503). O aplicativo tentou processar automaticamente, mas o tráfego do Google continua intenso. Por favor, aguarde alguns segundos e tente novamente.", 503, 'UNAVAILABLE');
+  if (String(errorStatus) === '503' || /\b503\b|high demand|UNAVAILABLE/i.test(errorMessage)) {
+    throw new AIError("Os provedores de IA estão temporariamente indisponíveis. Aguarde alguns instantes e tente novamente.", 503, 'PROVIDER_UNAVAILABLE');
   }
   
-  if (errorMessage.toLowerCase().includes('api key') || errorMessage.includes('key')) {
-    throw new AIError("Chave de API do Gemini inválida ou ausente. Verifique suas configurações de ambiente.", 401, 'INVALID_API_KEY');
+  if (String(errorStatus) === '401' || /invalid api key|api key is invalid|no auth credentials|unauthorized|authentication failed/i.test(normalizedMessage)) {
+    throw new AIError("A autenticação do provedor de IA falhou. Verifique a chave e a configuração desse provedor.", 401, 'INVALID_PROVIDER_KEY');
   }
 
-  throw new AIError(errorMessage || "Erro inesperado ao chamar a API do Gemini. Verifique sua conexão.");
+  throw new AIError(errorMessage || "Não foi possível gerar a resposta. Verifique a conexão e a disponibilidade dos provedores de IA.");
 };
 
 // Heuristic for "this string field was cut off mid-sentence" — catches a
@@ -244,6 +248,12 @@ const providerErrorText = (error: any): string => {
   const messages = [error?.message, ...(Array.isArray(error?.errors) ? error.errors.map((item: any) => item?.message) : [])];
   return messages.filter((item): item is string => typeof item === 'string').join(' | ');
 };
+const isRateLimitError = (error: any): boolean =>
+  error?.status === 429 ||
+  error?.code === 429 ||
+  /\b429\b|rate[ _-]?limit|too many requests|RESOURCE_EXHAUSTED|Limite de Cota/i.test(
+    `${providerErrorText(error)} ${String(error?.message ?? error ?? '')}`,
+  );
 const coolDownProviderAfterFailure = (providerId: string, error: any) => {
   const message = providerErrorText(error);
   const cooldownMs = /\b429\b|RESOURCE_EXHAUSTED|rate[ _-]?limit/i.test(message)
@@ -337,17 +347,28 @@ const callFreeLLMAPIText = async (
   return text;
 };
 
-// Runs `attempt(model)` for OPENROUTER_FALLBACK_MODELS in batches of
-// OPENROUTER_RACE_BATCH_SIZE, racing each batch with Promise.any so the
-// first model to succeed wins immediately instead of waiting on a stuck one.
-// Only moves to the next batch if every model in the current one fails.
+// Races a small OpenRouter batch for latency, but stops the whole batch as soon
+// as the provider returns 429 so one exhausted quota does not trigger more calls.
 const raceOpenRouterModels = async <T,>(attempt: (model: string, signal: AbortSignal) => Promise<T>): Promise<T> => {
   let lastError: any;
   for (let i = 0; i < OPENROUTER_FALLBACK_MODELS.length; i += OPENROUTER_RACE_BATCH_SIZE) {
     const batch = OPENROUTER_FALLBACK_MODELS.slice(i, i + OPENROUTER_RACE_BATCH_SIZE);
     const controller = new AbortController();
+    let rejectOnRateLimit: (error: any) => void = () => {};
+    const rateLimit = new Promise<never>((_, reject) => { rejectOnRateLimit = reject; });
+    const attempts = batch.map(async (model) => {
+      try {
+        return await attempt(model, controller.signal);
+      } catch (error) {
+        if (isRateLimitError(error)) {
+          controller.abort(error);
+          rejectOnRateLimit(error);
+        }
+        throw error;
+      }
+    });
     try {
-      const winner = await Promise.any(batch.map((model) => attempt(model, controller.signal)));
+      const winner = await Promise.race([Promise.any(attempts), rateLimit]);
       // Stop losing requests as soon as one valid model answers to avoid
       // burning quota on background calls for every verification stage.
       controller.abort();
@@ -355,6 +376,7 @@ const raceOpenRouterModels = async <T,>(attempt: (model: string, signal: AbortSi
     } catch (aggregateError: any) {
       controller.abort();
       lastError = aggregateError;
+      if (isRateLimitError(aggregateError)) throw aggregateError;
     }
   }
   throw lastError || new Error('Fallback OpenRouter indisponível.');
@@ -387,8 +409,8 @@ const toJsonSchema = (googleSchema: any): any => {
 
 type AIProviderId = 'groq' | 'openrouter' | 'freellmapi' | 'gemini';
 
-// Default priority: Groq (fast, own hardware) → OpenRouter → FreeLLMAPI → Gemini.
-const DEFAULT_PROVIDER_ORDER: AIProviderId[] = ['groq', 'openrouter', 'freellmapi', 'gemini'];
+// Prefer the working user-managed gateway before OpenRouter's currently rate-limited free pool.
+const DEFAULT_PROVIDER_ORDER: AIProviderId[] = ['groq', 'freellmapi', 'openrouter', 'gemini'];
 
 const getPreferredAIProvider = (): AIProviderId | 'auto' => {
   try {
@@ -495,6 +517,9 @@ async function generateGroqContent(params: any): Promise<{ text: string }> {
       return { text };
     } catch (e: any) {
       lastError = e;
+      // A 429 is a provider-wide quota signal; switching models on the same
+      // account just creates more rejected requests and delays other providers.
+      if (isRateLimitError(e)) break;
     }
   }
   throw lastError || new Error('Groq indisponível.');
@@ -615,11 +640,8 @@ const callOpenRouterText = async (systemInstruction: string | undefined, message
   });
 };
 
-// Groq-specific fallback: only 2 candidate models (vs. OpenRouter's batched
-// race across 6), tried sequentially rather than raced — Groq's own hardware
-// is reliable enough that racing for latency isn't the priority here; the
-// backup model exists purely so a spent daily quota on the primary doesn't
-// take the whole Groq attempt down with it.
+// Groq-specific fallback: the backup model handles model-specific errors, but
+// a provider-level 429 stops immediately because both models share the quota.
 const callGroqModel = async (model: string, body: Record<string, any>): Promise<string> => {
   const res = await aiProxyFetch('groq', {
     body: JSON.stringify({ model, ...body }),
@@ -660,6 +682,7 @@ const callGroqJson = async (systemInstruction: string | undefined, userPrompt: s
         console.warn(`[groq] ${model} falhou: ${e?.name || ''} ${e?.message || e}`);
       }
       lastError = e;
+      if (isRateLimitError(e)) break;
     }
   }
   throw lastError || new Error('Groq indisponível.');
@@ -682,6 +705,7 @@ const callGroqText = async (systemInstruction: string | undefined, messages: { r
         console.warn(`[groq] ${model} falhou: ${e?.name || ''} ${e?.message || e}`);
       }
       lastError = e;
+      if (isRateLimitError(e)) break;
     }
   }
   throw lastError || new Error('Groq indisponível.');
@@ -969,23 +993,6 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
 };
 
 
-// The free provider tiers cap tokens per minute, and verifying questions needs several calls in a row. When a call
-// is refused for rate limit, wait for the window to reopen and try again instead of giving up on the verification.
-const isRateLimitError = (error: any): boolean =>
-  error?.status === 429 || /\b429\b|rate[ _-]?limit|RESOURCE_EXHAUSTED|Limite de Cota/i.test(String(error?.message ?? error));
-
-const withRateLimitRetry = async <T,>(task: () => Promise<T>, attempts = 3, waitMs = 20000): Promise<T> => {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await task();
-    } catch (error) {
-      if (attempt >= attempts || !isRateLimitError(error)) throw error;
-      console.warn(`[ai] limite de uso atingido; nova tentativa em ${Math.round(waitMs / 1000)} s (${attempt}/${attempts - 1}).`);
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
-    }
-  }
-};
-
 // Public entry point: grounds questions in reference text, checks the answer with reversed choices, reviews every
 // explanation claim, and regenerates rejected questions. Unverified output is never released.
 const judgeJson = async (prompt: string, schema: any, name: string): Promise<any> => {
@@ -1018,10 +1025,10 @@ export const generateStudyContent = async (topic: string, technique: string, num
       count: numQuestions,
       optionCount,
       Type,
-      judge: (prompt, schema, name) => withRateLimitRetry(() => judgeJson(prompt, schema, name)),
+      judge: (prompt, schema, name) => judgeJson(prompt, schema, name),
       generate: async (count, extra) => {
         if (useOriginal) { useOriginal = false; return content.quiz; }
-        return withRateLimitRetry(() => requestExamQuestions(topic, count, profile, undefined, explanationStyle, '', extra));
+        return requestExamQuestions(topic, count, profile, undefined, explanationStyle, '', extra);
       },
     });
     console.info('[quiz] auditoria:', report);
@@ -1050,8 +1057,8 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
       topic,
       count: numQuestions,
       Type,
-      judge: (prompt, schema, name) => withRateLimitRetry(() => judgeJson(prompt, schema, name)),
-      generate: (count, extra) => withRateLimitRetry(() => requestExamQuestions(topic, count, profile, banca, explanationStyle, questionProfileStyle, extra)),
+      judge: (prompt, schema, name) => judgeJson(prompt, schema, name),
+      generate: (count, extra) => requestExamQuestions(topic, count, profile, banca, explanationStyle, questionProfileStyle, extra),
     });
     console.info('[questoes] auditoria:', report);
     if (questions.length === 0) {
@@ -1502,8 +1509,8 @@ export const generateMicroThemeValidation = async (topic: string, profile: Study
       count: 3,
       optionCount: 4,
       Type,
-      judge: (prompt, schema, name) => withRateLimitRetry(() => judgeJson(prompt, schema, name)),
-      generate: (count, extra) => withRateLimitRetry(() => requestMicroThemeQuestions(topic, count, profile, explanationStyle, extra)),
+      judge: (prompt, schema, name) => judgeJson(prompt, schema, name),
+      generate: (count, extra) => requestMicroThemeQuestions(topic, count, profile, explanationStyle, extra),
     });
     console.info('[revisao] auditoria:', report);
     if (questions.length === 0) {

@@ -106,7 +106,7 @@ const TimerView: React.FC<TimerViewProps> = ({ isActive, setIsActive, seconds, s
       </div>
 
       <div className="mt-12 max-w-md text-center">
-        <p className="text-gray-400 text-sm font-medium ">{isActive ? 'Mantenha o foco. O cronômetro continua rodando mesmo se você navegar pelo app.' : 'Clique no tempo acima para personalizar a duração do seu mergulho.'}</p>
+        <p className="text-gray-400 text-sm font-medium ">{isActive ? 'O cronômetro continua rodando enquanto você navega pelo app.' : 'Clique no tempo para ajustar a duração.'}</p>
       </div>
     </div>
   );

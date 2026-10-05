@@ -40,13 +40,13 @@ const SavedGuidedLessonsView: React.FC<SavedGuidedLessonsViewProps> = ({ onOpenL
     <div className="p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-4xl font-black uppercase tracking-tighter text-[#473c33]">Biblioteca de Imersão</h2>
-          <p className="text-slate-500 font-bold text-sm tracking-widest uppercase mt-1">Aulas guiadas que você salvou para estudar offline.</p>
+          <h2 className="text-4xl font-black uppercase tracking-tighter text-[#473c33]">Aulas salvas</h2>
+          <p className="text-slate-500 font-bold text-sm tracking-widest uppercase mt-1">Suas aulas guiadas para consultar quando quiser.</p>
         </div>
 
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-          <input type="text" placeholder="Pesquisar lição..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-11 pr-6 py-4 bg-white border-2 border-slate-100 rounded-2xl w-full md:w-80 font-bold text-sm focus:border-[#fecc73] outline-none transition-all shadow-sm" />
+          <input type="text" placeholder="Buscar por matéria ou assunto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-11 pr-6 py-4 bg-white border-2 border-slate-100 rounded-2xl w-full md:w-80 font-bold text-sm focus:border-[#fecc73] outline-none transition-all shadow-sm" />
         </div>
       </div>
 

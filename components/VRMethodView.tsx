@@ -112,8 +112,7 @@ const VRMethodView: React.FC<VRMethodViewProps> = ({ uid, onBack }) => {
             </div>
             <h3 className="font-black text-gray-900 mb-1">{selectedSubject}</h3>
             <p className="text-sm text-gray-400 max-w-sm mx-auto">
-              A sessão do Método VR (questão → resultado → engenharia reversa → diagnóstico) chega em breve
-              para esta matéria.
+              O fluxo completo do Método VR ainda está em desenvolvimento para esta matéria.
             </p>
           </div>
         )}

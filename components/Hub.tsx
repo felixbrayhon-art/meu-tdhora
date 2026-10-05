@@ -47,6 +47,15 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
   };
 
   const pendingRevisions = smartRevisionItems.filter((i) => i.status === 'PENDING').length;
+  const sectionIntro: Record<HubCategory, { eyebrow: string; title: string; description: string }> = {
+    ESTUDO: { eyebrow: 'PAINEL DE ESTUDO', title: 'O que você quer estudar hoje?', description: 'Escolha uma ferramenta para começar do seu jeito.' },
+    EDITAL: { eyebrow: stats.studyProfile === 'FACULDADE' ? 'GRADE CURRICULAR' : 'SEU EDITAL', title: 'Organize seus próximos passos', description: 'Acesse seu conteúdo e acompanhe o que já avançou.' },
+    ORGANIZACAO: { eyebrow: 'ROTINA', title: 'Organize o seu tempo', description: 'Escolha um ritmo de estudo que funcione para você.' },
+    RELAXE: { eyebrow: 'PAUSA & BEM-ESTAR', title: 'Faça uma pausa', description: 'Ajuste o ambiente e recupere o foco.' },
+    REVISAO: { eyebrow: 'REVISÃO', title: 'Retome os pontos importantes', description: 'Revise o conteúdo no seu ritmo.' },
+    MOTIVACAO: { eyebrow: 'MOTIVAÇÃO', title: 'Um passo de cada vez', description: 'Encontre um pequeno impulso para continuar.' },
+    PERFORMANCE: { eyebrow: 'SEU PROGRESSO', title: 'Veja o caminho percorrido', description: 'Acompanhe seu ritmo e ajuste sua rotina.' },
+  };
 
   const handleHubTabKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
@@ -64,7 +73,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+    <div className="hub-main-layout space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
       <div className="sticky top-3 z-20 flex items-center gap-2 rounded-[20px] border border-[#e9e0d4] bg-white p-2 shadow-sm dark:border-white/[0.06] dark:bg-[#272019] xl:hidden">
         <label htmlFor="hub-section" className="sr-only">Seção do painel</label>
         <select id="hub-section" value={activeTab} onChange={(event) => setActiveTab(event.target.value as HubCategory)} className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#e9e0d4] bg-[#fdfbf7] px-3 text-xs font-black uppercase tracking-wide text-[#473c33] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e96f34] dark:border-white/10 dark:bg-[#1c1712] dark:text-[#f4ebdd]">
@@ -114,7 +123,20 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
         </button>
       </nav>
 
-      <div id="hub-tabpanel" role="tabpanel" aria-label={`Conteúdo: ${activeTab.toLowerCase()}`} tabIndex={0} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px] focus-visible:outline-none">
+      <section aria-labelledby="hub-section-title" className="hub-section-heading px-1">
+        <p className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-[#b65f2e] dark:text-[#e8894a]">
+          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#e96f34] shadow-[0_0_0_4px_rgba(233,111,52,0.12)]" />
+          {sectionIntro[activeTab].eyebrow}
+        </p>
+        <h1 id="hub-section-title" className="font-logo text-2xl leading-tight text-[#473c33] dark:text-[#f4ebdd] sm:text-3xl">
+          {sectionIntro[activeTab].title}
+        </h1>
+        <p className="mt-1 text-sm font-medium text-[#8f8375] dark:text-[#a89680]">
+          {sectionIntro[activeTab].description}
+        </p>
+      </section>
+
+      <div id="hub-tabpanel" data-section={activeTab} role="tabpanel" aria-label={`Conteúdo: ${activeTab.toLowerCase()}`} tabIndex={0} className="hub-module-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px] focus-visible:outline-none">
         {(activeTab === 'ESTUDO' || activeTab === 'EDITAL') && (
           <>
             {pendingRevisions > 0 && (
@@ -332,7 +354,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <h2 className="font-logo text-2xl mb-2 relative z-10 uppercase">
                     Método <span className="text-[#fecc73]">VR</span>
                   </h2>
-                  <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Engenharia reversa de questões, em breve.</p>
+                  <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Engenharia reversa de questões</p>
                 </button>
 
                 <button
@@ -346,7 +368,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                     <Zap className="w-7 h-7" />
                   </div>
                   <h2 className="font-logo text-3xl mb-2 uppercase leading-none">AULA DIRETA</h2>
-                  <p className="text-[#fed386]/80 text-[10px] font-bold uppercase tracking-widest">{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Conteúdo da Grade' : 'Conteúdo do Edital') : 'IA Powered Bizu'}</p>
+                  <p className="text-[#fed386]/80 text-[10px] font-bold uppercase tracking-widest">{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Conteúdo da Grade' : 'Conteúdo do Edital') : 'Dica rápida com IA'}</p>
                 </button>
 
                 <div className={`text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all animate-in zoom-in-95 duration-300 delay-200 shadow-2xl dark:shadow-none ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-[#fec868] to-[#ec9700]' : 'bg-gradient-to-br from-[#473c33] to-[#473c33] dark:from-[#2e2519] dark:to-[#2e2519] dark:border dark:border-white/[0.06]'}`}>
@@ -356,10 +378,10 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <h2 className="font-logo text-3xl mb-2 uppercase leading-none">
                     AULA <span className="text-[#fecc73]">GUIADA</span>
                   </h2>
-                  <p className="text-[#fed386]/80 text-[10px] font-bold uppercase tracking-widest mb-6">Narrativa Contínua (Active Recall)</p>
+                  <p className="text-[#fed386]/80 text-[10px] font-bold uppercase tracking-widest mb-6">Explicação contínua · revisão ativa</p>
 
                   <div className="flex flex-col gap-2 relative z-10">
-                    <input type="text" placeholder="Matéria (Ex: Português)" value={guidedSubject} onChange={(e) => setGuidedSubject(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#fecc73] transition-all placeholder:text-white/30" />
+                    <input type="text" placeholder="Disciplina (ex.: Português)" value={guidedSubject} onChange={(e) => setGuidedSubject(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#fecc73] transition-all placeholder:text-white/30" />
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -408,10 +430,10 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <h2 className="font-logo text-3xl mb-2 uppercase leading-none">
                     AULA <span className="text-[#fff6e8]">VIVA</span>
                   </h2>
-                  <p className="text-[#fff6e8]/90 text-xs font-bold uppercase tracking-widest mb-6">Aula em páginas, com quadros e linha do tempo</p>
+                  <p className="text-[#fff6e8]/90 text-xs font-bold uppercase tracking-widest mb-6">Conteúdo em páginas, quadros e linha do tempo</p>
 
                   <div className="flex flex-col gap-2 relative z-10">
-                    <input type="text" placeholder="Matéria (Ex: Literatura)" value={livingSubject} onChange={(e) => setLivingSubject(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#fecc73] transition-all placeholder:text-white/75 text-white" />
+                    <input type="text" placeholder="Disciplina (ex.: Literatura)" value={livingSubject} onChange={(e) => setLivingSubject(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#fecc73] transition-all placeholder:text-white/75 text-white" />
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -595,7 +617,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
       <footer className="pt-12 mt-12 border-t border-gray-100 dark:border-white/[0.06] text-center animate-in fade-in duration-1000">
         <div className="max-w-2xl mx-auto space-y-4">
           <p className="text-gray-500 dark:text-[#a89680] font-medium text-sm leading-relaxed px-6">
-            Olá, eu sou o <span className="text-[#473c33] dark:text-[#f4ebdd] font-black ">Brayhon</span>. Desenvolvi este app como um <span className="text-[#fecc73] dark:text-[#e8894a] font-bold">cardume seguro</span> para nossas mentes neurodivergentes. Eu também tenho <span className="text-[#fdad74] dark:text-[#d9772b] font-bold">TDAH</span> e sei que o nosso foco não é quebrado, ele apenas funciona em uma frequência diferente.
+            Olá, sou o <span className="text-[#473c33] dark:text-[#f4ebdd] font-black ">Brayhon</span>. Criei este app para ser um espaço de estudo seguro para pessoas neurodivergentes. Também tenho <span className="text-[#fdad74] dark:text-[#d9772b] font-bold">TDAH</span> e sei que cada pessoa encontra o foco do seu jeito.
           </p>
           <p className="text-gray-300 dark:text-[#7d6f5c] font-bold text-[10px] uppercase tracking-[0.3em]">Criado com propósito • TDAH ORA</p>
         </div>
