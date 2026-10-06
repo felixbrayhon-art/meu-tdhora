@@ -10,15 +10,12 @@ body {
     color: #0A0F1E;
 }
 
-/* Expressive display headings paired with highly legible interface copy. */
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Bricolage Grotesque', 'Plus Jakarta Sans', sans-serif;
-}
-
-/* Keep display headings on the selected family even where legacy .font-logo
-   utility classes are still used. Brand wordmarks remain untouched. */
-:is(h1, h2, h3, h4, h5, h6) {
-    font-family: 'Bricolage Grotesque', 'Plus Jakarta Sans', sans-serif !important;
+/* Interface titles share the logo's bold, all-caps display face. Preserve
+   editorial and generated study content in its readable text styling. */
+:is(h1, h2, h3, h4, h5, h6):not(.markdown-body h1):not(.markdown-body h2):not(.markdown-body h3):not(.markdown-body h4):not(.markdown-body h5):not(.markdown-body h6):not(.prose h1):not(.prose h2):not(.prose h3):not(.prose h4):not(.prose h5):not(.prose h6) {
+    font-family: 'Righteous', sans-serif !important;
+    font-weight: 900;
+    text-transform: uppercase;
 }
 
 .dark body {
@@ -431,8 +428,8 @@ html.dark .glass-card {
 .dark [class~="text-[#d88b2f]"],
 .dark [class~="text-[#c9773e]"],
 .dark [class~="dark:text-[#d9772b]"] {
-    /* A touch lighter than the fill orange so small orange text keeps 4.5:1 on dark cards. */
-    color: #f08a52 !important;
+    /* Preserve the warm accent while clearing 4.5:1 on raised brown surfaces. */
+    color: #fdad74 !important;
 }
 
 .dark [class~="text-[#596b2a]"] {
@@ -1510,7 +1507,9 @@ main [class~="w-12"][class~="h-12"][class~="relative"][class~="z-10"][class~="sh
     --palette-baby-blue: #d2e8ff;
     --palette-paper: #fbf8e6;
     --palette-surface: #fffdf2;
-    --palette-border: rgba(66, 37, 29, .16);
+    --palette-text-muted: #705a4d;
+    --palette-on-dark-muted: #e4d4bd;
+    --palette-border: rgba(66, 37, 29, .22);
 }
 
 html:not(.dark) body {
@@ -1527,7 +1526,7 @@ html.dark {
     --dark-cream-muted: #e4dca1;
     --dark-orange: var(--palette-burnt-orange);
     --dark-orange-hover: #ff6a26;
-    --dark-border: rgba(240, 232, 159, .17);
+    --dark-border: rgba(240, 232, 159, .22);
 }
 
 html.dark body {
@@ -1646,4 +1645,46 @@ html:not(.dark) #profile-selection-screen [role="group"] button .font-logo {
 }
 html.dark #profile-selection-screen [role="group"] button .font-logo {
     color: var(--palette-buttercream) !important;
+}
+
+/* Muted Tailwind and legacy brand grays were too pale on paper and blue
+   surfaces. Keep their hierarchy while meeting readable contrast in light mode. */
+html:not(.dark) [class~="text-gray-300"],
+html:not(.dark) [class~="text-gray-400"],
+html:not(.dark) [class~="text-gray-500"],
+html:not(.dark) [class~="text-slate-300"],
+html:not(.dark) [class~="text-slate-400"],
+html:not(.dark) [class~="text-slate-500"],
+html:not(.dark) [class~="text-[#a79c8e]"],
+html:not(.dark) [class~="text-[#8f8375]"],
+html:not(.dark) [class~="text-[#b7ac9e]"],
+html:not(.dark) [class~="text-[#c8bbaa]"],
+html:not(.dark) [class~="text-[#7d6f5c]"],
+html:not(.dark) [class~="text-[#a89680]"],
+html:not(.dark) [class~="text-[#b7aa96]"] {
+    color: var(--palette-text-muted) !important;
+}
+
+/* Dark cards inside the light theme need a warm light foreground. */
+html:not(.dark) :is(
+    [class*="bg-[#473c33]"], [class*="bg-[#42251d]"],
+    [class*="bg-[#1E293B]"], [class*="bg-[#1e293b]"],
+    [class*="bg-[#211c15]"], [class*="bg-[#2d2e27]"],
+    [class*="bg-[#272019]"], [class*="bg-[#24251f]"],
+    [class~="bg-slate-900"], [class~="bg-slate-800"],
+    [class~="bg-gray-900"], [class~="bg-gray-800"]
+) :is(
+    [class~="text-gray-300"], [class~="text-gray-400"], [class~="text-gray-500"],
+    [class~="text-slate-300"], [class~="text-slate-400"], [class~="text-slate-500"],
+    [class~="text-[#a79c8e]"], [class~="text-[#8f8375]"], [class~="text-[#b7ac9e]"],
+    [class~="text-[#c8bbaa]"], [class~="text-[#7d6f5c]"], [class~="text-[#a89680]"],
+    [class~="text-[#b7aa96]"]
+) {
+    color: var(--palette-on-dark-muted) !important;
+}
+
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+    color: var(--palette-text-muted) !important;
+    opacity: 1;
 }
