@@ -355,10 +355,15 @@ html.dark .glass-card {
 /* Recolor the app's warm gold actions to the orange accent from the reference. */
 .dark [class~="bg-[#fec868]"],
 .dark [class~="bg-[#fecc73]"],
+.dark [class~="bg-[#fed386]"],
 .dark [class~="bg-[#fdad74]"],
 .dark [class~="bg-[#fda769]"],
 .dark [class~="bg-[#ff832a]"],
 .dark [class~="bg-[#ec6300]"],
+.dark [class~="bg-[#ec9700]"],
+.dark [class~="bg-[#e96f34]"],
+.dark [class~="bg-[#d9772b]"],
+.dark [class~="bg-[#ffb22a]"],
 .dark [class~="bg-[#eab308]"],
 .dark [class~="dark:bg-[#d9772b]"] {
     background-color: var(--dark-orange) !important;
@@ -1524,8 +1529,8 @@ html.dark {
     --dark-surface-muted: #59382c;
     --dark-cream: var(--palette-buttercream);
     --dark-cream-muted: #e4dca1;
-    --dark-orange: var(--palette-burnt-orange);
-    --dark-orange-hover: #ff6a26;
+    --dark-orange: #8c2c0b;
+    --dark-orange-hover: #7d2f21;
     --dark-border: rgba(240, 232, 159, .22);
 }
 
@@ -1535,9 +1540,14 @@ html.dark body {
 }
 
 .gradient-yellow { background: linear-gradient(135deg, #f0e89f, #e6d96e); }
-.gradient-orange { background: linear-gradient(135deg, #fb4d00, #d83d00); }
+.gradient-orange { background: linear-gradient(135deg, #c83b00, #963000); }
 .gradient-dark { background: linear-gradient(135deg, #42251d, #59382c); }
 .bg-baby-blue { background-color: #d2e8ff; }
+
+/* Keep the yellow feature card and its foreground in the same contrast mode. */
+.dark .gradient-yellow {
+    background: linear-gradient(135deg, #8c2c0b, #42251d);
+}
 
 /* Shared brand colors used by existing Tailwind classes throughout the app. */
 html:not(.dark) [class*="text-[#473c33]"],
@@ -1582,6 +1592,62 @@ html:not(.dark) [class*="bg-[#fed386]"],
 html:not(.dark) [class*="bg-[#fdad74]"] {
     background-color: var(--palette-buttercream) !important;
     color: var(--palette-dark-roast) !important;
+}
+
+/* White text on the app's pale gold chips and icon tiles had almost no
+   contrast. Their light-theme fill is buttercream, so use dark roast ink. */
+html:not(.dark) :is(
+    [class*="bg-[#fecc73]"], [class*="bg-[#fec868]"],
+    [class*="bg-[#fed386]"], [class*="bg-[#fdad74]"],
+    [class*="bg-[#fda769]"]
+):is([class*="text-white"]),
+html:not(.dark) :is(
+    [class*="bg-[#fecc73]"], [class*="bg-[#fec868]"],
+    [class*="bg-[#fed386]"], [class*="bg-[#fdad74]"],
+    [class*="bg-[#fda769]"]
+) [class*="text-white"] {
+    color: var(--palette-dark-roast) !important;
+}
+
+/* Dark mode reuses these fills as a deeper orange; cream text clears contrast. */
+html.dark :is(
+    [class*="bg-[#fecc73]"], [class*="bg-[#fec868]"],
+    [class*="bg-[#fed386]"], [class*="bg-[#fdad74]"],
+    [class*="bg-[#fda769]"], [class*="dark:bg-[#d9772b]"]
+):is([class*="text-white"]),
+html.dark :is(
+    [class*="bg-[#fecc73]"], [class*="bg-[#fec868]"],
+    [class*="bg-[#fed386]"], [class*="bg-[#fdad74]"],
+    [class*="bg-[#fda769]"], [class*="dark:bg-[#d9772b]"]
+) [class*="text-white"] {
+    color: var(--dark-cream) !important;
+}
+
+/* Orange fills are bright in light mode and deep roast in dark mode. */
+html:not(.dark) :is(
+    [class*="bg-[#ff832a]"], [class*="bg-[#e96f34]"],
+    [class*="bg-[#d9772b]"], [class*="bg-[#ec6300]"],
+    [class*="bg-[#ec9700]"], [class*="bg-[#ffb22a]"]
+):is([class*="text-white"]),
+html:not(.dark) :is(
+    [class*="bg-[#ff832a]"], [class*="bg-[#e96f34]"],
+    [class*="bg-[#d9772b]"], [class*="bg-[#ec6300]"],
+    [class*="bg-[#ec9700]"], [class*="bg-[#ffb22a]"]
+) [class*="text-white"] {
+    color: #28150d !important;
+}
+
+html.dark :is(
+    [class*="bg-[#ff832a]"], [class*="bg-[#e96f34]"],
+    [class*="bg-[#d9772b]"], [class*="bg-[#ec6300]"],
+    [class*="bg-[#ec9700]"], [class*="bg-[#ffb22a]"]
+):is([class*="text-white"]),
+html.dark :is(
+    [class*="bg-[#ff832a]"], [class*="bg-[#e96f34]"],
+    [class*="bg-[#d9772b]"], [class*="bg-[#ec6300]"],
+    [class*="bg-[#ec9700]"], [class*="bg-[#ffb22a]"]
+) [class*="text-white"] {
+    color: var(--dark-cream) !important;
 }
 html.dark [class*="bg-[#fecc73]"],
 html.dark [class*="bg-[#fec868]"],
@@ -1719,6 +1785,10 @@ html:not(.dark) :is(
     [class~="text-[#f28a4c]"], [class~="text-[#e8894a]"],
     [class~="text-[#e8a46f]"], [class~="text-[#e8934d]"]
 ) {
+    color: var(--palette-burnt-ink) !important;
+}
+
+html:not(.dark) [class~="text-[#ff832a]"] {
     color: var(--palette-burnt-ink) !important;
 }
 
