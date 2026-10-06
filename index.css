@@ -15,6 +15,12 @@ h1, h2, h3, h4, h5, h6 {
     font-family: 'Bricolage Grotesque', 'Plus Jakarta Sans', sans-serif;
 }
 
+/* Keep display headings on the selected family even where legacy .font-logo
+   utility classes are still used. Brand wordmarks remain untouched. */
+:is(h1, h2, h3, h4, h5, h6) {
+    font-family: 'Bricolage Grotesque', 'Plus Jakarta Sans', sans-serif !important;
+}
+
 .dark body {
     background-color: #1c1712;
     color: #f4ebdd;
@@ -1620,3 +1626,18 @@ html [class*="text-[#303b1c]"],
 html [class*="text-[#2f3a1c]"] { color: var(--palette-dark-roast) !important; }
 html:not(.dark) [class*="bg-[#f4f7ec]"] { background-color: var(--palette-baby-blue) !important; }
 html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !important; }
+
+/* Profile selection uses a light paper surface in light mode. Keep its
+   headings dark enough to read and use the blue as the dark-mode accent. */
+html:not(.dark) #profile-selection-screen :is(h1, h2) {
+    color: var(--palette-dark-roast) !important;
+}
+html:not(.dark) #profile-selection-screen #profile-title > span {
+    color: var(--palette-burnt-ink) !important;
+}
+html.dark #profile-selection-screen :is(h1, h2) {
+    color: var(--palette-buttercream) !important;
+}
+html.dark #profile-selection-screen #profile-title > span {
+    color: var(--palette-baby-blue) !important;
+}

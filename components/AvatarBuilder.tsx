@@ -144,7 +144,6 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
     <div
       id="avatar-selection-screen"
       className="fixed inset-0 z-[1200] overflow-y-auto bg-[#24251f] px-3 py-3 text-[#f2efd2] animate-in fade-in duration-500 sm:px-5 sm:py-4"
-      style={{ fontFamily: "'Manrope', sans-serif" }}
     >
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(242,239,210,.07) 1px, transparent 1.5px), radial-gradient(ellipse at 12% 8%, rgba(233,111,52,.13), transparent 34%), radial-gradient(ellipse at 90% 88%, rgba(82,102,52,.2), transparent 32%)', backgroundSize: '18px 18px, auto, auto' }} />
 
