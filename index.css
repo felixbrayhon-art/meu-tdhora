@@ -1641,3 +1641,9 @@ html.dark #profile-selection-screen :is(h1, h2) {
 html.dark #profile-selection-screen #profile-title > span {
     color: var(--palette-baby-blue) !important;
 }
+html:not(.dark) #profile-selection-screen [role="group"] button .font-logo {
+    color: var(--palette-dark-roast) !important;
+}
+html.dark #profile-selection-screen [role="group"] button .font-logo {
+    color: var(--palette-buttercream) !important;
+}
