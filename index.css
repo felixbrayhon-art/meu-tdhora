@@ -1819,6 +1819,19 @@ html [class*="text-[#2f3a1c]"] { color: var(--palette-dark-roast) !important; }
 html:not(.dark) [class*="bg-[#f4f7ec]"] { background-color: var(--palette-baby-blue) !important; }
 html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !important; }
 
+/* Keep the active primary-navigation item clearly orange in both themes. */
+.sidebar-nav-item-active {
+    background-color: var(--palette-burnt-orange) !important;
+    color: #28150d !important;
+    box-shadow: 0 3px 12px rgba(251, 77, 0, .24);
+}
+.sidebar-nav-item-active:hover {
+    background-color: #e64600 !important;
+}
+.sidebar-nav-item-active svg {
+    color: #28150d !important;
+}
+
 /* Profile selection uses a light paper surface in light mode. Keep its
    headings dark enough to read and use the blue as the dark-mode accent. */
 html:not(.dark) #profile-selection-screen :is(h1, h2) {

@@ -142,8 +142,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
         <div className="space-y-1">
           {!collapsed && <p className="px-4 text-[9px] font-black text-[#a79c8e] dark:text-[#7d6f5c] uppercase tracking-[0.3em] mb-4">Funções</p>}
           {navItems.map((item) => (
-            <button key={item.id} aria-label={item.label} title={collapsed ? item.label : undefined} onClick={() => setView(item.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs transition-all ${collapsed ? 'justify-center' : ''} ${currentView === item.id ? 'bg-[#473c33] dark:bg-[#d9772b] text-[#fdfbf7] shadow-md dark:shadow-none' : 'text-[#725442] dark:text-[#a89680] hover:bg-[#f4ebdd] dark:hover:bg-[#272019]'}`}>
-              <item.icon className={`w-5 h-5 shrink-0 ${currentView === item.id ? 'text-[#fdfbf7]' : 'text-[#a79c8e] dark:text-[#7d6f5c]'}`} />
+            <button key={item.id} aria-label={item.label} aria-current={currentView === item.id ? 'page' : undefined} title={collapsed ? item.label : undefined} onClick={() => setView(item.id)} className={`sidebar-nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs transition-all ${collapsed ? 'justify-center' : ''} ${currentView === item.id ? 'sidebar-nav-item-active' : 'text-[#725442] dark:text-[#a89680] hover:bg-[#f4ebdd] dark:hover:bg-[#272019]'}`}>
+              <item.icon className={`w-5 h-5 shrink-0 ${currentView === item.id ? '' : 'text-[#a79c8e] dark:text-[#7d6f5c]'}`} />
               {!collapsed && <span>{item.label}</span>}
             </button>
           ))}
