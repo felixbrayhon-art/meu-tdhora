@@ -1873,3 +1873,37 @@ html:not(.dark) textarea::placeholder {
     color: var(--palette-text-muted) !important;
     opacity: 1;
 }
+
+/* Keep the focus card on the same dark-roast / buttercream contrast system
+   as the rest of the dashboard in both themes. */
+.hub-focus-card {
+    background: linear-gradient(135deg, #f0e89f, #e6d96e);
+    color: #42251d;
+}
+
+html.dark .hub-focus-card {
+    background: linear-gradient(135deg, #8c2c0b, #42251d);
+    color: #f0e89f;
+}
+
+/* Solid buttercream/orange controls become deep burnt orange in dark mode,
+   with cream foregrounds. Opacity variants keep their translucent treatment. */
+html.dark :is(
+    [class~="bg-[#fecc73]"], [class~="bg-[#fec868]"],
+    [class~="bg-[#fed386]"], [class~="bg-[#fdad74]"],
+    [class~="bg-[#fda769]"], [class~="dark:bg-[#d9772b]"]
+) {
+    background-color: var(--dark-orange) !important;
+    color: var(--dark-cream) !important;
+}
+
+/* Selected dashboard tabs use a rich rust fill and warm cream text in dark
+   mode, matching the clearer contrast used in Aula Viva. */
+html.dark [role="tab"][aria-selected="true"] {
+    background-color: var(--dark-orange) !important;
+    color: var(--dark-cream) !important;
+}
+
+html.dark [role="tab"][aria-selected="true"] * {
+    color: var(--dark-cream) !important;
+}

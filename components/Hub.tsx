@@ -542,12 +542,12 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
               <h2 className="font-logo text-2xl mb-2 uppercase">CRONOGRAMA</h2>
               <p className="text-gray-400 dark:text-[#7d6f5c] text-xs font-bold uppercase tracking-widest text-[10px]">Ciclo de Estudo</p>
             </button>
-            <button onClick={() => setView('FOCUS_MODE')} className="gradient-yellow text-[#42251d] dark:text-[#f4ebdd] p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 shadow-[#ffe6b9]/60">
-              <div className="mb-8 w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+            <button onClick={() => setView('FOCUS_MODE')} className="hub-focus-card p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 shadow-[#ffe6b9]/60">
+              <div className="mb-8 w-12 h-12 bg-[#42251d]/10 text-[#8c2c0b] dark:bg-white/10 dark:text-[#f0e89f] rounded-2xl flex items-center justify-center backdrop-blur-sm">
                 <Bell className="w-7 h-7" />
               </div>
               <h2 className="font-logo text-2xl mb-2 uppercase">PAUSAS & LEMBRETES</h2>
-              <p className="text-[#42251d]/80 dark:text-[#f4ebdd]/90 text-[10px] font-bold uppercase tracking-widest">Água, medicação e transição</p>
+              <p className="text-[#705a4d] dark:text-[#f4ebdd] text-[10px] font-bold uppercase tracking-widest">Água, medicação e transição</p>
             </button>
           </>
         )}
