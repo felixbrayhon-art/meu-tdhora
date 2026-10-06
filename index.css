@@ -1661,7 +1661,21 @@ html:not(.dark) [class~="text-[#b7ac9e]"],
 html:not(.dark) [class~="text-[#c8bbaa]"],
 html:not(.dark) [class~="text-[#7d6f5c]"],
 html:not(.dark) [class~="text-[#a89680]"],
-html:not(.dark) [class~="text-[#b7aa96]"] {
+html:not(.dark) [class~="text-[#b7aa96]"],
+html:not(.dark) [class~="text-[#c8c5a9]"],
+html:not(.dark) [class~="text-[#aaa891]"],
+html:not(.dark) [class~="text-[#c2baa0]"],
+html:not(.dark) [class~="text-[#b9ad9c]"],
+html:not(.dark) [class~="text-[#aaa58e]"],
+html:not(.dark) [class~="text-[#d1c7b3]"],
+html:not(.dark) [class~="text-[#c9bea5]"],
+html:not(.dark) [class~="text-[#c2b6a6]"],
+html:not(.dark) [class~="text-[#d3cbae]"],
+html:not(.dark) [class~="text-[#b4a894]"],
+html:not(.dark) [class~="text-[#b6a892]"],
+html:not(.dark) [class~="text-[#b5ad8c]"],
+html:not(.dark) [class~="text-[#a8a188]"],
+html:not(.dark) [class~="text-[#b7ac9e]"] {
     color: var(--palette-text-muted) !important;
 }
 
@@ -1678,9 +1692,110 @@ html:not(.dark) :is(
     [class~="text-slate-300"], [class~="text-slate-400"], [class~="text-slate-500"],
     [class~="text-[#a79c8e]"], [class~="text-[#8f8375]"], [class~="text-[#b7ac9e]"],
     [class~="text-[#c8bbaa]"], [class~="text-[#7d6f5c]"], [class~="text-[#a89680]"],
-    [class~="text-[#b7aa96]"]
+    [class~="text-[#b7aa96]"], [class~="text-[#c8c5a9]"], [class~="text-[#aaa891]"],
+    [class~="text-[#c2baa0]"], [class~="text-[#b9ad9c]"], [class~="text-[#aaa58e]"],
+    [class~="text-[#d1c7b3]"], [class~="text-[#c9bea5]"], [class~="text-[#c2b6a6]"],
+    [class~="text-[#d3cbae]"], [class~="text-[#b4a894]"], [class~="text-[#b6a892]"],
+    [class~="text-[#b5ad8c]"], [class~="text-[#a8a188]"], [class~="text-[#b7ac9e]"]
 ) {
     color: var(--palette-on-dark-muted) !important;
+}
+
+/* Match the Aula Viva contrast hierarchy across the rest of the app: warm
+   accent text becomes a deep rust on paper, while cream text stays light on
+   dark cards. This keeps the brand colors and makes small labels readable. */
+html:not(.dark) :is(
+    [class~="text-[#fec868]"], [class~="text-[#fecc73]"],
+    [class~="text-[#fed386]"], [class~="text-[#fdad74]"],
+    [class~="text-[#fda769]"], [class~="text-[#fdb887]"],
+    [class~="text-[#f3a06c]"], [class~="text-[#f08a52]"],
+    [class~="text-[#ffb22a]"], [class~="text-[#f5b84b]"],
+    [class~="text-[#f2bd28]"], [class~="text-[#ec9700]"],
+    [class~="text-[#e5a83e]"], [class~="text-[#d88b2f]"],
+    [class~="text-[#f1c5b4]"], [class~="text-[#e58a76]"],
+    [class~="text-[#f1a58b]"], [class~="text-[#fedda1]"],
+    [class~="text-[#ffe6b9]"], [class~="text-[#fedf9f]"],
+    [class~="text-[#fec8a2]"], [class~="text-[#f5a46f]"],
+    [class~="text-[#f28a4c]"], [class~="text-[#e8894a]"],
+    [class~="text-[#e8a46f]"], [class~="text-[#e8934d]"]
+) {
+    color: var(--palette-burnt-ink) !important;
+}
+
+html:not(.dark) :is(
+    [class~="text-[#f4ebdd]"], [class~="text-[#f2efd2]"],
+    [class~="text-[#eee7cf]"], [class~="text-[#e7ddd1]"],
+    [class~="text-[#e3edca]"], [class~="text-[#d9e9b2]"]
+) {
+    color: var(--palette-dark-roast) !important;
+}
+
+html:not(.dark) :is(
+    [class~="text-[#bcce8d]"], [class~="text-[#b9dda8]"],
+    [class~="text-[#8ea865]"], [class~="text-[#94b866]"],
+    [class~="text-[#8eaf58]"]
+) {
+    color: #354326 !important;
+}
+
+/* Restore light foregrounds when those same labels sit on a dark card. */
+html:not(.dark) :is(
+    [class*="bg-[#473c33]"], [class*="bg-[#42251d]"],
+    [class*="bg-[#1E293B]"], [class*="bg-[#1e293b]"],
+    [class*="bg-[#211c15]"], [class*="bg-[#2d2e27]"],
+    [class*="bg-[#272019]"], [class*="bg-[#24251f]"],
+    [class~="bg-slate-900"], [class~="bg-slate-800"],
+    [class~="bg-gray-900"], [class~="bg-gray-800"]
+) :is(
+    [class~="text-[#fec868]"], [class~="text-[#fecc73]"],
+    [class~="text-[#fed386]"], [class~="text-[#fdad74]"],
+    [class~="text-[#fda769]"], [class~="text-[#fdb887]"],
+    [class~="text-[#f3a06c]"], [class~="text-[#f08a52]"],
+    [class~="text-[#ffb22a]"], [class~="text-[#f5b84b]"],
+    [class~="text-[#f2bd28]"], [class~="text-[#ec9700]"],
+    [class~="text-[#e5a83e]"], [class~="text-[#d88b2f]"],
+    [class~="text-[#f1c5b4]"], [class~="text-[#e58a76]"],
+    [class~="text-[#f1a58b]"], [class~="text-[#fedda1]"],
+    [class~="text-[#ffe6b9]"], [class~="text-[#fedf9f]"],
+    [class~="text-[#fec8a2]"], [class~="text-[#f5a46f]"],
+    [class~="text-[#f28a4c]"], [class~="text-[#e8894a]"],
+    [class~="text-[#e8a46f]"], [class~="text-[#e8934d]"],
+    [class~="text-[#f4ebdd]"], [class~="text-[#f2efd2]"],
+    [class~="text-[#eee7cf]"], [class~="text-[#e7ddd1]"],
+    [class~="text-[#e3edca]"], [class~="text-[#d9e9b2]"],
+    [class~="text-[#bcce8d]"], [class~="text-[#b9dda8]"],
+    [class~="text-[#8ea865]"], [class~="text-[#94b866]"],
+    [class~="text-[#8eaf58]"]
+),
+html:not(.dark) :is(
+    [class*="bg-[#473c33]"], [class*="bg-[#42251d]"],
+    [class*="bg-[#1E293B]"], [class*="bg-[#1e293b]"],
+    [class*="bg-[#211c15]"], [class*="bg-[#2d2e27]"],
+    [class*="bg-[#272019]"], [class*="bg-[#24251f]"],
+    [class~="bg-slate-900"], [class~="bg-slate-800"],
+    [class~="bg-gray-900"], [class~="bg-gray-800"]
+):is(
+    [class~="text-[#fec868]"], [class~="text-[#fecc73]"],
+    [class~="text-[#fed386]"], [class~="text-[#fdad74]"],
+    [class~="text-[#fda769]"], [class~="text-[#fdb887]"],
+    [class~="text-[#f3a06c]"], [class~="text-[#f08a52]"],
+    [class~="text-[#ffb22a]"], [class~="text-[#f5b84b]"],
+    [class~="text-[#f2bd28]"], [class~="text-[#ec9700]"],
+    [class~="text-[#e5a83e]"], [class~="text-[#d88b2f]"],
+    [class~="text-[#f1c5b4]"], [class~="text-[#e58a76]"],
+    [class~="text-[#f1a58b]"], [class~="text-[#fedda1]"],
+    [class~="text-[#ffe6b9]"], [class~="text-[#fedf9f]"],
+    [class~="text-[#fec8a2]"], [class~="text-[#f5a46f]"],
+    [class~="text-[#f28a4c]"], [class~="text-[#e8894a]"],
+    [class~="text-[#e8a46f]"], [class~="text-[#e8934d]"],
+    [class~="text-[#f4ebdd]"], [class~="text-[#f2efd2]"],
+    [class~="text-[#eee7cf]"], [class~="text-[#e7ddd1]"],
+    [class~="text-[#e3edca]"], [class~="text-[#d9e9b2]"],
+    [class~="text-[#bcce8d]"], [class~="text-[#b9dda8]"],
+    [class~="text-[#8ea865]"], [class~="text-[#94b866]"],
+    [class~="text-[#8eaf58]"]
+) {
+    color: var(--palette-buttercream) !important;
 }
 
 html:not(.dark) input::placeholder,
