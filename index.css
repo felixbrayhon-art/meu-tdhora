@@ -1153,6 +1153,133 @@ html.dark .curriculum-editor > div {
     transform: rotateY(-38deg) translateZ(2px);
 }
 
+/* A compact 3D flashcard stack for the Flashcards folder gallery. */
+.flashcard-deck-3d {
+    --flashcard-deck-accent: #d9772b;
+    position: relative;
+    width: 92px;
+    height: 118px;
+    margin-inline: auto;
+    perspective: 900px;
+    transform: rotateZ(-4deg) rotateY(-9deg);
+    transform-style: preserve-3d;
+    transition: transform 420ms cubic-bezier(.2,.6,.3,1);
+}
+
+.flashcard-deck-3d__back,
+.flashcard-deck-3d__front {
+    position: absolute;
+    border-radius: 11px;
+}
+
+.flashcard-deck-3d__back {
+    inset: 2px 7px 7px 1px;
+    border: 1px solid rgba(66, 37, 29, .24);
+    box-shadow: 0 8px 16px rgba(20, 15, 10, .18);
+    transition: transform 420ms cubic-bezier(.2,.6,.3,1);
+}
+
+.flashcard-deck-3d__back--far {
+    background: linear-gradient(145deg,
+        color-mix(in srgb, var(--flashcard-deck-accent), white 22%),
+        color-mix(in srgb, var(--flashcard-deck-accent), black 16%));
+    transform: translate3d(8px, -1px, -20px) rotateZ(12deg);
+}
+
+.flashcard-deck-3d__back--near {
+    background: linear-gradient(145deg,
+        color-mix(in srgb, var(--flashcard-deck-accent), white 12%),
+        var(--flashcard-deck-accent));
+    transform: translate3d(4px, 1px, -10px) rotateZ(6deg);
+}
+
+.flashcard-deck-3d__front {
+    inset: 0 8px 8px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 11px 10px 9px;
+    border: 1px solid rgba(66, 37, 29, .16);
+    color: #42251d;
+    background: linear-gradient(155deg, #fffdf2 0%, #f0e89f 100%);
+    box-shadow: inset 1px 1px rgba(255,255,255,.9), 0 12px 20px rgba(20,15,10,.24);
+    transform: translateZ(2px) rotateY(-5deg);
+    transform-origin: left center;
+    backface-visibility: hidden;
+    transition: transform 420ms cubic-bezier(.2,.6,.3,1), box-shadow 420ms ease;
+}
+
+.flashcard-deck-3d__brand,
+.flashcard-deck-3d__footer {
+    font-size: 6px;
+    line-height: 1.2;
+    font-weight: 900;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+
+.flashcard-deck-3d__brand { color: #705a4d; }
+
+.flashcard-deck-3d__mark {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    margin: auto;
+    place-items: center;
+    border-radius: 11px;
+    color: #f0e89f;
+    background: linear-gradient(145deg,
+        color-mix(in srgb, var(--flashcard-deck-accent), white 12%),
+        color-mix(in srgb, var(--flashcard-deck-accent), black 14%));
+    box-shadow: 0 4px 8px rgba(66,37,29,.2);
+    font-family: 'Righteous', sans-serif;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.flashcard-deck-3d__lines {
+    display: grid;
+    width: 100%;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.flashcard-deck-3d__lines i {
+    display: block;
+    width: 100%;
+    height: 3px;
+    border-radius: 99px;
+    background: rgba(66,37,29,.2);
+}
+
+.flashcard-deck-3d__lines i:last-child { width: 62%; }
+.flashcard-deck-3d__footer { color: #a83100; }
+
+.group:hover .flashcard-deck-3d {
+    transform: translateY(-3px) rotateZ(-2deg) rotateY(-15deg);
+}
+
+.group:hover .flashcard-deck-3d__back--far {
+    transform: translate3d(12px, -6px, -20px) rotateZ(17deg);
+}
+
+.group:hover .flashcard-deck-3d__back--near {
+    transform: translate3d(7px, -2px, -10px) rotateZ(9deg);
+}
+
+.group:hover .flashcard-deck-3d__front {
+    transform: translate3d(-2px, -2px, 5px) rotateY(-10deg);
+    box-shadow: inset 1px 1px rgba(255,255,255,.9), 0 16px 24px rgba(20,15,10,.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flashcard-deck-3d,
+    .flashcard-deck-3d__back,
+    .flashcard-deck-3d__front {
+        transition-duration: 1ms;
+    }
+}
+
 /* ToDAHora styling for the floating Excalidraw drawing toolbar. */
 .notes-excalidraw-surface .Island.App-toolbar {
     --island-bg-color: rgba(255, 253, 247, .96);

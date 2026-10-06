@@ -6,6 +6,7 @@ import LoadingFish from './LoadingFish';
 import ReactMarkdown from 'react-markdown';
 import { RichTextEditor } from './RichTextEditor';
 import { ChevronLeft, Brain, Plus, Trash2, FolderPlus, Sparkles, Check, X, RotateCcw, HelpCircle, Layers, Maximize2, Minimize2, Pencil } from './icons';
+import FlashcardDeck3D from './FlashcardDeck3D';
 import StudyBook3D from './StudyBook3D';
 import CustomColorField from './CustomColorField';
 
@@ -286,9 +287,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                       }}
                       className="w-full h-full bg-[#2d2e27] p-10 rounded-[50px] text-left border border-white/[0.06] hover:border-[#e96f34]/40 transition-all hover:scale-[1.02] shadow-2xl overflow-hidden relative"
                     >
-                      <div className="w-24 shrink-0">
-                        <StudyBook3D title={folder.name} color={folder.color} />
-                      </div>
+                      <FlashcardDeck3D color={folder.color} />
                       <h3 className="font-logo text-2xl uppercase tracking-wide leading-none mb-2 mt-3 text-[#f2efd2] group-hover:text-[#f08a52] transition-colors">{folder.name}</h3>
                       <p className="text-[#c8c5a9] text-xs font-bold uppercase tracking-widest">{flashcards.filter((f) => f.folderId === folder.id).length} Cards Totais</p>
 
