@@ -5,9 +5,14 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 body {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Atkinson Hyperlegible', 'Plus Jakarta Sans', sans-serif;
     background-color: #FDFBF7;
     color: #0A0F1E;
+}
+
+/* Expressive display headings paired with highly legible interface copy. */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Bricolage Grotesque', 'Plus Jakarta Sans', sans-serif;
 }
 
 .dark body {
@@ -1489,3 +1494,129 @@ main [class~="w-12"][class~="h-12"][class~="relative"][class~="z-10"][class~="sh
     -webkit-mask: url("/sul-americano-triangulos.svg") repeat-x left center / auto 100%;
     mask: url("/sul-americano-triangulos.svg") repeat-x left center / auto 100%;
 }
+
+/* Warm brand palette: Dark Roast, Buttercream, Burnt Orange and Baby Blue. */
+:root {
+    --palette-dark-roast: #42251d;
+    --palette-buttercream: #f0e89f;
+    --palette-burnt-orange: #fb4d00;
+    --palette-burnt-ink: #a83100;
+    --palette-baby-blue: #d2e8ff;
+    --palette-paper: #fbf8e6;
+    --palette-surface: #fffdf2;
+    --palette-border: rgba(66, 37, 29, .16);
+}
+
+html:not(.dark) body {
+    background-color: var(--palette-paper);
+    color: var(--palette-dark-roast);
+}
+
+html.dark {
+    --dark-canvas: var(--palette-dark-roast);
+    --dark-surface: #523126;
+    --dark-surface-raised: #624034;
+    --dark-surface-muted: #59382c;
+    --dark-cream: var(--palette-buttercream);
+    --dark-cream-muted: #e4dca1;
+    --dark-orange: var(--palette-burnt-orange);
+    --dark-orange-hover: #ff6a26;
+    --dark-border: rgba(240, 232, 159, .17);
+}
+
+html.dark body {
+    background-color: var(--dark-canvas);
+    color: var(--dark-cream);
+}
+
+.gradient-yellow { background: linear-gradient(135deg, #f0e89f, #e6d96e); }
+.gradient-orange { background: linear-gradient(135deg, #fb4d00, #d83d00); }
+.gradient-dark { background: linear-gradient(135deg, #42251d, #59382c); }
+.bg-baby-blue { background-color: #d2e8ff; }
+
+/* Shared brand colors used by existing Tailwind classes throughout the app. */
+html:not(.dark) [class*="text-[#473c33]"],
+html:not(.dark) [class*="text-[#f4ebdd]"],
+html:not(.dark) [class*="text-[#f2efd2]"],
+html:not(.dark) [class*="text-[#eee7cf]"] { color: var(--palette-dark-roast) !important; }
+html.dark [class*="text-[#473c33]"],
+html.dark [class*="text-[#f4ebdd]"],
+html.dark [class*="text-[#f2efd2]"],
+html.dark [class*="text-[#eee7cf]"] { color: var(--palette-buttercream) !important; }
+html:not(.dark) [class*="bg-[#473c33]"] [class*="text-[#f4ebdd]"],
+html:not(.dark) [class*="bg-[#473c33]"] [class*="text-[#f2efd2]"],
+html:not(.dark) [class*="bg-[#473c33]"] [class*="text-[#eee7cf]"] { color: var(--palette-buttercream) !important; }
+
+html:not(.dark) [class*="bg-[#FDFBF7]"],
+html:not(.dark) [class*="bg-[#fdfbf7]"],
+html:not(.dark) [class*="bg-[#f7f3ed]"],
+html:not(.dark) [class*="bg-[#fffdf9]"] {
+    background-color: var(--palette-paper) !important;
+}
+html:not(.dark) [class*="bg-white"] { background-color: var(--palette-surface); }
+
+html [class*="bg-[#473c33]"] { background-color: var(--palette-dark-roast) !important; }
+html [class*="text-[#e96f34]"],
+html [class*="text-[#d9772b]"] { color: var(--palette-burnt-ink) !important; }
+html.dark [class*="text-[#e96f34]"],
+html.dark [class*="text-[#d9772b]"] { color: var(--palette-baby-blue) !important; }
+
+html [class*="bg-[#e96f34]"],
+html [class*="bg-[#d9772b]"] { background-color: var(--palette-burnt-orange) !important; }
+html [class*="dark:bg-[#d9772b]"] { background-color: var(--palette-burnt-orange) !important; }
+html [class*="bg-[#e96f34]"].text-white,
+html [class*="bg-[#d9772b]"].text-white,
+html [class*="dark:bg-[#d9772b]"].text-white { color: #28150d !important; }
+html [class*="bg-[#fff6e8]"],
+html [class*="bg-[#E0F2FE]"],
+html [class*="bg-[#e0f2fe]"] { background-color: var(--palette-baby-blue) !important; }
+
+html:not(.dark) [class*="bg-[#fecc73]"],
+html:not(.dark) [class*="bg-[#fec868]"],
+html:not(.dark) [class*="bg-[#fed386]"],
+html:not(.dark) [class*="bg-[#fdad74]"] {
+    background-color: var(--palette-buttercream) !important;
+    color: var(--palette-dark-roast) !important;
+}
+html.dark [class*="bg-[#fecc73]"],
+html.dark [class*="bg-[#fec868]"],
+html.dark [class*="bg-[#fed386]"],
+html.dark [class*="bg-[#fdad74]"],
+html.dark [class*="dark:bg-[#d9772b]"] {
+    color: var(--palette-dark-roast) !important;
+}
+
+html:not(.dark) [class*="border-[#e9e0d4]"],
+html:not(.dark) [class*="border-[#eee6d6]"],
+html:not(.dark) [class*="border-gray-100"] {
+    border-color: var(--palette-border) !important;
+}
+html.dark [class*="bg-white"],
+html.dark [class*="bg-[#3a2f22]"],
+html.dark [class*="bg-[#272019]"],
+html.dark [class*="bg-[#2e2519]"] {
+    background-color: var(--dark-surface) !important;
+}
+html [role="tab"][aria-selected="true"] {
+    background-color: var(--palette-baby-blue) !important;
+    color: var(--palette-dark-roast) !important;
+    box-shadow: none;
+}
+html [role="tab"][aria-selected="true"] * { color: var(--palette-dark-roast) !important; }
+html.dark .text-white { color: var(--palette-buttercream) !important; }
+
+/* Replace the former sage accent with the palette's calm blue secondary. */
+html [class~="bg-[#b1c77b]"] { background-color: var(--palette-baby-blue) !important; }
+html [class~="bg-[#b1c77b]/10"] { background-color: rgba(210, 232, 255, .1) !important; }
+html [class~="bg-[#b1c77b]/20"] { background-color: rgba(210, 232, 255, .2) !important; }
+html [class*="border-[#b1c77b]"] { border-color: var(--palette-baby-blue) !important; }
+html:not(.dark) [class*="text-[#b1c77b]"],
+html:not(.dark) [class*="text-[#98b847]"],
+html:not(.dark) [class*="text-[#abc270]"] { color: #31536f !important; }
+html.dark [class*="text-[#b1c77b]"],
+html.dark [class*="text-[#98b847]"],
+html.dark [class*="text-[#abc270]"] { color: var(--palette-baby-blue) !important; }
+html [class*="text-[#303b1c]"],
+html [class*="text-[#2f3a1c]"] { color: var(--palette-dark-roast) !important; }
+html:not(.dark) [class*="bg-[#f4f7ec]"] { background-color: var(--palette-baby-blue) !important; }
+html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !important; }
