@@ -41,23 +41,16 @@ export interface CharacterOption {
   baseId?: string; // Original character used for style pairing and scene assets.
 }
 
-// 2D characters redrawn from a single turnaround sheet. Each view is cropped
-// from public/character-assets/to-dahora-2d/turnaround4-<id>.png.
+// 2D characters in the redrawn style: each view is a trimmed WebP in
+// public/character-assets/to-dahora-2d/ (<id>-frente|lado-direito|costas.webp).
 const REDRAWN_2D_CHARACTER_IDS = new Set([
   'medica', 'guaxinim-pescador', 'detetive-planta', 'garoto-aquario',
   'gato-jaqueta', 'surfista', 'roqueiro', 'engenheiro', 'juiz',
   'biomedica', 'nutricionista', 'fisioterapeuta', 'jorge-do-bem', 'raposa',
+  'militar', 'policial', 'marinheiro', 'diplomata-petrobras',
 ]);
 
 const posesFor = (id: string): Record<CharacterPose, string> => {
-  if (id === 'diplomata-petrobras') {
-    const base = `/character-assets/to-dahora-2d/${id}`;
-    return { frente: `${base}-frente.png`, lado: `${base}-lado-direito.png`, costas: `${base}-costas.svg` };
-  }
-  if (id === 'militar' || id === 'policial' || id === 'marinheiro') {
-    const base = `/character-assets/to-dahora-2d/${id}`;
-    return { frente: `${base}-frente.png`, lado: `${base}-lado-direito.png`, costas: `${base}-costas.png` };
-  }
   if (REDRAWN_2D_CHARACTER_IDS.has(id)) {
     const base = `/character-assets/to-dahora-2d/${id}`;
     return { frente: `${base}-frente.webp`, lado: `${base}-lado-direito.webp`, costas: `${base}-costas.webp` };
