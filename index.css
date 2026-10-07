@@ -1832,6 +1832,265 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
     color: #28150d !important;
 }
 
+/* Character selection: a warm "character sheet" (tan band with a torn
+   edge and stars over a brown page), in both themes. Colors come from the
+   earthy palette; text pairs are checked for WCAG AA contrast. */
+#avatar-selection-screen,
+#character-reveal-screen {
+    --cs-sand: #cfaf86;
+    --cs-sand-plate: #b48c62;
+    --cs-brown: #725442;
+    --cs-brown-plate: #8b6a54;
+    --cs-roast: #4a352a;
+    --cs-cream: #f4ebdd;
+    --cs-cream-soft: #e8ddcc;
+    --cs-rust: #8b3626;
+    --cs-mustard: #d8a53a;
+    background: var(--cs-brown);
+    color: var(--cs-cream);
+    font-family: 'Manrope', system-ui, sans-serif;
+}
+#avatar-selection-screen .cs-hero {
+    position: relative;
+    background: var(--cs-sand);
+    color: var(--cs-roast);
+    padding-bottom: 54px;
+    overflow: hidden;
+}
+/* Same "sul-americano" triangle band used in the app header and section
+   strips, drawn in the page brown so it reads as the seam into the gallery. */
+#avatar-selection-screen .cs-hero__strip,
+#character-reveal-screen .cs-hero__strip {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 30px;
+    background-color: var(--cs-brown);
+    -webkit-mask: url("/sul-americano-triangulos.svg") repeat-x left bottom / auto 100%;
+    mask: url("/sul-americano-triangulos.svg") repeat-x left bottom / auto 100%;
+}
+#avatar-selection-screen .cs-ghost-button {
+    display: inline-flex; align-items: center; gap: .5rem;
+    min-height: 44px; padding: 0 .85rem; border-radius: 999px;
+    font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--cs-roast) !important; background: transparent !important;
+    transition: background-color .2s;
+}
+#avatar-selection-screen .cs-ghost-button:hover { background: rgba(74,53,42,.1) !important; }
+#avatar-selection-screen .cs-logo {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 44px; padding: 0 .9rem; border-radius: 999px; background: var(--cs-roast);
+}
+#avatar-selection-screen .cs-step {
+    border-radius: 999px; border: 1.5px solid rgba(74,53,42,.35);
+    padding: .45rem .85rem; font-size: 10px; font-weight: 800;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--cs-roast);
+}
+#avatar-selection-screen .cs-eyebrow,
+#character-reveal-screen .cs-eyebrow {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: 11px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--cs-roast) !important;
+}
+#avatar-selection-screen .cs-title,
+#character-reveal-screen .cs-title {
+    margin-top: .25rem;
+    font-size: clamp(1.6rem, 4.2vw, 2.6rem); line-height: 1.05;
+    text-transform: uppercase; letter-spacing: .01em;
+    color: var(--cs-roast) !important;
+}
+#avatar-selection-screen .cs-title span,
+#character-reveal-screen .cs-title span { color: var(--cs-rust) !important; }
+
+#avatar-selection-screen .cs-sheet {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(.5rem, 2.5vw, 2rem);
+    max-width: 760px; margin: 1.25rem auto 0;
+}
+#avatar-selection-screen .cs-sheet__view {
+    position: relative; margin: 0;
+    height: clamp(170px, 30vh, 300px);
+    padding-bottom: 26px;
+    display: flex; align-items: flex-end; justify-content: center;
+}
+#avatar-selection-screen .cs-sheet__plate {
+    position: absolute; left: 8%; right: 8%; top: 14%; bottom: 26px;
+    background: var(--cs-sand-plate);
+    transform: rotate(var(--cs-tilt, 0deg));
+    border-radius: 3px;
+}
+#avatar-selection-screen .cs-sheet__art {
+    position: relative; z-index: 1;
+    height: 100%; max-width: 100%;
+    object-fit: contain; object-position: bottom;
+    filter: drop-shadow(0 6px 4px rgba(74,53,42,.28));
+    animation: cs-pop .35s ease-out;
+}
+#avatar-selection-screen .cs-sheet__label {
+    position: absolute; bottom: 0; left: 0; right: 0; text-align: center;
+    font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--cs-roast);
+}
+#avatar-selection-screen .cs-nameplate {
+    margin-top: .9rem; display: flex; align-items: center; justify-content: center; gap: .6rem;
+}
+#avatar-selection-screen .cs-nameplate h2 {
+    font-size: clamp(1.35rem, 3vw, 1.9rem); text-transform: uppercase; line-height: 1.1;
+    color: var(--cs-roast) !important;
+}
+#avatar-selection-screen .cs-hero__hint {
+    margin-top: .35rem; text-align: center; font-size: 13px; font-weight: 600; color: var(--cs-roast);
+}
+
+#avatar-selection-screen .cs-section-title {
+    display: flex; align-items: center; gap: .6rem;
+    font-size: 12px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--cs-cream);
+}
+#avatar-selection-screen .cs-section-title span {
+    border-radius: 999px; background: rgba(244,235,221,.16); padding: .15rem .55rem; letter-spacing: .08em;
+}
+
+#avatar-selection-screen .cs-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 1.5rem 1rem;
+}
+@media (min-width: 640px) {
+    #avatar-selection-screen .cs-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+#avatar-selection-screen .cs-card {
+    display: flex; flex-direction: column; align-items: center; gap: .55rem;
+    padding: .25rem; border-radius: 14px; background: transparent !important;
+}
+#avatar-selection-screen .cs-card__stage {
+    position: relative; width: 100%; aspect-ratio: .82;
+    display: flex; align-items: flex-end; justify-content: center;
+}
+#avatar-selection-screen .cs-card__plate {
+    position: absolute; inset: 12% 10% 2% 10%;
+    background: var(--cs-brown-plate);
+    transform: rotate(var(--cs-tilt, 0deg));
+    border-radius: 3px;
+    transition: transform .25s ease, background-color .2s;
+}
+#avatar-selection-screen .cs-card__art {
+    position: absolute; z-index: 1; inset: 0; height: 100%; width: 100%;
+    object-fit: contain; object-position: bottom;
+    filter: drop-shadow(0 5px 3px rgba(40,26,18,.35));
+    transition: transform .25s ease;
+}
+#avatar-selection-screen .cs-card:hover .cs-card__plate { transform: rotate(0deg) scale(1.03); }
+#avatar-selection-screen .cs-card:hover .cs-card__art { transform: translateY(-4px); }
+#avatar-selection-screen .cs-card[aria-pressed="true"] .cs-card__plate { background: var(--cs-mustard); }
+#avatar-selection-screen .cs-card__badge {
+    position: absolute; z-index: 2; top: 6%; right: 6%;
+    display: flex; height: 26px; width: 26px; align-items: center; justify-content: center;
+    border-radius: 999px; background: var(--cs-roast); color: var(--cs-mustard);
+    box-shadow: 0 0 0 2.5px var(--cs-cream);
+}
+#avatar-selection-screen .cs-card__name {
+    font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    text-align: center; line-height: 1.25; color: var(--cs-cream);
+}
+#avatar-selection-screen .cs-card[aria-pressed="true"] .cs-card__name {
+    border-radius: 999px; background: var(--cs-cream); color: var(--cs-roast); padding: .15rem .55rem;
+}
+#avatar-selection-screen :is(.cs-card, .cs-ghost-button, .cs-cta):focus-visible,
+#character-reveal-screen .cs-cta:focus-visible {
+    outline: 3px solid var(--cs-mustard); outline-offset: 3px;
+}
+#avatar-selection-screen .cs-note {
+    margin-top: 1.75rem; text-align: center; font-size: 12px; font-weight: 600; color: var(--cs-cream-soft);
+}
+
+#avatar-selection-screen .cs-footer {
+    position: sticky; bottom: 0; z-index: 30;
+    background: rgba(74,53,42,.96); backdrop-filter: blur(8px);
+    box-shadow: 0 -10px 24px rgba(40,26,18,.3);
+}
+#avatar-selection-screen .cs-footer__thumb {
+    display: flex; height: 44px; width: 44px; flex-shrink: 0; align-items: flex-end; justify-content: center;
+    overflow: hidden; border-radius: 12px; background: var(--cs-mustard);
+}
+#avatar-selection-screen .cs-footer__thumb img { height: 115%; max-width: none; object-fit: cover; object-position: top; }
+#avatar-selection-screen .cs-footer__name {
+    display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: 'Righteous', sans-serif; font-size: 15px; text-transform: uppercase; color: var(--cs-cream);
+}
+#avatar-selection-screen .cs-footer__meta {
+    display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--cs-cream-soft);
+}
+#avatar-selection-screen .cs-cta,
+#character-reveal-screen .cs-cta {
+    display: inline-flex; align-items: center; gap: .5rem; flex-shrink: 0;
+    min-height: 48px; padding: 0 1.4rem; border-radius: 14px;
+    font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    background: var(--cs-mustard) !important; color: var(--cs-roast) !important;
+    box-shadow: 0 4px 0 #a8792a;
+    transition: transform .15s, box-shadow .15s;
+}
+#avatar-selection-screen .cs-cta:hover,
+#character-reveal-screen .cs-cta:hover { transform: translateY(-1px); box-shadow: 0 5px 0 #a8792a; }
+#avatar-selection-screen .cs-cta:active,
+#character-reveal-screen .cs-cta:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8792a; }
+
+/* Character reveal: same sheet look, one big tilted card. */
+#character-reveal-screen .cr-stage {
+    position: relative; flex: 1; min-height: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    padding: 1.5rem 1.5rem 3.25rem; background: var(--cs-sand); text-align: center;
+}
+#character-reveal-screen .cs-title { font-size: clamp(2rem, 6vw, 3.4rem); }
+#character-reveal-screen .cr-figure {
+    position: relative; margin: 1rem 0 0;
+    flex: 1; min-height: 0; max-height: 560px; width: min(100%, 420px);
+    display: flex; align-items: flex-end; justify-content: center;
+}
+#character-reveal-screen .cr-figure__plate {
+    position: absolute; left: 12%; right: 12%; top: 10%; bottom: 0;
+    background: var(--cs-sand-plate); transform: rotate(-3deg); border-radius: 3px;
+}
+#character-reveal-screen .cr-figure__art {
+    position: relative; z-index: 1; height: 100%; max-width: 100%;
+    object-fit: contain; object-position: bottom;
+    filter: drop-shadow(0 10px 8px rgba(74,53,42,.3));
+}
+/* Reaction clips are rendered on the sand background with the card baked in.
+   Feather the clip's edges into the stage so no hard rectangle shows. */
+/* The clips decode to a slightly darker sand; match the stage to it. */
+#character-reveal-screen .cr-stage:has(.cr-figure--video) { background: #ccaf83; }
+#character-reveal-screen .cr-figure--video { width: auto; aspect-ratio: 3 / 4; max-width: 100%; max-height: 720px; margin-top: 0; }
+#character-reveal-screen .cr-figure__video {
+    height: 100%; width: 100%; object-fit: contain; object-position: bottom;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 17%, #000 83%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 24%, #000 97%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(to right, transparent 0, #000 17%, #000 83%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 24%, #000 97%, transparent 100%);
+    mask-composite: intersect;
+}
+#character-reveal-screen .cr-footer {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: .9rem;
+    padding: 1.1rem 1.5rem 1.6rem; background: var(--cs-brown);
+}
+#character-reveal-screen .cr-footer__text {
+    font-size: 13px; font-weight: 600; text-align: center; color: var(--cs-cream-soft);
+}
+#character-reveal-screen .cr-timer {
+    position: absolute; left: 0; bottom: 0; height: 4px; width: 100%;
+    background: var(--cs-mustard); transform-origin: left;
+    animation-name: cr-timer; animation-timing-function: linear; animation-fill-mode: forwards;
+}
+@keyframes cr-timer { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+    #character-reveal-screen .cr-timer { animation: none; display: none; }
+}
+
+@keyframes cs-pop {
+    from { opacity: 0; transform: translateY(8px) scale(.97); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #avatar-selection-screen .cs-sheet__art { animation: none; }
+    #avatar-selection-screen :is(.cs-card__plate, .cs-card__art, .cs-cta) { transition: none; }
+}
+
 /* Profile selection uses a light paper surface in light mode. Keep its
    headings dark enough to read and use the blue as the dark-mode accent. */
 html:not(.dark) #profile-selection-screen :is(h1, h2) {

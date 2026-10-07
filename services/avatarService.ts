@@ -27,36 +27,47 @@ const FACE_ZOOM_OVERRIDES: Record<string, FaceZoom> = {
   surfista: zoomFor(1.5, 0, 0.06),
   roqueiro: zoomFor(1.5, 0, 0.09),
   'jorge-do-bem': zoomFor(1.5, 0, -0.08),
-  'raposa-3d': zoomFor(1.5, 0.18),
-  'garoto-aquario-3d': zoomFor(1.5, 0.08),
-  'enfermeiro-3d': zoomFor(1.5, 0.10),
 };
 
-export const getFaceZoom = (characterId?: string): FaceZoom =>
-  (characterId && FACE_ZOOM_OVERRIDES[characterId]) || DEFAULT_FACE_ZOOM;
+export const getFaceZoom = (characterId?: string): FaceZoom => {
+  const id = resolveCharacterId(characterId);
+  return (id && FACE_ZOOM_OVERRIDES[id]) || DEFAULT_FACE_ZOOM;
+};
 
 export interface CharacterOption {
   id: string;
   name: string;
   poses: Record<CharacterPose, string>;
-  is3D?: boolean; // Rendered in 3D instead of the default flat-vector style
   baseId?: string; // Original character used for style pairing and scene assets.
 }
 
-const posesFor = (id: string): Record<CharacterPose, string> => ({
-  frente: `/character-assets/${id}-frente.png`,
-  lado: `/character-assets/${id}-lado.png`,
-  costas: `/character-assets/${id}-costas.png`,
-});
+// 2D characters redrawn from a single turnaround sheet. Each view is cropped
+// from public/character-assets/to-dahora-2d/turnaround4-<id>.png.
+const REDRAWN_2D_CHARACTER_IDS = new Set([
+  'medica', 'guaxinim-pescador', 'detetive-planta', 'garoto-aquario',
+  'gato-jaqueta', 'surfista', 'roqueiro', 'engenheiro', 'juiz',
+  'biomedica', 'nutricionista', 'fisioterapeuta', 'jorge-do-bem', 'raposa',
+]);
 
-// New 3D turnarounds are added as they become available. Until a side/back
-// render exists, keep the picker usable with the original pose instead of a
-// broken image URL.
-const posesFor3D = (id: string, baseId: string, generated: CharacterPose[] = []): Record<CharacterPose, string> => ({
-  frente: `/character-assets/${id}-frente.png`,
-  lado: generated.includes('lado') ? `/character-assets/${id}-lado.png` : `/character-assets/${baseId}-lado.png`,
-  costas: generated.includes('costas') ? `/character-assets/${id}-costas.png` : `/character-assets/${baseId}-costas.png`,
-});
+const posesFor = (id: string): Record<CharacterPose, string> => {
+  if (id === 'diplomata-petrobras') {
+    const base = `/character-assets/to-dahora-2d/${id}`;
+    return { frente: `${base}-frente.png`, lado: `${base}-lado-direito.png`, costas: `${base}-costas.svg` };
+  }
+  if (id === 'militar' || id === 'policial' || id === 'marinheiro') {
+    const base = `/character-assets/to-dahora-2d/${id}`;
+    return { frente: `${base}-frente.png`, lado: `${base}-lado-direito.png`, costas: `${base}-costas.png` };
+  }
+  if (REDRAWN_2D_CHARACTER_IDS.has(id)) {
+    const base = `/character-assets/to-dahora-2d/${id}`;
+    return { frente: `${base}-frente.webp`, lado: `${base}-lado-direito.webp`, costas: `${base}-costas.webp` };
+  }
+  return {
+    frente: `/character-assets/${id}-frente.png`,
+    lado: `/character-assets/${id}-lado.png`,
+    costas: `/character-assets/${id}-costas.png`,
+  };
+};
 
 export const CHARACTERS: CharacterOption[] = [
   { id: 'medica', name: 'Médica', poses: posesFor('medica') },
@@ -72,26 +83,35 @@ export const CHARACTERS: CharacterOption[] = [
   { id: 'nutricionista', name: 'Nutricionista', poses: posesFor('nutricionista') },
   { id: 'fisioterapeuta', name: 'Fisioterapeuta', poses: posesFor('fisioterapeuta') },
   { id: 'jorge-do-bem', name: 'Jorge do Bem', poses: posesFor('jorge-do-bem') },
-  { id: 'raposa-3d', name: 'Raposa Estilosa', poses: posesFor('raposa-3d'), is3D: true },
-  { id: 'garoto-aquario-3d', name: 'Garoto do Aquário 3D', poses: posesFor('garoto-aquario-3d'), is3D: true, baseId: 'garoto-aquario' },
-  { id: 'enfermeiro-3d', name: 'Fisioterapeuta 3D', poses: posesFor('enfermeiro-3d'), is3D: true, baseId: 'fisioterapeuta' },
-  { id: 'roqueiro-3d', name: 'Roqueiro 3D', poses: posesFor('roqueiro-3d'), is3D: true, baseId: 'roqueiro' },
-  { id: 'medica-3d', name: 'Médica 3D', poses: posesFor3D('medica-3d', 'medica', ['lado']), is3D: true, baseId: 'medica' },
-  { id: 'guaxinim-pescador-3d', name: 'Guaxinim Pescador 3D', poses: posesFor3D('guaxinim-pescador-3d', 'guaxinim-pescador', ['lado']), is3D: true, baseId: 'guaxinim-pescador' },
-  { id: 'detetive-planta-3d', name: 'Detetive 3D', poses: posesFor3D('detetive-planta-3d', 'detetive-planta', ['lado', 'costas']), is3D: true, baseId: 'detetive-planta' },
-  { id: 'gato-jaqueta-3d', name: 'Gato Estiloso 3D', poses: posesFor3D('gato-jaqueta-3d', 'gato-jaqueta', ['lado']), is3D: true, baseId: 'gato-jaqueta' },
-  { id: 'surfista-3d', name: 'Surfista 3D', poses: posesFor3D('surfista-3d', 'surfista'), is3D: true, baseId: 'surfista' },
-  { id: 'engenheiro-3d', name: 'Engenheiro 3D', poses: posesFor3D('engenheiro-3d', 'engenheiro', ['lado', 'costas']), is3D: true, baseId: 'engenheiro' },
-  { id: 'juiz-3d', name: 'Juiz 3D', poses: posesFor3D('juiz-3d', 'juiz'), is3D: true, baseId: 'juiz' },
-  { id: 'biomedica-3d', name: 'Biomédica 3D', poses: posesFor3D('biomedica-3d', 'biomedica', ['lado']), is3D: true, baseId: 'biomedica' },
-  { id: 'nutricionista-3d', name: 'Nutricionista 3D', poses: posesFor('nutricionista-3d'), is3D: true, baseId: 'nutricionista' },
-  { id: 'jorge-do-bem-3d', name: 'Jorge do Bem 3D', poses: posesFor('jorge-do-bem-3d'), is3D: true, baseId: 'jorge-do-bem' },
+  { id: 'raposa', name: 'Raposa Estilosa', poses: posesFor('raposa') },
+  { id: 'militar', name: 'Militar', poses: posesFor('militar') },
+  { id: 'policial', name: 'Policial', poses: posesFor('policial') },
+  { id: 'marinheiro', name: 'Marinheiro', poses: posesFor('marinheiro') },
+  { id: 'diplomata-petrobras', name: 'Diplomata da Petrobras', poses: posesFor('diplomata-petrobras') },
 ];
 
 export const defaultCharacterId = CHARACTERS[0].id;
 
-export const getCharacter = (id?: string): CharacterOption =>
-  CHARACTERS.find(c => c.id === id) ?? CHARACTERS[0];
+// The 3D characters were retired. Profiles that saved one keep their character
+// in its 2D version (e.g. 'roqueiro-3d' -> 'roqueiro').
+const RETIRED_3D_TO_2D: Record<string, string> = {
+  'enfermeiro-3d': 'fisioterapeuta',
+};
+
+export const resolveCharacterId = (id?: string): string | undefined => {
+  if (!id) return id;
+  if (RETIRED_3D_TO_2D[id]) return RETIRED_3D_TO_2D[id];
+  if (id.endsWith('-3d')) {
+    const base = id.slice(0, -3);
+    if (CHARACTERS.some((c) => c.id === base)) return base;
+  }
+  return id;
+};
+
+export const getCharacter = (id?: string): CharacterOption => {
+  const resolved = resolveCharacterId(id);
+  return CHARACTERS.find(c => c.id === resolved) ?? CHARACTERS[0];
+};
 
 export const getCharacterSrc = (id?: string, pose: CharacterPose = 'frente'): string =>
   getCharacter(id).poses[pose];
@@ -118,9 +138,6 @@ const EXPRESSIONS_10: Expression[] = [
 // apontando->explicando, ajoelhado->focado.
 const EXPRESSIONS_JORGE: Expression[] = ['comemorando', 'explicando', 'focado'];
 
-// Raposa Estilosa has the full 12-shot expression sheet.
-const EXPRESSIONS_RAPOSA: Expression[] = EXPRESSIONS_12;
-
 // Only characters with a processed expression sheet are listed here.
 // Others (medica, guaxinim-pescador, detetive-planta, surfista, engenheiro, nutricionista)
 // don't have expression sets yet.
@@ -131,21 +148,23 @@ const CHARACTERS_WITH_EXPRESSIONS: Record<string, Expression[]> = {
   'roqueiro': EXPRESSIONS_12,
   'juiz': EXPRESSIONS_12,
   'gato-jaqueta': EXPRESSIONS_10,
-  'raposa-3d': EXPRESSIONS_RAPOSA,
-  'roqueiro-3d': EXPRESSIONS_12,
-  'garoto-aquario-3d': EXPRESSIONS_12,
   'jorge-do-bem': EXPRESSIONS_JORGE,
 };
 
-export const hasExpressions = (characterId?: string): boolean =>
-  !!characterId && !!CHARACTERS_WITH_EXPRESSIONS[characterId];
+export const hasExpressions = (characterId?: string): boolean => {
+  const id = resolveCharacterId(characterId);
+  return !!id && !!CHARACTERS_WITH_EXPRESSIONS[id];
+};
 
-export const getAvailableExpressions = (characterId?: string): Expression[] =>
-  (characterId && CHARACTERS_WITH_EXPRESSIONS[characterId]) || [];
+export const getAvailableExpressions = (characterId?: string): Expression[] => {
+  const id = resolveCharacterId(characterId);
+  return (id && CHARACTERS_WITH_EXPRESSIONS[id]) || [];
+};
 
 // Returns undefined when this character has no asset for that expression —
 // callers should fall back to getCharacterSrc(id, 'frente') in that case.
-export const getExpressionSrc = (characterId?: string, expression?: Expression): string | undefined => {
+export const getExpressionSrc = (rawCharacterId?: string, expression?: Expression): string | undefined => {
+  const characterId = resolveCharacterId(rawCharacterId);
   if (!characterId || !expression) return undefined;
   const available = CHARACTERS_WITH_EXPRESSIONS[characterId];
   if (!available || !available.includes(expression)) return undefined;
@@ -168,7 +187,8 @@ const LOADING_POSE_OVERRIDES: Record<string, string> = {
   'jorge-do-bem': '/character-assets/expressoes/jorge-do-bem/carregando.png',
 };
 
-export const getLoadingSrc = (characterId?: string): string | undefined => {
+export const getLoadingSrc = (rawCharacterId?: string): string | undefined => {
+  const characterId = resolveCharacterId(rawCharacterId);
   if (!characterId) return undefined;
   return LOADING_POSE_OVERRIDES[characterId] ?? getExpressionSrc(characterId, 'pensativo') ?? getCharacterSrc(characterId, 'frente');
 };
@@ -185,12 +205,10 @@ const PEACE_POSE_OVERRIDES: Record<string, string> = {
   surfista: '/character-assets/expressoes/surfista/carregando.png', // meditating pose, reused
   'gato-jaqueta': '/character-assets/expressoes/gato-jaqueta/com-sono.png',
   'jorge-do-bem': '/character-assets/expressoes/jorge-do-bem/paz.png',
-  'raposa-3d': '/character-assets/expressoes/raposa-3d/com-sono.png',
-  'roqueiro-3d': '/character-assets/expressoes/roqueiro-3d/com-sono.png',
-  'garoto-aquario-3d': '/character-assets/expressoes/garoto-aquario-3d/com-sono.png',
 };
 
-export const getPeaceSrc = (characterId?: string): string | undefined => {
+export const getPeaceSrc = (rawCharacterId?: string): string | undefined => {
+  const characterId = resolveCharacterId(rawCharacterId);
   if (!characterId) return undefined;
   return PEACE_POSE_OVERRIDES[characterId] ?? getExpressionSrc(characterId, 'pensativo') ?? getCharacterSrc(characterId, 'frente');
 };
@@ -198,21 +216,41 @@ export const getPeaceSrc = (characterId?: string): string | undefined => {
 // Themed backdrop scene for the loading screen — a room/place matching each
 // character's profession or hobby (clinic, aquarium, garage stage, etc).
 export const getSceneSrc = (characterId?: string): string | undefined => {
-  const character = CHARACTERS.find(c => c.id === characterId);
+  const resolved = resolveCharacterId(characterId);
+  const character = CHARACTERS.find(c => c.id === resolved);
   if (!character) return undefined;
-  return `/character-assets/scenarios/${character.baseId ?? character.id}.jpg`;
+  // The fox has no 2D scene of its own yet; it reuses the old 3D fox scene file.
+  const sceneId = character.id === 'raposa' ? 'raposa-3d' : (character.baseId ?? character.id);
+  return `/character-assets/scenarios/${sceneId}.jpg`;
 };
 
-// A short idle-loop video shown in the character picker's "frente" preview,
-// for characters that have one. Only a couple of characters have this so far.
-const SELECT_ANIMATIONS: Record<string, string> = {
-  'roqueiro-3d': '/character-assets/animations/roqueiro-3d.mp4',
-  'raposa-3d': '/character-assets/animations/raposa-3d.mp4',
-  'enfermeiro-3d': '/character-assets/animations/enfermeiro-3d.mp4',
-  'garoto-aquario-3d': '/character-assets/animations/garoto-aquario-3d.mp4',
-};
+// Short reaction clip played once on the character reveal screen. Each clip is
+// rendered on the reveal screen's sand background with the tilted card, so it
+// replaces the static art in place. Characters without one show the still art.
+const REACTION_VIDEOS: Record<string, string> = Object.fromEntries(
+  [
+    'medica',
+    'guaxinim-pescador',
+    'detetive-planta',
+    'garoto-aquario',
+    'gato-jaqueta',
+    'surfista',
+    'roqueiro',
+    'engenheiro',
+    'juiz',
+    'biomedica',
+    'nutricionista',
+    'fisioterapeuta',
+    'jorge-do-bem',
+    'raposa',
+    'militar',
+    'policial',
+    'marinheiro',
+    'diplomata-petrobras',
+  ].map((id) => [id, `/character-assets/animations/${id}-reacao.mp4`]),
+);
 
-export const getSelectAnimationSrc = (characterId?: string): string | undefined => {
-  if (!characterId) return undefined;
-  return SELECT_ANIMATIONS[characterId];
+export const getReactionVideoSrc = (characterId?: string): string | undefined => {
+  const id = resolveCharacterId(characterId);
+  return id ? REACTION_VIDEOS[id] : undefined;
 };
