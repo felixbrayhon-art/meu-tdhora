@@ -37,6 +37,14 @@ interface MaterialsManagerProps {
   setSelectedNotebookId: (id: string | null) => void;
 }
 
+// Same paper/ink tokens as the Aula Viva sheet (LivingLessonView), so both
+// screens read alike in light and dark mode.
+const SHEET_INK = 'text-[#473c33] dark:text-[#f2efd2]';
+const SHEET_MUTED = 'text-[#725442] dark:text-[#c8c5a9]';
+const SHEET_PAPER = 'bg-[#fdfbf7] dark:bg-[#24251f]';
+const SHEET_CARD = 'bg-white dark:bg-[#2d2e27]';
+const SHEET_RULE = 'border-[#e8dcc8] dark:border-white/10';
+
 const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, onBack, onPlayQuiz, onCreateFolder, onUpdateFolderColor, onRenameFolder, onCreateNotebook, onUpdateNotebook, onDeleteFolder, onDeleteNotebook, onMoveAllQuestions, strategicMode, editalConfig, selectedFolderId, setSelectedFolderId, selectedNotebookId, setSelectedNotebookId }) => {
   const [moveAllNotebook, setMoveAllNotebook] = useState<Notebook | null>(null);
   const [isCreating, setIsCreating] = useState<'FOLDER' | 'NOTEBOOK' | null>(null);
@@ -170,35 +178,41 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-500">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             <div className="lg:col-span-8 space-y-6">
-              <div className="bg-white rounded-[36px] p-6 sm:p-8 shadow-xl border border-gray-100">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-5 border-b border-gray-100">
-                  <div>
-                    <p className="text-[10px] font-black text-[#fec868] uppercase tracking-[0.3em] mb-2">Caderno salvo</p>
-                    <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-[#473c33]">{selectedNotebook.name}</h3>
+              <article className={`rounded-[28px] p-5 sm:p-8 ${SHEET_PAPER}`}>
+                <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+                  <div className="min-w-0">
+                    <p className="font-logo text-xs uppercase tracking-[0.2em] text-[#e96f34] mb-1">Caderno salvo</p>
+                    <h3 className={`font-logo text-2xl sm:text-3xl uppercase leading-tight break-words ${SHEET_INK}`}>{selectedNotebook.name}</h3>
                   </div>
-                  <span className="px-3 py-1.5 rounded-full bg-[#fff6e8] text-[#ec9700] text-[10px] font-black uppercase tracking-widest">{selectedNotebook.questions.length} questões</span>
+                  <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-wide ${SHEET_RULE} ${SHEET_CARD} ${SHEET_MUTED}`}>{selectedNotebook.questions.length} questões</span>
                 </div>
+                <div
+                  aria-hidden="true"
+                  className="mb-6 h-3 opacity-60"
+                  style={{ backgroundImage: 'url("/sul-americano-triangulos.svg")', backgroundRepeat: 'repeat-x', backgroundSize: 'auto 100%' }}
+                />
 
                 {selectedNotebook.questions.length > 0 ? (
-                  <div className="space-y-3" aria-label="Questões salvas">
-                    {selectedNotebook.questions.map((question, index) => (
-                      <article key={question.id || index} className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5 hover:border-[#ffe6b9] hover:bg-[#fffaf2] transition-colors">
-                        <div className="flex items-start gap-3">
-                          <span className="w-8 h-8 shrink-0 rounded-xl bg-[#fff6e8] text-[#ec9700] flex items-center justify-center text-xs font-black">{index + 1}</span>
+                  <section aria-label="Questões salvas" className={`overflow-hidden rounded-2xl border ${SHEET_RULE} ${SHEET_CARD}`}>
+                    <div className="rounded-t-2xl bg-[#e96f34] px-4 py-2 text-center font-logo text-lg tracking-wide text-white">Questões salvas</div>
+                    <ol className="divide-y divide-[#efe6d6] dark:divide-white/10">
+                      {selectedNotebook.questions.map((question, index) => (
+                        <li key={question.id || index} className="flex items-start gap-3 px-4 py-4 sm:px-5">
+                          <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#fff0e5] text-sm font-black text-[#e96f34] dark:bg-[#35362e]">{index + 1}</span>
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm sm:text-base leading-relaxed font-semibold text-[#334155] line-clamp-3" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(question.question) }} />
-                            <div className="flex flex-wrap items-center gap-2 mt-3 text-[9px] font-black uppercase tracking-widest text-gray-400">
-                              <span>{question.options.filter((option) => option.trim()).length || question.options.length} alternativas</span>
-                              {question.topic && <span className="text-[#fda769]">{question.topic}</span>}
-                            </div>
+                            <div className={`text-sm sm:text-base leading-relaxed line-clamp-3 ${SHEET_INK}`} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(question.question) }} />
+                            <p className={`mt-2 text-xs leading-relaxed ${SHEET_MUTED}`}>
+                              <b className="font-black uppercase tracking-wide">{question.options.filter((option) => option.trim()).length || question.options.length} alternativas</b>
+                              {question.topic && <><span className="mx-1.5 text-[#e96f34]">|</span>{question.topic}</>}
+                            </p>
                           </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
                 ) : (
-                  <div className="py-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                    <p className="text-gray-400 font-bold">Este caderno ainda não possui questões salvas.</p>
+                  <div className={`rounded-2xl border border-dashed py-12 text-center ${SHEET_RULE} ${SHEET_CARD}`}>
+                    <p className={`text-sm font-bold ${SHEET_MUTED}`}>Este caderno ainda não possui questões salvas.</p>
                   </div>
                 )}
 
@@ -219,30 +233,31 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                   </div>
                 )}
                 </div>
-              </div>
+              </article>
             </div>
 
             <div className="lg:col-span-4 space-y-6">
-              <div className="bg-[#473c33] rounded-[45px] p-10 text-white shadow-2xl">
-                <p className="text-[10px] font-black text-[#fed386] uppercase tracking-[0.3em] mb-3">Caderno de questões</p>
-                <h4 className="text-2xl font-black mb-6 uppercase tracking-tighter">PRATICAR AGORA</h4>
-                <div className="space-y-4 mb-10">
-                  <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
-                    <span>Total Questões</span>
-                    <span className="text-[#fed386]">{selectedNotebook.questions.length}</span>
+              <section aria-label="Praticar agora" className={`overflow-hidden rounded-2xl border lg:sticky lg:top-6 ${SHEET_RULE} ${SHEET_CARD}`}>
+                <div className="rounded-t-2xl bg-[#e96f34] px-4 py-2 text-center font-logo text-lg tracking-wide text-white">Praticar agora</div>
+                <dl className="divide-y divide-[#efe6d6] dark:divide-white/10">
+                  <div className="flex items-center justify-between gap-4 px-4 py-3">
+                    <dt className="text-xs font-black uppercase tracking-wide text-[#e96f34]">Questões</dt>
+                    <dd className={`font-logo text-lg ${SHEET_INK}`}>{selectedNotebook.questions.length}</dd>
                   </div>
-                  <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
-                    <span>Sua Pasta</span>
-                    <span className="text-[#fed386]">{selectedFolder?.name}</span>
+                  <div className="flex items-center justify-between gap-4 px-4 py-3">
+                    <dt className="text-xs font-black uppercase tracking-wide text-[#e96f34]">Pasta</dt>
+                    <dd className={`min-w-0 truncate text-right text-sm font-bold ${SHEET_INK}`}>{selectedFolder?.name}</dd>
                   </div>
+                </dl>
+                <div className="p-4">
+                  <button onClick={() => onPlayQuiz(selectedFolderId, selectedNotebookId)} disabled={selectedNotebook.questions.length === 0} className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-[#a8431a] px-5 text-sm font-black uppercase tracking-wide text-white transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40">
+                    Iniciar treino
+                    <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </button>
                 </div>
-                <button onClick={() => onPlayQuiz(selectedFolderId, selectedNotebookId)} disabled={selectedNotebook.questions.length === 0} className="w-full bg-[#fecc73] text-white py-6 rounded-[25px] font-black text-lg hover:bg-[#fec868] transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-20">
-                  INICIAR TREINO
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </button>
-              </div>
+              </section>
             </div>
           </div>
         </div>
