@@ -227,7 +227,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
 
                 {editalConfig.isActive && (
                   <div className="lg:col-span-3">
-                    <button onClick={() => setView('STUDY_CYCLE')} className="w-full bg-gradient-to-r from-[#fecc73] to-[#ffb22a] text-white p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-[#ffe6b9]/60">
+                    <button onClick={() => setView('STUDY_CYCLE')} className="w-full bg-gradient-to-r from-[#fecc73] to-[#ffb22a] text-[#42251d] dark:from-[#8c2c0b] dark:to-[#42251d] dark:text-[#f4ebdd] p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-[#ffe6b9]/60">
                       <div className="flex items-center gap-6">
                         <div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform backdrop-blur-md">
                           <RotateCcw className="w-8 h-8 font-black" />
@@ -237,10 +237,10 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                             <h3 className="font-logo text-2xl uppercase">MEU CICLO DE ESTUDO</h3>
                             <span className="bg-white/20 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border border-white/10">INTERLIGADO</span>
                           </div>
-                          <p className="text-[#fff0d5] font-bold text-[10px] uppercase tracking-widest mt-1">{stats.studyProfile === 'FACULDADE' ? 'Intercale matérias automaticamente com base nos pesos da sua grade curricular' : 'Intercale matérias automaticamente com base nos pesos do seu edital'}</p>
+                          <p className="text-[#42251d] dark:text-[#f4ebdd] font-bold text-[10px] uppercase tracking-widest mt-1">{stats.studyProfile === 'FACULDADE' ? 'Intercale matérias automaticamente com base nos pesos da sua grade curricular' : 'Intercale matérias automaticamente com base nos pesos do seu edital'}</p>
                         </div>
                       </div>
-                      <div className="bg-white text-[#fec868] p-4 rounded-2xl group-hover:bg-[#ec9700] group-hover:text-white transition-all shadow-lg">
+                      <div className="bg-white text-[#fec868] dark:text-[#42251d] p-4 rounded-2xl group-hover:bg-[#ec9700] group-hover:text-[#28150d] transition-all shadow-lg">
                         <ArrowRight className="w-6 h-6" />
                       </div>
                     </button>
@@ -371,7 +371,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <p className="text-[#fed386]/80 text-[10px] font-bold uppercase tracking-widest">{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Conteúdo da Grade' : 'Conteúdo do Edital') : 'Dica rápida com IA'}</p>
                 </button>
 
-                <div className={`text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all animate-in zoom-in-95 duration-300 delay-200 shadow-2xl dark:shadow-none ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-[#fec868] to-[#ec9700]' : 'bg-gradient-to-br from-[#473c33] to-[#473c33] dark:from-[#2e2519] dark:to-[#2e2519] dark:border dark:border-white/[0.06]'}`}>
+                <div className={`text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all animate-in zoom-in-95 duration-300 delay-200 shadow-2xl dark:shadow-none ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-[#8c2c0b] to-[#473c33]' : 'bg-gradient-to-br from-[#473c33] to-[#473c33] dark:from-[#2e2519] dark:to-[#2e2519] dark:border dark:border-white/[0.06]'}`}>
                   <div className="mb-6 w-12 h-12 bg-white/10 text-[#fed386] rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10">
                     <BookOpen className="w-7 h-7" />
                   </div>
@@ -542,12 +542,12 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
               <h2 className="font-logo text-2xl mb-2 uppercase">CRONOGRAMA</h2>
               <p className="text-gray-400 dark:text-[#7d6f5c] text-xs font-bold uppercase tracking-widest text-[10px]">Ciclo de Estudo</p>
             </button>
-            <button onClick={() => setView('FOCUS_MODE')} className="gradient-yellow text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 shadow-[#ffe6b9]/60">
-              <div className="mb-8 w-12 h-12 bg-white/20 text-white rounded-2xl flex items-center justify-center backdrop-blur-sm">
+            <button onClick={() => setView('FOCUS_MODE')} className="hub-focus-card p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 shadow-[#ffe6b9]/60">
+              <div className="mb-8 w-12 h-12 bg-[#42251d]/10 text-[#8c2c0b] dark:bg-white/10 dark:text-[#f0e89f] rounded-2xl flex items-center justify-center backdrop-blur-sm">
                 <Bell className="w-7 h-7" />
               </div>
               <h2 className="font-logo text-2xl mb-2 uppercase">PAUSAS & LEMBRETES</h2>
-              <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Água, medicação e transição</p>
+              <p className="text-[#705a4d] dark:text-[#f4ebdd] text-[10px] font-bold uppercase tracking-widest">Água, medicação e transição</p>
             </button>
           </>
         )}

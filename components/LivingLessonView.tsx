@@ -75,12 +75,12 @@ const Box: React.FC<{ box: IllustratedLessonBox }> = ({ box }) => {
         <BoxTitle>{box.title}</BoxTitle>
         <div className="divide-y divide-[#efe6d6] dark:divide-white/10">
           {box.items.map((item, i) => (
-            <div key={i} className="grid grid-cols-[7.5rem_1fr] items-center gap-4 px-4 py-3">
-              <div className="flex items-center gap-2">
+            <div key={i} className="grid min-w-0 grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-[minmax(14rem,18rem)_minmax(0,1fr)] sm:items-center sm:gap-4">
+              <div className="flex min-w-0 items-start gap-2">
                 <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#fff0e5] text-sm font-black text-[#e96f34] dark:bg-[#35362e]">{i + 1}</span>
-                <span className="text-xs font-black uppercase leading-tight tracking-wide text-[#e96f34]">{item.label}</span>
+                <span className="min-w-0 break-words text-xs font-black uppercase leading-tight tracking-wide text-[#e96f34]">{item.label}</span>
               </div>
-              <p className={`text-sm leading-relaxed ${INK}`}>{item.text}</p>
+              <p className={`min-w-0 break-words text-sm leading-relaxed ${INK}`}>{item.text}</p>
             </div>
           ))}
         </div>

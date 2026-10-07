@@ -5,9 +5,17 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 body {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Atkinson Hyperlegible', 'Plus Jakarta Sans', sans-serif;
     background-color: #FDFBF7;
     color: #0A0F1E;
+}
+
+/* Interface titles share the logo's bold, all-caps display face. Preserve
+   editorial and generated study content in its readable text styling. */
+:is(h1, h2, h3, h4, h5, h6):not(.markdown-body h1):not(.markdown-body h2):not(.markdown-body h3):not(.markdown-body h4):not(.markdown-body h5):not(.markdown-body h6):not(.prose h1):not(.prose h2):not(.prose h3):not(.prose h4):not(.prose h5):not(.prose h6) {
+    font-family: 'Righteous', sans-serif !important;
+    font-weight: 900;
+    text-transform: uppercase;
 }
 
 .dark body {
@@ -347,10 +355,15 @@ html.dark .glass-card {
 /* Recolor the app's warm gold actions to the orange accent from the reference. */
 .dark [class~="bg-[#fec868]"],
 .dark [class~="bg-[#fecc73]"],
+.dark [class~="bg-[#fed386]"],
 .dark [class~="bg-[#fdad74]"],
 .dark [class~="bg-[#fda769]"],
 .dark [class~="bg-[#ff832a]"],
 .dark [class~="bg-[#ec6300]"],
+.dark [class~="bg-[#ec9700]"],
+.dark [class~="bg-[#e96f34]"],
+.dark [class~="bg-[#d9772b]"],
+.dark [class~="bg-[#ffb22a]"],
 .dark [class~="bg-[#eab308]"],
 .dark [class~="dark:bg-[#d9772b]"] {
     background-color: var(--dark-orange) !important;
@@ -420,8 +433,8 @@ html.dark .glass-card {
 .dark [class~="text-[#d88b2f]"],
 .dark [class~="text-[#c9773e]"],
 .dark [class~="dark:text-[#d9772b]"] {
-    /* A touch lighter than the fill orange so small orange text keeps 4.5:1 on dark cards. */
-    color: #f08a52 !important;
+    /* Preserve the warm accent while clearing 4.5:1 on raised brown surfaces. */
+    color: #fdad74 !important;
 }
 
 .dark [class~="text-[#596b2a]"] {
@@ -1140,6 +1153,133 @@ html.dark .curriculum-editor > div {
     transform: rotateY(-38deg) translateZ(2px);
 }
 
+/* A compact 3D flashcard stack for the Flashcards folder gallery. */
+.flashcard-deck-3d {
+    --flashcard-deck-accent: #d9772b;
+    position: relative;
+    width: 92px;
+    height: 118px;
+    margin-inline: auto;
+    perspective: 900px;
+    transform: rotateZ(-4deg) rotateY(-9deg);
+    transform-style: preserve-3d;
+    transition: transform 420ms cubic-bezier(.2,.6,.3,1);
+}
+
+.flashcard-deck-3d__back,
+.flashcard-deck-3d__front {
+    position: absolute;
+    border-radius: 11px;
+}
+
+.flashcard-deck-3d__back {
+    inset: 2px 7px 7px 1px;
+    border: 1px solid rgba(66, 37, 29, .24);
+    box-shadow: 0 8px 16px rgba(20, 15, 10, .18);
+    transition: transform 420ms cubic-bezier(.2,.6,.3,1);
+}
+
+.flashcard-deck-3d__back--far {
+    background: linear-gradient(145deg,
+        color-mix(in srgb, var(--flashcard-deck-accent), white 22%),
+        color-mix(in srgb, var(--flashcard-deck-accent), black 16%));
+    transform: translate3d(8px, -1px, -20px) rotateZ(12deg);
+}
+
+.flashcard-deck-3d__back--near {
+    background: linear-gradient(145deg,
+        color-mix(in srgb, var(--flashcard-deck-accent), white 12%),
+        var(--flashcard-deck-accent));
+    transform: translate3d(4px, 1px, -10px) rotateZ(6deg);
+}
+
+.flashcard-deck-3d__front {
+    inset: 0 8px 8px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 11px 10px 9px;
+    border: 1px solid rgba(66, 37, 29, .16);
+    color: #42251d;
+    background: linear-gradient(155deg, #fffdf2 0%, #f0e89f 100%);
+    box-shadow: inset 1px 1px rgba(255,255,255,.9), 0 12px 20px rgba(20,15,10,.24);
+    transform: translateZ(2px) rotateY(-5deg);
+    transform-origin: left center;
+    backface-visibility: hidden;
+    transition: transform 420ms cubic-bezier(.2,.6,.3,1), box-shadow 420ms ease;
+}
+
+.flashcard-deck-3d__brand,
+.flashcard-deck-3d__footer {
+    font-size: 6px;
+    line-height: 1.2;
+    font-weight: 900;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+
+.flashcard-deck-3d__brand { color: #705a4d; }
+
+.flashcard-deck-3d__mark {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    margin: auto;
+    place-items: center;
+    border-radius: 11px;
+    color: #f0e89f;
+    background: linear-gradient(145deg,
+        color-mix(in srgb, var(--flashcard-deck-accent), white 12%),
+        color-mix(in srgb, var(--flashcard-deck-accent), black 14%));
+    box-shadow: 0 4px 8px rgba(66,37,29,.2);
+    font-family: 'Righteous', sans-serif;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.flashcard-deck-3d__lines {
+    display: grid;
+    width: 100%;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.flashcard-deck-3d__lines i {
+    display: block;
+    width: 100%;
+    height: 3px;
+    border-radius: 99px;
+    background: rgba(66,37,29,.2);
+}
+
+.flashcard-deck-3d__lines i:last-child { width: 62%; }
+.flashcard-deck-3d__footer { color: #a83100; }
+
+.group:hover .flashcard-deck-3d {
+    transform: translateY(-3px) rotateZ(-2deg) rotateY(-15deg);
+}
+
+.group:hover .flashcard-deck-3d__back--far {
+    transform: translate3d(12px, -6px, -20px) rotateZ(17deg);
+}
+
+.group:hover .flashcard-deck-3d__back--near {
+    transform: translate3d(7px, -2px, -10px) rotateZ(9deg);
+}
+
+.group:hover .flashcard-deck-3d__front {
+    transform: translate3d(-2px, -2px, 5px) rotateY(-10deg);
+    box-shadow: inset 1px 1px rgba(255,255,255,.9), 0 16px 24px rgba(20,15,10,.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flashcard-deck-3d,
+    .flashcard-deck-3d__back,
+    .flashcard-deck-3d__front {
+        transition-duration: 1ms;
+    }
+}
+
 /* ToDAHora styling for the floating Excalidraw drawing toolbar. */
 .notes-excalidraw-surface .Island.App-toolbar {
     --island-bg-color: rgba(255, 253, 247, .96);
@@ -1488,4 +1628,681 @@ main [class~="w-12"][class~="h-12"][class~="relative"][class~="z-10"][class~="sh
     opacity: 0.35;
     -webkit-mask: url("/sul-americano-triangulos.svg") repeat-x left center / auto 100%;
     mask: url("/sul-americano-triangulos.svg") repeat-x left center / auto 100%;
+}
+
+/* Warm brand palette: Dark Roast, Buttercream, Burnt Orange and Baby Blue. */
+:root {
+    --palette-dark-roast: #42251d;
+    --palette-buttercream: #f0e89f;
+    --palette-burnt-orange: #fb4d00;
+    --palette-burnt-ink: #a83100;
+    --palette-baby-blue: #d2e8ff;
+    --palette-paper: #fbf8e6;
+    --palette-surface: #fffdf2;
+    --palette-text-muted: #705a4d;
+    --palette-on-dark-muted: #e4d4bd;
+    --palette-border: rgba(66, 37, 29, .22);
+}
+
+html:not(.dark) body {
+    background-color: var(--palette-paper);
+    color: var(--palette-dark-roast);
+}
+
+html.dark {
+    --dark-canvas: var(--palette-dark-roast);
+    --dark-surface: #523126;
+    --dark-surface-raised: #624034;
+    --dark-surface-muted: #59382c;
+    --dark-cream: var(--palette-buttercream);
+    --dark-cream-muted: #e4dca1;
+    --dark-orange: #8c2c0b;
+    --dark-orange-hover: #7d2f21;
+    --dark-border: rgba(240, 232, 159, .22);
+}
+
+html.dark body {
+    background-color: var(--dark-canvas);
+    color: var(--dark-cream);
+}
+
+.gradient-yellow { background: linear-gradient(135deg, #f0e89f, #e6d96e); }
+.gradient-orange { background: linear-gradient(135deg, #c83b00, #963000); }
+.gradient-dark { background: linear-gradient(135deg, #42251d, #59382c); }
+.bg-baby-blue { background-color: #d2e8ff; }
+
+/* Keep the yellow feature card and its foreground in the same contrast mode. */
+.dark .gradient-yellow {
+    background: linear-gradient(135deg, #8c2c0b, #42251d);
+}
+
+/* Shared brand colors used by existing Tailwind classes throughout the app. */
+html:not(.dark) [class*="text-[#473c33]"],
+html:not(.dark) [class*="text-[#f4ebdd]"],
+html:not(.dark) [class*="text-[#f2efd2]"],
+html:not(.dark) [class*="text-[#eee7cf]"] { color: var(--palette-dark-roast) !important; }
+html.dark [class*="text-[#473c33]"],
+html.dark [class*="text-[#f4ebdd]"],
+html.dark [class*="text-[#f2efd2]"],
+html.dark [class*="text-[#eee7cf]"] { color: var(--palette-buttercream) !important; }
+html:not(.dark) [class*="bg-[#473c33]"] [class*="text-[#f4ebdd]"],
+html:not(.dark) [class*="bg-[#473c33]"] [class*="text-[#f2efd2]"],
+html:not(.dark) [class*="bg-[#473c33]"] [class*="text-[#eee7cf]"] { color: var(--palette-buttercream) !important; }
+
+html:not(.dark) [class*="bg-[#FDFBF7]"],
+html:not(.dark) [class*="bg-[#fdfbf7]"],
+html:not(.dark) [class*="bg-[#f7f3ed]"],
+html:not(.dark) [class*="bg-[#fffdf9]"] {
+    background-color: var(--palette-paper) !important;
+}
+html:not(.dark) [class*="bg-white"] { background-color: var(--palette-surface); }
+
+html [class*="bg-[#473c33]"] { background-color: var(--palette-dark-roast) !important; }
+html [class*="text-[#e96f34]"],
+html [class*="text-[#d9772b]"] { color: var(--palette-burnt-ink) !important; }
+html.dark [class*="text-[#e96f34]"],
+html.dark [class*="text-[#d9772b]"] { color: var(--palette-baby-blue) !important; }
+
+html [class*="bg-[#e96f34]"],
+html [class*="bg-[#d9772b]"] { background-color: var(--palette-burnt-orange) !important; }
+html [class*="dark:bg-[#d9772b]"] { background-color: var(--palette-burnt-orange) !important; }
+html [class*="bg-[#e96f34]"].text-white,
+html [class*="bg-[#d9772b]"].text-white,
+html [class*="dark:bg-[#d9772b]"].text-white { color: #28150d !important; }
+html [class*="bg-[#fff6e8]"],
+html [class*="bg-[#E0F2FE]"],
+html [class*="bg-[#e0f2fe]"] { background-color: var(--palette-baby-blue) !important; }
+
+html:not(.dark) [class*="bg-[#fecc73]"],
+html:not(.dark) [class*="bg-[#fec868]"],
+html:not(.dark) [class*="bg-[#fed386]"],
+html:not(.dark) [class*="bg-[#fdad74]"] {
+    background-color: var(--palette-buttercream) !important;
+    color: var(--palette-dark-roast) !important;
+}
+
+/* White text on the app's pale gold chips and icon tiles had almost no
+   contrast. Their light-theme fill is buttercream, so use dark roast ink. */
+html:not(.dark) :is(
+    [class*="bg-[#fecc73]"], [class*="bg-[#fec868]"],
+    [class*="bg-[#fed386]"], [class*="bg-[#fdad74]"],
+    [class*="bg-[#fda769]"]
+):is([class*="text-white"]),
+html:not(.dark) :is(
+    [class*="bg-[#fecc73]"], [class*="bg-[#fec868]"],
+    [class*="bg-[#fed386]"], [class*="bg-[#fdad74]"],
+    [class*="bg-[#fda769]"]
+) [class*="text-white"] {
+    color: var(--palette-dark-roast) !important;
+}
+
+/* Dark mode reuses these fills as a deeper orange; cream text clears contrast. */
+html.dark :is(
+    [class*="bg-[#fecc73]"], [class*="bg-[#fec868]"],
+    [class*="bg-[#fed386]"], [class*="bg-[#fdad74]"],
+    [class*="bg-[#fda769]"], [class*="dark:bg-[#d9772b]"]
+):is([class*="text-white"]),
+html.dark :is(
+    [class*="bg-[#fecc73]"], [class*="bg-[#fec868]"],
+    [class*="bg-[#fed386]"], [class*="bg-[#fdad74]"],
+    [class*="bg-[#fda769]"], [class*="dark:bg-[#d9772b]"]
+) [class*="text-white"] {
+    color: var(--dark-cream) !important;
+}
+
+/* Orange fills are bright in light mode and deep roast in dark mode. */
+html:not(.dark) :is(
+    [class*="bg-[#ff832a]"], [class*="bg-[#e96f34]"],
+    [class*="bg-[#d9772b]"], [class*="bg-[#ec6300]"],
+    [class*="bg-[#ec9700]"], [class*="bg-[#ffb22a]"]
+):is([class*="text-white"]),
+html:not(.dark) :is(
+    [class*="bg-[#ff832a]"], [class*="bg-[#e96f34]"],
+    [class*="bg-[#d9772b]"], [class*="bg-[#ec6300]"],
+    [class*="bg-[#ec9700]"], [class*="bg-[#ffb22a]"]
+) [class*="text-white"] {
+    color: #28150d !important;
+}
+
+html.dark :is(
+    [class*="bg-[#ff832a]"], [class*="bg-[#e96f34]"],
+    [class*="bg-[#d9772b]"], [class*="bg-[#ec6300]"],
+    [class*="bg-[#ec9700]"], [class*="bg-[#ffb22a]"]
+):is([class*="text-white"]),
+html.dark :is(
+    [class*="bg-[#ff832a]"], [class*="bg-[#e96f34]"],
+    [class*="bg-[#d9772b]"], [class*="bg-[#ec6300]"],
+    [class*="bg-[#ec9700]"], [class*="bg-[#ffb22a]"]
+) [class*="text-white"] {
+    color: var(--dark-cream) !important;
+}
+html.dark [class*="bg-[#fecc73]"],
+html.dark [class*="bg-[#fec868]"],
+html.dark [class*="bg-[#fed386]"],
+html.dark [class*="bg-[#fdad74]"],
+html.dark [class*="dark:bg-[#d9772b]"] {
+    color: var(--palette-dark-roast) !important;
+}
+
+html:not(.dark) [class*="border-[#e9e0d4]"],
+html:not(.dark) [class*="border-[#eee6d6]"],
+html:not(.dark) [class*="border-gray-100"] {
+    border-color: var(--palette-border) !important;
+}
+html.dark [class*="bg-white"],
+html.dark [class*="bg-[#3a2f22]"],
+html.dark [class*="bg-[#272019]"],
+html.dark [class*="bg-[#2e2519]"] {
+    background-color: var(--dark-surface) !important;
+}
+html [role="tab"][aria-selected="true"] {
+    background-color: var(--palette-baby-blue) !important;
+    color: var(--palette-dark-roast) !important;
+    box-shadow: none;
+}
+html [role="tab"][aria-selected="true"] * { color: var(--palette-dark-roast) !important; }
+html.dark .text-white { color: var(--palette-buttercream) !important; }
+
+/* Replace the former sage accent with the palette's calm blue secondary. */
+html [class~="bg-[#b1c77b]"] { background-color: var(--palette-baby-blue) !important; }
+html [class~="bg-[#b1c77b]/10"] { background-color: rgba(210, 232, 255, .1) !important; }
+html [class~="bg-[#b1c77b]/20"] { background-color: rgba(210, 232, 255, .2) !important; }
+html [class*="border-[#b1c77b]"] { border-color: var(--palette-baby-blue) !important; }
+html:not(.dark) [class*="text-[#b1c77b]"],
+html:not(.dark) [class*="text-[#98b847]"],
+html:not(.dark) [class*="text-[#abc270]"] { color: #31536f !important; }
+html.dark [class*="text-[#b1c77b]"],
+html.dark [class*="text-[#98b847]"],
+html.dark [class*="text-[#abc270]"] { color: var(--palette-baby-blue) !important; }
+html [class*="text-[#303b1c]"],
+html [class*="text-[#2f3a1c]"] { color: var(--palette-dark-roast) !important; }
+html:not(.dark) [class*="bg-[#f4f7ec]"] { background-color: var(--palette-baby-blue) !important; }
+html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !important; }
+
+/* Keep the active primary-navigation item clearly orange in both themes. */
+.sidebar-nav-item-active {
+    background-color: var(--palette-burnt-orange) !important;
+    color: #28150d !important;
+    box-shadow: 0 3px 12px rgba(251, 77, 0, .24);
+}
+.sidebar-nav-item-active:hover {
+    background-color: #e64600 !important;
+}
+.sidebar-nav-item-active svg {
+    color: #28150d !important;
+}
+
+/* Character selection: a warm "character sheet" (tan band with a torn
+   edge and stars over a brown page), in both themes. Colors come from the
+   earthy palette; text pairs are checked for WCAG AA contrast. */
+#avatar-selection-screen,
+#character-reveal-screen {
+    --cs-sand: #cfaf86;
+    --cs-sand-plate: #b48c62;
+    --cs-brown: #725442;
+    --cs-brown-plate: #8b6a54;
+    --cs-roast: #4a352a;
+    --cs-cream: #f4ebdd;
+    --cs-cream-soft: #e8ddcc;
+    --cs-rust: #8b3626;
+    --cs-mustard: #d8a53a;
+    background: var(--cs-brown);
+    color: var(--cs-cream);
+    font-family: 'Manrope', system-ui, sans-serif;
+}
+#avatar-selection-screen .cs-hero {
+    position: relative;
+    background: var(--cs-sand);
+    color: var(--cs-roast);
+    padding-bottom: 54px;
+    overflow: hidden;
+}
+/* Same "sul-americano" triangle band used in the app header and section
+   strips, drawn in the page brown so it reads as the seam into the gallery. */
+#avatar-selection-screen .cs-hero__strip,
+#character-reveal-screen .cs-hero__strip {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 30px;
+    background-color: var(--cs-brown);
+    -webkit-mask: url("/sul-americano-triangulos.svg") repeat-x left bottom / auto 100%;
+    mask: url("/sul-americano-triangulos.svg") repeat-x left bottom / auto 100%;
+}
+#avatar-selection-screen .cs-ghost-button {
+    display: inline-flex; align-items: center; gap: .5rem;
+    min-height: 44px; padding: 0 .85rem; border-radius: 999px;
+    font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--cs-roast) !important; background: transparent !important;
+    transition: background-color .2s;
+}
+#avatar-selection-screen .cs-ghost-button:hover { background: rgba(74,53,42,.1) !important; }
+#avatar-selection-screen .cs-logo {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 44px; padding: 0 .9rem; border-radius: 999px; background: var(--cs-roast);
+}
+#avatar-selection-screen .cs-step {
+    border-radius: 999px; border: 1.5px solid rgba(74,53,42,.35);
+    padding: .45rem .85rem; font-size: 10px; font-weight: 800;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--cs-roast);
+}
+#avatar-selection-screen .cs-eyebrow,
+#character-reveal-screen .cs-eyebrow {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: 11px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--cs-roast) !important;
+}
+#avatar-selection-screen .cs-title,
+#character-reveal-screen .cs-title {
+    margin-top: .25rem;
+    font-size: clamp(1.6rem, 4.2vw, 2.6rem); line-height: 1.05;
+    text-transform: uppercase; letter-spacing: .01em;
+    color: var(--cs-roast) !important;
+}
+#avatar-selection-screen .cs-title span,
+#character-reveal-screen .cs-title span { color: var(--cs-rust) !important; }
+
+#avatar-selection-screen .cs-sheet {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(.5rem, 2.5vw, 2rem);
+    max-width: 760px; margin: 1.25rem auto 0;
+}
+#avatar-selection-screen .cs-sheet__view {
+    position: relative; margin: 0;
+    height: clamp(170px, 30vh, 300px);
+    padding-bottom: 26px;
+    display: flex; align-items: flex-end; justify-content: center;
+}
+#avatar-selection-screen .cs-sheet__plate {
+    position: absolute; left: 8%; right: 8%; top: 14%; bottom: 26px;
+    background: var(--cs-sand-plate);
+    transform: rotate(var(--cs-tilt, 0deg));
+    border-radius: 3px;
+}
+#avatar-selection-screen .cs-sheet__art {
+    position: relative; z-index: 1;
+    height: 100%; max-width: 100%;
+    object-fit: contain; object-position: bottom;
+    filter: drop-shadow(0 6px 4px rgba(74,53,42,.28));
+    animation: cs-pop .35s ease-out;
+}
+#avatar-selection-screen .cs-sheet__label {
+    position: absolute; bottom: 0; left: 0; right: 0; text-align: center;
+    font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--cs-roast);
+}
+#avatar-selection-screen .cs-nameplate {
+    margin-top: .9rem; display: flex; align-items: center; justify-content: center; gap: .6rem;
+}
+#avatar-selection-screen .cs-nameplate h2 {
+    font-size: clamp(1.35rem, 3vw, 1.9rem); text-transform: uppercase; line-height: 1.1;
+    color: var(--cs-roast) !important;
+}
+#avatar-selection-screen .cs-hero__hint {
+    margin-top: .35rem; text-align: center; font-size: 13px; font-weight: 600; color: var(--cs-roast);
+}
+
+#avatar-selection-screen .cs-section-title {
+    display: flex; align-items: center; gap: .6rem;
+    font-size: 12px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--cs-cream);
+}
+#avatar-selection-screen .cs-section-title span {
+    border-radius: 999px; background: rgba(244,235,221,.16); padding: .15rem .55rem; letter-spacing: .08em;
+}
+
+#avatar-selection-screen .cs-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 1.5rem 1rem;
+}
+@media (min-width: 640px) {
+    #avatar-selection-screen .cs-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+#avatar-selection-screen .cs-card {
+    display: flex; flex-direction: column; align-items: center; gap: .55rem;
+    padding: .25rem; border-radius: 14px; background: transparent !important;
+}
+#avatar-selection-screen .cs-card__stage {
+    position: relative; width: 100%; aspect-ratio: .82;
+    display: flex; align-items: flex-end; justify-content: center;
+}
+#avatar-selection-screen .cs-card__plate {
+    position: absolute; inset: 12% 10% 2% 10%;
+    background: var(--cs-brown-plate);
+    transform: rotate(var(--cs-tilt, 0deg));
+    border-radius: 3px;
+    transition: transform .25s ease, background-color .2s;
+}
+#avatar-selection-screen .cs-card__art {
+    position: absolute; z-index: 1; inset: 0; height: 100%; width: 100%;
+    object-fit: contain; object-position: bottom;
+    filter: drop-shadow(0 5px 3px rgba(40,26,18,.35));
+    transition: transform .25s ease;
+}
+#avatar-selection-screen .cs-card:hover .cs-card__plate { transform: rotate(0deg) scale(1.03); }
+#avatar-selection-screen .cs-card:hover .cs-card__art { transform: translateY(-4px); }
+#avatar-selection-screen .cs-card[aria-pressed="true"] .cs-card__plate { background: var(--cs-mustard); }
+#avatar-selection-screen .cs-card__badge {
+    position: absolute; z-index: 2; top: 6%; right: 6%;
+    display: flex; height: 26px; width: 26px; align-items: center; justify-content: center;
+    border-radius: 999px; background: var(--cs-roast); color: var(--cs-mustard);
+    box-shadow: 0 0 0 2.5px var(--cs-cream);
+}
+#avatar-selection-screen .cs-card__name {
+    font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    text-align: center; line-height: 1.25; color: var(--cs-cream);
+}
+#avatar-selection-screen .cs-card[aria-pressed="true"] .cs-card__name {
+    border-radius: 999px; background: var(--cs-cream); color: var(--cs-roast); padding: .15rem .55rem;
+}
+#avatar-selection-screen :is(.cs-card, .cs-ghost-button, .cs-cta):focus-visible,
+#character-reveal-screen .cs-cta:focus-visible {
+    outline: 3px solid var(--cs-mustard); outline-offset: 3px;
+}
+#avatar-selection-screen .cs-note {
+    margin-top: 1.75rem; text-align: center; font-size: 12px; font-weight: 600; color: var(--cs-cream-soft);
+}
+
+#avatar-selection-screen .cs-footer {
+    position: sticky; bottom: 0; z-index: 30;
+    background: rgba(74,53,42,.96); backdrop-filter: blur(8px);
+    box-shadow: 0 -10px 24px rgba(40,26,18,.3);
+}
+#avatar-selection-screen .cs-footer__thumb {
+    display: flex; height: 44px; width: 44px; flex-shrink: 0; align-items: flex-end; justify-content: center;
+    overflow: hidden; border-radius: 12px; background: var(--cs-mustard);
+}
+#avatar-selection-screen .cs-footer__thumb img { height: 115%; max-width: none; object-fit: cover; object-position: top; }
+#avatar-selection-screen .cs-footer__name {
+    display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: 'Righteous', sans-serif; font-size: 15px; text-transform: uppercase; color: var(--cs-cream);
+}
+#avatar-selection-screen .cs-footer__meta {
+    display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--cs-cream-soft);
+}
+#avatar-selection-screen .cs-cta,
+#character-reveal-screen .cs-cta {
+    display: inline-flex; align-items: center; gap: .5rem; flex-shrink: 0;
+    min-height: 48px; padding: 0 1.4rem; border-radius: 14px;
+    font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    background: var(--cs-mustard) !important; color: var(--cs-roast) !important;
+    box-shadow: 0 4px 0 #a8792a;
+    transition: transform .15s, box-shadow .15s;
+}
+#avatar-selection-screen .cs-cta:hover,
+#character-reveal-screen .cs-cta:hover { transform: translateY(-1px); box-shadow: 0 5px 0 #a8792a; }
+#avatar-selection-screen .cs-cta:active,
+#character-reveal-screen .cs-cta:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8792a; }
+
+/* Character reveal: same sheet look, one big tilted card. */
+#character-reveal-screen .cr-stage {
+    position: relative; flex: 1; min-height: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    padding: 1.5rem 1.5rem 3.25rem; background: var(--cs-sand); text-align: center;
+}
+#character-reveal-screen .cs-title { font-size: clamp(2rem, 6vw, 3.4rem); }
+#character-reveal-screen .cr-figure {
+    position: relative; margin: 1rem 0 0;
+    flex: 1; min-height: 0; max-height: 560px; width: min(100%, 420px);
+    display: flex; align-items: flex-end; justify-content: center;
+}
+#character-reveal-screen .cr-figure__plate {
+    position: absolute; left: 12%; right: 12%; top: 10%; bottom: 0;
+    background: var(--cs-sand-plate); transform: rotate(-3deg); border-radius: 3px;
+}
+#character-reveal-screen .cr-figure__art {
+    position: relative; z-index: 1; height: 100%; max-width: 100%;
+    object-fit: contain; object-position: bottom;
+    filter: drop-shadow(0 10px 8px rgba(74,53,42,.3));
+}
+/* Reaction clips are rendered on the sand background with the card baked in.
+   Feather the clip's edges into the stage so no hard rectangle shows. */
+/* The clips decode to a slightly darker sand; match the stage to it. */
+#character-reveal-screen .cr-stage:has(.cr-figure--video) { background: #ccaf83; }
+#character-reveal-screen .cr-figure--video { width: auto; aspect-ratio: 3 / 4; max-width: 100%; max-height: 720px; margin-top: 0; }
+#character-reveal-screen .cr-figure__video {
+    height: 100%; width: 100%; object-fit: contain; object-position: bottom;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 17%, #000 83%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 24%, #000 97%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(to right, transparent 0, #000 17%, #000 83%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 24%, #000 97%, transparent 100%);
+    mask-composite: intersect;
+}
+#character-reveal-screen .cr-footer {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: .9rem;
+    padding: 1.1rem 1.5rem 1.6rem; background: var(--cs-brown);
+}
+#character-reveal-screen .cr-footer__text {
+    font-size: 13px; font-weight: 600; text-align: center; color: var(--cs-cream-soft);
+}
+#character-reveal-screen .cr-timer {
+    position: absolute; left: 0; bottom: 0; height: 4px; width: 100%;
+    background: var(--cs-mustard); transform-origin: left;
+    animation-name: cr-timer; animation-timing-function: linear; animation-fill-mode: forwards;
+}
+@keyframes cr-timer { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+    #character-reveal-screen .cr-timer { animation: none; display: none; }
+}
+
+@keyframes cs-pop {
+    from { opacity: 0; transform: translateY(8px) scale(.97); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #avatar-selection-screen .cs-sheet__art { animation: none; }
+    #avatar-selection-screen :is(.cs-card__plate, .cs-card__art, .cs-cta) { transition: none; }
+}
+
+/* Profile selection uses a light paper surface in light mode. Keep its
+   headings dark enough to read and use the blue as the dark-mode accent. */
+html:not(.dark) #profile-selection-screen :is(h1, h2) {
+    color: var(--palette-dark-roast) !important;
+}
+html:not(.dark) #profile-selection-screen #profile-title > span {
+    color: var(--palette-burnt-ink) !important;
+}
+html.dark #profile-selection-screen :is(h1, h2) {
+    color: var(--palette-buttercream) !important;
+}
+html.dark #profile-selection-screen #profile-title > span {
+    color: var(--palette-baby-blue) !important;
+}
+html:not(.dark) #profile-selection-screen [role="group"] button .font-logo {
+    color: var(--palette-dark-roast) !important;
+}
+html.dark #profile-selection-screen [role="group"] button .font-logo {
+    color: var(--palette-buttercream) !important;
+}
+
+/* Muted Tailwind and legacy brand grays were too pale on paper and blue
+   surfaces. Keep their hierarchy while meeting readable contrast in light mode. */
+html:not(.dark) [class~="text-gray-300"],
+html:not(.dark) [class~="text-gray-400"],
+html:not(.dark) [class~="text-gray-500"],
+html:not(.dark) [class~="text-slate-300"],
+html:not(.dark) [class~="text-slate-400"],
+html:not(.dark) [class~="text-slate-500"],
+html:not(.dark) [class~="text-[#a79c8e]"],
+html:not(.dark) [class~="text-[#8f8375]"],
+html:not(.dark) [class~="text-[#b7ac9e]"],
+html:not(.dark) [class~="text-[#c8bbaa]"],
+html:not(.dark) [class~="text-[#7d6f5c]"],
+html:not(.dark) [class~="text-[#a89680]"],
+html:not(.dark) [class~="text-[#b7aa96]"],
+html:not(.dark) [class~="text-[#c8c5a9]"],
+html:not(.dark) [class~="text-[#aaa891]"],
+html:not(.dark) [class~="text-[#c2baa0]"],
+html:not(.dark) [class~="text-[#b9ad9c]"],
+html:not(.dark) [class~="text-[#aaa58e]"],
+html:not(.dark) [class~="text-[#d1c7b3]"],
+html:not(.dark) [class~="text-[#c9bea5]"],
+html:not(.dark) [class~="text-[#c2b6a6]"],
+html:not(.dark) [class~="text-[#d3cbae]"],
+html:not(.dark) [class~="text-[#b4a894]"],
+html:not(.dark) [class~="text-[#b6a892]"],
+html:not(.dark) [class~="text-[#b5ad8c]"],
+html:not(.dark) [class~="text-[#a8a188]"],
+html:not(.dark) [class~="text-[#b7ac9e]"] {
+    color: var(--palette-text-muted) !important;
+}
+
+/* Dark cards inside the light theme need a warm light foreground. */
+html:not(.dark) :is(
+    [class*="bg-[#473c33]"], [class*="bg-[#42251d]"],
+    [class*="bg-[#1E293B]"], [class*="bg-[#1e293b]"],
+    [class*="bg-[#211c15]"], [class*="bg-[#2d2e27]"],
+    [class*="bg-[#272019]"], [class*="bg-[#24251f]"],
+    [class~="bg-slate-900"], [class~="bg-slate-800"],
+    [class~="bg-gray-900"], [class~="bg-gray-800"]
+) :is(
+    [class~="text-gray-300"], [class~="text-gray-400"], [class~="text-gray-500"],
+    [class~="text-slate-300"], [class~="text-slate-400"], [class~="text-slate-500"],
+    [class~="text-[#a79c8e]"], [class~="text-[#8f8375]"], [class~="text-[#b7ac9e]"],
+    [class~="text-[#c8bbaa]"], [class~="text-[#7d6f5c]"], [class~="text-[#a89680]"],
+    [class~="text-[#b7aa96]"], [class~="text-[#c8c5a9]"], [class~="text-[#aaa891]"],
+    [class~="text-[#c2baa0]"], [class~="text-[#b9ad9c]"], [class~="text-[#aaa58e]"],
+    [class~="text-[#d1c7b3]"], [class~="text-[#c9bea5]"], [class~="text-[#c2b6a6]"],
+    [class~="text-[#d3cbae]"], [class~="text-[#b4a894]"], [class~="text-[#b6a892]"],
+    [class~="text-[#b5ad8c]"], [class~="text-[#a8a188]"], [class~="text-[#b7ac9e]"]
+) {
+    color: var(--palette-on-dark-muted) !important;
+}
+
+/* Match the Aula Viva contrast hierarchy across the rest of the app: warm
+   accent text becomes a deep rust on paper, while cream text stays light on
+   dark cards. This keeps the brand colors and makes small labels readable. */
+html:not(.dark) :is(
+    [class~="text-[#fec868]"], [class~="text-[#fecc73]"],
+    [class~="text-[#fed386]"], [class~="text-[#fdad74]"],
+    [class~="text-[#fda769]"], [class~="text-[#fdb887]"],
+    [class~="text-[#f3a06c]"], [class~="text-[#f08a52]"],
+    [class~="text-[#ffb22a]"], [class~="text-[#f5b84b]"],
+    [class~="text-[#f2bd28]"], [class~="text-[#ec9700]"],
+    [class~="text-[#e5a83e]"], [class~="text-[#d88b2f]"],
+    [class~="text-[#f1c5b4]"], [class~="text-[#e58a76]"],
+    [class~="text-[#f1a58b]"], [class~="text-[#fedda1]"],
+    [class~="text-[#ffe6b9]"], [class~="text-[#fedf9f]"],
+    [class~="text-[#fec8a2]"], [class~="text-[#f5a46f]"],
+    [class~="text-[#f28a4c]"], [class~="text-[#e8894a]"],
+    [class~="text-[#e8a46f]"], [class~="text-[#e8934d]"]
+) {
+    color: var(--palette-burnt-ink) !important;
+}
+
+html:not(.dark) [class~="text-[#ff832a]"] {
+    color: var(--palette-burnt-ink) !important;
+}
+
+html:not(.dark) :is(
+    [class~="text-[#f4ebdd]"], [class~="text-[#f2efd2]"],
+    [class~="text-[#eee7cf]"], [class~="text-[#e7ddd1]"],
+    [class~="text-[#e3edca]"], [class~="text-[#d9e9b2]"]
+) {
+    color: var(--palette-dark-roast) !important;
+}
+
+html:not(.dark) :is(
+    [class~="text-[#bcce8d]"], [class~="text-[#b9dda8]"],
+    [class~="text-[#8ea865]"], [class~="text-[#94b866]"],
+    [class~="text-[#8eaf58]"]
+) {
+    color: #354326 !important;
+}
+
+/* Restore light foregrounds when those same labels sit on a dark card. */
+html:not(.dark) :is(
+    [class*="bg-[#473c33]"], [class*="bg-[#42251d]"],
+    [class*="bg-[#1E293B]"], [class*="bg-[#1e293b]"],
+    [class*="bg-[#211c15]"], [class*="bg-[#2d2e27]"],
+    [class*="bg-[#272019]"], [class*="bg-[#24251f]"],
+    [class~="bg-slate-900"], [class~="bg-slate-800"],
+    [class~="bg-gray-900"], [class~="bg-gray-800"]
+) :is(
+    [class~="text-[#fec868]"], [class~="text-[#fecc73]"],
+    [class~="text-[#fed386]"], [class~="text-[#fdad74]"],
+    [class~="text-[#fda769]"], [class~="text-[#fdb887]"],
+    [class~="text-[#f3a06c]"], [class~="text-[#f08a52]"],
+    [class~="text-[#ffb22a]"], [class~="text-[#f5b84b]"],
+    [class~="text-[#f2bd28]"], [class~="text-[#ec9700]"],
+    [class~="text-[#e5a83e]"], [class~="text-[#d88b2f]"],
+    [class~="text-[#f1c5b4]"], [class~="text-[#e58a76]"],
+    [class~="text-[#f1a58b]"], [class~="text-[#fedda1]"],
+    [class~="text-[#ffe6b9]"], [class~="text-[#fedf9f]"],
+    [class~="text-[#fec8a2]"], [class~="text-[#f5a46f]"],
+    [class~="text-[#f28a4c]"], [class~="text-[#e8894a]"],
+    [class~="text-[#e8a46f]"], [class~="text-[#e8934d]"],
+    [class~="text-[#f4ebdd]"], [class~="text-[#f2efd2]"],
+    [class~="text-[#eee7cf]"], [class~="text-[#e7ddd1]"],
+    [class~="text-[#e3edca]"], [class~="text-[#d9e9b2]"],
+    [class~="text-[#bcce8d]"], [class~="text-[#b9dda8]"],
+    [class~="text-[#8ea865]"], [class~="text-[#94b866]"],
+    [class~="text-[#8eaf58]"]
+),
+html:not(.dark) :is(
+    [class*="bg-[#473c33]"], [class*="bg-[#42251d]"],
+    [class*="bg-[#1E293B]"], [class*="bg-[#1e293b]"],
+    [class*="bg-[#211c15]"], [class*="bg-[#2d2e27]"],
+    [class*="bg-[#272019]"], [class*="bg-[#24251f]"],
+    [class~="bg-slate-900"], [class~="bg-slate-800"],
+    [class~="bg-gray-900"], [class~="bg-gray-800"]
+):is(
+    [class~="text-[#fec868]"], [class~="text-[#fecc73]"],
+    [class~="text-[#fed386]"], [class~="text-[#fdad74]"],
+    [class~="text-[#fda769]"], [class~="text-[#fdb887]"],
+    [class~="text-[#f3a06c]"], [class~="text-[#f08a52]"],
+    [class~="text-[#ffb22a]"], [class~="text-[#f5b84b]"],
+    [class~="text-[#f2bd28]"], [class~="text-[#ec9700]"],
+    [class~="text-[#e5a83e]"], [class~="text-[#d88b2f]"],
+    [class~="text-[#f1c5b4]"], [class~="text-[#e58a76]"],
+    [class~="text-[#f1a58b]"], [class~="text-[#fedda1]"],
+    [class~="text-[#ffe6b9]"], [class~="text-[#fedf9f]"],
+    [class~="text-[#fec8a2]"], [class~="text-[#f5a46f]"],
+    [class~="text-[#f28a4c]"], [class~="text-[#e8894a]"],
+    [class~="text-[#e8a46f]"], [class~="text-[#e8934d]"],
+    [class~="text-[#f4ebdd]"], [class~="text-[#f2efd2]"],
+    [class~="text-[#eee7cf]"], [class~="text-[#e7ddd1]"],
+    [class~="text-[#e3edca]"], [class~="text-[#d9e9b2]"],
+    [class~="text-[#bcce8d]"], [class~="text-[#b9dda8]"],
+    [class~="text-[#8ea865]"], [class~="text-[#94b866]"],
+    [class~="text-[#8eaf58]"]
+) {
+    color: var(--palette-buttercream) !important;
+}
+
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+    color: var(--palette-text-muted) !important;
+    opacity: 1;
+}
+
+/* Keep the focus card on the same dark-roast / buttercream contrast system
+   as the rest of the dashboard in both themes. */
+.hub-focus-card {
+    background: linear-gradient(135deg, #f0e89f, #e6d96e);
+    color: #42251d;
+}
+
+html.dark .hub-focus-card {
+    background: linear-gradient(135deg, #8c2c0b, #42251d);
+    color: #f0e89f;
+}
+
+/* Solid buttercream/orange controls become deep burnt orange in dark mode,
+   with cream foregrounds. Opacity variants keep their translucent treatment. */
+html.dark :is(
+    [class~="bg-[#fecc73]"], [class~="bg-[#fec868]"],
+    [class~="bg-[#fed386]"], [class~="bg-[#fdad74]"],
+    [class~="bg-[#fda769]"], [class~="dark:bg-[#d9772b]"]
+) {
+    background-color: var(--dark-orange) !important;
+    color: var(--dark-cream) !important;
+}
+
+/* Selected dashboard tabs use a rich rust fill and warm cream text in dark
+   mode, matching the clearer contrast used in Aula Viva. */
+html.dark [role="tab"][aria-selected="true"] {
+    background-color: var(--dark-orange) !important;
+    color: var(--dark-cream) !important;
+}
+
+html.dark [role="tab"][aria-selected="true"] * {
+    color: var(--dark-cream) !important;
 }

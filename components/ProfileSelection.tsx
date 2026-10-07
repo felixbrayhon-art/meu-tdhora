@@ -86,7 +86,6 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
     <div
       id="profile-selection-screen"
       className="fixed inset-0 z-[110] overflow-y-auto bg-[#f1e9d9] px-4 py-4 text-[#473c33] animate-in fade-in duration-500 dark:bg-[#211d18] dark:text-[#f2efd2] sm:px-6 sm:py-6"
-      style={{ fontFamily: "'Manrope', sans-serif" }}
     >
       <div className="pointer-events-none absolute inset-0 opacity-50 dark:opacity-25" aria-hidden="true" style={{ backgroundImage: 'radial-gradient(ellipse at 12% 12%, rgba(233,111,52,.12), transparent 32%), radial-gradient(ellipse at 90% 82%, rgba(254,200,104,.13), transparent 30%)' }} />
 

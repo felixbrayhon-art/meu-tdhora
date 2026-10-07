@@ -1627,7 +1627,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                     </div>
 
                     {onTriggerGuidedLesson && (
-                      <button onClick={() => onTriggerGuidedLesson(selectedSubject || 'Geral', currentQ.topic || topic)} className="w-full mb-8 bg-gradient-to-r from-[#fec868] to-[#ffb22a] text-white p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-xl shadow-[#fec868]/20 active:scale-95">
+                      <button onClick={() => onTriggerGuidedLesson(selectedSubject || 'Geral', currentQ.topic || topic)} className="w-full mb-8 bg-gradient-to-r from-[#fec868] to-[#ffb22a] dark:from-[#8c2c0b] dark:to-[#42251d] text-[#42251d] dark:text-[#f4ebdd] p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-xl shadow-[#fec868]/20 active:scale-95">
                         <div className="flex items-center gap-4 text-left">
                           <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
                             <BookOpen className="w-6 h-6" />
@@ -1860,7 +1860,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
               <div className="absolute right-full mr-4 px-3 py-1.5 bg-[#473c33] text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">{showImageArea ? 'Ocultar Imagem' : 'Anexar Imagem'}</div>
             </button>
             {onTriggerGuidedLesson && (
-              <button onClick={() => onTriggerGuidedLesson(selectedSubject || 'Geral', currentQ.topic || topic)} className="w-14 h-14 bg-gradient-to-br from-[#fec868] to-[#fec868] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative border border-white/20" title="Aula Guiada sobre este assunto">
+              <button onClick={() => onTriggerGuidedLesson(selectedSubject || 'Geral', currentQ.topic || topic)} className="w-14 h-14 bg-gradient-to-br from-[#fec868] to-[#fec868] dark:from-[#8c2c0b] dark:to-[#8c2c0b] text-[#42251d] dark:text-[#f4ebdd] rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all group relative border border-white/20" title="Aula Guiada sobre este assunto">
                 <BookOpen className="w-6 h-6" />
                 <div className="absolute right-full mr-4 px-3 py-1.5 bg-[#ac6e00] text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap">Aula Guiada</div>
               </button>

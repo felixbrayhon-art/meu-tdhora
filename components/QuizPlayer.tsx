@@ -849,7 +849,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                 </div>
 
                 {onTriggerGuidedLesson && (
-                  <button onClick={() => onTriggerGuidedLesson(currentQ.topic?.includes(':') ? currentQ.topic.split(':')[0] : folder.name, currentQ.topic?.includes(':') ? currentQ.topic.split(':')[1] : currentQ.topic || notebook.name)} className="w-full mb-8 bg-gradient-to-r from-[#fec868] to-[#ffb22a] text-white p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-xl shadow-[#fecc73]/20 active:scale-95">
+                  <button onClick={() => onTriggerGuidedLesson(currentQ.topic?.includes(':') ? currentQ.topic.split(':')[0] : folder.name, currentQ.topic?.includes(':') ? currentQ.topic.split(':')[1] : currentQ.topic || notebook.name)} className="w-full mb-8 bg-gradient-to-r from-[#fec868] to-[#ffb22a] dark:from-[#8c2c0b] dark:to-[#42251d] text-[#42251d] dark:text-[#f4ebdd] p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-xl shadow-[#fecc73]/20 active:scale-95">
                     <div className="flex items-center gap-4 text-left">
                       <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
                         <BookOpen className="w-6 h-6" />

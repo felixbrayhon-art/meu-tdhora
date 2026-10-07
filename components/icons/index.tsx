@@ -10,24 +10,26 @@ export interface IconProps extends React.SVGProps<SVGSVGElement> {
 // the CSS variable --icon-shadow. Where --icon-shadow is not set the shadow is transparent, so icons stay
 // single-stroke everywhere except where a container opts in (e.g. the Hub card tiles).
 const make = (name: string, body: string, filled = false) => {
-  const Icon = React.forwardRef<SVGSVGElement, IconProps>(({ size = '1em', strokeWidth = 2, ...props }, ref) => (
-    <svg
-      ref={ref}
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      strokeWidth={strokeWidth}
-      strokeLinecap="square"
-      strokeLinejoin="miter"
-      aria-hidden={props['aria-label'] ? undefined : true}
-      {...props}
-    >
-      <g stroke="var(--icon-shadow, transparent)" transform="translate(1.3 1.3)" dangerouslySetInnerHTML={{ __html: body }} />
-      <g stroke="currentColor" fill={filled ? 'currentColor' : 'none'} dangerouslySetInnerHTML={{ __html: body }} />
-    </svg>
-  ));
+  const Icon = React.forwardRef<SVGSVGElement, IconProps>(({ size = '1em', strokeWidth = 2, ...props }, ref) => {
+    return (
+      <svg
+        ref={ref}
+        xmlns="http://www.w3.org/2000/svg"
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        strokeWidth={strokeWidth}
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        aria-hidden={props['aria-label'] ? undefined : true}
+        {...props}
+      >
+        <g stroke="var(--icon-shadow, transparent)" transform="translate(1.3 1.3)" dangerouslySetInnerHTML={{ __html: body }} />
+        <g stroke="currentColor" fill={filled ? 'currentColor' : 'none'} dangerouslySetInnerHTML={{ __html: body }} />
+      </svg>
+    );
+  });
   Icon.displayName = name;
   return Icon;
 };
