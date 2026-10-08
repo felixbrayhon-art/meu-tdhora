@@ -1320,7 +1320,7 @@ export const DriveReader: React.FC<DriveReaderProps> = ({ onBack, studyProfile =
                       <div className="bg-[#27201b]/50 p-3 border-b border-slate-800 flex items-center gap-3 overflow-x-auto shrink-0 min-h-[90px]">
                         <span className="text-[8px] font-black uppercase tracking-widest text-gray-500 shrink-0 select-none mr-1">Relação:</span>
                         {bookPagesList.map((p, idx) => (
-                          <div key={p.id} onClick={() => setActivePageIdx(idx)} className={`group relative w-16 h-16 rounded-lg border-2 overflow-hidden shrink-0 cursor-pointer transition-all ${activePageIdx === idx ? 'border-[#fecc73] scale-105 shadow-md shadow-[#fecc73]/20' : 'border-slate-800 hover:border-slate-600'}`}>
+                          <div key={p.id} onClick={() => setActivePageIdx(idx)} className={`group relative w-16 h-16 rounded-lg border-2 overflow-hidden shrink-0 cursor-pointer transition-all ${activePageIdx === idx ? 'border-[#fecc73] scale-105 shadow-md shadow-[#fecc73]/20 dark:shadow-black/30' : 'border-slate-800 hover:border-slate-600'}`}>
                             <img src={p.url} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
 
                             {/* Delete button indicator inside page */}
@@ -1492,7 +1492,7 @@ Use este espaço-rascunho para registrar fórmulas, conceitos críticos, ideias 
                       <div className="text-5xl font-black font-mono tracking-tight text-slate-800 mb-6 flex justify-center items-center gap-1">{formatTime(timerSeconds)}</div>
 
                       <div className="flex gap-3 justify-center">
-                        <button onClick={() => setTimerActive(!timerActive)} className={`px-5 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center gap-1.5 transition-all text-white ${timerActive ? 'bg-red-500 shadow-md shadow-red-100' : 'bg-[#fdad74] shadow-lg shadow-[#fee6d5]/60'}`}>
+                        <button onClick={() => setTimerActive(!timerActive)} className={`px-5 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center gap-1.5 transition-all text-white ${timerActive ? 'bg-red-500 shadow-md shadow-red-100' : 'bg-[#fdad74] shadow-lg shadow-[#fee6d5]/60 dark:shadow-black/30'}`}>
                           {timerActive ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white" />}
                           {timerActive ? 'Pausar' : 'Iniciar'}
                         </button>
@@ -1582,7 +1582,7 @@ Use este espaço-rascunho para registrar fórmulas, conceitos críticos, ideias 
                       <textarea value={aiInput} onChange={(e) => setAiInput(e.target.value)} placeholder="Ex: Copie e cole um conceito confuso para entender em 3 palavras..." className="w-full bg-slate-50 border border-gray-100 focus:border-[#fedda1] rounded-2xl p-4 text-[11px] font-bold focus:outline-none resize-none transition-all placeholder:text-gray-400 h-24 shadow-inner" />
 
                       <div className="flex justify-end">
-                        <button disabled={aiLoading} onClick={() => handleAskAI()} className="bg-[#fec868] hover:bg-[#ffb22a] text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-[#fff0d5]/60 disabled:opacity-50 flex items-center gap-1 text-center">
+                        <button disabled={aiLoading} onClick={() => handleAskAI()} className="bg-[#fec868] hover:bg-[#ffb22a] text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-[#fff0d5]/60 dark:shadow-black/30 disabled:opacity-50 flex items-center gap-1 text-center">
                           {aiLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                           Explicar Conceito
                         </button>

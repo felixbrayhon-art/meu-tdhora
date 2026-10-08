@@ -181,7 +181,7 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
         <div className="lg:col-span-1 space-y-3">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-4 text-left">Navegação</p>
 
-          <button onClick={() => setActiveSubjectId(null)} className={`w-full text-left p-5 rounded-[25px] font-black uppercase transition-all border-2 ${activeSubjectId === null ? 'bg-[#fec868] border-[#fec868] text-white shadow-xl shadow-[#fff0d5]/60' : 'bg-white border-transparent text-gray-400 hover:bg-gray-50'}`}>
+          <button onClick={() => setActiveSubjectId(null)} className={`w-full text-left p-5 rounded-[25px] font-black uppercase transition-all border-2 ${activeSubjectId === null ? 'bg-[#fec868] border-[#fec868] text-white shadow-xl shadow-[#fff0d5]/60 dark:shadow-black/30' : 'bg-white border-transparent text-gray-400 hover:bg-gray-50'}`}>
             <div className="flex items-center gap-3">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -197,11 +197,11 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
               const totalCount = subject.topics.length;
               const progressPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
               return (
-                <button key={subject.id} onClick={() => setActiveSubjectId(subject.id)} className={`w-full text-left p-5 rounded-[25px] font-black uppercase transition-all border-2 mb-2 ${activeSubjectId === subject.id ? 'bg-[#fec868] border-[#fec868] text-white shadow-xl shadow-[#fff0d5]/60' : 'bg-white border-transparent text-gray-400 hover:bg-gray-50'}`}>
+                <button key={subject.id} onClick={() => setActiveSubjectId(subject.id)} className={`w-full text-left p-5 rounded-[25px] font-black uppercase transition-all border-2 mb-2 ${activeSubjectId === subject.id ? 'bg-[#fec868] border-[#fec868] text-white shadow-xl shadow-[#fff0d5]/60 dark:shadow-black/30' : 'bg-white border-transparent text-gray-400 hover:bg-gray-50'}`}>
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-2 truncate">
                       <span className="text-sm truncate">{subject.name}</span>
-                      {extractingSubjectIds.includes(subject.id) && <div className="w-2 h-2 bg-[#fed386] rounded-full animate-pulse shadow-sm shadow-[#fed386]/60"></div>}
+                      {extractingSubjectIds.includes(subject.id) && <div className="w-2 h-2 bg-[#fed386] rounded-full animate-pulse shadow-sm shadow-[#fed386]/60 dark:shadow-black/30"></div>}
                       {failedSubjectIds.includes(subject.id) && <div title="Falha ao mapear tópicos" className="w-2 h-2 bg-red-500 rounded-full shadow-sm shadow-red-500"></div>}
                     </div>
                     <span className={`text-[10px] tracking-widest shrink-0 ${activeSubjectId === subject.id ? 'text-[#ffe6b9]' : 'text-gray-300'}`}>
@@ -237,7 +237,7 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
                     <button onClick={() => setIsEditing(!isEditing)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isEditing ? 'bg-[#fdad74] text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-[#473c33]'}`}>
                       {isEditing ? 'Finalizar Edição' : 'Editar Lista'}
                     </button>
-                    <button onClick={() => setShowAddTopic({ subjectId: activeSubject.id })} className="bg-[#fec868] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#ffe6b9]/60">
+                    <button onClick={() => setShowAddTopic({ subjectId: activeSubject.id })} className="bg-[#fec868] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#ffe6b9]/60 dark:shadow-black/30">
                       + Novo Tópico
                     </button>
                   </div>
@@ -460,7 +460,7 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
                       onSelectTopic(selectedTopic.subject, selectedTopic.topic, 'GUIDED_LESSON');
                       setSelectedTopic(null);
                     }}
-                    className="group flex flex-col items-center gap-4 p-6 rounded-[30px] bg-[#fec868] text-white font-black uppercase tracking-tighter hover:scale-105 transition-all shadow-xl shadow-[#ffe6b9]/60"
+                    className="group flex flex-col items-center gap-4 p-6 rounded-[30px] bg-[#fec868] text-white font-black uppercase tracking-tighter hover:scale-105 transition-all shadow-xl shadow-[#ffe6b9]/60 dark:shadow-black/30"
                   >
                     <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:bg-white group-hover:text-[#fec868] transition-all font-sans">
                       <BookOpen className="w-5 h-5" />
@@ -472,7 +472,7 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
                       onSelectTopic(selectedTopic.subject, selectedTopic.topic, 'LESSON');
                       setSelectedTopic(null);
                     }}
-                    className="group flex flex-col items-center gap-4 p-6 rounded-[30px] bg-[#fec868] text-white font-black uppercase tracking-tighter hover:scale-105 transition-all shadow-xl shadow-[#ffe6b9]/60"
+                    className="group flex flex-col items-center gap-4 p-6 rounded-[30px] bg-[#fec868] text-white font-black uppercase tracking-tighter hover:scale-105 transition-all shadow-xl shadow-[#ffe6b9]/60 dark:shadow-black/30"
                   >
                     <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:bg-white group-hover:text-[#fec868] transition-all font-sans">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -486,7 +486,7 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
                       onSelectTopic(selectedTopic.subject, selectedTopic.topic, 'QUIZ');
                       setSelectedTopic(null);
                     }}
-                    className="group flex flex-col items-center gap-4 p-6 rounded-[30px] bg-[#473c33] text-white font-black uppercase tracking-tighter hover:scale-105 transition-all shadow-xl shadow-gray-200"
+                    className="group flex flex-col items-center gap-4 p-6 rounded-[30px] bg-[#473c33] text-white font-black uppercase tracking-tighter hover:scale-105 transition-all shadow-xl shadow-gray-200 dark:shadow-black/30"
                   >
                     <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-[#fdad74] transition-all font-sans">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -500,7 +500,7 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
                       onSelectTopic(selectedTopic.subject, selectedTopic.topic, 'FLASHCARDS');
                       setSelectedTopic(null);
                     }}
-                    className="group flex flex-col items-center gap-4 p-6 rounded-[30px] bg-[#fed386] text-white font-black uppercase tracking-tighter hover:scale-105 transition-all shadow-xl shadow-[#fff0d5]/60"
+                    className="group flex flex-col items-center gap-4 p-6 rounded-[30px] bg-[#fed386] text-white font-black uppercase tracking-tighter hover:scale-105 transition-all shadow-xl shadow-[#fff0d5]/60 dark:shadow-black/30"
                   >
                     <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:bg-white group-hover:text-[#fec868] transition-all font-sans">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

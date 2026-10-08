@@ -305,7 +305,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
                 setExplanation(null);
                 startVaultResolution(activeVault!);
               }}
-              className="w-full bg-white text-[#473c33] py-6 rounded-2xl font-black mt-12 hover:bg-[#fed386] transition-all active:scale-95 shadow-xl shadow-[#fed386]/5"
+              className="w-full bg-white text-[#473c33] py-6 rounded-2xl font-black mt-12 hover:bg-[#fed386] transition-all active:scale-95 shadow-xl shadow-[#fed386]/5 dark:shadow-black/30"
             >
               ENTENDI! AGORA QUERO TESTAR
             </button>
@@ -377,7 +377,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
               const isCorrect = idx === currentQ.correctAnswer;
               const isSelected = idx === selectedAnswer;
 
-              let btnClass = 'w-full text-left p-6 rounded-[25px] border-2 border-gray-50 bg-gray-50/30 font-bold text-lg transition-all text-gray-700 hover:bg-white hover:border-[#fecc73] hover:shadow-xl hover:shadow-[#fecc73]/5';
+              let btnClass = 'w-full text-left p-6 rounded-[25px] border-2 border-gray-50 bg-gray-50/30 font-bold text-lg transition-all text-gray-700 hover:bg-white hover:border-[#fecc73] hover:shadow-xl hover:shadow-[#fecc73]/5 dark:hover:shadow-black/30';
 
               if (hasAnswered) {
                 if (isCorrect) {

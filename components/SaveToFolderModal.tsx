@@ -51,7 +51,7 @@ const SaveToFolderModal: React.FC<SaveToFolderModalProps> = ({ folders, suggeste
                   const fullPath = getFullPath(f);
 
                   return (
-                    <button key={f.id} onClick={() => setSelectedFolderId(f.id)} className={`w-full p-6 rounded-[30px] border-2 text-left transition-all flex items-center gap-4 group ${selectedFolderId === f.id ? 'border-[#fdad74] bg-[#fdad74]/10 shadow-lg shadow-[#fdad74]/10' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
+                    <button key={f.id} onClick={() => setSelectedFolderId(f.id)} className={`w-full p-6 rounded-[30px] border-2 text-left transition-all flex items-center gap-4 group ${selectedFolderId === f.id ? 'border-[#fdad74] bg-[#fdad74]/10 shadow-lg shadow-[#fdad74]/10 dark:shadow-black/30' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedFolderId === f.id ? 'bg-[#fdad74] border-[#fdad74]' : 'border-white/10 group-hover:border-white/30'}`}>
                         {selectedFolderId === f.id && (
                           <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

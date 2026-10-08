@@ -210,14 +210,14 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="flex bg-white shadow-xl shadow-gray-100/50 border border-gray-100 p-1.5 rounded-[22px]">
-          <button onClick={() => setActiveTab('DASHBOARD')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'DASHBOARD' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
+        <div className="flex bg-white shadow-xl shadow-gray-100/50 dark:shadow-black/30 border border-gray-100 p-1.5 rounded-[22px]">
+          <button onClick={() => setActiveTab('DASHBOARD')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'DASHBOARD' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60 dark:shadow-black/30' : 'text-gray-400 hover:text-gray-600'}`}>
             RESUMO
           </button>
-          <button onClick={() => setActiveTab('CRONOGRAMA')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'CRONOGRAMA' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
+          <button onClick={() => setActiveTab('CRONOGRAMA')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'CRONOGRAMA' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60 dark:shadow-black/30' : 'text-gray-400 hover:text-gray-600'}`}>
             CRONOGRAMA
           </button>
-          <button onClick={() => setActiveTab('SETUP')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'SETUP' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60' : 'text-gray-400 hover:text-gray-600'}`}>
+          <button onClick={() => setActiveTab('SETUP')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'SETUP' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60 dark:shadow-black/30' : 'text-gray-400 hover:text-gray-600'}`}>
             AJUSTES
           </button>
         </div>
@@ -290,7 +290,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
 
           {/* Suggested Subject Banner */}
           {suggestedSubject && (
-            <div className="bg-white border-2 border-[#fed386]/30 rounded-[35px] p-6 flex items-center justify-between shadow-lg shadow-[#fff6e8]/60 animate-in slide-in-from-top-4">
+            <div className="bg-white border-2 border-[#fed386]/30 rounded-[35px] p-6 flex items-center justify-between shadow-lg shadow-[#fff6e8]/60 dark:shadow-black/30 animate-in slide-in-from-top-4">
               <div className="flex items-center gap-5">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg uppercase" style={{ backgroundColor: suggestedSubject.color }}>
                   FOCO
@@ -300,7 +300,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
                   <h3 className="text-xl font-black text-gray-800 uppercase leading-none">{suggestedSubject.name}</h3>
                 </div>
               </div>
-              <button onClick={() => onStartTimer(suggestedSubject)} className="bg-[#fed386] text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-[#fff0d5]/60 hover:scale-105 active:scale-95 transition-all">
+              <button onClick={() => onStartTimer(suggestedSubject)} className="bg-[#fed386] text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-[#fff0d5]/60 dark:shadow-black/30 hover:scale-105 active:scale-95 transition-all">
                 ESTUDAR AGORA
               </button>
             </div>
@@ -380,7 +380,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
             {!plan.schedule || plan.schedule.length === 0 ? (
               <div className="bg-gray-50 rounded-[40px] p-20 text-center border-2 border-dashed border-gray-200">
                 <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mb-6">Nenhum cronograma ativo.</p>
-                <button onClick={() => setActiveTab('DASHBOARD')} className="bg-[#fed386] text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-[#fff0d5]/60">
+                <button onClick={() => setActiveTab('DASHBOARD')} className="bg-[#fed386] text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-[#fff0d5]/60 dark:shadow-black/30">
                   GERAR COM IA NO DASHBOARD
                 </button>
               </div>
@@ -459,7 +459,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
                       setFormWeight(3);
                       setIsAdding(true);
                     }}
-                    className="bg-[#fed386] text-white px-8 py-3 rounded-2xl text-[10px] font-black shadow-xl shadow-[#fff0d5]/60 transition-all hover:bg-[#fecc73]"
+                    className="bg-[#fed386] text-white px-8 py-3 rounded-2xl text-[10px] font-black shadow-xl shadow-[#fff0d5]/60 dark:shadow-black/30 transition-all hover:bg-[#fecc73]"
                   >
                     + ADICIONAR NOVA
                   </button>
@@ -513,7 +513,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
                   <button onClick={() => setIsAdding(false)} className="flex-1 py-4 text-gray-400 text-xs font-black uppercase tracking-widest hover:text-gray-600">
                     CANCELAR
                   </button>
-                  <button onClick={handleSaveSubject} className="flex-1 bg-gray-800 text-white py-4 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-gray-200 hover:bg-[#473c33] transition-all">
+                  <button onClick={handleSaveSubject} className="flex-1 bg-gray-800 text-white py-4 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-gray-200 dark:shadow-black/30 hover:bg-[#473c33] transition-all">
                     {editingSubjectId ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR ADIÇÃO'}
                   </button>
                 </div>

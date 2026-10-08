@@ -283,7 +283,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
                     setEvocationAnalysis(null);
                     handlePhaseTransition();
                   }}
-                  className="w-full bg-[#fdad74] text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-[#fed6ba]/60 hover:scale-105 transition-all"
+                  className="w-full bg-[#fdad74] text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-[#fed6ba]/60 dark:shadow-black/30 hover:scale-105 transition-all"
                 >
                   Continuar para Prática
                 </button>

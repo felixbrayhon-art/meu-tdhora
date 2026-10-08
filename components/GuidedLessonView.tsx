@@ -500,9 +500,9 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
               transition={{ repeat: Infinity, duration: 2 }}
               className="flex gap-2"
             >
-              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50" />
-              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50" />
-              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50" />
+              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50 dark:shadow-black/30" />
+              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50 dark:shadow-black/30" />
+              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50 dark:shadow-black/30" />
             </motion.div>
           </div>
         )}

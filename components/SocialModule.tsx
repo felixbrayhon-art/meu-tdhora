@@ -311,7 +311,7 @@ const SocialModule: React.FC<SocialModuleProps> = ({ myUid, myStats, isLoggedIn,
                 )}
                 {messages.map((m) => (
                   <div key={m.id} className={`flex ${m.senderId === myUid ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] p-4 rounded-[25px] ${m.senderId === myUid ? 'bg-[#fec868] text-white rounded-br-none shadow-xl shadow-[#fecc73]/10' : 'bg-gray-100 text-[#473c33] rounded-bl-none'}`}>
+                    <div className={`max-w-[70%] p-4 rounded-[25px] ${m.senderId === myUid ? 'bg-[#fec868] text-white rounded-br-none shadow-xl shadow-[#fecc73]/10 dark:shadow-black/30' : 'bg-gray-100 text-[#473c33] rounded-bl-none'}`}>
                       <p className="text-xs font-black mb-1">{m.senderName}</p>
                       <p className="text-sm font-medium leading-relaxed">{m.text}</p>
                       <p className={`text-[8px] mt-2 font-bold uppercase opacity-50 ${m.senderId === myUid ? 'text-right' : 'text-left'}`}>

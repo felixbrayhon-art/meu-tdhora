@@ -227,7 +227,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
 
                 {editalConfig.isActive && (
                   <div className="lg:col-span-3">
-                    <button onClick={() => setView('STUDY_CYCLE')} className="w-full bg-gradient-to-r from-[#fecc73] to-[#ffb22a] text-[#42251d] dark:from-[#8c2c0b] dark:to-[#42251d] dark:text-[#f4ebdd] p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-[#ffe6b9]/60">
+                    <button onClick={() => setView('STUDY_CYCLE')} className="w-full bg-gradient-to-r from-[#fecc73] to-[#ffb22a] text-[#42251d] dark:from-[#8c2c0b] dark:to-[#42251d] dark:text-[#f4ebdd] p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-2xl shadow-[#ffe6b9]/60 dark:shadow-black/30">
                       <div className="flex items-center gap-6">
                         <div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform backdrop-blur-md">
                           <RotateCcw className="w-8 h-8 font-black" />
@@ -542,7 +542,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
               <h2 className="font-logo text-2xl mb-2 uppercase">CRONOGRAMA</h2>
               <p className="text-gray-400 dark:text-[#7d6f5c] text-xs font-bold uppercase tracking-widest text-[10px]">Ciclo de Estudo</p>
             </button>
-            <button onClick={() => setView('FOCUS_MODE')} className="hub-focus-card p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 shadow-[#ffe6b9]/60">
+            <button onClick={() => setView('FOCUS_MODE')} className="hub-focus-card p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-150 shadow-[#ffe6b9]/60 dark:shadow-black/30">
               <div className="mb-8 w-12 h-12 bg-[#42251d]/10 text-[#8c2c0b] dark:bg-white/10 dark:text-[#f0e89f] rounded-2xl flex items-center justify-center backdrop-blur-sm">
                 <Bell className="w-7 h-7" />
               </div>
@@ -562,10 +562,10 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                 <p className="text-gray-400 dark:text-[#7d6f5c] font-bold text-xs uppercase tracking-widest mb-10">Controle o Lofi e os ruídos brancos</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => setActiveChannel(activeChannel === 'RELAX' ? null : 'RELAX')} className={`p-6 rounded-[30px] flex flex-col items-center gap-2 transition-all border-4 ${activeChannel === 'RELAX' ? 'bg-[#fed386] border-[#fed386] text-white shadow-xl shadow-[#fff0d5]/60' : 'bg-gray-50 dark:bg-[#272019] border-transparent text-gray-400 dark:text-[#7d6f5c] hover:border-gray-200 dark:hover:border-white/[0.1]'}`}>
+                <button onClick={() => setActiveChannel(activeChannel === 'RELAX' ? null : 'RELAX')} className={`p-6 rounded-[30px] flex flex-col items-center gap-2 transition-all border-4 ${activeChannel === 'RELAX' ? 'bg-[#fed386] border-[#fed386] text-white shadow-xl shadow-[#fff0d5]/60 dark:shadow-black/30' : 'bg-gray-50 dark:bg-[#272019] border-transparent text-gray-400 dark:text-[#7d6f5c] hover:border-gray-200 dark:hover:border-white/[0.1]'}`}>
                   <span className="text-xs font-black uppercase tracking-widest ">LOFI RELAX</span>
                 </button>
-                <button onClick={() => setIsPlayingRain(!isPlayingRain)} className={`p-6 rounded-[30px] flex items-center justify-center gap-4 transition-all border-4 ${isPlayingRain ? 'bg-[#fecc73] border-[#fecc73] text-white shadow-xl shadow-[#fff0d5]/60' : 'bg-gray-50 dark:bg-[#272019] border-transparent text-gray-400 dark:text-[#7d6f5c] hover:border-gray-200 dark:hover:border-white/[0.1]'}`}>
+                <button onClick={() => setIsPlayingRain(!isPlayingRain)} className={`p-6 rounded-[30px] flex items-center justify-center gap-4 transition-all border-4 ${isPlayingRain ? 'bg-[#fecc73] border-[#fecc73] text-white shadow-xl shadow-[#fff0d5]/60 dark:shadow-black/30' : 'bg-gray-50 dark:bg-[#272019] border-transparent text-gray-400 dark:text-[#7d6f5c] hover:border-gray-200 dark:hover:border-white/[0.1]'}`}>
                   <Cloud className="w-6 h-6" />
                 </button>
               </div>
