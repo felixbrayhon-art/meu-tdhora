@@ -501,10 +501,11 @@ async function generateGroqContent(params: any): Promise<{ text: string }> {
   const requestMessages = wantsJson ? addJsonSchemaInstructions(messages, schema, 'todahora_response') : messages;
   const requestedTokens = Number(config.maxOutputTokens);
   let lastError: any;
-  // Content that must be right (exam questions) asks for deeper reasoning: only the 120B model, which thinks
-  // longer before answering, and a longer timeout. The 20B fallback writes confident but wrong legal content.
+  // Content that must be right (exam questions) only uses the 120B model: the 20B fallback writes confident but
+  // wrong legal content. reasoning_effort "high" was tried and made Groq's JSON mode fail (HTTP 400) after ~40 s.
   const reasoningEffort = ['low', 'medium', 'high'].includes(config.reasoningEffort) ? config.reasoningEffort : undefined;
-  const models = reasoningEffort === 'high' ? GROQ_MODELS.slice(0, 1) : GROQ_MODELS;
+  const precise = config.preciseContent === true || reasoningEffort === 'high';
+  const models = precise ? GROQ_MODELS.slice(0, 1) : GROQ_MODELS;
   for (const model of models) {
     try {
       const text = await callGroqModel(model, {
@@ -517,7 +518,7 @@ async function generateGroqContent(params: any): Promise<{ text: string }> {
         ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
         temperature: typeof config.temperature === 'number' ? config.temperature : 0.5,
         max_completion_tokens: Number.isFinite(requestedTokens) ? Math.min(Math.max(requestedTokens, 256), 24000) : 8000,
-      }, reasoningEffort === 'high' ? 55000 : GROQ_TIMEOUT_MS);
+      }, precise ? 40000 : GROQ_TIMEOUT_MS);
       console.info(`[ai] Resposta gerada pelo Groq (${model}).`);
       return { text };
     } catch (e: any) {
@@ -941,8 +942,8 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
     },
     required: ['questions'],
   };
-  // Deep reasoning spends completion tokens on thinking before the JSON answer, so it gets extra room.
-  const maxQuestionOutputTokens = Math.min(7500, Math.max(3000, numQuestions * 750)) + (deepReasoning ? 10000 : 0);
+  // GPT-OSS reasons before writing the JSON and both count toward the completion budget, so precise runs get extra room.
+  const maxQuestionOutputTokens = Math.min(7500, Math.max(3000, numQuestions * 750)) + (deepReasoning ? 3000 : 0);
   const isValidQuestionPayload = (value: any): boolean =>
     Array.isArray(value?.questions) && value.questions.length > 0 && value.questions.every((question: any) =>
       typeof question?.question === 'string' && question.question.trim().length > 0 &&
@@ -960,7 +961,7 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
       config: {
         responseMimeType: "application/json",
         maxOutputTokens: maxQuestionOutputTokens,
-        ...(deepReasoning ? { reasoningEffort: 'high', temperature: 0.3 } : {}),
+        ...(deepReasoning ? { preciseContent: true, temperature: 0.3 } : {}),
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -1093,13 +1094,23 @@ const isUsableQuestion = (q: any): boolean =>
 // The law lookup matches article text by topic words, so qualifiers ("furto qualificado", "homicídio culposo")
 // can make it miss the article and fall back to an encyclopedia page. Retry without them before giving up on the law.
 const LEGAL_QUALIFIERS = /\b(qualificad[oa]s?|privilegiad[oa]s?|majorad[oa]s?|circunstanciad[oa]s?|simples|culpos[oa]s?|dolos[oa]s?|tentad[oa]s?|consumad[oa]s?|agravad[oa]s?|atenuad[oa]s?|impropri[oa]s?|propri[oa]s?|formas?|modalidades?|tipos?|especies?|espécies?|hipóteses?|causas? de aumento( de pena)?)\b/gi;
+const simplifyLegalTopic = (topic: string) => topic.replace(LEGAL_QUALIFIERS, ' ').replace(/\s+/g, ' ').replace(/\s+([:,.])/g, '$1').trim();
 const findQuestionSources = async (topic: string) => {
   const first = await gatherQuestionSources(topic).catch(() => []);
   if (first.some((src) => src.kind === 'lei')) return first;
-  const simplified = topic.replace(LEGAL_QUALIFIERS, ' ').replace(/\s+/g, ' ').replace(/\s+([:,.])/g, '$1').trim();
+  const simplified = simplifyLegalTopic(topic);
   if (!simplified || simplified === topic.trim()) return first;
   const retry = await gatherQuestionSources(simplified).catch(() => []);
   return retry.some((src) => src.kind === 'lei') ? retry : first;
+};
+// The topic whose lookup returns the law (the original one, or the simplified one when only that finds it).
+const sourceTopicFor = async (topic: string) => {
+  const first = await gatherQuestionSources(topic).catch(() => []);
+  if (first.some((src) => src.kind === 'lei')) return topic;
+  const simplified = simplifyLegalTopic(topic);
+  if (!simplified || simplified === topic.trim()) return topic;
+  const retry = await gatherQuestionSources(simplified).catch(() => []);
+  return retry.some((src) => src.kind === 'lei') ? simplified : topic;
 };
 
 export const generateExamQuestionsFast = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => {
@@ -1135,8 +1146,11 @@ export const verifyExamQuestions = async <T extends QuizQuestion>(topic: string,
     for (const q of questions) counts.set(q.options.length, (counts.get(q.options.length) ?? 0) + 1);
     const optionCount = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
     let handedOver = false;
+    // Check against the same text the questions were written from: when only the simplified topic finds the
+    // law ("furto qualificado" -> CP art. 155), verify with that topic too.
+    const checkTopic = await sourceTopicFor(topic);
     const { questions: checked, report } = await buildVerifiedQuestions({
-      topic,
+      topic: checkTopic,
       count: questions.length,
       optionCount,
       Type,
