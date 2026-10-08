@@ -299,7 +299,8 @@ export interface Activity {
 //   consistent - an independent pass agreed, but no official text was available for the topic
 //   unverified - the check could not run; confirm in your own material
 export interface QuestionVerification {
-  status: 'verified' | 'consistent' | 'unverified';
+  // checking: shown right away while the background check runs; disputed: the independent check disagreed.
+  status: 'verified' | 'consistent' | 'unverified' | 'checking' | 'disputed';
   source?: string;
   evidence?: string;
   note?: string;

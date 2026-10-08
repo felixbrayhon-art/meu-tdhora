@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, AlertTriangle, Info } from './icons';
+import { CheckCircle2, AlertTriangle, Info, Loader2, XCircle } from './icons';
 import { QuestionVerification } from '../types';
 
 const STYLES = {
@@ -18,6 +18,16 @@ const STYLES = {
     Icon: AlertTriangle,
     box: 'bg-[#a94432]/10 border-[#a94432]/30 text-[#7d2f21] dark:bg-[#e58a76]/10 dark:border-[#e58a76]/30 dark:text-[#f2b3a6]',
   },
+  checking: {
+    label: 'Conferindo gabarito e explicação…',
+    Icon: Loader2,
+    box: 'bg-[#725442]/10 border-[#725442]/25 text-[#5a4033] dark:bg-white/5 dark:border-white/15 dark:text-[#d8cbb8]',
+  },
+  disputed: {
+    label: 'Gabarito contestado na conferência',
+    Icon: XCircle,
+    box: 'bg-[#a94432]/15 border-[#a94432]/45 text-[#7d2f21] dark:bg-[#e58a76]/15 dark:border-[#e58a76]/45 dark:text-[#f2b3a6]',
+  },
 } as const;
 
 // Shows how an AI-generated question was checked, so the student knows how far to trust the answer key.
@@ -27,7 +37,7 @@ const VerificationBadge: React.FC<{ verification?: QuestionVerification }> = ({ 
   const detail = verification.status === 'verified' ? verification.source : verification.note;
   return (
     <div className={`mb-4 flex items-start gap-3 rounded-2xl border px-4 py-3 text-xs font-bold leading-relaxed ${box}`} role="note">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${verification.status === 'checking' ? 'animate-spin' : ''}`} />
       <div>
         <p className="font-black uppercase tracking-wide">{label}</p>
         {detail && <p className="mt-0.5 font-medium opacity-90">{detail}</p>}

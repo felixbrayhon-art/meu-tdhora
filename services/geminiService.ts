@@ -1075,6 +1075,72 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
   }
 };
 
+// Fast path, like the app worked before the quality layer: one model call, questions shown right away with a
+// "checking" badge. verifyExamQuestions then runs the same checks as generateExamQuestions on this exact batch
+// and updates each badge, so the student is never left waiting on (or blocked by) the verification.
+const isUsableQuestion = (q: any): boolean =>
+  !!q && typeof q.question === 'string' && q.question.trim().length > 0 &&
+  Array.isArray(q.options) && q.options.length >= 4 && q.options.every((o: unknown) => typeof o === 'string') &&
+  Number.isInteger(q.correctAnswer) && q.correctAnswer >= 0 && q.correctAnswer < q.options.length;
+
+export const generateExamQuestionsFast = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => {
+  try {
+    const raw = await requestExamQuestions(topic, numQuestions, profile, banca, explanationStyle, questionProfileStyle, '');
+    const list: any[] = (Array.isArray(raw) ? raw : raw?.questions) ?? [];
+    const questions = list.filter(isUsableQuestion).slice(0, numQuestions)
+      .map((q) => ({ ...q, verification: { status: 'checking' as const } }));
+    if (questions.length === 0) throw new AIError('A IA não devolveu questões válidas desta vez. Tente novamente.');
+    return { questions };
+  } catch (error) {
+    return handleAIError(error);
+  }
+};
+
+const questionKey = (text: string) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 120);
+
+// Runs the existing verification (sources + independent judge + explanation review) on questions that were
+// already shown. Nothing is regenerated or removed: every question comes back with a final badge, and verified
+// ones also get the repaired explanation (unsupported sentences removed, "Base legal" appended).
+export const verifyExamQuestions = async <T extends QuizQuestion>(topic: string, questions: T[]): Promise<T[]> => {
+  const unverified = (note: string) => questions.map((q) => ({ ...q, verification: { status: 'unverified' as const, note } }));
+  if (questions.length === 0) return questions;
+  try {
+    const counts = new Map<number, number>();
+    for (const q of questions) counts.set(q.options.length, (counts.get(q.options.length) ?? 0) + 1);
+    const optionCount = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    let handedOver = false;
+    const { questions: checked, report } = await buildVerifiedQuestions({
+      topic,
+      count: questions.length,
+      optionCount,
+      Type,
+      judge: (prompt, schema, name) => judgeJson(prompt, schema, name),
+      // Hand over this batch once; later rounds get nothing, so rejected questions are flagged instead of replaced.
+      generate: async () => {
+        if (handedOver) return [];
+        handedOver = true;
+        return questions.map(({ question, options, correctAnswer, explanation, memoryHint }) => ({ question, options, correctAnswer, explanation, memoryHint }));
+      },
+    });
+    console.info('[questoes] conferência em segundo plano:', report);
+    const byKey = new Map(checked.map((q) => [questionKey(q.question), q]));
+    return questions.map((q) => {
+      const hit = byKey.get(questionKey(q.question));
+      if (hit) return { ...q, explanation: hit.explanation ?? q.explanation, verification: hit.verification };
+      if (report.sources.length === 0) {
+        return { ...q, verification: { status: 'unverified' as const, note: 'Não encontrei uma fonte de referência para conferir este assunto.' } };
+      }
+      if (!report.judgeAvailable) {
+        return { ...q, verification: { status: 'unverified' as const, note: 'A conferência não pôde ser concluída agora (limite dos provedores de IA).' } };
+      }
+      return { ...q, verification: { status: 'disputed' as const, note: 'A conferência independente discordou do gabarito ou da explicação. Confirme no seu material antes de confiar nesta questão.' } };
+    });
+  } catch (error) {
+    console.warn('[questoes] conferência em segundo plano indisponível:', error);
+    return unverified('A conferência não pôde ser concluída agora.');
+  }
+};
+
 export const identifyQuestionCount = async (text: string) => {
   const countPrompt = `Analise cuidadosamente o texto abaixo e conte quantas questões de múltipla escolha (com alternativas A, B, C...) existem nele.
       Ignore blocos de explicação, comentários ou gabaritos que venham após as questões; conte apenas os enunciados das perguntas.
