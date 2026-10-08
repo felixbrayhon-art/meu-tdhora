@@ -2,7 +2,7 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { applySourceGuard } from './topicSource';
 import { gatherSources, sourcesPromptBlock } from './lessonSources';
-import { buildVerifiedQuestions } from './questionQuality';
+import { buildVerifiedQuestions, gatherQuestionSources, questionGenerationRules, doctrineNotes } from './questionQuality';
 import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle, IllustratedLesson } from "../types";
 import { auth } from "../src/lib/firebase";
 
@@ -501,7 +501,11 @@ async function generateGroqContent(params: any): Promise<{ text: string }> {
   const requestMessages = wantsJson ? addJsonSchemaInstructions(messages, schema, 'todahora_response') : messages;
   const requestedTokens = Number(config.maxOutputTokens);
   let lastError: any;
-  for (const model of GROQ_MODELS) {
+  // Content that must be right (exam questions) asks for deeper reasoning: only the 120B model, which thinks
+  // longer before answering, and a longer timeout. The 20B fallback writes confident but wrong legal content.
+  const reasoningEffort = ['low', 'medium', 'high'].includes(config.reasoningEffort) ? config.reasoningEffort : undefined;
+  const models = reasoningEffort === 'high' ? GROQ_MODELS.slice(0, 1) : GROQ_MODELS;
+  for (const model of models) {
     try {
       const text = await callGroqModel(model, {
         messages: requestMessages,
@@ -510,9 +514,10 @@ async function generateGroqContent(params: any): Promise<{ text: string }> {
         // from the API response so only the answer reaches our JSON parser and
         // avoid spending the completion budget on an unused field.
         include_reasoning: false,
+        ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
         temperature: typeof config.temperature === 'number' ? config.temperature : 0.5,
         max_completion_tokens: Number.isFinite(requestedTokens) ? Math.min(Math.max(requestedTokens, 256), 24000) : 8000,
-      });
+      }, reasoningEffort === 'high' ? 55000 : GROQ_TIMEOUT_MS);
       console.info(`[ai] Resposta gerada pelo Groq (${model}).`);
       return { text };
     } catch (e: any) {
@@ -642,10 +647,10 @@ const callOpenRouterText = async (systemInstruction: string | undefined, message
 
 // Groq-specific fallback: the backup model handles model-specific errors, but
 // a provider-level 429 stops immediately because both models share the quota.
-const callGroqModel = async (model: string, body: Record<string, any>): Promise<string> => {
+const callGroqModel = async (model: string, body: Record<string, any>, timeoutMs = GROQ_TIMEOUT_MS): Promise<string> => {
   const res = await aiProxyFetch('groq', {
     body: JSON.stringify({ model, ...body }),
-    signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) { console.warn(`[groq] ${model} falhou: HTTP ${res.status}`); throw new Error(`Groq (${model}) HTTP ${res.status}`); }
   const data = await res.json();
@@ -889,7 +894,7 @@ const requestStudyContent = async (topic: string, technique: string, numQuestion
   }
 };
 
-const requestExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile, banca: string | undefined, explanationStyle: ExplanationStyle, questionProfileStyle: string, extraInstructions: string) => {
+const requestExamQuestions = async (topic: string, numQuestions: number, profile: StudyProfile, banca: string | undefined, explanationStyle: ExplanationStyle, questionProfileStyle: string, extraInstructions: string, deepReasoning = false) => {
   const profileStyle = profile === 'CONCURSO'
     ? "estilo Concursos Públicos de alto nível (FCC/CESPE/FGV), complexas, baseadas em doutrina, jurisprudência e lei seca."
     : profile === 'FACULDADE'
@@ -936,7 +941,8 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
     },
     required: ['questions'],
   };
-  const maxQuestionOutputTokens = Math.min(7500, Math.max(3000, numQuestions * 750));
+  // Deep reasoning spends completion tokens on thinking before the JSON answer, so it gets extra room.
+  const maxQuestionOutputTokens = Math.min(7500, Math.max(3000, numQuestions * 750)) + (deepReasoning ? 10000 : 0);
   const isValidQuestionPayload = (value: any): boolean =>
     Array.isArray(value?.questions) && value.questions.length > 0 && value.questions.every((question: any) =>
       typeof question?.question === 'string' && question.question.trim().length > 0 &&
@@ -954,6 +960,7 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
       config: {
         responseMimeType: "application/json",
         maxOutputTokens: maxQuestionOutputTokens,
+        ...(deepReasoning ? { reasoningEffort: 'high', temperature: 0.3 } : {}),
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -1080,12 +1087,31 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
 // and updates each badge, so the student is never left waiting on (or blocked by) the verification.
 const isUsableQuestion = (q: any): boolean =>
   !!q && typeof q.question === 'string' && q.question.trim().length > 0 &&
-  Array.isArray(q.options) && q.options.length >= 4 && q.options.every((o: unknown) => typeof o === 'string') &&
+  Array.isArray(q.options) && q.options.length === 5 && q.options.every((o: unknown) => typeof o === 'string' && o.trim().length > 0) &&
   Number.isInteger(q.correctAnswer) && q.correctAnswer >= 0 && q.correctAnswer < q.options.length;
+
+// The law lookup matches article text by topic words, so qualifiers ("furto qualificado", "homicídio culposo")
+// can make it miss the article and fall back to an encyclopedia page. Retry without them before giving up on the law.
+const LEGAL_QUALIFIERS = /\b(qualificad[oa]s?|privilegiad[oa]s?|majorad[oa]s?|circunstanciad[oa]s?|simples|culpos[oa]s?|dolos[oa]s?|tentad[oa]s?|consumad[oa]s?|agravad[oa]s?|atenuad[oa]s?|impropri[oa]s?|propri[oa]s?|formas?|modalidades?|tipos?|especies?|espécies?|hipóteses?|causas? de aumento( de pena)?)\b/gi;
+const findQuestionSources = async (topic: string) => {
+  const first = await gatherQuestionSources(topic).catch(() => []);
+  if (first.some((src) => src.kind === 'lei')) return first;
+  const simplified = topic.replace(LEGAL_QUALIFIERS, ' ').replace(/\s+/g, ' ').replace(/\s+([:,.])/g, '$1').trim();
+  if (!simplified || simplified === topic.trim()) return first;
+  const retry = await gatherQuestionSources(simplified).catch(() => []);
+  return retry.some((src) => src.kind === 'lei') ? retry : first;
+};
 
 export const generateExamQuestionsFast = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => {
   try {
-    const raw = await requestExamQuestions(topic, numQuestions, profile, banca, explanationStyle, questionProfileStyle, '');
+    // Ground the single call in the official text (Vade Mecum / encyclopedia) like the verified path does. The lookup
+    // is local and fast; if it finds nothing, the rules still forbid invented articles, súmulas and jurisprudence.
+    const sources = await Promise.race([
+      findQuestionSources(topic),
+      new Promise<[]>((resolve) => setTimeout(() => resolve([]), 5000)),
+    ]);
+    const rules = questionGenerationRules(sources, [], doctrineNotes(topic));
+    const raw = await requestExamQuestions(topic, numQuestions, profile, banca, explanationStyle, questionProfileStyle, rules, true);
     const list: any[] = (Array.isArray(raw) ? raw : raw?.questions) ?? [];
     const questions = list.filter(isUsableQuestion).slice(0, numQuestions)
       .map((q) => ({ ...q, verification: { status: 'checking' as const } }));
