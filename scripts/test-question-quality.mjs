@@ -130,6 +130,44 @@ try {
   assert(result.report.timingsMs.total >= result.report.timingsMs.answerVerification,
     'includes stage timings within the total elapsed time');
 
+  let paraphraseJudgeCalls = 0;
+  const inflectedAnswer = await buildVerifiedQuestions({
+    topic: 'Direito Penal: furto',
+    count: 1,
+    optionCount: 4,
+    Type: { OBJECT: 'OBJECT', ARRAY: 'ARRAY', INTEGER: 'INTEGER', BOOLEAN: 'BOOLEAN', STRING: 'STRING' },
+    generate: async () => [{
+      question: 'Qual alternativa descreve o núcleo do furto simples previsto no art. 155 do Código Penal?',
+      options: [
+        'Subtração de bem móvel, alheio e pertencente a terceiro',
+        'Destruição de bem próprio sem consequência jurídica',
+        'Recebimento autorizado de bem móvel de outra pessoa',
+        'Ocupação de imóvel abandonado sem violência',
+      ],
+      correctAnswer: 0,
+      explanation: 'A subtração de coisa móvel alheia corresponde ao núcleo do furto. A coisa deve pertencer a terceiro.',
+    }],
+    judge: async (_prompt, _schema, name) => {
+      if (name === 'explanation_review') return { results: [{ index: 0, keyWrong: false, claims: [
+        { text: 'A subtração de coisa móvel alheia corresponde ao núcleo do furto.', verdict: 'correta', why: 'O caput descreve essa conduta.', sentenceIndices: [0] },
+        { text: 'A coisa deve pertencer a terceiro.', verdict: 'correta', why: 'O caput a define como alheia.', sentenceIndices: [1] },
+      ] }] };
+      const flipped = paraphraseJudgeCalls++ === 1;
+      return { results: [{
+        index: 0,
+        chosen: flipped ? 3 : 0,
+        ambiguous: false,
+        evidence: 'Subtrair, para si ou para outrem, coisa alheia móvel',
+        rationale: 'O caput descreve a subtração de coisa alheia móvel.',
+      }] };
+    },
+  });
+
+  assert.equal(inflectedAnswer.questions.length, 1,
+    `accepts a source-backed correct option whose Portuguese derived forms differ from the statute wording: ${JSON.stringify(inflectedAnswer.report)}`);
+  assert.equal(inflectedAnswer.report.verified, 1,
+    'still requires the source quote, both answer checks, and a complete explanation review');
+
   let requestedCandidates = 0;
   let batchAnswerPasses = 0;
   let batchReviews = 0;
@@ -172,7 +210,47 @@ try {
   assert.equal(batched.questions.length, 5, 'still releases the full batch after verification');
   assert.equal(batchAnswerPasses, 2, 'checks the whole candidate batch in one call per answer order');
   assert.equal(batchReviews, 1, 'reviews five explanations together rather than splitting into extra calls');
-  console.log('Question quality checks: 14 passed (including end-to-end verification and batching).');
+
+  const adaptiveBatchSizes = [];
+  const adaptive = await buildVerifiedQuestions({
+    topic: 'Direito Penal - furto',
+    count: 5,
+    optionCount: 4,
+    Type: { OBJECT: 'OBJECT', ARRAY: 'ARRAY', INTEGER: 'INTEGER', BOOLEAN: 'BOOLEAN', STRING: 'STRING' },
+    generate: async () => batchQuestions,
+    judge: async (prompt, _schema, name) => {
+      const size = Array.from(prompt.matchAll(/Questão \d+:/g)).length;
+      adaptiveBatchSizes.push(size);
+      if (size > 3) return { results: [] };
+      if (name === 'explanation_review') {
+        return { results: Array.from({ length: size }, (_, index) => ({
+          index,
+          keyWrong: false,
+          claims: [
+            { text: 'O art. 155 define a subtração de coisa alheia móvel.', verdict: 'correta', why: 'A definição está no caput.', sentenceIndices: [0] },
+            { text: 'O texto oficial confirma essa definição.', verdict: 'correta', why: 'A fonte recuperada contém a definição.', sentenceIndices: [1] },
+          ],
+        })) };
+      }
+      const reversed = prompt.includes('A) Apropriar-se de imóvel abandonado sem violência');
+      return { results: Array.from({ length: size }, (_, index) => ({
+        index,
+        chosen: reversed ? 3 : 0,
+        ambiguous: false,
+        evidence: 'Subtrair, para si ou para outrem, coisa alheia móvel',
+        rationale: 'O caput descreve essa conduta.',
+      })) };
+    },
+  });
+
+  assert.equal(adaptive.questions.length, 5,
+    'recovers from an incomplete large-batch response by splitting the review while still verifying every question');
+  assert(adaptiveBatchSizes.includes(5) && adaptiveBatchSizes.includes(3),
+    'retries malformed multi-question responses using smaller batches');
+  assert.equal(adaptive.report.judgeAvailable, true,
+    'keeps a recoverable malformed response separate from a genuinely unavailable judge');
+
+  console.log('Question quality checks: 19 passed (source-backed verification, adaptive recovery, and batching).');
 } finally {
   globalThis.fetch = originalFetch;
 }

@@ -117,7 +117,8 @@ export const questionGenerationRules = (sources: TopicSource[], avoid: string[],
       ${grounded ? '- Baseie enunciado, gabarito e explicação SOMENTE nas fontes acima. Se um ponto não está nas fontes, não o cobre.' : '- Cobre apenas fatos consolidados e incontroversos; se não tiver certeza de um dado, escolha outro ponto.'}
       ${hasLaw ? '- Direito: cite artigo, parágrafo e inciso exatamente como aparecem no texto da lei acima; copie penas e prazos de lá. Não cite números de outras leis, súmulas, jurisprudência nem classificações (como "crime hediondo") que não estejam no texto.' : '- Não invente números de leis, artigos, súmulas ou jurisprudência. Se citar, só o que for notoriamente correto.'}
       - O enunciado deve pedir exatamente o que as alternativas respondem (se elas trazem faixas de pena, pergunte "qual a pena prevista", não "a pena mínima").
-      - A explicação deve dizer por que a alternativa correta está certa e por que as demais estão erradas, sem afirmar nada que as fontes não sustentem.
+      - Prefira os mesmos termos centrais da fonte na alternativa correta; evite paráfrases que dependam de inferência para serem ligadas ao texto de apoio.
+      - Escreva a explicação em 2 a 5 frases curtas e verificáveis: explique por que a correta está certa e por que as demais estão erradas, sem afirmações que as fontes não sustentem. Cada frase deve apresentar uma ideia clara.
       - Não use aspas para inventar citações. Datas, nomes e números devem ser reais.${avoid.length ? `\n      - NÃO repita nem reformule estas questões já geradas: ${avoid.map((a) => `"${a.slice(0, 80)}"`).join(' | ')}` : ''}`;
 };
 
@@ -349,28 +350,47 @@ QUESTÕES:
 ${questions.map((q, i) => `Questão ${i}: ${q.question}\n${q.options.map((o, j) => `${'ABCDE'[j]}) ${stripLetter(o)}`).join('\n')}`).join('\n\n')}`;
 
 const runJudge = async (questions: RawQuestion[], sources: TopicSource[], judge: JudgeFn, Type: any, optionCount: number, notes: string): Promise<Verdict[] | null> => {
-  const verdicts: Verdict[] = [];
   const CHUNK = 6;
-  for (let start = 0; start < questions.length; start += CHUNK) {
-    const slice = questions.slice(start, start + CHUNK);
+  const verifySlice = async (slice: RawQuestion[], offset: number): Promise<Verdict[] | null> => {
+    let parsed: any;
     try {
-      const parsed = await judge(judgePrompt(slice, sources, optionCount, notes), judgeSchema(Type), 'question_judge');
-      const results: any[] = Array.isArray(parsed?.results) ? parsed.results : [];
-      if (results.length !== slice.length) return null;
-      const byIndex = new Map<number, Verdict>();
-      for (const r of results) {
-        const i = Number(r?.index);
-        const chosen = Number(r?.chosen);
-        if (!Number.isInteger(i) || i < 0 || i >= slice.length || byIndex.has(i) ||
-            !Number.isInteger(chosen) || chosen < -1 || chosen >= optionCount ||
-            typeof r?.ambiguous !== 'boolean' || typeof r?.evidence !== 'string' || typeof r?.rationale !== 'string') return null;
-        byIndex.set(i, { index: start + i, chosen, ambiguous: r.ambiguous, evidence: r.evidence, rationale: r.rationale });
-      }
-      if (byIndex.size !== slice.length) return null;
-      for (let i = 0; i < slice.length; i++) verdicts.push(byIndex.get(i)!);
+      parsed = await judge(judgePrompt(slice, sources, optionCount, notes), judgeSchema(Type), 'question_judge');
     } catch {
       return null;
     }
+    const results: any[] = Array.isArray(parsed?.results) ? parsed.results : [];
+    const byIndex = new Map<number, Verdict>();
+    let valid = results.length === slice.length;
+    for (const r of results) {
+      const i = Number(r?.index);
+      const chosen = Number(r?.chosen);
+      if (!Number.isInteger(i) || i < 0 || i >= slice.length || byIndex.has(i) ||
+          !Number.isInteger(chosen) || chosen < -1 || chosen >= optionCount ||
+          typeof r?.ambiguous !== 'boolean' || typeof r?.evidence !== 'string' || typeof r?.rationale !== 'string') {
+        valid = false;
+        break;
+      }
+      byIndex.set(i, { index: offset + i, chosen, ambiguous: r.ambiguous, evidence: r.evidence, rationale: r.rationale });
+    }
+    if (valid && byIndex.size === slice.length) {
+      return Array.from({ length: slice.length }, (_, i) => byIndex.get(i)!);
+    }
+
+    // Some free models omit items when a batch is too large. Retry only malformed
+    // batch outputs at half size; provider/network failures still fail closed.
+    if (slice.length <= 1) return null;
+    const midpoint = Math.ceil(slice.length / 2);
+    const left = await verifySlice(slice.slice(0, midpoint), offset);
+    if (!left) return null;
+    const right = await verifySlice(slice.slice(midpoint), offset + midpoint);
+    return right ? [...left, ...right] : null;
+  };
+
+  const verdicts: Verdict[] = [];
+  for (let start = 0; start < questions.length; start += CHUNK) {
+    const result = await verifySlice(questions.slice(start, start + CHUNK), start);
+    if (!result) return null;
+    verdicts.push(...result);
   }
   return verdicts;
 };
@@ -441,39 +461,64 @@ QUESTÕES:
 ${items.map(({ q, explanation }, i) => `Questão ${i}: ${q.question}\n${q.options.map((o, j) => `${LETTERS[j]}) ${stripLetter(o)}`).join('\n')}\nGABARITO: ${LETTERS[q.correctAnswer]}) ${stripLetter(q.options[q.correctAnswer])}\nFRASES DA EXPLICAÇÃO (índice zero-based):\n${splitSentences(explanation).map((sentence, index) => `[${index}] ${sentence}`).join('\n')}`).join('\n\n')}`;
 
 const runReview = async (items: { q: RawQuestion; explanation: string }[], sources: TopicSource[], judge: JudgeFn, Type: any, notes: string): Promise<Map<number, { agrees: boolean; keyWrong: boolean; problem: string }> | null> => {
-  const out = new Map<number, { agrees: boolean; keyWrong: boolean; problem: string }>();
   const CHUNK = 6;
-  for (let start = 0; start < items.length; start += CHUNK) {
-    const slice = items.slice(start, start + CHUNK);
+  const reviewSlice = async (slice: { q: RawQuestion; explanation: string }[], offset: number): Promise<Map<number, { agrees: boolean; keyWrong: boolean; problem: string }> | null> => {
+    let parsed: any;
     try {
-      const parsed = await judge(reviewPrompt(slice, sources, notes), reviewSchema(Type), 'explanation_review');
-      const results: any[] = Array.isArray(parsed?.results) ? parsed.results : [];
-      if (results.length !== slice.length) return null;
-      const byIndex = new Map<number, { agrees: boolean; keyWrong: boolean; problem: string }>();
-      for (const r of results) {
-        const i = Number(r?.index);
-        if (!Number.isInteger(i) || i < 0 || i >= slice.length || byIndex.has(i) || typeof r?.keyWrong !== 'boolean' ||
-            !Array.isArray(r?.claims) || r.claims.length < 2 || r.claims.length > 6) return null;
-        const sentenceCount = splitSentences(slice[i].explanation).length;
-        const claims = r.claims.map((claim: any) => ({
-          text: typeof claim?.text === 'string' ? claim.text.trim() : '',
-          verdict: normalize(String(claim?.verdict ?? '')).trim(),
-          why: typeof claim?.why === 'string' ? claim.why.trim() : '',
-          sentenceIndices: Array.isArray(claim?.sentenceIndices) ? claim.sentenceIndices : [],
-        }));
-        if (claims.some((claim: any) => !claim.text || !claim.why || !['correta', 'incorreta', 'nao_confirmavel'].includes(claim.verdict) ||
-            claim.sentenceIndices.length === 0 || claim.sentenceIndices.some((index: any) => !Number.isInteger(index) || index < 0 || index >= sentenceCount))) return null;
-        const coveredSentences = new Set<number>(claims.flatMap((claim: any) => claim.sentenceIndices));
-        if (coveredSentences.size !== sentenceCount) return null;
-        const unresolved = claims.filter((claim: any) => claim.verdict !== 'correta');
-        const problem = unresolved.map((claim: any) => `${claim.text} (${claim.why})`).join(' | ');
-        byIndex.set(i, { agrees: unresolved.length === 0, keyWrong: r.keyWrong, problem });
-      }
-      if (byIndex.size !== slice.length) return null;
-      for (let i = 0; i < slice.length; i++) out.set(start + i, byIndex.get(i)!);
+      parsed = await judge(reviewPrompt(slice, sources, notes), reviewSchema(Type), 'explanation_review');
     } catch {
       return null;
     }
+    const results: any[] = Array.isArray(parsed?.results) ? parsed.results : [];
+    const byIndex = new Map<number, { agrees: boolean; keyWrong: boolean; problem: string }>();
+    let valid = results.length === slice.length;
+    for (const r of results) {
+      const i = Number(r?.index);
+      if (!Number.isInteger(i) || i < 0 || i >= slice.length || byIndex.has(i) || typeof r?.keyWrong !== 'boolean' ||
+          !Array.isArray(r?.claims) || r.claims.length < 2 || r.claims.length > 6) {
+        valid = false;
+        break;
+      }
+      const sentenceCount = splitSentences(slice[i].explanation).length;
+      const claims = r.claims.map((claim: any) => ({
+        text: typeof claim?.text === 'string' ? claim.text.trim() : '',
+        verdict: normalize(String(claim?.verdict ?? '')).trim(),
+        why: typeof claim?.why === 'string' ? claim.why.trim() : '',
+        sentenceIndices: Array.isArray(claim?.sentenceIndices) ? claim.sentenceIndices : [],
+      }));
+      if (claims.some((claim: any) => !claim.text || !claim.why || !['correta', 'incorreta', 'nao_confirmavel'].includes(claim.verdict) ||
+          claim.sentenceIndices.length === 0 || claim.sentenceIndices.some((index: any) => !Number.isInteger(index) || index < 0 || index >= sentenceCount))) {
+        valid = false;
+        break;
+      }
+      const coveredSentences = new Set<number>(claims.flatMap((claim: any) => claim.sentenceIndices));
+      if (coveredSentences.size !== sentenceCount) {
+        valid = false;
+        break;
+      }
+      const unresolved = claims.filter((claim: any) => claim.verdict !== 'correta');
+      const problem = unresolved.map((claim: any) => `${claim.text} (${claim.why})`).join(' | ');
+      byIndex.set(i, { agrees: unresolved.length === 0, keyWrong: r.keyWrong, problem });
+    }
+    if (valid && byIndex.size === slice.length) {
+      return new Map(Array.from({ length: slice.length }, (_, i) => [offset + i, byIndex.get(i)!]));
+    }
+
+    // Retrying malformed output with fewer explanations reduces schema omissions
+    // without accepting partial or unreviewed claims.
+    if (slice.length <= 1) return null;
+    const midpoint = Math.ceil(slice.length / 2);
+    const left = await reviewSlice(slice.slice(0, midpoint), offset);
+    if (!left) return null;
+    const right = await reviewSlice(slice.slice(midpoint), offset + midpoint);
+    return right ? new Map([...left, ...right]) : null;
+  };
+
+  const out = new Map<number, { agrees: boolean; keyWrong: boolean; problem: string }>();
+  for (let start = 0; start < items.length; start += CHUNK) {
+    const result = await reviewSlice(items.slice(start, start + CHUNK), start);
+    if (!result) return null;
+    for (const [index, review] of result) out.set(index, review);
   }
   return out;
 };
@@ -491,6 +536,15 @@ export interface BuildOptions {
 
 const NEGATIVE_STEM = /\b(N[ÃA]O|EXCETO|INCORRET[AO]S?|FALS[AO]S?)\b|\b(exceto|incorret[ao]s?)\b/;
 const keyTokens = (text: string): string[] => Array.from(new Set(tokens(text).filter((t) => t.length >= 4 || /^\d+$/.test(t))));
+// Portuguese alternatives commonly inflect or derive the source wording ("subtrair" / "subtração",
+// "assumiu" / "assume"). Since the quote itself must still be found literally in the source and two blind
+// answer checks must agree, allow a conservative shared-stem match here to avoid rejecting valid paraphrases.
+const tokenMatches = (wanted: string, found: string): boolean => {
+  if (wanted === found) return true;
+  let commonPrefix = 0;
+  while (commonPrefix < wanted.length && commonPrefix < found.length && wanted[commonPrefix] === found[commonPrefix]) commonPrefix++;
+  return commonPrefix >= 5 && Math.abs(wanted.length - found.length) <= 5;
+};
 
 // The judge's quote must contain the substance of the correct option (or, for "NÃO/EXCETO" questions, of the
 // statement being tested). A literal but unrelated sentence does not count as support.
@@ -499,7 +553,7 @@ const evidenceSupportsAnswer = (q: RawQuestion, evidence: string): boolean => {
   const wanted = keyTokens(target);
   if (wanted.length === 0) return false;
   const have = new Set(keyTokens(evidence));
-  const matched = wanted.filter((t) => have.has(t)).length;
+  const matched = wanted.filter((t) => Array.from(have).some((candidate) => tokenMatches(t, candidate))).length;
   return wanted.length <= 2 ? matched === wanted.length : matched >= 2 && matched / wanted.length >= 0.4;
 };
 
@@ -589,8 +643,13 @@ export const buildVerifiedQuestions = async (opts: BuildOptions): Promise<{ ques
     candidates.forEach((c, i) => {
       const verdict = verdicts.find((v) => v.index === i);
       if (!verdict || verdict.ambiguous || verdict.chosen !== c.q.correctAnswer) { report.rejectedByJudge++; note('juiz não confirmou o gabarito'); return; }
-      const found = verdict.evidence && evidenceSupportsAnswer(c.q, verdict.evidence) ? sourceHasEvidence(sources, verdict.evidence) : null;
-      if (!found) { report.rejectedByJudge++; note('gabarito sem citação literal compatível com uma fonte recuperada'); return; }
+      const relevantEvidence = Boolean(verdict.evidence && evidenceSupportsAnswer(c.q, verdict.evidence));
+      const found = relevantEvidence ? sourceHasEvidence(sources, verdict.evidence) : null;
+      if (!found) {
+        report.rejectedByJudge++;
+        note(relevantEvidence ? 'o trecho citado pelo juiz não foi localizado literalmente na fonte' : 'o trecho da fonte não corresponde aos termos centrais da resposta');
+        return;
+      }
       firstPass.push({ c, found });
     });
 
