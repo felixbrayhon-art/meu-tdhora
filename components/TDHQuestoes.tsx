@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, Database, ClipboardList } from './icons';
-import { generateExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
+import { generateExamQuestionsFast, verifyExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { fetchEnemExams, fetchEnemQuestions, enemDisciplineLabel, EnemExamInfo } from '../services/enemService';
 import { BankFacetOption, countBankQuestions, fetchBankQuestions, fetchExamQuestions, listBankAreasForSubject, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamYears } from '../services/questionBankService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
@@ -300,9 +300,13 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     }
   }, [prefill]);
 
+  // Each generated batch gets a number, so a background check that finishes after a new batch started is ignored.
+  const generationBatchRef = useRef(0);
+
   const handleGenerate = async (targetTopic?: string) => {
     const finalTopic = targetTopic || (strategicMode ? (selectedTopic ? `${selectedSubject}: ${selectedTopic}` : '') : topic);
     if (!finalTopic.trim()) return;
+    const batch = ++generationBatchRef.current;
     setLoading(true);
     setQuestions([]);
     setCurrentIdx(0);
@@ -312,14 +316,23 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     if (!targetTopic) setTopic(finalTopic);
 
     try {
-      const result = await generateExamQuestions(finalTopic, numQuestions, studyProfile, banca, explanationStyle, questionProfileStyle);
-      const formatted = result.questions.map((q: any) => ({
+      // Questions appear right away (one AI call); the answer-key check runs in the background and updates each badge.
+      const result = await generateExamQuestionsFast(finalTopic, numQuestions, studyProfile, banca, explanationStyle, questionProfileStyle);
+      const formatted: QuizQuestion[] = result.questions.map((q: any) => ({
         ...q,
         id: Math.random().toString(36).substr(2, 9),
       }));
       setQuestions(formatted);
       setTempSelectedOpt(null);
       setIsSubmitted(false);
+      verifyExamQuestions(finalTopic, formatted).then((checked) => {
+        if (generationBatchRef.current !== batch) return;
+        const byId = new Map(checked.map((q) => [q.id, q]));
+        setQuestions((current) => current.map((q) => {
+          const c = byId.get(q.id);
+          return c ? { ...q, explanation: c.explanation, verification: c.verification } : q;
+        }));
+      });
     } catch (error: any) {
       console.error(error);
       alert(error.message || 'Erro desconhecido ao gerar simulado. Tente novamente.');
@@ -851,7 +864,12 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
   };
 
   const handleConfirmSave = (folderId: string, notebookName: string, notebookColor: string, folderColor: string) => {
-    const questionsToSave = saveMode === 'SINGLE' ? [questions[currentIdx]] : questions;
+    // A question saved before its background check finished must not keep a "checking" badge forever.
+    const questionsToSave = (saveMode === 'SINGLE' ? [questions[currentIdx]] : questions).map((q) =>
+      q.verification?.status === 'checking'
+        ? { ...q, verification: { status: 'unverified' as const, note: 'Salva antes de a conferência terminar. Confirme no seu material.' } }
+        : q,
+    );
     if (onQuestionsReady) {
       // Veio do filtro/geração do banco — o pai cuida de criar/atualizar o
       // caderno no destino escolhido e já navega pra Meus Materiais.
