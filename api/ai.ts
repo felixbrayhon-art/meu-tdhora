@@ -157,6 +157,9 @@ const normalizeRequest = (provider: Provider, input: unknown): Record<string, un
   if (provider === 'openrouter' && body.reasoning && typeof body.reasoning === 'object' && typeof body.reasoning.enabled === 'boolean') {
     normalized.reasoning = { enabled: body.reasoning.enabled };
   }
+  if (provider === 'groq' && ['low', 'medium', 'high'].includes(body.reasoning_effort)) {
+    normalized.reasoning_effort = body.reasoning_effort;
+  }
   if (provider === 'groq' && typeof body.include_reasoning === 'boolean') {
     normalized.include_reasoning = body.include_reasoning;
   }
