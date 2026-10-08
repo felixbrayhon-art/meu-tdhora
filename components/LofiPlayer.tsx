@@ -61,15 +61,15 @@ const LofiPlayer: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-3 relative z-10">
-        <button onClick={() => setActiveChannel(activeChannel === 'RELAX' ? null : 'RELAX')} className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 ${activeChannel === 'RELAX' ? 'bg-[#fed386] border-[#fed386] text-[#473c33] shadow-lg shadow-[#fff0d5]/60' : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'}`}>
+        <button onClick={() => setActiveChannel(activeChannel === 'RELAX' ? null : 'RELAX')} className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 ${activeChannel === 'RELAX' ? 'bg-[#fed386] border-[#fed386] text-[#473c33] shadow-lg shadow-[#fff0d5]/60 dark:shadow-black/30' : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'}`}>
           <span className="text-[10px] font-black uppercase tracking-widest">LOFI RELAX</span>
         </button>
 
-        <button onClick={() => setActiveChannel(activeChannel === 'MPB' ? null : 'MPB')} className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 ${activeChannel === 'MPB' ? 'bg-[#fdad74] border-[#fdad74] text-white shadow-lg shadow-[#fee6d5]/60' : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'}`}>
+        <button onClick={() => setActiveChannel(activeChannel === 'MPB' ? null : 'MPB')} className={`p-4 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 ${activeChannel === 'MPB' ? 'bg-[#fdad74] border-[#fdad74] text-white shadow-lg shadow-[#fee6d5]/60 dark:shadow-black/30' : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'}`}>
           <span className="text-[10px] font-black uppercase tracking-widest">MPB LOFI</span>
         </button>
 
-        <button onClick={() => setIsPlayingRain(!isPlayingRain)} className={`col-span-2 p-3 rounded-2xl flex items-center justify-center gap-3 transition-all border-2 ${isPlayingRain ? 'bg-[#fecc73] border-[#fecc73] text-white shadow-lg shadow-[#fff0d5]/60' : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'}`}>
+        <button onClick={() => setIsPlayingRain(!isPlayingRain)} className={`col-span-2 p-3 rounded-2xl flex items-center justify-center gap-3 transition-all border-2 ${isPlayingRain ? 'bg-[#fecc73] border-[#fecc73] text-white shadow-lg shadow-[#fff0d5]/60 dark:shadow-black/30' : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'}`}>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
           </svg>

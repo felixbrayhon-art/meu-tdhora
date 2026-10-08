@@ -134,7 +134,7 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({ onBack, edital, current
             <input type="range" min="5" max="50" step="5" value={totalHours} onChange={(e) => setTotalHours(Number(e.target.value))} className="w-full h-2 bg-gray-200 rounded-full accent-[#fecc73] cursor-pointer" />
           </div>
 
-          <button onClick={handleGenerate} className="w-full bg-[#fecc73] text-white py-6 rounded-[25px] font-black text-xl hover:bg-[#fec868] transition-all shadow-xl shadow-[#fff0d5]/60">
+          <button onClick={handleGenerate} className="w-full bg-[#fecc73] text-white py-6 rounded-[25px] font-black text-xl hover:bg-[#fec868] transition-all shadow-xl shadow-[#fff0d5]/60 dark:shadow-black/30">
             GERAR CICLO ESTRATÉGICO
           </button>
         </div>
@@ -195,7 +195,7 @@ const StudyCycleView: React.FC<StudyCycleViewProps> = ({ onBack, edital, current
 
           <div className="grid grid-cols-1 gap-3">
             {currentCycle.steps.map((step, idx) => (
-              <div key={step.id} className={`group bg-white p-5 rounded-[25px] border-2 transition-all flex items-center justify-between ${step.completed ? 'opacity-50 border-transparent grayscale' : currentCycle.currentStepIndex === idx ? 'border-[#fecc73] shadow-lg shadow-[#fff6e8]/60 ring-4 ring-[#fff6e8]/50' : 'border-gray-50 hover:border-gray-200'}`}>
+              <div key={step.id} className={`group bg-white p-5 rounded-[25px] border-2 transition-all flex items-center justify-between ${step.completed ? 'opacity-50 border-transparent grayscale' : currentCycle.currentStepIndex === idx ? 'border-[#fecc73] shadow-lg shadow-[#fff6e8]/60 dark:shadow-black/30 ring-4 ring-[#fff6e8]/50' : 'border-gray-50 hover:border-gray-200'}`}>
                 <div className="flex items-center gap-5">
                   <button onClick={() => toggleStep(idx)} className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${step.completed ? 'bg-[#b1c77b] text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-[#fff6e8] group-hover:text-[#fecc73]'}`}>
                     {step.completed ? (

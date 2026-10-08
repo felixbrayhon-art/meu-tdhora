@@ -86,7 +86,7 @@ const SavedGuidedLessonsView: React.FC<SavedGuidedLessonsViewProps> = ({ onOpenL
                     <Calendar className="w-3 h-3" />
                     Salvo em {new Date(item.savedAt).toLocaleDateString()}
                   </div>
-                  <div className="bg-[#fec868] text-white w-10 h-10 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shadow-lg shadow-[#fecc73]/30">
+                  <div className="bg-[#fec868] text-white w-10 h-10 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shadow-lg shadow-[#fecc73]/30 dark:shadow-black/30">
                     <ChevronRight className="w-6 h-6" />
                   </div>
                 </div>

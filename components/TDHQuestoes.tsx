@@ -1038,7 +1038,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                         <p className="text-[9px] font-bold text-slate-300 mt-4 text-center md:text-left">Dica: Quanto mais curto o comando, mais rápido a IA responde.</p>
                       </div>
 
-                      <button onClick={() => handleGenerate()} className="w-full bg-[#fec868] text-white py-5 rounded-2xl font-black text-base hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-3 active:scale-95 group mt-3">
+                      <button onClick={() => handleGenerate()} className="w-full bg-[#fec868] text-white py-5 rounded-2xl font-black text-base hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 dark:shadow-black/30 flex items-center justify-center gap-3 active:scale-95 group mt-3">
                         CONFIGURAR SIMULADO
                         <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                       </button>
@@ -1062,7 +1062,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                         <textarea value={pastedGabarito} onChange={(e) => setPastedGabarito(e.target.value)} placeholder="Ex: 1-A, 2-C, 3-E... ou cole o gabarito oficial completo aqui." className="w-full bg-slate-50 border-2 border-slate-100 rounded-[30px] p-8 text-lg focus:outline-none focus:border-[#fec868] transition-all font-medium text-slate-700 placeholder:text-slate-300 min-h-[150px] resize-y shadow-inner" />
                       </div>
 
-                      <button onClick={() => handleParsePasted()} disabled={!pastedText.trim()} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
+                      <button onClick={() => handleParsePasted()} disabled={!pastedText.trim()} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 dark:shadow-black/30 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
                         PROCESSAR QUESTÕES
                         <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                       </button>
@@ -1122,7 +1122,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                             <input type="range" min="1" max="40" value={enemCount} onChange={(e) => setEnemCount(Number(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer" />
                           </div>
 
-                          <button onClick={handleFetchEnem} disabled={!enemYear || !enemDiscipline} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
+                          <button onClick={handleFetchEnem} disabled={!enemYear || !enemDiscipline} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 dark:shadow-black/30 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
                             BUSCAR QUESTÕES DO ENEM
                             <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                           </button>
@@ -1182,7 +1182,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                                 <input type="range" min="1" max={Math.max(1, examAvailableCount)} value={examCount} onChange={(e) => setExamCount(Number(e.target.value))} disabled={examAvailableCount === 0} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer disabled:opacity-40" />
                               </div>
 
-                              <button onClick={handleFetchExamBank} disabled={!examBoard || !examInstitution || !examPosition || !examYear || examAvailableCount === 0} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
+                              <button onClick={handleFetchExamBank} disabled={!examBoard || !examInstitution || !examPosition || !examYear || examAvailableCount === 0} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 dark:shadow-black/30 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
                                 BUSCAR DO NOSSO BANCO
                                 <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                               </button>
@@ -1245,7 +1245,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                             <input type="range" min="1" max={Math.max(1, bankMatchCount)} value={bankCount} onChange={(e) => setBankCount(Number(e.target.value))} disabled={bankMatchCount === 0} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer disabled:opacity-40" />
                           </div>
 
-                          <button onClick={handleFetchBank} disabled={!bankSubject || bankMatchCount === 0} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
+                          <button onClick={handleFetchBank} disabled={!bankSubject || bankMatchCount === 0} className="w-full bg-[#fec868] text-white py-8 rounded-[40px] font-black text-xl hover:bg-[#ffb22a] transition-all shadow-xl shadow-[#fec868]/10 dark:shadow-black/30 flex items-center justify-center gap-4 active:scale-95 group mt-8 disabled:opacity-20 disabled:cursor-not-allowed">
                             BUSCAR DO NOSSO BANCO
                             <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                           </button>
@@ -1330,7 +1330,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                       </div>
 
                       <div className="flex flex-col md:flex-row gap-6 pt-10 sticky bottom-0 bg-[#f8fafc]/90 backdrop-blur-md p-6 border-t border-slate-100 rounded-t-[40px] z-30">
-                        <button onClick={addManualQuestion} className="flex-1 bg-white border-2 border-[#fec868]/15 text-[#fec868] py-6 rounded-[30px] font-black uppercase tracking-widest text-xs hover:bg-[#fec868]/10 active:scale-95 transition-all shadow-xl shadow-[#fec868]/5 flex items-center justify-center gap-3">
+                        <button onClick={addManualQuestion} className="flex-1 bg-white border-2 border-[#fec868]/15 text-[#fec868] py-6 rounded-[30px] font-black uppercase tracking-widest text-xs hover:bg-[#fec868]/10 active:scale-95 transition-all shadow-xl shadow-[#fec868]/5 dark:shadow-black/30 flex items-center justify-center gap-3">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
                           </svg>
@@ -1627,7 +1627,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                     </div>
 
                     {onTriggerGuidedLesson && (
-                      <button onClick={() => onTriggerGuidedLesson(selectedSubject || 'Geral', currentQ.topic || topic)} className="w-full mb-8 bg-gradient-to-r from-[#fec868] to-[#ffb22a] dark:from-[#8c2c0b] dark:to-[#42251d] text-[#42251d] dark:text-[#f4ebdd] p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-xl shadow-[#fec868]/20 active:scale-95">
+                      <button onClick={() => onTriggerGuidedLesson(selectedSubject || 'Geral', currentQ.topic || topic)} className="w-full mb-8 bg-gradient-to-r from-[#fec868] to-[#ffb22a] dark:from-[#8c2c0b] dark:to-[#42251d] text-[#42251d] dark:text-[#f4ebdd] p-6 rounded-[30px] flex items-center justify-between group transition-all hover:scale-[1.01] hover:shadow-xl shadow-[#fec868]/20 dark:shadow-black/30 active:scale-95">
                         <div className="flex items-center gap-4 text-left">
                           <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
                             <BookOpen className="w-6 h-6" />
@@ -1688,7 +1688,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                           <span className="text-[10px] font-black uppercase tracking-[0.2em]">ANEXAR COMPLEMENTO VISUAL</span>
                           <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                         </label>
-                        <button onClick={handleSaveSingleQuestion} className="flex items-center gap-3 px-10 py-5 bg-[#fec868] text-white rounded-[30px] transition-all active:scale-95 shadow-xl shadow-[#fec868]/20 hover:bg-[#ffb22a] group">
+                        <button onClick={handleSaveSingleQuestion} className="flex items-center gap-3 px-10 py-5 bg-[#fec868] text-white rounded-[30px] transition-all active:scale-95 shadow-xl shadow-[#fec868]/20 dark:shadow-black/30 hover:bg-[#ffb22a] group">
                           <Save className="w-5 h-5 group-hover:scale-110 transition-transform" />
                           <span className="text-[10px] font-black uppercase tracking-[0.2em]">SALVAR ESTA QUESTÃO</span>
                         </button>

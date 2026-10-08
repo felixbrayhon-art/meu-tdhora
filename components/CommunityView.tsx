@@ -43,7 +43,7 @@ const CommunityView: React.FC<CommunityViewProps> = ({ activities, onBack, onPos
             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">O que você está estudando agora?</h3>
             <textarea value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder="Ex.: Revisei furto e roubo hoje." className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#fed386] transition-all resize-none h-24" />
             <div className="flex justify-end mt-4">
-              <button onClick={handlePost} disabled={!statusText.trim()} className="min-h-[44px] bg-[#fed386] text-white px-8 py-3 rounded-xl font-black text-xs shadow-lg shadow-[#fff0d5]/60 hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale">
+              <button onClick={handlePost} disabled={!statusText.trim()} className="min-h-[44px] bg-[#fed386] text-white px-8 py-3 rounded-xl font-black text-xs shadow-lg shadow-[#fff0d5]/60 dark:shadow-black/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale">
                 COMPARTILHAR
               </button>
             </div>

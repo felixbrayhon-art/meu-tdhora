@@ -28,7 +28,7 @@ const MarkdownContent: React.FC<MarkdownContentProps> = ({ content, className = 
           li: ({ node, ...props }) => (
             <li className="flex items-start gap-4 pl-0 group" {...props}>
               <div className="mt-1.5 shrink-0">
-                <div className={`w-2.5 h-2.5 rounded-full group-hover:scale-125 transition-transform shadow-lg ${isDark ? 'bg-[#fecc73] shadow-[#fecc73]/20' : 'bg-[#fed386] shadow-[#fed386]/20'}`} />
+                <div className={`w-2.5 h-2.5 rounded-full group-hover:scale-125 transition-transform shadow-lg ${isDark ? 'bg-[#fecc73] shadow-[#fecc73]/20 dark:shadow-black/30' : 'bg-[#fed386] shadow-[#fed386]/20 dark:shadow-black/30'}`} />
               </div>
               <span className={`leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`} style={{ fontSize: `${16 * fontSizeMultiplier}px` }}>
                 {props.children}

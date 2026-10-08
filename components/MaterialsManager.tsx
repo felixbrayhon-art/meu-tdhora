@@ -165,7 +165,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
               <button onClick={() => { setIsCreating(null); setEditingNotebookId(null); }} className="flex-1 py-4 text-gray-400 font-black text-xs uppercase tracking-widest hover:text-gray-600">
                 CANCELAR
               </button>
-              <button onClick={handleCreate} disabled={!newName.trim()} className="flex-1 bg-[#fecc73] text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-[#fff0d5]/60 disabled:opacity-30 transition-all">
+              <button onClick={handleCreate} disabled={!newName.trim()} className="flex-1 bg-[#fecc73] text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-[#fff0d5]/60 dark:shadow-black/30 disabled:opacity-30 transition-all">
                 {editingNotebookId ? 'SALVAR ALTERAÇÕES' : 'CRIAR AGORA'}
               </button>
             </div>

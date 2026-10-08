@@ -593,7 +593,7 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
               )}
 
               <div className="flex justify-center pt-8">
-                <button type="button" onClick={handleFinish} disabled={!examDate || (studyProfile === 'FACULDADE' && !period.trim())} className={`px-20 py-6 rounded-[30px] font-black uppercase tracking-widest shadow-2xl transition-all ${examDate && (studyProfile !== 'FACULDADE' || period.trim()) ? 'bg-[#fec868] text-white hover:scale-105 active:scale-95 shadow-[#ffe6b9]/60 shadow-lg' : 'bg-gray-100 text-gray-300'}`}>
+                <button type="button" onClick={handleFinish} disabled={!examDate || (studyProfile === 'FACULDADE' && !period.trim())} className={`px-20 py-6 rounded-[30px] font-black uppercase tracking-widest shadow-2xl transition-all ${examDate && (studyProfile !== 'FACULDADE' || period.trim()) ? 'bg-[#fec868] text-white hover:scale-105 active:scale-95 shadow-[#ffe6b9]/60 dark:shadow-black/30 shadow-lg' : 'bg-gray-100 text-gray-300'}`}>
                   {studyProfile === 'FACULDADE' ? 'Ativar Grade Curricular' : 'Ativar Modo Edital'}
                 </button>
               </div>

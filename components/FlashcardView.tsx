@@ -446,7 +446,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                         <h2 className="text-3xl font-black tracking-tight uppercase mb-4">Missão Cumprida</h2>
                         <p className="text-gray-400 font-bold uppercase tracking-widest text-xs max-w-sm mx-auto leading-relaxed">Sessão de reforço sináptico concluída com sucesso. Seu cérebro está mais denso!</p>
                       </div>
-                      <button onClick={() => setViewMode('FOLDERS')} className="bg-[#fdad74] text-white px-16 py-8 rounded-full font-black uppercase tracking-[0.3em] text-xs hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[#fdad74]/20">
+                      <button onClick={() => setViewMode('FOLDERS')} className="bg-[#fdad74] text-white px-16 py-8 rounded-full font-black uppercase tracking-[0.3em] text-xs hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[#fdad74]/20 dark:shadow-black/30">
                         Voltar ao HUB
                       </button>
                     </div>
@@ -647,7 +647,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                   <button type="button" onClick={() => { setShowAddFolderModal(false); setEditingFolderId(null); }} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-gray-500 hover:text-white transition-colors uppercase">
                     Cancelar
                   </button>
-                  <button type="submit" className="flex-[2] bg-[#fdad74] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl shadow-[#fdad74]/20 active:scale-95">
+                  <button type="submit" className="flex-[2] bg-[#fdad74] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl shadow-[#fdad74]/20 dark:shadow-black/30 active:scale-95">
                     {editingFolderId ? 'Salvar alterações' : 'Criar módulo'}
                   </button>
                 </div>
@@ -800,7 +800,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                   <button onClick={() => setShowAIModal(false)} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-gray-500 hover:text-white transition-colors">
                     Cancelar
                   </button>
-                  <button onClick={() => generateAICards()} disabled={strategicMode ? !selectedSubject || !selectedTopic : !aiTopic.trim()} className="flex-[2] bg-[#fdad74] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-3xl shadow-[#fdad74]/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed">
+                  <button onClick={() => generateAICards()} disabled={strategicMode ? !selectedSubject || !selectedTopic : !aiTopic.trim()} className="flex-[2] bg-[#fdad74] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-3xl shadow-[#fdad74]/20 dark:shadow-black/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed">
                     Criar flashcards
                   </button>
                 </div>

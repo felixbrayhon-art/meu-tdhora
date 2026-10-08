@@ -41,17 +41,17 @@ const QuizManager: React.FC<QuizManagerProps> = ({ folders, attempts, onBack, on
 
       {/* Estatísticas Consolidadas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-        <div className="bg-white p-8 rounded-[40px] shadow-xl shadow-gray-100 border border-gray-50">
+        <div className="bg-white p-8 rounded-[40px] shadow-xl shadow-gray-100 dark:shadow-black/30 border border-gray-50">
           <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mb-2">Sua Precisão</p>
           <div className="flex items-end gap-2">
             <span className="text-5xl font-black text-[#fec868]">{accuracy}%</span>
           </div>
         </div>
-        <div className="bg-white p-8 rounded-[40px] shadow-xl shadow-gray-100 border border-gray-50">
+        <div className="bg-white p-8 rounded-[40px] shadow-xl shadow-gray-100 dark:shadow-black/30 border border-gray-50">
           <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mb-2">Acertos</p>
           <span className="text-5xl font-black text-[#b1c77b]">{totalCorrect}</span>
         </div>
-        <div className="bg-white p-8 rounded-[40px] shadow-xl shadow-gray-100 border border-gray-100">
+        <div className="bg-white p-8 rounded-[40px] shadow-xl shadow-gray-100 dark:shadow-black/30 border border-gray-100">
           <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mb-2">Erros</p>
           <span className="text-5xl font-black text-red-500">{totalQuestions - totalCorrect}</span>
         </div>
@@ -112,7 +112,7 @@ const QuizManager: React.FC<QuizManagerProps> = ({ folders, attempts, onBack, on
                     e.stopPropagation();
                     onPlay(folder.id);
                   }}
-                  className="w-full bg-[#473c33] text-white py-5 rounded-[22px] font-black text-xs tracking-widest hover:bg-[#fec868] transition-all flex items-center justify-center gap-2 shadow-xl shadow-gray-100 uppercase "
+                  className="w-full bg-[#473c33] text-white py-5 rounded-[22px] font-black text-xs tracking-widest hover:bg-[#fec868] transition-all flex items-center justify-center gap-2 shadow-xl shadow-gray-100 dark:shadow-black/30 uppercase "
                 >
                   ESTUDAR AGORA
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
