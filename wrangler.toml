@@ -1,0 +1,6 @@
+# Cloudflare Pages (alternative host to Vercel). The static app is the Vite build in
+# dist/, and functions/ serves /api/* with the same handlers as api/ on Vercel.
+name = "meu-tdhora"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
