@@ -2385,3 +2385,12 @@ html.dark [class~="bg-[#fffdf9]"] {
 html.dark :is(input, textarea, select)[class~="text-[#ac4800]"] {
     color: var(--dark-cream) !important;
 }
+
+/* hover:bg-[#fff6e8] was caught by the baby-blue substring rule, leaving icon buttons
+   permanently light blue. Only the hover state should tint. */
+html [class*="hover:bg-[#fff6e8]"]:not([class~="bg-[#fff6e8]"]):not([class*="bg-[#fff6e8]/"]) {
+    background-color: revert-layer !important;
+}
+html.dark [class~="hover:bg-[#fff6e8]"]:hover {
+    background-color: rgba(240, 232, 159, .08) !important;
+}
