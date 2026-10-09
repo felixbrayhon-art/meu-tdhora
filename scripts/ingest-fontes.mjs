@@ -53,14 +53,15 @@ const pageText = async (page) => {
 // Course PDFs carry the buyer's watermark (CPF + full name) and a header/footer on every page.
 // Personal data never goes into the knowledge base, and repeated page furniture is noise.
 const CPF_NAME = /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b(\s*-\s*[A-ZÀ-Ú][A-Za-zÀ-ú'.]*(\s+[A-Za-zÀ-ú'.]+){0,8})?/g;
-const NOISE_LINE = /(www\.|https?:\/\/|\.com\.br|^\s*\d{1,4}\s*$|^\s*\d+\s*(de|\/)\s*\d+\s*$|estrat[eé]gia|gran cursos|^\s*autor(es)?\s*:)/i;
+const NOISE_LINE = /(licenciado para|vedada, por quaisquer meios|reprodu[cç][aã]o, c[oó]pia, divulga|responsabiliza[cç][aã]o civil e criminal|voltar ao|^sum[aá]rio$|projeto lei em quest|livro eletr[oô]nico|www\.|https?:\/\/|\.com\.br|^\s*\d{1,4}\s*$|^\s*\d+\s*(de|\/)\s*\d+\s*$|estrat[eé]gia|gran cursos|^\s*autor(es)?\s*:)/i;
 const cleanPages = (pages) => {
   const freq = new Map();
   for (const text of pages) for (const line of new Set(text.split('\n').map((l) => l.trim()).filter(Boolean))) freq.set(line, (freq.get(line) || 0) + 1);
   const limit = Math.max(3, pages.length * 0.25);
   return pages.map((text) => text.split('\n')
     .map((line) => line.replace(CPF_NAME, '').replace(/==[0-9a-f]{4,}==/gi, '').replace(/[\w.+-]+@[\w-]+\.[a-z.]{2,}/gi, '').trim()) // tracking codes, e-mails
-    .filter((line) => line && !NOISE_LINE.test(line) && (freq.get(line) || 0) < limit)
+    // Question books repeat "Nível da questão", "Certo." and "Letra b." on most pages; they mark answers, not page furniture.
+    .filter((line) => line && !NOISE_LINE.test(line) && ((freq.get(line) || 0) < limit || /^(N[ií]vel da quest|Certo\b|Errado\b|Letra\s+[a-e]\b)/i.test(line)))
     .join('\n'));
 };
 
@@ -88,6 +89,51 @@ const chunkPages = (pages) => {
     }
   });
   flush();
+  return chunks;
+};
+
+// "Lei em questões" books: each article followed by exam questions with the answer and a commentary.
+// The useful part for the AI is the commentary tied to its article; options and the exam header are left out,
+// and each question becomes one chunk: article, the point tested, the right answer and the explanation.
+const isQuestionBook = (pages) => (pages.join('\n').match(/N[ií]vel da quest[aã]o/gi) || []).length >= 20;
+const chunkQuestionBook = (pages, lawLabel) => {
+  const chunks = [];
+  const text = pages.map((p, i) => `\n<<P${i + 1}>>\n${p}`).join('\n');
+  const sections = text.split(/\n(?=Artigo\s+\d+(?:-[A-Z])?\b)/);
+  for (const section of sections) {
+    const head = section.match(/^Artigo\s+(\d+(?:-[A-Z])?)\b[ \t]*\n?([^\n]*)/);
+    if (!head) continue;
+    const numero = head[1];
+    const rubrica = /^Art\./.test(head[2]) ? '' : head[2].trim();
+    const questions = section.split(/\n(?=\d{1,3}\.\s*\([^)]{3,120}\))/).slice(1);
+    if (process.env.DEBUG_QB) console.error('SECAO', numero, questions.length);
+    for (const q of questions) {
+      const page = Number((section.slice(0, section.indexOf(q)).match(/<<P(\d+)>>/g) || ['<<P0>>']).pop().replace(/\D/g, '')) || null;
+      const body = q.replace(/<<P\d+>>/g, ' ').replace(/^\d{1,3}\.\s*\([^)]*\)\s*/, '');
+      // The "Nível da questão" label sometimes comes before the commentary in the PDF's text order: drop the label only.
+      const clean = body.replace(/N[ií]vel da quest[aã]o\s*:?\s*(f[aá]cil|m[eé]dio|dif[ií]cil)?/gi, ' ').trim();
+      const verdict = clean.match(/(?:^|\n)\s*(Certo|Errado)\b\.?/);
+      const letter = clean.match(/(?:^|\n|\s)Letra\s+([a-e])\b\.?/i);
+      const answerAt = verdict ? verdict.index : letter ? letter.index : -1;
+      if (answerAt === -1) { if (process.env.DEBUG_QB) console.error('SEM RESPOSTA', numero, body.slice(0, 120).replace(/\n/g, ' | ')); continue; }
+      const before = clean.slice(0, answerAt);
+      const comment = clean.slice(answerAt).replace(/^\s*(Certo|Errado|Letra\s+[a-e])\b\.?\s*/i, '').replace(/\s+/g, ' ').trim();
+
+      const optionRe = /\n\s*\(?([a-eA-E])[).]\s+([^\n]+(?:\n(?!\s*\(?[a-eA-E][).]\s)[^\n]+)*)/g;
+      const options = {};
+      for (const m of before.matchAll(optionRe)) options[m[1].toLowerCase()] = m[2].replace(/\s+/g, ' ').trim();
+      const stem = before.replace(optionRe, ' ').replace(/\s+/g, ' ').trim();
+      const answer = verdict ? `A afirmação está ${verdict[1].toLowerCase() === 'certo' ? 'correta' : 'incorreta'}.`
+        : `Resposta correta: ${options[letter[1].toLowerCase()] || `letra ${letter[1]}`}.`;
+      const where = `${lawLabel}, art. ${numero}${rubrica ? ` (${rubrica})` : ''}.`;
+      // In some questions the PDF's text order puts the commentary before the answer: keep both together.
+      const textOut = comment.length >= 60
+        ? `${where} Ponto cobrado em prova: ${stem.slice(0, 500)} ${answer} Explicação: ${comment}`
+        : `${where} Ponto cobrado em prova, com comentário: ${stem.slice(0, 1100)} ${answer}`;
+      if (stem.length + comment.length < 80) continue;
+      chunks.push({ page, text: textOut });
+    }
+  }
   return chunks;
 };
 
@@ -194,8 +240,10 @@ for (const root of args) {
         report.scanned.push(`${folder}/${name} (${pdf.numPages} págs, ${chars} letras)`);
         continue;
       }
-      const chunks = chunkPages(cleanPages(pages));
-      const subject = /administrativo/i.test(name) ? 'Direito Administrativo' : /constitucional/i.test(name) ? 'Direito Constitucional' : subjectOf(folder);
+      const cleaned = cleanPages(pages);
+      const chunks = isQuestionBook(cleaned) ? chunkQuestionBook(cleaned, /penal/i.test(name + folder) ? 'Código Penal' : subjectOf(folder)) : chunkPages(cleaned);
+      const subject = /administrativo/i.test(name) ? 'Direito Administrativo' : /constitucional/i.test(name) ? 'Direito Constitucional'
+        : /penal/i.test(name) && !/processo|processual/i.test(name) ? 'Direito Penal' : subjectOf(folder);
       docs.push({ name: `${subject} · ${name}`, subject, folder, hash, pages: pdf.numPages, chars, chunks });
       console.log(`✓ ${folder}/${name}: ${pdf.numPages} págs, ${chunks.length} trechos`);
     } catch (error) {
