@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
-import { applySourceGuard } from './topicSource';
-import { gatherSources, sourcesPromptBlock } from './lessonSources';
+import { applySourceGuard, TopicSource } from './topicSource';
+import { gatherSources, sourcesPromptBlock, fetchLegalSourceForQuestions } from './lessonSources';
 import { buildVerifiedQuestions, gatherQuestionSources, questionGenerationRules, doctrineNotes } from './questionQuality';
 import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle, IllustratedLesson } from "../types";
 import { auth } from "../src/lib/firebase";
@@ -1095,22 +1095,37 @@ const isUsableQuestion = (q: any): boolean =>
 // can make it miss the article and fall back to an encyclopedia page. Retry without them before giving up on the law.
 const LEGAL_QUALIFIERS = /\b(qualificad[oa]s?|privilegiad[oa]s?|majorad[oa]s?|circunstanciad[oa]s?|simples|culpos[oa]s?|dolos[oa]s?|tentad[oa]s?|consumad[oa]s?|agravad[oa]s?|atenuad[oa]s?|impropri[oa]s?|propri[oa]s?|formas?|modalidades?|tipos?|especies?|espécies?|hipóteses?|causas? de aumento( de pena)?)\b/gi;
 const simplifyLegalTopic = (topic: string) => topic.replace(LEGAL_QUALIFIERS, ' ').replace(/\s+/g, ' ').replace(/\s+([:,.])/g, '$1').trim();
-const findQuestionSources = async (topic: string) => {
-  const first = await gatherQuestionSources(topic).catch(() => []);
-  if (first.some((src) => src.kind === 'lei')) return first;
-  const simplified = simplifyLegalTopic(topic);
-  if (!simplified || simplified === topic.trim()) return first;
-  const retry = await gatherQuestionSources(simplified).catch(() => []);
-  return retry.some((src) => src.kind === 'lei') ? retry : first;
+// Same split as questionQuality's lookup ("Direito Penal: furto qualificado" -> subject + topic).
+const splitQuestionTopic = (topic: string): [string, string] => {
+  const match = topic.match(/^(.{3,60}?)\s*(?::|\s-\s|–)\s*(.+)$/);
+  return match ? [match[1].trim(), match[2].trim()] : [topic.trim(), topic.trim()];
 };
-// The topic whose lookup returns the law (the original one, or the simplified one when only that finds it).
-const sourceTopicFor = async (topic: string) => {
-  const first = await gatherQuestionSources(topic).catch(() => []);
-  if (first.some((src) => src.kind === 'lei')) return topic;
+const lawSourceFor = async (topic: string) => {
+  const [subject, rest] = splitQuestionTopic(topic);
+  return fetchLegalSourceForQuestions(subject, rest).catch(() => null);
+};
+// Try the (fast, local) law lookup for the topic and for its simplified form before the slower encyclopedia
+// lookup, and report which topic found the text so the background check uses the same one.
+const resolveQuestionSources = async (topic: string): Promise<{ topic: string; sources: TopicSource[] }> => {
+  const law = await lawSourceFor(topic);
+  if (law) return { topic, sources: [law] };
   const simplified = simplifyLegalTopic(topic);
-  if (!simplified || simplified === topic.trim()) return topic;
-  const retry = await gatherQuestionSources(simplified).catch(() => []);
-  return retry.some((src) => src.kind === 'lei') ? simplified : topic;
+  if (simplified && simplified !== topic.trim()) {
+    const simplifiedLaw = await lawSourceFor(simplified);
+    if (simplifiedLaw) return { topic: simplified, sources: [simplifiedLaw] };
+  }
+  return { topic, sources: await gatherQuestionSources(topic).catch(() => []) };
+};
+const findQuestionSources = async (topic: string) => (await resolveQuestionSources(topic)).sources;
+const sourceTopicFor = async (topic: string) => (await resolveQuestionSources(topic)).topic;
+
+const shuffleOptions = <Q extends { options: string[]; correctAnswer: number }>(q: Q): Q => {
+  const order = q.options.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return { ...q, options: order.map((i) => q.options[i]), correctAnswer: order.indexOf(q.correctAnswer) };
 };
 
 export const generateExamQuestionsFast = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => {
@@ -1119,13 +1134,17 @@ export const generateExamQuestionsFast = async (topic: string, numQuestions: num
     // is local and fast; if it finds nothing, the rules still forbid invented articles, súmulas and jurisprudence.
     const sources = await Promise.race([
       findQuestionSources(topic),
-      new Promise<[]>((resolve) => setTimeout(() => resolve([]), 5000)),
+      new Promise<[]>((resolve) => setTimeout(() => resolve([]), 8000)),
     ]);
-    const rules = questionGenerationRules(sources, [], doctrineNotes(topic));
+    // The app shuffles the options afterwards, so the explanation must not depend on letters or positions.
+    const rules = questionGenerationRules(sources, [], doctrineNotes(topic)) + `
+      - Na explicação, refira-se às alternativas pelo conteúdo, nunca pela letra (A, B, C...) nem pela posição ("a primeira", "a última").`;
     const raw = await requestExamQuestions(topic, numQuestions, profile, banca, explanationStyle, questionProfileStyle, rules, true);
     const list: any[] = (Array.isArray(raw) ? raw : raw?.questions) ?? [];
+    // Models put the right answer first most of the time; asking them to spread the key made the content worse,
+    // so the app shuffles the options itself and remaps the answer key.
     const questions = list.filter(isUsableQuestion).slice(0, numQuestions)
-      .map((q) => ({ ...q, verification: { status: 'checking' as const } }));
+      .map((q) => ({ ...shuffleOptions(q), verification: { status: 'checking' as const } }));
     if (questions.length === 0) throw new AIError('A IA não devolveu questões válidas desta vez. Tente novamente.');
     return { questions };
   } catch (error) {
