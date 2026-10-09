@@ -5,6 +5,7 @@ import AvatarBuilder from './AvatarBuilder';
 import CharacterRevealScreen from './CharacterRevealScreen';
 import { getCharacterSrc } from '../services/avatarService';
 import { Zap } from './icons';
+import { BackupSection } from './BackupControls';
 
 interface ProfileViewProps {
   stats: UserStats;
@@ -298,6 +299,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
               </div>
             </div>
 
+            <BackupSection />
+
             <div className="pt-6">
               <button onClick={handleSave} className="w-full bg-[#e96f34] hover:bg-[#f07b40] text-white py-6 rounded-[30px] font-black text-xl shadow-xl shadow-[#e96f34]/30 hover:scale-[1.02] transition-all active:scale-95">
                 SALVAR ALTERAÇÕES
@@ -356,3 +359,4 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
 };
 
 export default ProfileView;
+

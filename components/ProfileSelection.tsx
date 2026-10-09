@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, Briefcase, GraduationCap, Sparkles } from './icons';
 import FishLogo from './FishLogo';
+import { RestoreBackupLink } from './BackupControls';
 import { StudyProfile } from '../types';
 
 interface ProfileSelectionProps {
@@ -138,6 +139,7 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
                   <p className="mt-4 max-w-md text-sm font-semibold leading-6 text-[#725e4a] dark:text-[#d1c7b3] sm:text-base">
                     Escolha o perfil que mais combina com seus estudos.
                   </p>
+                  <RestoreBackupLink className="mt-5" />
                 </div>
 
                 <div className="relative z-10 hidden items-center justify-between gap-3 border-t border-[#473c33]/15 pl-2 pt-4 text-[10px] font-bold leading-5 text-[#725e4a] dark:border-white/10 dark:text-[#c8c5a9] sm:flex">
