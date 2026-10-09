@@ -57,7 +57,7 @@ const cleanPages = (pages) => {
   for (const text of pages) for (const line of new Set(text.split('\n').map((l) => l.trim()).filter(Boolean))) freq.set(line, (freq.get(line) || 0) + 1);
   const limit = Math.max(3, pages.length * 0.25);
   return pages.map((text) => text.split('\n')
-    .map((line) => line.replace(CPF_NAME, '').trim())
+    .map((line) => line.replace(CPF_NAME, '').replace(/==[0-9a-f]{4,}==/gi, '').trim()) // buyer tracking codes
     .filter((line) => line && !NOISE_LINE.test(line) && (freq.get(line) || 0) < limit)
     .join('\n'));
 };
