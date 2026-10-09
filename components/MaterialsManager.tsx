@@ -394,82 +394,82 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
               );
             })}
 
-            {/* List Notebooks */}
-            {selectedFolder?.notebooks.map((notebook) => {
-              const notebookAttempts = attempts.filter((a) => a.notebookId === notebook.id);
-              const notebookAccuracy = notebookAttempts.length > 0 ? Math.round((notebookAttempts.reduce((acc, c) => acc + c.score, 0) / notebookAttempts.reduce((acc, c) => acc + c.total, 0)) * 100) : 0;
+            {/* List Notebooks: same book-cover grid as Anotações */}
+            {selectedFolder && selectedFolder.notebooks.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                {selectedFolder.notebooks.map((notebook) => {
+                  const notebookAttempts = attempts.filter((a) => a.notebookId === notebook.id);
+                  const notebookAccuracy = notebookAttempts.length > 0 ? Math.round((notebookAttempts.reduce((acc, c) => acc + c.score, 0) / notebookAttempts.reduce((acc, c) => acc + c.total, 0)) * 100) : 0;
 
-              return (
-                <div key={notebook.id} onClick={() => setSelectedNotebookId(notebook.id)} className="bg-white rounded-[30px] p-6 border border-gray-100 hover:shadow-xl hover:shadow-[#ac4800]/5 transform hover:-translate-x-1 transition-all group cursor-pointer relative flex items-center gap-6">
-                  <div className="w-[4.5rem] shrink-0">
-                    <StudyBook3D title={notebook.name} color={notebook.color || '#f97316'} />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-black uppercase tracking-tighter truncate">{notebook.name}</h3>
+                  return (
+                    <div key={notebook.id} className="relative group">
                       <button
                         type="button"
-                        aria-label={`Editar caderno ${notebook.name}`}
-                        title="Editar título e cor da capa"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingNotebookId(notebook.id);
-                          setNewName(notebook.name);
-                          setNewFolderColor(notebook.color || '#f97316');
-                          setIsCreating('NOTEBOOK');
-                        }}
-                        className="shrink-0 rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-[#fff6e8] hover:text-[#ac6e00]"
+                        onClick={() => setSelectedNotebookId(notebook.id)}
+                        aria-label={`Abrir caderno ${notebook.name}`}
+                        className="w-full aspect-[3/4] rounded-[20px] border border-[#eee6d6] hover:border-[#ddd2c2] overflow-hidden transition-all flex flex-col bg-white p-3 text-left"
                       >
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                          <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
-                        </svg>
+                        <StudyBook3D title={notebook.name} color={notebook.color || '#f97316'} className="min-h-0 flex-1 study-book--saved-note study-book--compact" />
+                        <div className="pt-2">
+                          <p className="font-black text-[#473c33] text-xs uppercase truncate" title={notebook.name}>{notebook.name}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{notebook.questions.length} questões</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#fda769] bg-[#fff1e8] px-2 py-0.5 rounded-full">{notebookAccuracy}% acertos</span>
+                          </div>
+                        </div>
                       </button>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">{notebook.questions.length} QUESTÕES</span>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-[#fda769] bg-[#fff1e8] px-2 py-0.5 rounded-full">{notebookAccuracy}% ACC</span>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    {onMoveAllQuestions && selectedFolderId && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMoveAllNotebook(notebook);
-                        }}
-                        className="p-3 text-gray-300 hover:text-[#fecc73] hover:bg-[#fff6e8] rounded-full transition-all"
-                        title="Mover questões"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                      </button>
-                    )}
-                    {onDeleteNotebook && selectedFolderId && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm('Apagar este caderno?')) onDeleteNotebook(selectedFolderId, notebook.id);
-                        }}
-                        className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1.012 0 00-1-1h-4a1 1.012 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="text-gray-300 group-hover:text-[#fdad74] transition-colors">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              );
-            })}
+                      <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+                        <button
+                          type="button"
+                          aria-label={`Editar caderno ${notebook.name}`}
+                          title="Editar título e cor da capa"
+                          onClick={() => {
+                            setEditingNotebookId(notebook.id);
+                            setNewName(notebook.name);
+                            setNewFolderColor(notebook.color || '#f97316');
+                            setIsCreating('NOTEBOOK');
+                          }}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#eee6d6] bg-white/90 text-[#725442] hover:text-[#ac6e00] transition-colors"
+                        >
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                            <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
+                          </svg>
+                        </button>
+                        {onMoveAllQuestions && selectedFolderId && (
+                          <button
+                            type="button"
+                            onClick={() => setMoveAllNotebook(notebook)}
+                            aria-label={`Mover questões do caderno ${notebook.name}`}
+                            title="Mover questões"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#eee6d6] bg-white/90 text-[#725442] hover:text-[#ac6e00] transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                          </button>
+                        )}
+                        {onDeleteNotebook && selectedFolderId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm('Apagar este caderno?')) onDeleteNotebook(selectedFolderId, notebook.id);
+                            }}
+                            aria-label={`Apagar caderno ${notebook.name}`}
+                            title="Apagar caderno"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#eee6d6] bg-white/90 text-[#725442] hover:text-red-500 transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1.012 0 00-1-1h-4a1 1.012 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {currentFolders.length === 0 && (!selectedFolder || selectedFolder.notebooks.length === 0) && (
               <div className="py-32 text-center border-4 border-dashed border-gray-100 rounded-[50px] bg-gray-50/30">
