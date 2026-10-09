@@ -1176,6 +1176,7 @@ export const generateExamQuestionsFast = async (topic: string, numQuestions: num
     const rules = questionGenerationRules(sources, [], doctrineNotes(topic)) + `
       - Na explicação, refira-se às alternativas pelo conteúdo, nunca pela letra (A, B, C...) nem pela posição ("a primeira", "a última").
       - Todas as questões devem ser sobre o tema pedido: "${topic}". Não troque o tema por outro assunto que apareça nas fontes.
+      - Trate o tema pela ótica da matéria indicada antes dos dois-pontos (ex.: "poder de polícia" em Direito Administrativo é conceito, atributos, ciclo, limites e delegação, não a cobrança de taxas). Se uma fonte citar o tema só de passagem dentro de outra matéria, não monte questões sobre essa outra matéria.
       - Cada enunciado e explicação deve se sustentar sozinho: nunca escreva "segundo as fontes", "de acordo com as fontes", "conforme o texto de apoio", "segundo o material" ou expressões parecidas. Cite a norma pelo nome (ex.: "art. 37 da CF") quando for o caso.`;
     const raw = await requestExamQuestions(topic, numQuestions, profile, banca, explanationStyle, questionProfileStyle, rules, true);
     const list: any[] = (Array.isArray(raw) ? raw : raw?.questions) ?? [];
