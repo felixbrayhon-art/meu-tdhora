@@ -15,14 +15,15 @@ const STOPWORDS = new Set(('a o os as um uma uns umas de do da dos das em no na 
 
 const normalize = (text: string) => text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const termsOf = (text: string) => [...new Set(normalize(text).split(/[^a-z0-9]+/).filter((t) => t.length >= 3 && !STOPWORDS.has(t)))].slice(0, 8);
-const ftsQuery = (terms: string[], op: 'AND' | 'OR') => terms.map((t) => `"${t}"*`).join(` ${op} `);
+const ftsQuery = (terms: string[], op: 'AND') => terms.map((t) => `"${t}"*`).join(` ${op} `);
 
 const search = async (db: D1Like, query: string) => {
-  // The specific part of "Matéria: tema" decides relevance; all terms must match first, then any of them.
+  // Every term must match: first with the subject ("Matéria: tema"), then the topic alone. Matching any
+  // single word pulled unrelated excerpts (e.g. "qualificado" for furto qualificado), so there is no OR.
   const specific = query.includes(':') ? query.split(':').slice(1).join(':') : query;
-  const attempts: [string[], 'AND' | 'OR'][] = [[termsOf(query), 'AND'], [termsOf(specific), 'AND'], [termsOf(specific), 'OR']];
+  const attempts: [string[], 'AND'][] = [[termsOf(query), 'AND'], [termsOf(specific), 'AND']];
   for (const [terms, op] of attempts) {
-    if (terms.length === 0 || (op === 'OR' && terms.length < 2)) continue;
+    if (terms.length === 0) continue;
     const { results } = await db.prepare(
       'SELECT f.text AS text FROM fontes_fts JOIN fontes f ON f.id = fontes_fts.rowid WHERE fontes_fts MATCH ?1 ORDER BY bm25(fontes_fts) LIMIT ?2',
     ).bind(ftsQuery(terms, op), MAX_EXCERPTS).all<{ text: string }>();
