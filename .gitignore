@@ -44,3 +44,6 @@ worker/output
 # Admin SDK service account key — never versioned, wherever it's placed.
 *service-account*.json
 *firebase-adminsdk*.json
+
+# Wrangler local state
+.wrangler
