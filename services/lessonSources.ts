@@ -51,8 +51,17 @@ interface LawArticle {
 const LAWS: LawFile[] = [
   { id: 'codigo-penal', label: 'Código Penal', url: 'https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm', appliesTo: /penal|crime|criminal/ },
   { id: 'constituicao-federal', label: 'Constituição Federal de 1988', url: 'https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm', appliesTo: /constituc|administrativ|direitos|garantias|fundamentais/ },
+  // Federal laws most common in editais, built from the official compiled text by scripts/build-vademecum.mjs.
+  { id: 'codigo-processo-penal', label: 'Código de Processo Penal', url: 'https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm', appliesTo: /processo penal|processual penal|inquerito|flagrante|prisao|acao penal|denuncia|queixa|cpp|habeas|fianca|jurisdicao penal|provas? (no|do) processo/ },
+  { id: 'lei-14133', label: 'Lei nº 14.133/2021 (Licitações e Contratos)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm', appliesTo: /licita|contrato.{0,15}administrativ|contratacao publica|14\.?133|pregao|dispensa|inexigib|dialogo competitivo|leilao|concorrencia/ },
+  { id: 'lei-8112', label: 'Lei nº 8.112/1990 (Servidores Públicos Federais)', url: 'https://www.planalto.gov.br/ccivil_03/leis/l8112cons.htm', appliesTo: /servidor|8\.?112|estatuto|cargo public|provimento|vacancia|estagio probatorio|estabilidade|licenca|remocao|redistribuic|regime disciplinar|processo disciplinar|sindicancia|penalidade/ },
+  { id: 'lei-9784', label: 'Lei nº 9.784/1999 (Processo Administrativo)', url: 'https://www.planalto.gov.br/ccivil_03/leis/l9784.htm', appliesTo: /processo administrativo|9\.?784|recurso administrativo|anulac|revogac|convalidac|motivac|delegac|avocac|impedimento|suspeic|decadencia administrativ/ },
+  { id: 'lei-8429', label: 'Lei nº 8.429/1992 (Improbidade Administrativa)', url: 'https://www.planalto.gov.br/ccivil_03/leis/l8429.htm', appliesTo: /improbidade|8\.?429|enriquecimento ilicito|dano ao erario/ },
+  { id: 'lei-12527', label: 'Lei nº 12.527/2011 (Acesso à Informação)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2011/lei/l12527.htm', appliesTo: /acesso a informac|12\.?527|\blai\b|transparencia|sigilo|informac(ao|oes) (sigilosa|classificada|pessoa)/ },
+  { id: 'lc-101', label: 'Lei Complementar nº 101/2000 (Responsabilidade Fiscal)', url: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp101.htm', appliesTo: /responsabilidade fiscal|\blrf\b|lc 101|101\/2000|despesa (total )?com pessoal|receita corrente liquida|renuncia de receita|divida consolidada|gestao fiscal/ },
+  { id: 'lei-11343', label: 'Lei nº 11.343/2006 (Lei de Drogas)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11343.htm', appliesTo: /droga|entorpecente|trafico|11\.?343|sisnad|usuario de droga/ },
 ];
-const LEGAL_RE = /direito|penal|constituc|legisla|lei seca|c[oó]digo/;
+const LEGAL_RE = /direito|penal|constituc|legisla|\blei\b|\blrf\b|\blai\b|c[oó]digo|licita|servidor|improbidade|processo administrativo|responsabilidade fiscal|acesso a informac|droga/;
 const STOPWORDS = new Set(['dos', 'das', 'del', 'que', 'com', 'por', 'para', 'uma', 'nos', 'nas']);
 
 const lawCache = new Map<string, Promise<LawArticle[]>>();
@@ -76,15 +85,21 @@ const rubricaOf = (article: LawArticle): string => {
 
 // Scores how well an article answers the topic. The rubrica (the article's
 // heading, e.g. "Roubo.") counts most, then chapter titles, then the caput.
+// Laws write verbs where topics use nouns ("anular"/"revogá-los" for "anulação e revogação"), so tokens are
+// compared by their stem.
+const stemOf = (token: string): string => (token.length > 6 ? token.slice(0, token.length - 3) : token);
 export const scoreArticle = (article: LawArticle, topicTokens: string[]): number => {
+  const stems = topicTokens.map(stemOf);
   const rubrica = normalize(rubricaOf(article));
-  const heading = normalize(`${article.titulo ?? ''} ${article.capitulo ?? ''}`);
+  const heading = normalize(`${article.titulo ?? ''} ${article.capitulo ?? ''} ${(article as { secao?: string | null }).secao ?? ''}`);
   const caput = normalize(article.texto.slice(0, 500));
-  const inRubrica = topicTokens.filter((t) => rubrica.includes(t)).length;
-  const inHeading = topicTokens.filter((t) => heading.includes(t)).length;
-  const inCaput = topicTokens.filter((t) => caput.includes(t)).length;
-  if (inRubrica === topicTokens.length) return 100 + inHeading;
-  if (inCaput === topicTokens.length) return 40 + inHeading;
+  const inRubrica = stems.filter((t) => rubrica.includes(t)).length;
+  const inHeading = stems.filter((t) => heading.includes(t)).length;
+  const inCaput = stems.filter((t) => caput.includes(t)).length;
+  if (inRubrica === stems.length) return 100 + inHeading;
+  if (inCaput === stems.length) return 40 + inHeading;
+  // The chapter names the topic ("Da Prisão em Flagrante") and the article itself mentions part of it (art. 302).
+  if (inHeading === stems.length && inCaput > 0) return 60 + inCaput;
   return 0;
 };
 
@@ -292,7 +307,9 @@ export const fetchWikidataFacts = async (_subject: string, topic: string): Promi
 
 
 // ------------------------------------------------- Sources for question banks
-const TERM_STOP = new Set(['uso', 'regras', 'regra', 'conceito', 'conceitos', 'principais', 'tipos', 'noções', 'nocoes', 'geral', 'sobre', 'segundo', 'conforme']);
+const TERM_STOP = new Set(['uso', 'regras', 'regra', 'conceito', 'conceitos', 'principais', 'tipos', 'noções', 'nocoes', 'geral', 'sobre', 'segundo', 'conforme',
+  // Law names and acronyms say which law, not what the article is about.
+  'lei', 'leis', 'lrf', 'lai', 'cpp', 'codigo', 'complementar']);
 const splitTopicTerms = (topic: string): string[] =>
   topic
     .replace(/\bart(?:igos?|s?\.)?\.?\s*\d+[^\s,;)]*/gi, ' ')

@@ -168,6 +168,14 @@ export interface VadeMecumLaw {
 export const VADE_MECUM_LAWS: VadeMecumLaw[] = [
   { id: 'constituicao-federal', name: 'Constituição Federal de 1988', shortName: 'CF/88' },
   { id: 'codigo-penal', name: 'Código Penal (Decreto-Lei nº 2.848/1940)', shortName: 'CP' },
+  { id: 'codigo-processo-penal', name: 'Código de Processo Penal (Decreto-Lei nº 3.689/1941)', shortName: 'CPP' },
+  { id: 'lei-14133', name: 'Lei de Licitações e Contratos (Lei nº 14.133/2021)', shortName: 'Lei 14.133' },
+  { id: 'lei-8112', name: 'Estatuto dos Servidores Públicos Federais (Lei nº 8.112/1990)', shortName: 'Lei 8.112' },
+  { id: 'lei-9784', name: 'Lei do Processo Administrativo (Lei nº 9.784/1999)', shortName: 'Lei 9.784' },
+  { id: 'lei-8429', name: 'Lei de Improbidade Administrativa (Lei nº 8.429/1992)', shortName: 'Lei 8.429' },
+  { id: 'lei-12527', name: 'Lei de Acesso à Informação (Lei nº 12.527/2011)', shortName: 'LAI' },
+  { id: 'lc-101', name: 'Lei de Responsabilidade Fiscal (LC nº 101/2000)', shortName: 'LRF' },
+  { id: 'lei-11343', name: 'Lei de Drogas (Lei nº 11.343/2006)', shortName: 'Lei 11.343' },
 ];
 export type StudyProfile = 'VESTIBULAR' | 'CONCURSO' | 'FACULDADE';
 export type ExplanationStyle = string;
