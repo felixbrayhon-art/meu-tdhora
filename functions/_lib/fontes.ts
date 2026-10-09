@@ -21,11 +21,14 @@ const quoted = (terms: string[]) => terms.map((t) => `"${t}"*`);
 // Course PDFs mix explanation with exam questions (each about something else), title pages and
 // badly scanned tables. Those pulled the model off topic or named the course, so they are skipped.
 const BANCAS = /\((?:[^)]*\b)?(CESPE|CEBRASPE|FGV|FCC|VUNESP|IDECAN|IBFC|IESES|AOCP|QUADRIX|IADES|CONSULPLAN|FUNDATEC|FEPESE|INSTITUTO|BANCA)\b/i;
-const isUnusable = (text: string) =>
+// Commented questions from "lei em questões" books are stored already structured (article, point tested,
+// right answer, explanation, no loose options), so they are usable even though they mention the exam.
+const isCommentedQuestion = (text: string) => /^[^.]{3,80}, art\. \S+[^]{0,120}?Ponto cobrado em prova/.test(text);
+const isUnusable = (text: string) => !isCommentedQuestion(text) && (
   (text.match(/(^|\n|\s)[a-eA-E]\)\s/g) || []).length >= 3
   || /\bgabarito\b|\bcoment[aá]rios?\s*:|\bjulgue(-os)?\b|\bassinale\b|\(\s*(certo|errado)\s*\)|lista de quest/i.test(text)
   || BANCAS.test(text)
-  || /estrat[eé]gia|gran cursos|\bautor(es)?\s*:|\bíndice\b|\bsum[aá]rio\b|apresenta[cç][aã]o da aula/i.test(text);
+  || /estrat[eé]gia|gran cursos|\bautor(es)?\s*:|\bíndice\b|\bsum[aá]rio\b|apresenta[cç][aã]o da aula/i.test(text));
 
 // How much an excerpt is really about the topic: every word must occur, ideally several times and
 // close together (the words of "segurança da informação" within a few words, in any order).
