@@ -1128,13 +1128,27 @@ const lawSourceFor = async (topic: string) => {
 };
 // Try the (fast, local) law lookup for the topic and for its simplified form before the slower encyclopedia
 // lookup, and report which topic found the text so the background check uses the same one.
+// The Vade Mecum only has the Código Penal and the Constituição, so the loose lookup can return an article that
+// merely mentions one topic word ("licitação" -> CF art. 175 on concessions). Grounding on it pulled whole question
+// sets off topic, so a law source is used only when its text contains every word of the specific topic.
+const lawCoversTopic = (law: TopicSource, topic: string): boolean => {
+  const fold = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const specific = topic.includes(':') ? topic.split(':').slice(1).join(':') : topic;
+  const words = fold(specific).split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4 && !/^(sobre|para|entre|como|direito|artigo|artigos|lei|leis|nocoes|conceito|conceitos|tema|assunto)$/.test(w))
+    .map((w) => w.slice(0, Math.max(4, w.length - 2))); // light stem: modalidades -> modalida
+  if (words.length === 0) return true;
+  const text = fold([law.text, ...(law.laws ?? []).map((l) => l.text)].join(' '));
+  return words.every((w) => text.includes(w));
+};
+
 const resolveQuestionSources = async (topic: string): Promise<{ topic: string; sources: TopicSource[] }> => {
   const law = await lawSourceFor(topic);
-  if (law) return { topic, sources: [law] };
+  if (law && lawCoversTopic(law, topic)) return { topic, sources: [law] };
   const simplified = simplifyLegalTopic(topic);
   if (simplified && simplified !== topic.trim()) {
     const simplifiedLaw = await lawSourceFor(simplified);
-    if (simplifiedLaw) return { topic: simplified, sources: [simplifiedLaw] };
+    if (simplifiedLaw && lawCoversTopic(simplifiedLaw, simplified)) return { topic: simplified, sources: [simplifiedLaw] };
   }
   return { topic, sources: await gatherQuestionSources(topic).catch(() => []) };
 };
@@ -1160,7 +1174,9 @@ export const generateExamQuestionsFast = async (topic: string, numQuestions: num
     ]);
     // The app shuffles the options afterwards, so the explanation must not depend on letters or positions.
     const rules = questionGenerationRules(sources, [], doctrineNotes(topic)) + `
-      - Na explicação, refira-se às alternativas pelo conteúdo, nunca pela letra (A, B, C...) nem pela posição ("a primeira", "a última").`;
+      - Na explicação, refira-se às alternativas pelo conteúdo, nunca pela letra (A, B, C...) nem pela posição ("a primeira", "a última").
+      - Todas as questões devem ser sobre o tema pedido: "${topic}". Não troque o tema por outro assunto que apareça nas fontes.
+      - Cada enunciado e explicação deve se sustentar sozinho: nunca escreva "segundo as fontes", "de acordo com as fontes", "conforme o texto de apoio", "segundo o material" ou expressões parecidas. Cite a norma pelo nome (ex.: "art. 37 da CF") quando for o caso.`;
     const raw = await requestExamQuestions(topic, numQuestions, profile, banca, explanationStyle, questionProfileStyle, rules, true);
     const list: any[] = (Array.isArray(raw) ? raw : raw?.questions) ?? [];
     // Models put the right answer first most of the time; asking them to spread the key made the content worse,
