@@ -176,6 +176,7 @@ export const VADE_MECUM_LAWS: VadeMecumLaw[] = [
   { id: 'lei-12527', name: 'Lei de Acesso à Informação (Lei nº 12.527/2011)', shortName: 'LAI' },
   { id: 'lc-101', name: 'Lei de Responsabilidade Fiscal (LC nº 101/2000)', shortName: 'LRF' },
   { id: 'lei-11343', name: 'Lei de Drogas (Lei nº 11.343/2006)', shortName: 'Lei 11.343' },
+  { id: 'codigo-tributario-nacional', name: 'Código Tributário Nacional (Lei nº 5.172/1966)', shortName: 'CTN' },
 ];
 export type StudyProfile = 'VESTIBULAR' | 'CONCURSO' | 'FACULDADE';
 export type ExplanationStyle = string;

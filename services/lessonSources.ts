@@ -59,6 +59,7 @@ const LAWS: LawFile[] = [
   { id: 'lei-8429', label: 'Lei nº 8.429/1992 (Improbidade Administrativa)', url: 'https://www.planalto.gov.br/ccivil_03/leis/l8429.htm', appliesTo: /improbidade|8\.?429|enriquecimento ilicito|dano ao erario/ },
   { id: 'lei-12527', label: 'Lei nº 12.527/2011 (Acesso à Informação)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2011/lei/l12527.htm', appliesTo: /acesso a informac|12\.?527|\blai\b|transparencia|sigilo|informac(ao|oes) (sigilosa|classificada|pessoa)/ },
   { id: 'lc-101', label: 'Lei Complementar nº 101/2000 (Responsabilidade Fiscal)', url: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp101.htm', appliesTo: /responsabilidade fiscal|\blrf\b|lc 101|101\/2000|despesa (total )?com pessoal|receita corrente liquida|renuncia de receita|divida consolidada|gestao fiscal/ },
+  { id: 'codigo-tributario-nacional', label: 'Código Tributário Nacional', url: 'https://www.planalto.gov.br/ccivil_03/leis/l5172compilado.htm', appliesTo: /tributari|\bctn\b|tributo|lancamento|credito tributario|obrigacao tributaria|imposto|taxa|contribuicao de melhoria|poder de policia/ },
   { id: 'lei-11343', label: 'Lei nº 11.343/2006 (Lei de Drogas)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11343.htm', appliesTo: /droga|entorpecente|trafico|11\.?343|sisnad|usuario de droga/ },
 ];
 const LEGAL_RE = /direito|penal|constituc|legisla|\blei\b|\blrf\b|\blai\b|c[oó]digo|licita|servidor|improbidade|processo administrativo|responsabilidade fiscal|acesso a informac|droga/;
@@ -327,6 +328,18 @@ const PENAL_ALIASES: Record<string, string> = {
   'concurso material': '69', 'concurso formal': '70', 'crime continuado': '71', 'reincidencia': '63', 'relacao de causalidade': '13',
 };
 
+// Classic topics whose defining article sits in a law the topic words don't point to, or that other laws only
+// mention in passing (CF art. 145 cites "poder de polícia" for taxes; the definition is CTN art. 78).
+const TOPIC_ARTICLES: Record<string, [string, string][]> = {
+  'poder de policia': [['codigo-tributario-nacional', '78']],
+  'principios da administracao': [['constituicao-federal', '37']],
+  'improbidade administrativa': [['lei-8429', '9'], ['lei-8429', '10'], ['lei-8429', '11']],
+  'modalidades de licitacao': [['lei-14133', '28']],
+  'estagio probatorio': [['lei-8112', '20']],
+  'prisao em flagrante': [['codigo-processo-penal', '302']],
+  'despesa com pessoal': [['lc-101', '18'], ['lc-101', '19'], ['lc-101', '20']],
+};
+
 export const fetchLegalSourceForQuestions = async (subject: string, topic: string): Promise<TopicSource | null> => {
   const subjectNorm = normalize(subject);
   const topicNorm = normalize(topic);
@@ -344,13 +357,22 @@ export const fetchLegalSourceForQuestions = async (subject: string, topic: strin
     .filter((list) => list.length > 0);
 
   const picked = new Map<string, { law: LawFile; article: LawArticle; score: number }>();
+  for (const [alias, refs] of Object.entries(TOPIC_ARTICLES)) {
+    if (!topicNorm.includes(alias)) continue;
+    for (const [lawId, numero] of refs) {
+      const law = LAWS.find((l) => l.id === lawId);
+      const article = law && (await loadLaw(law.id)).find((a) => a.numero === numero);
+      if (law && article) picked.set(`${law.id}:${numero}`, { law, article, score: 300 });
+    }
+  }
   for (const law of laws) {
     const articles = await loadLaw(law.id);
     for (const article of articles) {
       let score = 0;
       if (explicit.some((num) => article.numero === num || article.numero.startsWith(`${num}-`))) score = 200;
       else score = Math.max(0, ...termTokens.map((list) => scoreArticle(article, list)).filter((value) => value >= 100));
-      if (score > 0) picked.set(`${law.id}:${article.numero}`, { law, article, score });
+      const key = `${law.id}:${article.numero}`;
+      if (score > 0 && (picked.get(key)?.score ?? 0) < score) picked.set(key, { law, article, score });
     }
   }
   // Concept topics ("dolo", "culpa") live in the caput of an article without a matching rubrica (art. 18 says
@@ -368,7 +390,10 @@ export const fetchLegalSourceForQuestions = async (subject: string, topic: strin
   }
   if (picked.size === 0) return null;
 
-  const best = Array.from(picked.values()).sort((a, b) => b.score - a.score).slice(0, 6);
+  // When the topic has a defining article (alias or explicit "art. N"), passing mentions elsewhere are dropped:
+  // they pulled whole question sets into another subject.
+  const ranked = Array.from(picked.values()).sort((a, b) => b.score - a.score);
+  const best = (ranked[0].score >= 200 ? ranked.filter((r) => r.score >= 100) : ranked).slice(0, 6);
   const perArticle = best.length === 1 ? 5000 : 2200;
   const chosen = best.map((b) => ({ label: b.law.label, numero: b.article.numero, text: stripRubrica(b.article.texto).replace(/\s+/g, ' ').slice(0, perArticle) }));
   return {
