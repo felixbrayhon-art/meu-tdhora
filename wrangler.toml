@@ -4,3 +4,8 @@ name = "meu-tdhora"
 pages_build_output_dir = "dist"
 compatibility_date = "2025-09-01"
 compatibility_flags = ["nodejs_compat"]
+
+# Current public address of the FreeLLMAPI tunnel (written by the tunnel start script).
+[[kv_namespaces]]
+binding = "FREELLMAPI_TUNNEL"
+id = "6ed1474877cd455b8780de6724b4e614"
