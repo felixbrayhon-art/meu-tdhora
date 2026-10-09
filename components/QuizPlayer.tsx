@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DOMPurify from 'dompurify';
-import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, Maximize2, Minimize2, Move, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen, Copy, CheckCircle2 } from './icons';
+import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, Maximize2, Minimize2, Move, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, HelpCircle, BookOpen, Copy, CheckCircle2, Pencil, Hand } from './icons';
+import QuestionInkLayer, { InkTool, QuestionInkLayerHandle } from './QuestionInkLayer';
 import { QuizFolder, Notebook, QuizQuestion, ExplanationStyle } from '../types';
 import MarkdownContent from './MarkdownContent';
 import VerificationBadge from './VerificationBadge';
@@ -35,6 +36,16 @@ const QP_RULE = 'border-[#e8dcc8] dark:border-white/10';
 const QP_ICON_BTN = 'text-[#725442] dark:text-[#c8c5a9] hover:text-[#473c33] dark:hover:text-[#f2efd2] hover:bg-black/5 dark:hover:bg-white/10';
 const QP_TOOL_BTN = 'text-[#725442] dark:text-[#c8c5a9] hover:text-[#a8431a] dark:hover:text-[#f2efd2]';
 const QP_SECONDARY_BTN = `border text-[10px] font-black uppercase tracking-wide transition-all active:scale-95 enabled:hover:border-[#e96f34] disabled:cursor-not-allowed disabled:opacity-40 ${QP_RULE} ${QP_CARD} ${QP_INK}`;
+const INK_COLORS = [
+  { value: '#c0392b', label: 'Vermelho' },
+  { value: '#1f5fa8', label: 'Azul' },
+  { value: '#2b2118', label: 'Preto' },
+];
+const isTypingTarget = (target: EventTarget | null) => {
+  const el = target as HTMLElement | null;
+  return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
+};
+
 const QP_PRIMARY_BTN = 'bg-[#a8431a] text-white text-[10px] font-black uppercase tracking-wide transition-all enabled:hover:bg-[#bf4f1b] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40';
 
 const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBack, onComplete, onUpdateQuestions, onMoveQuestion, onTriggerGuidedLesson, initialFontSizeMultiplier = 1, isAdmin = false }) => {
@@ -71,6 +82,26 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
   const questionTextRef = useRef<HTMLDivElement>(null);
   const noteSectionRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  // Writing over the question (Apple Pencil / mouse). Strokes are saved per question.
+  const inkRef = useRef<QuestionInkLayerHandle>(null);
+  // The Pencil starts out writing; the last tool picked is remembered (e.g. "Mão" to scroll with it).
+  const [inkTool, setInkToolState] = useState<InkTool>(() => {
+    try {
+      const saved = localStorage.getItem('tdh_ink_tool');
+      return saved === 'hand' || saved === 'pen' || saved === 'highlighter' || saved === 'eraser' ? saved : 'pen';
+    } catch {
+      return 'pen';
+    }
+  });
+  const setInkTool = (next: InkTool) => {
+    setInkToolState(next);
+    try { localStorage.setItem('tdh_ink_tool', next); } catch { /* preference only */ }
+  };
+  const lastPenAtRef = useRef(0);
+  const [inkColor, setInkColor] = useState(INK_COLORS[0].value);
+  const [inkOpen, setInkOpen] = useState(false);
+  const [inkCount, setInkCount] = useState(0);
+  const swipeRef = useRef<{ x: number; y: number; t: number; id: number } | null>(null);
 
   const saveToUndo = (qId: string, content: string) => {
     setUndoStack((prev) => ({
@@ -451,6 +482,64 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
     }
   };
 
+  // Keyboard (desktop and iPad Magic Keyboard): A-E pick an alternative, arrows change question.
+  const keyHandlersRef = useRef({ handleSelect, nextQuestion, prevQuestion });
+  keyHandlersRef.current = { handleSelect, nextQuestion, prevQuestion };
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey || isTypingTarget(event.target) || showResult || showMoveModal) return;
+      const key = event.key.toLowerCase();
+      const optionIdx = 'abcde'.indexOf(key);
+      if (key.length === 1 && optionIdx !== -1 && optionIdx < currentQ.options.length) {
+        event.preventDefault();
+        keyHandlersRef.current.handleSelect(optionIdx);
+      } else if (event.key === 'ArrowRight' && currentIndex < questions.length - 1) {
+        event.preventDefault();
+        keyHandlersRef.current.nextQuestion();
+      } else if (event.key === 'ArrowLeft' && currentIndex > 0) {
+        event.preventDefault();
+        keyHandlersRef.current.prevQuestion();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [currentIndex, questions.length, currentQ.options.length, showResult, showMoveModal]);
+
+  // A finger swipe across the question card changes question (the Pencil is for writing).
+  // Touch events, not pointer events: the browser cancels pointers once it starts a pan.
+  const handleSwipeStart = (event: React.TouchEvent) => {
+    const touch = event.touches[0] as React.Touch & { touchType?: string };
+    if (touch?.touchType === 'stylus') lastPenAtRef.current = Date.now();
+    // A palm resting while the Pencil writes must not flip the question.
+    if (event.touches.length !== 1 || touch.touchType === 'stylus' || Date.now() - lastPenAtRef.current < 1500) {
+      swipeRef.current = null;
+      return;
+    }
+    swipeRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now(), id: touch.identifier };
+  };
+  const handleSwipeEnd = (event: React.TouchEvent) => {
+    const start = swipeRef.current;
+    swipeRef.current = null;
+    const touch = start && Array.from(event.changedTouches).find((t) => t.identifier === start.id);
+    if (!start || !touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Date.now() - lastPenAtRef.current < 1500) return;
+    // Only a quick, clearly horizontal swipe counts, so scrolling never changes question.
+    if (Date.now() - start.t > 600 || Math.abs(dx) < 100 || Math.abs(dy) > Math.min(60, Math.abs(dx) * 0.35)) return;
+    if (dx < 0 && currentIndex < questions.length - 1) nextQuestion();
+    else if (dx > 0 && currentIndex > 0) prevQuestion();
+  };
+
+  const toggleCrossedOut = (idx: number) => {
+    if (selectedAnswer !== null) return;
+    setCrossedOut((prev) => (prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]));
+  };
+  const setInkMode = (open: boolean) => {
+    setInkOpen(open);
+    if (open && inkTool === 'hand') setInkTool('pen');
+  };
+
   if (showResult) {
     return (
       <div className="fixed inset-0 z-[200] bg-[#473c33] flex flex-col items-center justify-center p-8 animate-in zoom-in-95 duration-500 overflow-y-auto">
@@ -497,7 +586,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
 
   return (
     <div className={`fixed inset-0 z-[200] overflow-y-auto font-sans selection:bg-[#d8a53a]/30 ${QP_PAPER} ${QP_INK}`}>
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
+      <div className={`w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8 animate-in fade-in slide-in-from-bottom-6 duration-700 ${inkOpen ? 'pb-28 xl:pb-8' : ''}`}>
         {/* HEADER: PROGRESS & TITLE */}
         <div className={`rounded-2xl border p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 mb-5 sticky top-2 z-50 shadow-sm ${QP_RULE} ${QP_CARD}`}>
           <div className="flex items-center gap-3 min-w-0 basis-56 flex-1">
@@ -540,7 +629,13 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
           </div>
         </div>
         {/* QUIZ MAIN CARD */}
-        <div className={`rounded-[28px] border p-4 sm:p-6 md:p-8 relative overflow-hidden mb-6 ${QP_RULE} ${QP_CARD}`}>
+        <div
+          className={`rounded-[28px] border p-4 sm:p-6 md:p-8 relative overflow-hidden mb-6 ${QP_RULE} ${QP_CARD}`}
+          onTouchStart={handleSwipeStart}
+          onTouchEnd={handleSwipeEnd}
+          onTouchCancel={() => { swipeRef.current = null; }}
+        >
+          <QuestionInkLayer ref={inkRef} storageKey={currentQ.id} penTool={inkTool} mouseTool={inkOpen ? inkTool : 'hand'} color={inkColor} onStrokeCountChange={setInkCount} onDrawStart={() => setInkOpen(true)}>
           <div className="mb-7">
             <div className="flex flex-wrap gap-3 items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -576,6 +671,16 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                   </button>
                   <button onClick={handleUndo} disabled={!(undoStack[currentQ.id] && undoStack[currentQ.id].length > 0)} className={`p-2 rounded-lg transition-all active:scale-90 disabled:opacity-30 ${QP_TOOL_BTN}`} title="Desfazer marcação" aria-label="Desfazer marcação">
                     <Undo2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setInkMode(!inkOpen)}
+                    className={`ml-1 flex items-center gap-1.5 p-2 rounded-lg transition-all active:scale-90 ${inkOpen ? 'bg-[#a8431a] text-white' : QP_TOOL_BTN}`}
+                    title="Ferramentas de escrita (com a Apple Pencil, é só escrever)"
+                    aria-label="Escrever sobre a questão"
+                    aria-pressed={inkOpen}
+                  >
+                    <Pencil className="w-4 h-4" />
+                    <span className="hidden sm:inline text-[10px] font-black uppercase tracking-wide">Caneta</span>
                   </button>
                 </div>
               </div>
@@ -655,7 +760,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
               }
 
               return (
-                <div key={idx} className="relative group">
+                <div key={idx} className={`relative group ${isQuickMode ? '' : 'flex items-stretch gap-2'}`}>
                   <button
                     type="button"
                     onClick={() => handleSelect(idx)}
@@ -666,7 +771,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                         handleSelect(idx);
                       }
                     }}
-                    className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full text-left p-4 sm:p-5 rounded-2xl flex items-center gap-4 sm:gap-5'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#e96f34]/30 ${btnClass} relative overflow-hidden`}
+                    className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full min-w-0 flex-1 text-left p-4 sm:p-5 rounded-2xl flex items-center gap-4 sm:gap-5'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#e96f34]/30 ${btnClass} relative overflow-hidden`}
                     aria-label={`Alternativa ${String.fromCharCode(65 + idx)}${opt ? `: ${opt}` : ''}`}
                     aria-pressed={isUserSelection}
                     aria-disabled={isConfirmed}
@@ -689,10 +794,71 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                     )}
                     {!isQuickMode && !isConfirmed && <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isUserSelection ? 'border-[#a8431a] bg-[#a8431a]' : 'border-[#e8dcc8] dark:border-white/20'}`}>{isUserSelection && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}</div>}
                   </button>
+                  {!isQuickMode && !isConfirmed && (
+                    <button
+                      type="button"
+                      onClick={() => toggleCrossedOut(idx)}
+                      className={`shrink-0 w-11 rounded-2xl border flex items-center justify-center transition-all active:scale-95 ${isCrossedOut ? 'border-[#a8431a] bg-[#a8431a] text-white' : `${QP_RULE} ${QP_CARD} ${QP_MUTED} hover:border-[#e96f34]`}`}
+                      aria-label={`${isCrossedOut ? 'Desfazer risco da' : 'Riscar'} alternativa ${String.fromCharCode(65 + idx)}`}
+                      aria-pressed={isCrossedOut}
+                      title={isCrossedOut ? 'Desfazer risco' : 'Riscar alternativa'}
+                    >
+                      <span className="text-sm font-black line-through decoration-2">abc</span>
+                    </button>
+                  )}
                 </div>
               );
             })}
           </div>
+          </QuestionInkLayer>
+
+          {/* Pen toolbar: big touch targets on the right edge, where the hand rests on an iPad. */}
+          {inkOpen && (
+            <div className={`fixed z-[220] flex items-center gap-1 rounded-[22px] border p-1.5 shadow-xl max-w-[calc(100vw-1rem)] overflow-x-auto bottom-3 left-1/2 -translate-x-1/2 flex-row xl:bottom-auto xl:left-auto xl:translate-x-0 xl:right-4 xl:top-1/2 xl:-translate-y-1/2 xl:flex-col xl:gap-1.5 ${QP_RULE} ${QP_CARD}`} role="toolbar" aria-label="Ferramentas de escrita">
+              {([
+                ['hand', Hand, 'Mão: rolar e tocar sem escrever, também com a Apple Pencil'],
+                ['pen', Pencil, 'Caneta'],
+                ['highlighter', Highlighter, 'Marca-texto'],
+                ['eraser', Eraser, 'Borracha: passe sobre o traço para apagar'],
+              ] as const).map(([value, Icon, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => { setInkTool(value); setInkOpen(true); }}
+                  className={`shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center transition-all active:scale-90 ${inkTool === value ? 'bg-[#a8431a] text-white' : QP_TOOL_BTN}`}
+                  aria-label={label}
+                  aria-pressed={inkTool === value}
+                  title={label}
+                >
+                  <Icon className="w-5 h-5" />
+                </button>
+              ))}
+              <div className={`mx-0.5 h-7 border-l xl:mx-0 xl:my-0.5 xl:h-auto xl:w-7 xl:border-l-0 xl:border-t ${QP_RULE}`} />
+              {INK_COLORS.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => { setInkColor(c.value); setInkTool('pen'); setInkOpen(true); }}
+                  className="shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center"
+                  aria-label={`Cor da caneta: ${c.label}`}
+                  aria-pressed={inkColor === c.value}
+                  title={c.label}
+                >
+                  <span className={`block w-6 h-6 rounded-full ring-offset-2 ${inkColor === c.value ? 'ring-2 ring-[#e96f34]' : ''}`} style={{ backgroundColor: c.value }} />
+                </button>
+              ))}
+              <div className={`mx-0.5 h-7 border-l xl:mx-0 xl:my-0.5 xl:h-auto xl:w-7 xl:border-l-0 xl:border-t ${QP_RULE}`} />
+              <button type="button" onClick={() => inkRef.current?.undo()} disabled={inkCount === 0} className={`shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 ${QP_TOOL_BTN}`} aria-label="Desfazer último traço" title="Desfazer último traço">
+                <Undo2 className="w-5 h-5" />
+              </button>
+              <button type="button" onClick={() => { if (window.confirm('Apagar tudo o que você escreveu nesta questão?')) inkRef.current?.clear(); }} disabled={inkCount === 0} className={`shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 ${QP_TOOL_BTN}`} aria-label="Apagar tudo nesta questão" title="Apagar tudo nesta questão">
+                <Trash2 className="w-5 h-5" />
+              </button>
+              <button type="button" onClick={() => setInkMode(false)} className={`shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center transition-all active:scale-90 ${QP_TOOL_BTN}`} aria-label="Fechar ferramentas de escrita" title="Fechar (os traços ficam salvos)">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
 
           {selectedAnswer === null ? (
             <>
