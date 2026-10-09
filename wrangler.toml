@@ -9,3 +9,9 @@ compatibility_flags = ["nodejs_compat"]
 [[kv_namespaces]]
 binding = "FREELLMAPI_TUNNEL"
 id = "6ed1474877cd455b8780de6724b4e614"
+
+# Private study-material knowledge base (scripts/ingest-fontes.mjs); read only by functions/_lib/fontes.ts.
+[[d1_databases]]
+binding = "FONTES"
+database_name = "todahora-fontes"
+database_id = "f5dc2d0a-cbcc-4ff1-8b8f-acfb1648330c"

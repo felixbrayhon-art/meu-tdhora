@@ -228,11 +228,33 @@ const GROQ_ENABLED = Boolean(process.env.GROQ_ENABLED);
 // FreeLLMAPI needs a signed-in user; Groq/OpenRouter also work for visitors (the server rate-limits them).
 const canUseAIProxy = (): boolean => import.meta.env.DEV || !!auth?.currentUser;
 
+// While a question set or lesson is generated, AI calls carry the topic so the server can add excerpts
+// from the private study-material base (functions/_lib/fontes.ts). Only the topic leaves the browser;
+// the material itself is added on the server and never sent back.
+let fontesTopic: string | null = null;
+const withFontes = async <T>(topic: string, run: () => Promise<T>): Promise<T> => {
+  const previous = fontesTopic;
+  fontesTopic = topic;
+  try {
+    return await run();
+  } finally {
+    fontesTopic = previous;
+  }
+};
+const attachFontes = (body: string): string => {
+  if (!fontesTopic) return body;
+  try {
+    return JSON.stringify({ ...JSON.parse(body), fontes: { query: fontesTopic } });
+  } catch {
+    return body;
+  }
+};
+
 const aiProxyFetch = async (provider: 'groq' | 'openrouter', init: { body: string; signal?: AbortSignal }): Promise<Response> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const token = await auth?.currentUser?.getIdToken().catch(() => null);
   if (token) headers.Authorization = `Bearer ${token}`;
-  return fetch(`/api/ai?provider=${provider}`, { method: 'POST', headers, body: init.body, signal: init.signal });
+  return fetch(`/api/ai?provider=${provider}`, { method: 'POST', headers, body: attachFontes(init.body), signal: init.signal });
 };
 
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
@@ -283,7 +305,7 @@ const requestFreeLLMAPI = async (body: Record<string, unknown>): Promise<any> =>
   const response = await fetch('/api/freellmapi', {
     method: 'POST',
     headers,
-    body: JSON.stringify(body),
+    body: attachFontes(JSON.stringify(body)),
     signal: AbortSignal.timeout(FREELLMAPI_TIMEOUT_MS),
   });
 
@@ -1021,7 +1043,7 @@ const judgeJson = async (prompt: string, schema: any, name: string): Promise<any
 
 
 // "Estudar com IA": the lesson stays available if quiz validation fails, but unverified quiz items are removed.
-export const generateStudyContent = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Explique de forma técnica e objetiva com mapeamento lógico passo a passo.') => {
+const generateStudyContentBase = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Explique de forma técnica e objetiva com mapeamento lógico passo a passo.') => {
   const content = await requestStudyContent(topic, technique, numQuestions, profile, explanationStyle);
   if (!Array.isArray(content?.quiz) || content.quiz.length === 0) return content;
   try {
@@ -1128,7 +1150,7 @@ const shuffleOptions = <Q extends { options: string[]; correctAnswer: number }>(
   return { ...q, options: order.map((i) => q.options[i]), correctAnswer: order.indexOf(q.correctAnswer) };
 };
 
-export const generateExamQuestionsFast = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => {
+export const generateExamQuestionsFast = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => withFontes(topic, async () => {
   try {
     // Ground the single call in the official text (Vade Mecum / encyclopedia) like the verified path does. The lookup
     // is local and fast; if it finds nothing, the rules still forbid invented articles, súmulas and jurisprudence.
@@ -1150,7 +1172,7 @@ export const generateExamQuestionsFast = async (topic: string, numQuestions: num
   } catch (error) {
     return handleAIError(error);
   }
-};
+});
 
 const questionKey = (text: string) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 120);
 
@@ -2040,7 +2062,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
   }
 };
 
-export const generateGuidedLesson = async (subject: string, topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
+const generateGuidedLessonBase = async (subject: string, topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
   const profileContext = profile === 'CONCURSO' 
     ? "Foco em editais públicos, doutrina e lei seca. Linguagem técnica mas narrativa."
     : profile === 'FACULDADE'
@@ -2198,7 +2220,7 @@ const callOllamaJson = async (model: string, prompt: string, schema: any, valida
   return parsed;
 };
 
-export const generateLivingLesson = async (subject: string, topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
+const generateLivingLessonBase = async (subject: string, topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
   const sources = await gatherSources(subject, topic);
   const sourceBlock = sourcesPromptBlock(sources);
   const profileContext = profile === 'CONCURSO'
@@ -2387,3 +2409,11 @@ Seu objetivo é explicar o fragmento de texto ou o assunto fornecido de forma di
     return handleAIError(error);
   }
 };
+
+// Lessons consult the private study-material base too (see withFontes).
+export const generateStudyContent = (...args: Parameters<typeof generateStudyContentBase>) =>
+  withFontes(args[0], () => generateStudyContentBase(...args));
+export const generateGuidedLesson = (...args: Parameters<typeof generateGuidedLessonBase>) =>
+  withFontes(`${args[0]}: ${args[1]}`, () => generateGuidedLessonBase(...args));
+export const generateLivingLesson = (...args: Parameters<typeof generateLivingLessonBase>) =>
+  withFontes(`${args[0]}: ${args[1]}`, () => generateLivingLessonBase(...args));
