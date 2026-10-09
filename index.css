@@ -2306,3 +2306,82 @@ html.dark [role="tab"][aria-selected="true"] {
 html.dark [role="tab"][aria-selected="true"] * {
     color: var(--dark-cream) !important;
 }
+
+/* Dark-mode readability pass.
+   The palette rules above match classes by substring, so tints like bg-[#e96f34]/15 or
+   bg-[#fff6e8]/50 were painted as solid neon orange / baby blue (and gold tints got dark
+   ink). Translucent variants go back to their own Tailwind value, and the strongest
+   accents are deepened so cream text stays readable without glare. */
+html.dark {
+    --palette-burnt-orange: #a83c0e;
+}
+
+html.dark :is([class*="bg-[#e96f34]/"], [class*="bg-[#d9772b]/"]):not([class~="bg-[#e96f34]"]):not([class~="bg-[#d9772b]"]) {
+    background-color: revert-layer !important;
+}
+
+html.dark :is([class*="bg-[#fff6e8]/"], [class*="bg-[#e0f2fe]/"], [class*="bg-[#E0F2FE]/"]):not([class~="bg-[#fff6e8]"]) {
+    background-color: rgba(240, 232, 159, .06) !important;
+}
+
+html.dark :is([class*="bg-[#fecc73]/"], [class*="bg-[#fec868]/"], [class*="bg-[#fed386]/"], [class*="bg-[#fdad74]/"]):not(:is([class~="bg-[#fecc73]"], [class~="bg-[#fec868]"], [class~="bg-[#fed386]"], [class~="bg-[#fdad74]"])) {
+    color: revert-layer !important;
+}
+
+/* Cream on orange fills: the deeper rust clears ~5:1 instead of ~3.8:1. */
+html.dark :is([class~="bg-[#fed386]"], [class~="bg-[#fecc73]"], [class~="bg-[#fec868]"], [class~="bg-[#fdad74]"]).text-white,
+html.dark :is([class*="bg-[#e96f34]"], [class*="bg-[#d9772b]"]):not([class*="bg-[#e96f34]/"]):not([class*="bg-[#d9772b]/"]) {
+    background-color: var(--palette-burnt-orange) !important;
+}
+html.dark :is([class*="bg-[#e96f34]"], [class*="bg-[#d9772b]"]).text-white {
+    color: var(--dark-cream) !important;
+}
+/* The selected sidebar item keeps the strong burnt orange on purpose. */
+html.dark .sidebar-nav-item-active {
+    background-color: #fb4d00 !important;
+}
+
+/* Light card fills that had no dark counterpart. */
+html.dark :is(
+    [class~="bg-[#faf8f3]"], [class~="bg-[#faf7f0]"], [class~="bg-[#f4f0e8]"], [class~="bg-[#fbf7f0]"],
+    [class~="bg-[#fff6ed]"], [class~="bg-[#f4f8ed]"], [class~="bg-[#fee6d5]"], [class~="bg-[#f5efe5]"],
+    [class~="bg-[#fff6e7]"], [class~="bg-[#fff8e9]"], [class~="bg-[#fff4ed]"], [class~="bg-[#f4ecdf]"],
+    [class~="bg-[#f1f6e9]"]
+) {
+    background-color: var(--dark-surface-raised) !important;
+}
+html.dark [class~="bg-[#f6e5e5]"] {
+    background-color: rgba(228, 93, 93, .45) !important;
+}
+
+/* White icons on the baby-blue play button and chips disappear; use dark roast ink. */
+html [class~="bg-[#b1c77b]"].text-white,
+html [class~="bg-[#b1c77b]"] .text-white {
+    color: var(--palette-dark-roast) !important;
+}
+
+/* Selection rings used a white offset gap that glows on dark surfaces. */
+html.dark [class*="ring-offset-"] {
+    --tw-ring-offset-color: var(--dark-canvas);
+}
+
+/* Pale sage tints over the green panel read as a bright film in dark mode. */
+html.dark [class~="bg-[#f4f7ec]/35"] { background-color: rgba(0, 0, 0, .16) !important; }
+html.dark [class*="border-[#f4f7ec]/"] { border-color: rgba(240, 232, 159, .25) !important; }
+
+/* Score colors brightened enough to read on the dark roast cards. */
+html.dark [class~="text-[#e45d5d]"] { color: #f28b8b !important; }
+html.dark [class~="text-[#8ea865]"] { color: #b4cd86 !important; }
+
+/* Typed text in form fields.
+   The light-theme surface rule matches bg-white by substring, so translucent fields
+   (bg-white/5, /10...) inside dark modals turned solid cream under white text. */
+html:not(.dark) [class*="bg-white/"]:not([class~="bg-white"]) {
+    background-color: revert-layer;
+}
+html.dark [class~="bg-[#fffdf9]"] {
+    background-color: var(--dark-surface-raised) !important;
+}
+html.dark :is(input, textarea, select)[class~="text-[#ac4800]"] {
+    color: var(--dark-cream) !important;
+}
