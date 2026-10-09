@@ -97,6 +97,8 @@ const NoteEditor: React.FC<{
   const excalidrawAPIRef = useRef<any>(null);
   const bgRef = useRef<HTMLDivElement>(null);
   const excalidrawWrapperRef = useRef<HTMLDivElement>(null);
+  // Empty spot in the header where Excalidraw's tool bar is shown when it fits.
+  const toolbarSlotRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(note.title);
   const [folderId, setFolderId] = useState(note.folderId ?? '');
   const [coverColor, setCoverColor] = useState(note.color || '#f97316');
@@ -111,6 +113,49 @@ const NoteEditor: React.FC<{
   const [strokeOpacity, setStrokeOpacity] = useState(() => typeof note.excalidrawAppState?.currentItemOpacity === 'number' ? note.excalidrawAppState.currentItemOpacity : initialPenPreset.opacity);
   const [showColorPanel, setShowColorPanel] = useState(false);
   const activePaper = PAPER_STYLES.find(p => p.id === paperStyle)!;
+
+  // Dock Excalidraw's tool bar into the header, between the title and the pen controls.
+  // It stays where it is (just below the header) when the slot is too narrow for
+  // comfortable touch targets, e.g. an iPad in portrait.
+  useEffect(() => {
+    const slot = toolbarSlotRef.current;
+    const wrapper = excalidrawWrapperRef.current;
+    if (!slot || !wrapper) return;
+    let frame = 0;
+    const place = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const toolbar = wrapper.querySelector<HTMLElement>('.Island.App-toolbar');
+        const rect = slot.getBoundingClientRect();
+        if (!toolbar || rect.width === 0) {
+          wrapper.removeAttribute('data-toolbar-docked');
+          return;
+        }
+        const scale = Math.min(1, (rect.width - 8) / toolbar.offsetWidth);
+        if (scale < 0.85) {
+          wrapper.removeAttribute('data-toolbar-docked');
+          return;
+        }
+        wrapper.style.setProperty('--tb-left', `${rect.left + rect.width / 2}px`);
+        wrapper.style.setProperty('--tb-top', `${rect.top + rect.height / 2}px`);
+        wrapper.style.setProperty('--tb-scale', String(scale));
+        wrapper.setAttribute('data-toolbar-docked', 'true');
+      });
+    };
+    const ro = new ResizeObserver(place);
+    ro.observe(slot);
+    // Excalidraw mounts its tool bar a moment after the editor opens.
+    const mo = new MutationObserver(place);
+    mo.observe(wrapper, { childList: true, subtree: true });
+    window.addEventListener('resize', place);
+    place();
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+      mo.disconnect();
+      window.removeEventListener('resize', place);
+    };
+  }, []);
 
   // Keep Excalidraw's next-stroke settings in sync with the visible controls,
   // including when its API becomes ready just after the editor toolbar.
@@ -377,7 +422,7 @@ const NoteEditor: React.FC<{
 
   return (
     <div className="fixed inset-0 z-[1100] bg-white flex flex-col">
-      <div className="relative z-20 bg-white px-3 sm:px-4 lg:px-6 py-3 shadow-sm border-b border-gray-100 flex-shrink-0 flex flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-3">
+      <div className="relative bg-white px-3 sm:px-4 lg:px-6 py-3 shadow-sm border-b border-gray-100 flex-shrink-0 flex flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-3">
         <button aria-label="Salvar e fechar anotação" onClick={handleSaveAndClose} className="order-1 inline-flex h-11 w-11 items-center justify-center rounded-xl hover:bg-gray-100 transition-colors flex-shrink-0 touch-manipulation">
           <X className="w-6 h-6 text-gray-500" />
         </button>
@@ -386,8 +431,9 @@ const NoteEditor: React.FC<{
           onChange={e => setTitle(e.target.value)}
           placeholder="Título da anotação"
           aria-label="Título da anotação"
-          className="order-2 flex-1 min-w-[7rem] text-lg sm:text-xl font-black text-gray-900 focus:outline-none bg-transparent"
+          className="order-2 flex-1 xl:flex-none xl:w-44 2xl:w-64 min-w-[7rem] text-lg sm:text-xl font-black text-gray-900 focus:outline-none bg-transparent truncate"
         />
+        <div ref={toolbarSlotRef} aria-hidden="true" className="order-2 hidden xl:block flex-1 min-w-0 self-stretch" />
         <div className="order-4 lg:order-3 basis-full lg:basis-auto min-w-0 flex flex-wrap items-center gap-2 pb-1 lg:pb-0">
           <input
             type="color"
@@ -512,7 +558,7 @@ const NoteEditor: React.FC<{
               aria-expanded={showPaperMenu}
               onClick={() => setShowPaperMenu(v => !v)}
               className="h-11 w-11 rounded-xl border border-gray-200 overflow-hidden flex-shrink-0 touch-manipulation"
-              style={{ backgroundImage: activePaper.backgroundImage, backgroundSize: `${activePaper.tileSize}px ${activePaper.tileSize}px`, backgroundColor: '#fff' }}
+              style={{ backgroundImage: activePaper.backgroundImage, backgroundSize: `${activePaper.tileSize}px ${activePaper.tileSize}px`, backgroundColor: 'var(--note-paper-bg)' }}
               title="Tipo de folha"
             />
             {showPaperMenu && (
@@ -528,7 +574,7 @@ const NoteEditor: React.FC<{
                     >
                       <span
                         className="w-full h-12 rounded-xl border border-gray-200"
-                        style={{ backgroundImage: p.backgroundImage, backgroundSize: `${p.tileSize}px ${p.tileSize}px`, backgroundColor: '#fff' }}
+                        style={{ backgroundImage: p.backgroundImage, backgroundSize: `${p.tileSize}px ${p.tileSize}px`, backgroundColor: 'var(--note-paper-bg)' }}
                       />
                       <span className="text-[10px] font-black uppercase tracking-wide text-gray-700">{p.label}</span>
                       <span className="text-[9px] text-gray-400 leading-tight">{p.description}</span>
@@ -542,7 +588,7 @@ const NoteEditor: React.FC<{
             value={folderId}
             onChange={e => setFolderId(e.target.value)}
             aria-label="Pasta da anotação"
-            className="min-h-11 min-w-32 flex-1 sm:flex-none bg-gray-100 rounded-xl px-3 py-2 text-xs font-bold text-gray-600 uppercase tracking-wide focus:outline-none touch-manipulation"
+            className="min-h-11 min-w-32 xl:min-w-0 xl:w-36 flex-1 sm:flex-none bg-gray-100 rounded-xl px-3 py-2 text-xs font-bold text-gray-600 uppercase tracking-wide focus:outline-none touch-manipulation"
           >
             <option value="">Sem pasta</option>
             {folders.map(f => (
