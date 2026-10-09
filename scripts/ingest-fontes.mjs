@@ -4,7 +4,9 @@
 // (--sql) turns that JSON into SQL for the Cloudflare D1 database behind /api/fontes.
 //
 //   node scripts/ingest-fontes.mjs --out <dir> <folder> [<folder> ...]
-//   node scripts/ingest-fontes.mjs --sql <dir>
+//   node scripts/ingest-fontes.mjs --sql <dir>        (full rebuild)
+//   node scripts/ingest-fontes.mjs --sql-new <dir>    (only PDFs not uploaded yet)
+//   node scripts/ingest-fontes.mjs --commit <dir>     (after a successful D1 import)
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -51,13 +53,13 @@ const pageText = async (page) => {
 // Course PDFs carry the buyer's watermark (CPF + full name) and a header/footer on every page.
 // Personal data never goes into the knowledge base, and repeated page furniture is noise.
 const CPF_NAME = /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b(\s*-\s*[A-ZÀ-Ú][A-Za-zÀ-ú'.]*(\s+[A-Za-zÀ-ú'.]+){0,8})?/g;
-const NOISE_LINE = /(www\.|https?:\/\/|\.com\.br|^\s*\d{1,4}\s*$|^\s*\d+\s*(de|\/)\s*\d+\s*$)/i;
+const NOISE_LINE = /(www\.|https?:\/\/|\.com\.br|^\s*\d{1,4}\s*$|^\s*\d+\s*(de|\/)\s*\d+\s*$|estrat[eé]gia|gran cursos|^\s*autor(es)?\s*:)/i;
 const cleanPages = (pages) => {
   const freq = new Map();
   for (const text of pages) for (const line of new Set(text.split('\n').map((l) => l.trim()).filter(Boolean))) freq.set(line, (freq.get(line) || 0) + 1);
   const limit = Math.max(3, pages.length * 0.25);
   return pages.map((text) => text.split('\n')
-    .map((line) => line.replace(CPF_NAME, '').trim())
+    .map((line) => line.replace(CPF_NAME, '').replace(/==[0-9a-f]{4,}==/gi, '').replace(/[\w.+-]+@[\w-]+\.[a-z.]{2,}/gi, '').trim()) // tracking codes, e-mails
     .filter((line) => line && !NOISE_LINE.test(line) && (freq.get(line) || 0) < limit)
     .join('\n'));
 };
@@ -96,23 +98,68 @@ const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =
 
 const sqlString = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
-const sqlOut = flag('--sql');
-if (sqlOut) {
-  const data = JSON.parse(fs.readFileSync(path.join(sqlOut, 'fontes.json'), 'utf8'));
-  const lines = [
-    'DROP TABLE IF EXISTS fontes_fts;',
-    'DROP TABLE IF EXISTS fontes;',
-    'CREATE TABLE fontes (id INTEGER PRIMARY KEY, doc TEXT NOT NULL, subject TEXT NOT NULL, page INTEGER, text TEXT NOT NULL);',
-    "CREATE VIRTUAL TABLE fontes_fts USING fts5(text, subject, doc, content='fontes', content_rowid='id', tokenize='unicode61 remove_diacritics 2');",
-  ];
-  let id = 0;
-  for (const doc of data.docs) for (const c of doc.chunks) {
+// Upload bookkeeping: manifest.json lists the files already in D1 and the last id used, so later
+// runs can send only new PDFs (the free D1 plan allows 100k written rows per day).
+const readManifest = (dir) => {
+  try { return JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8')); } catch { return { maxId: 0, hashes: [] }; }
+};
+const insertRows = (docs, firstId) => {
+  const lines = [];
+  let id = firstId - 1;
+  for (const doc of docs) for (const c of doc.chunks) {
     id += 1;
     lines.push(`INSERT INTO fontes (id, doc, subject, page, text) VALUES (${id}, ${sqlString(doc.name)}, ${sqlString(doc.subject)}, ${c.page ?? 'NULL'}, ${sqlString(c.text)});`);
   }
-  lines.push("INSERT INTO fontes_fts(fontes_fts) VALUES('rebuild');");
-  fs.writeFileSync(path.join(sqlOut, 'fontes.sql'), lines.join('\n') + '\n');
-  console.log(`SQL: ${id} trechos -> ${path.join(sqlOut, 'fontes.sql')}`);
+  return { lines, lastId: id };
+};
+
+const commitDir = flag('--commit');
+if (commitDir) {
+  // Run after the SQL was imported successfully.
+  fs.renameSync(path.join(commitDir, 'manifest.pending.json'), path.join(commitDir, 'manifest.json'));
+  console.log('manifest atualizado');
+  process.exit(0);
+}
+
+const sqlOut = flag('--sql');
+const sqlNew = flag('--sql-new');
+if (sqlOut || sqlNew) {
+  const dir = sqlOut || sqlNew;
+  const data = JSON.parse(fs.readFileSync(path.join(dir, 'fontes.json'), 'utf8'));
+  let lines;
+  let docs;
+  let manifest;
+  if (sqlOut) {
+    // Full rebuild: drops and recreates everything.
+    docs = data.docs;
+    const rows = insertRows(docs, 1);
+    lines = [
+      'DROP TABLE IF EXISTS fontes_fts;',
+      'DROP TABLE IF EXISTS fontes;',
+      'CREATE TABLE fontes (id INTEGER PRIMARY KEY, doc TEXT NOT NULL, subject TEXT NOT NULL, page INTEGER, text TEXT NOT NULL);',
+      "CREATE VIRTUAL TABLE fontes_fts USING fts5(text, subject, doc, content='fontes', content_rowid='id', tokenize='unicode61 remove_diacritics 2');",
+      ...rows.lines,
+      "INSERT INTO fontes_fts(fontes_fts) VALUES('rebuild');",
+    ];
+    manifest = { maxId: rows.lastId, hashes: docs.map((d) => d.hash) };
+  } else {
+    // Incremental: only files whose content is not in D1 yet; the FTS index gets just the new rows.
+    const known = readManifest(dir);
+    const seen = new Set(known.hashes);
+    docs = data.docs.filter((d) => !seen.has(d.hash));
+    const rows = insertRows(docs, known.maxId + 1);
+    lines = [
+      ...rows.lines,
+      `INSERT INTO fontes_fts(rowid, text, subject, doc) SELECT id, text, subject, doc FROM fontes WHERE id > ${known.maxId};`,
+    ];
+    manifest = { maxId: rows.lastId, hashes: [...known.hashes, ...docs.map((d) => d.hash)] };
+  }
+  const file = path.join(dir, sqlOut ? 'fontes.sql' : 'fontes-novos.sql');
+  fs.writeFileSync(file, lines.join('\n') + '\n');
+  fs.writeFileSync(path.join(dir, 'manifest.pending.json'), JSON.stringify(manifest));
+  const chunks = docs.reduce((n, d) => n + d.chunks.length, 0);
+  console.log(`SQL: ${docs.length} documento(s), ${chunks} trechos -> ${file}`);
+  console.log(`Depois de importar no D1: node scripts/ingest-fontes.mjs --commit ${dir}`);
   process.exit(0);
 }
 
