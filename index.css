@@ -2394,3 +2394,130 @@ html [class*="hover:bg-[#fff6e8]"]:not([class~="bg-[#fff6e8]"]):not([class*="bg-
 html.dark [class~="hover:bg-[#fff6e8]"]:hover {
     background-color: rgba(240, 232, 159, .08) !important;
 }
+
+/* Anotações: Excalidraw's toolbar and floating buttons wear the same look as the quiz pen
+   toolbar (rounded card, 44px targets, rust fill on the active tool). */
+.notes-excalidraw-surface {
+    --tdh-bar-bg: var(--palette-surface);
+    --tdh-bar-border: #e8dcc8;
+    --tdh-bar-icon: #725442;
+    --tdh-bar-icon-hover: #a8431a;
+    --tdh-bar-hover-bg: rgba(66, 37, 29, .06);
+    --tdh-bar-active: #a8431a;
+}
+html.dark .notes-excalidraw-surface {
+    --tdh-bar-bg: var(--dark-surface);
+    --tdh-bar-border: var(--dark-border);
+    --tdh-bar-icon: var(--dark-cream-muted);
+    --tdh-bar-icon-hover: var(--dark-cream);
+    --tdh-bar-hover-bg: rgba(240, 232, 159, .08);
+}
+.notes-excalidraw-surface .excalidraw,
+html.dark .notes-excalidraw-surface .Island.App-toolbar,
+.notes-excalidraw-surface .Island.App-toolbar {
+    --island-bg-color: var(--tdh-bar-bg);
+    --icon-fill-color: var(--tdh-bar-icon);
+    --button-hover-bg: var(--tdh-bar-hover-bg);
+    --button-active-border: transparent;
+    --color-surface-primary-container: var(--tdh-bar-active);
+    --color-on-primary-container: #fff;
+    --keybinding-color: var(--tdh-bar-icon);
+}
+.notes-excalidraw-surface .Island.App-toolbar,
+html.dark .notes-excalidraw-surface .Island.App-toolbar {
+    padding: 6px;
+    border: 1px solid var(--tdh-bar-border);
+    border-radius: 22px;
+    background: var(--tdh-bar-bg) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, .18), 0 8px 10px -6px rgba(0, 0, 0, .12);
+}
+.notes-excalidraw-surface .Island.App-toolbar .ToolIcon__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 16px;
+    color: var(--tdh-bar-icon);
+}
+.notes-excalidraw-surface .Island.App-toolbar .ToolIcon__icon svg {
+    width: 20px;
+    height: 20px;
+}
+.notes-excalidraw-surface .Island.App-toolbar .ToolIcon__icon:hover {
+    color: var(--tdh-bar-icon-hover);
+    background: var(--tdh-bar-hover-bg);
+}
+.notes-excalidraw-surface .Island.App-toolbar :is(.ToolIcon_type_radio, .ToolIcon_type_checkbox):checked + .ToolIcon__icon {
+    background: var(--tdh-bar-active) !important;
+    color: #fff;
+    --icon-fill-color: #fff;
+}
+.notes-excalidraw-surface .Island.App-toolbar :is(.ToolIcon_type_radio, .ToolIcon_type_checkbox):checked + .ToolIcon__icon svg {
+    color: #fff;
+}
+.notes-excalidraw-surface .Island.App-toolbar .ToolIcon__keybinding,
+html.dark .notes-excalidraw-surface .Island.App-toolbar .ToolIcon__keybinding {
+    display: none;
+}
+.notes-excalidraw-surface .App-toolbar__divider {
+    background: var(--tdh-bar-border);
+}
+/* Menu, zoom, undo/redo, help and library buttons. */
+.notes-excalidraw-surface :is(.main-menu-trigger, .zoom-button, .ToolIcon_type_button.ToolIcon_size_medium, .help-icon, .default-sidebar-trigger, .sidebar-trigger, .App-toolbar__extra-tools-trigger) {
+    min-width: 44px;
+    height: 44px;
+    border: 1px solid var(--tdh-bar-border) !important;
+    border-radius: 16px !important;
+    background: var(--tdh-bar-bg) !important;
+    color: var(--tdh-bar-icon) !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, .1) !important;
+}
+.notes-excalidraw-surface .App-toolbar__extra-tools-trigger {
+    border: 0 !important;
+    box-shadow: none !important;
+}
+.notes-excalidraw-surface :is(.main-menu-trigger, .zoom-button, .ToolIcon_type_button.ToolIcon_size_medium, .help-icon, .default-sidebar-trigger, .sidebar-trigger, .App-toolbar__extra-tools-trigger):hover {
+    color: var(--tdh-bar-icon-hover) !important;
+    background: var(--tdh-bar-bg) !important;
+    filter: brightness(1.05);
+}
+.notes-excalidraw-surface :is(.main-menu-trigger, .zoom-button, .ToolIcon_type_button.ToolIcon_size_medium, .help-icon, .default-sidebar-trigger, .sidebar-trigger) svg {
+    color: inherit;
+}
+.notes-excalidraw-surface :is(.zoom-actions, .undo-redo-buttons) {
+    gap: 6px;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+.notes-excalidraw-surface :is(.zoom-actions, .undo-redo-buttons) .ToolIcon__icon {
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    color: inherit;
+}
+.notes-excalidraw-surface .reset-zoom-button {
+    min-width: 64px;
+    font-weight: 800;
+}
+:root { --note-paper-bg: #fff; }
+html.dark { --note-paper-bg: var(--dark-surface); }
+html.dark .notes-excalidraw-surface { --tdh-bar-bg: var(--dark-surface-raised); }
+
+/* Tool bar docked into the note header (position comes from NotesView). */
+.notes-excalidraw-surface[data-toolbar-docked="true"] .Island.App-toolbar {
+    position: fixed;
+    width: max-content;
+    left: var(--tb-left);
+    top: var(--tb-top);
+    z-index: 40;
+    transform: translate(-50%, -50%) scale(var(--tb-scale, 1));
+    transform-origin: center;
+    box-shadow: none;
+}
+.notes-excalidraw-surface[data-toolbar-docked="true"] .HintViewer {
+    display: none;
+}
+/* Wide screens (mouse): slightly smaller tool buttons so the bar fits in the header. */
+@media (min-width: 1280px) {
+    .notes-excalidraw-surface .Island.App-toolbar { padding: 4px; }
+    .notes-excalidraw-surface .Island.App-toolbar .ToolIcon__icon { width: 38px; height: 38px; border-radius: 13px; }
+    .notes-excalidraw-surface .Island.App-toolbar .ToolIcon__icon svg { width: 18px; height: 18px; }
+}
