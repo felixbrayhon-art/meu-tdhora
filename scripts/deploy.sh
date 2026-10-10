@@ -19,7 +19,12 @@ if [[ "${1:-}" != "-y" ]]; then
 fi
 
 cd "$W"
-ln -s "$REPO/node_modules" node_modules
+NM=""
+for wt in $(git -C "$REPO" worktree list --porcelain | awk '/^worktree /{print $2}'); do
+  [[ -d "$wt/node_modules/vite" ]] && { NM="$wt/node_modules"; break; }
+done
+[[ -n "$NM" ]] || { echo "✗ nenhum worktree com node_modules (rode npm ci em um deles)"; exit 1; }
+ln -s "$NM" node_modules
 GROQ_API_KEY=set-on-server OPENROUTER_API_KEY=set-on-server \
 FREELLMAPI_BASE_URL=https://set-on-server.invalid FREELLMAPI_API_KEY=set-on-server \
 FREELLMAPI_ALLOWED_UIDS=set-on-server npx vite build >/tmp/tdhora-build.log 2>&1 \
