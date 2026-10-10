@@ -1211,7 +1211,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
         )}
 
         {/* FOOTER: ABANDON */}
-        <div className="flex justify-center mt-12 pb-12">
+        <div className="flex flex-col items-center gap-3 mt-12 pb-12">
           <button
             onClick={() => {
               handleSaveUserCommentary();
@@ -1222,6 +1222,10 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
             <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1" />
             ABANDONAR SIMULADO
           </button>
+          {/* Admin-only marker: this question was built from a flashcard. Students never see it. */}
+          {isAdmin && currentQ.fromFlashcard && (
+            <span className="text-[11px] font-black opacity-50 select-none" title="Questão gerada a partir de flashcard (visível só para admin)">F</span>
+          )}
         </div>
       </div>
     </div>

@@ -148,6 +148,7 @@ export const onRequestPost = async (context: Context) => {
       correctAnswer: options.findIndex((o) => o.ok),
       explanation,
       topic: card.assunto ?? undefined,
+      fromFlashcard: true,
     }];
   });
   console.info(`[flashcards] ${questions.length}/${cards.length} questão(ões) para "${topic.slice(0, 60)}"`);
