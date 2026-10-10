@@ -54,9 +54,15 @@ Para cada item, escreva QUATRO alternativas ERRADAS para a mesma pergunta:
 - cada uma deve ser FALSA segundo a explicação do item (troque o conceito, inverta a regra, confunda institutos parecidos, generalize ou restrinja indevidamente);
 - nunca "todas as anteriores", "nenhuma das anteriores", nem alternativas que digam o mesmo que a correta com outras palavras.
 Para cada errada, escreva também uma frase curta dizendo por que está errada, com base na explicação.
-Reescreva também a alternativa CORRETA em "correta_curta": o mesmo conteúdo, sem acrescentar, tirar ou mudar nenhuma regra, em uma frase de 80 a 200 caracteres.
-As cinco alternativas (correta_curta e as quatro erradas) devem ter tamanho parecido, para que o tamanho não denuncie a resposta.
+Reescreva também a alternativa CORRETA em "correta_curta": o mesmo conteúdo, sem acrescentar, tirar ou mudar nenhuma regra, em uma frase de 100 a 150 caracteres.
+Tamanho das ERRADAS: cada uma com 120 a 170 caracteres, e pelo menos duas MAIS LONGAS que a correta_curta. O tamanho nunca pode denunciar a resposta.
 Responda só JSON: {"itens":[{"id":"<id do item>","correta_curta":"...","erradas":["...","...","...","..."],"por_que":["...","...","...","..."]}]}`;
+
+// Second pass, only for items whose right option still came out clearly the longest.
+const LENGTHEN = `Você é examinador de concursos. Em cada item abaixo a alternativa CORRETA ficou mais longa que as ERRADAS, o que denuncia a resposta.
+Reescreva as quatro ERRADAS de cada item com o TAMANHO-ALVO indicado (mais ou menos 15 caracteres), acrescentando detalhes plausíveis, mas mantendo cada uma FALSA segundo a explicação do item e diferente da correta.
+Para cada errada, uma frase curta dizendo por que está errada.
+Responda só JSON: {"itens":[{"id":"<id do item>","erradas":["...","...","...","..."],"por_que":["...","...","...","..."]}]}`;
 
 const MODELS: Array<['groq' | 'openrouter', string]> = [
   ['groq', 'openai/gpt-oss-120b'],
@@ -66,7 +72,7 @@ const MODELS: Array<['groq' | 'openrouter', string]> = [
   ['openrouter', 'google/gemma-4-31b-it:free'],
 ];
 
-const askAI = async (context: Context, original: Request, content: string) => {
+const askAI = async (context: Context, original: Request, content: string, prompt = PROMPT) => {
   let lastError = 'nenhum provedor respondeu';
   for (const [provider, model] of MODELS) {
     const url = new URL(original.url);
@@ -77,7 +83,7 @@ const askAI = async (context: Context, original: Request, content: string) => {
     const request = new Request(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ model, temperature: 0.6, max_completion_tokens: 6000, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: PROMPT }, { role: 'user', content }] }),
+      body: JSON.stringify({ model, temperature: 0.6, max_completion_tokens: 6000, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: prompt }, { role: 'user', content }] }),
     });
     const response = await runNodeHandler(handleAIRequest, { ...context, request });
     // Sign-in and origin problems are the same for every provider; quota or model errors try the next one.
@@ -121,16 +127,42 @@ export const onRequestPost = async (context: Context) => {
   }
 
   const byId = new Map((result.itens ?? []).map((i) => [String(i.id), i]));
-  const questions = items.flatMap((item, index) => {
-    const ai = byId.get(item.id);
-    const wrong = (ai?.erradas ?? []).map((w) => String(w).trim()).filter((w) => w && normalize(w) !== normalize(item.correta) && normalize(w) !== normalize(String(ai?.correta_curta ?? ''))).slice(0, 4);
-    if (wrong.length < 4) return [];
-    const why = ai?.por_que ?? [];
-    // The card's own answer is often much longer than the wrong options and gives the key away: use the AI's short
-    // restatement when it exists and is not itself much longer than them. The explanation keeps the full answer.
+  const wrongOf = (item: typeof items[number], ai: any): string[] => (ai?.erradas ?? []).map((w: unknown) => String(w).trim())
+    .filter((w: string) => w && normalize(w) !== normalize(item.correta) && normalize(w) !== normalize(String(ai?.correta_curta ?? ''))).slice(0, 4);
+  // The card's own answer is often much longer than the wrong options and gives the key away: use the AI's short
+  // restatement when it exists and is not itself much longer than them. The explanation keeps the full answer.
+  const correctOf = (item: typeof items[number], ai: any, wrong: string[]) => {
     const short = String(ai?.correta_curta ?? '').trim();
     const longestWrong = Math.max(...wrong.map((w) => w.length));
-    const correct = short.length >= 20 && short.length <= Math.max(220, longestWrong * 1.3) ? short : item.correta;
+    return short.length >= 20 && short.length <= Math.max(220, longestWrong * 1.3) ? short : item.correta;
+  };
+  // One more round for items where the right option is still the longest by more than 10%.
+  const giveaway = items.filter((item) => {
+    const ai = byId.get(item.id);
+    const wrong = wrongOf(item, ai);
+    return wrong.length === 4 && correctOf(item, ai, wrong).length > Math.max(...wrong.map((w) => w.length)) * 1.1;
+  });
+  if (giveaway.length) {
+    const retry = await askAI(context, context.request, giveaway.map((item) => {
+      const ai = byId.get(item.id);
+      const correct = correctOf(item, ai, wrongOf(item, ai));
+      return `ITEM id=${item.id}\nPERGUNTA: ${item.pergunta}\nCORRETA: ${correct}\nTAMANHO-ALVO DAS ERRADAS: ${correct.length + 10} caracteres\nERRADAS ATUAIS: ${wrongOf(item, ai).join(' | ')}\nEXPLICAÇÃO: ${item.explicacao}`;
+    }).join('\n\n---\n\n'), LENGTHEN);
+    for (const fix of ('itens' in retry && retry.itens) || []) {
+      const ai = byId.get(String(fix.id));
+      const item = items.find((i) => i.id === String(fix.id));
+      if (!ai || !item || !Array.isArray(fix.erradas)) continue;
+      const candidate = { ...ai, erradas: fix.erradas, por_que: fix.por_que };
+      if (wrongOf(item, candidate).length === 4) byId.set(String(fix.id), candidate);
+    }
+    console.info(`[flashcards] reequilíbrio de tamanho em ${giveaway.length} item(ns)`);
+  }
+  const questions = items.flatMap((item, index) => {
+    const ai = byId.get(item.id);
+    const wrong = wrongOf(item, ai);
+    if (wrong.length < 4) return [];
+    const why = ai?.por_que ?? [];
+    const correct = correctOf(item, ai, wrong);
     const options = [{ text: correct, ok: true }, ...wrong.map((text) => ({ text, ok: false }))]
       .map((o) => ({ o, r: Math.random() })).sort((a, b) => a.r - b.r).map((x) => x.o);
     const card = cards[index];
