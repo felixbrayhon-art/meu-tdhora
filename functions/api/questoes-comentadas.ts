@@ -15,6 +15,16 @@ const STOPWORDS = new Set(('a o os as um uma de do da dos das em no na nos nas p
 const normalize = (text: string) => text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const termsOf = (text: string) => [...new Set(normalize(text).split(/[^a-z0-9]+/).filter((t) => t.length >= 3 && !STOPWORDS.has(t)))].slice(0, 6);
 
+// Plural and singular forms of a term, without accents (the index removes them): atos/ato, proposições/proposição, legais/legal.
+const variantsOf = (t: string) => {
+  const forms = new Set([t, t.endsWith('s') ? t.slice(0, -1) : `${t}s`]);
+  if (t.endsWith('oes')) forms.add(`${t.slice(0, -3)}ao`);
+  if (t.endsWith('ao')) forms.add(`${t.slice(0, -2)}oes`);
+  if (t.endsWith('ais')) forms.add(`${t.slice(0, -3)}al`);
+  if (t.endsWith('al')) forms.add(`${t.slice(0, -2)}ais`);
+  return [...forms];
+};
+
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 
 export const onRequestPost = async (context: Context) => {
@@ -26,24 +36,29 @@ export const onRequestPost = async (context: Context) => {
   const count = Math.max(1, Math.min(MAX_QUESTIONS, Number(body?.count) || 5));
   if (!topic) return json(400, { error: 'Informe o tema.' });
 
+  // Terms must appear as whole words in the statement or the subject (not in the professor's comment, where any word
+  // shows up in passing), allowing a plural: "excel" must not match "excelência", nor "advérbios" a question on concordância.
+  // With "Matéria: assunto" only the assunto counts; falling back to the matéria alone would return unrelated questions.
   const specific = topic.includes(':') ? topic.split(':').slice(1).join(':') : topic;
-  const attempts = [termsOf(specific), termsOf(topic)].filter((t) => t.length > 0);
+  const terms = termsOf(specific);
   try {
-    for (const terms of attempts) {
+    if (terms.length > 0) {
+      const match = `{assunto materia enunciado} : (${terms.map((t) => `(${variantsOf(t).map((v) => `"${v}"`).join(' OR ')})`).join(' AND ')})`;
       const { results } = await db.prepare(
         'SELECT q.id, q.fonte, q.assunto, q.enunciado, q.alternativas, q.gabarito, q.comentario FROM questoes_comentadas_fts JOIN questoes_comentadas q ON q.id = questoes_comentadas_fts.rowid ' +
-        'WHERE questoes_comentadas_fts MATCH ?1 ORDER BY bm25(questoes_comentadas_fts, 6.0, 2.0, 4.0, 1.0) LIMIT ?2',
-      ).bind(terms.map((t) => `"${t}"*`).join(' AND '), count * 6).all<Row>();
-      if (!results.length) continue;
-      const questions = results.map((row) => ({ row, r: Math.random() })).sort((a, b) => a.r - b.r).slice(0, count).flatMap(({ row }) => {
-        const alt = JSON.parse(row.alternativas) as Record<string, string>;
-        const options = ['A', 'B', 'C', 'D', 'E'].map((l) => alt[l]);
-        const correctAnswer = ['A', 'B', 'C', 'D', 'E'].indexOf(row.gabarito);
-        if (options.some((o) => !o) || correctAnswer < 0) return [];
-        // The comment names options by letter ("a) Errada"), so the option order must stay as in the source.
-        return [{ id: `qc-${row.id}`, question: row.enunciado, options, correctAnswer, explanation: row.comentario, topic: row.assunto ?? row.fonte ?? undefined, fromBank: true }];
-      });
-      return json(200, { questions });
+        'WHERE questoes_comentadas_fts MATCH ?1 ORDER BY bm25(questoes_comentadas_fts, 6.0, 2.0, 4.0, 0.0) LIMIT ?2',
+      ).bind(match, count * 6).all<Row>();
+      if (results.length) {
+        const questions = results.map((row) => ({ row, r: Math.random() })).sort((a, b) => a.r - b.r).slice(0, count).flatMap(({ row }) => {
+          const alt = JSON.parse(row.alternativas) as Record<string, string>;
+          const options = ['A', 'B', 'C', 'D', 'E'].map((l) => alt[l]);
+          const correctAnswer = ['A', 'B', 'C', 'D', 'E'].indexOf(row.gabarito);
+          if (options.some((o) => !o) || correctAnswer < 0) return [];
+          // The comment names options by letter ("a) Errada"), so the option order must stay as in the source.
+          return [{ id: `qc-${row.id}`, question: row.enunciado, options, correctAnswer, explanation: row.comentario, topic: row.assunto ?? row.fonte ?? undefined, fromBank: true }];
+        });
+        return json(200, { questions });
+      }
     }
   } catch (error) {
     console.warn('[questoes-comentadas] busca falhou', error);
