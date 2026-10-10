@@ -336,6 +336,8 @@ export interface QuizQuestion {
   organization?: string | null;
   position?: string | null;
   examYear?: number | null;
+  // Built from an FC Concursos flashcard (functions/api/flashcard-questions.ts). Shown only to admins, as a small "F".
+  fromFlashcard?: boolean;
 }
 
 export interface Notebook {

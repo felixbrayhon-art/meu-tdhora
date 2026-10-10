@@ -49,14 +49,18 @@ const parseCards = (text) => text.split(/\n(?=\d{1,4}\s*·\s*FC #\d+\s*\n)/).sli
   const resposta = (seen >= 0 ? rest.slice(0, seen) : rest).trim();
   const after = seen >= 0 ? rest.slice(seen) : '';
   const link = (after.match(/https:\/\/\S+/) || [''])[0];
-  const comentario = after.replace(/^Veja como foi cobrado:\s*\S*\s*/, '').trim();
+  // The page footer (© FC Concursos · name · e-mail · date) sticks to the last card: never keep it.
+  const comentario = after.replace(/^Veja como foi cobrado:\s*\S*\s*/, '').replace(/©\s*FC Concursos[\s\S]*$/, '').trim();
   return { fc: m[2], materia: m[3].trim(), assunto: m[4].trim(), pergunta, resposta, comentario, link };
 }).filter((c) => c && c.pergunta && c.resposta);
 
 const cards = new Map();
+const PERSONAL = /©\s*FC Concursos|[\w.+-]+@[\w-]+\.[a-z.]{2,}|Gerado em \d/i;
 for (const file of files) {
   const raw = fs.readFileSync(file, 'utf8');
-  const list = /\.json$/i.test(file) ? JSON.parse(raw) : parseCards(htmlToText(raw));
+  const list = (/\.json$/i.test(file) ? JSON.parse(raw) : parseCards(htmlToText(raw)))
+    .map((c) => ({ ...c, comentario: PERSONAL.test(c.comentario || '') ? '' : c.comentario }))
+    .filter((c) => !PERSONAL.test(`${c.pergunta} ${c.resposta}`));
   for (const c of list) cards.set(String(c.fc), c);
   console.log(`${path.basename(file)}: ${list.length} cards`);
 }
