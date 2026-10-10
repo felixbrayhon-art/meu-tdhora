@@ -177,6 +177,7 @@ export const VADE_MECUM_LAWS: VadeMecumLaw[] = [
   { id: 'lc-101', name: 'Lei de Responsabilidade Fiscal (LC nº 101/2000)', shortName: 'LRF' },
   { id: 'lei-11343', name: 'Lei de Drogas (Lei nº 11.343/2006)', shortName: 'Lei 11.343' },
   { id: 'codigo-tributario-nacional', name: 'Código Tributário Nacional (Lei nº 5.172/1966)', shortName: 'CTN' },
+  { id: 'lei-13869', name: 'Lei de Abuso de Autoridade (Lei nº 13.869/2019)', shortName: 'Lei 13.869' },
 ];
 export type StudyProfile = 'VESTIBULAR' | 'CONCURSO' | 'FACULDADE';
 export type ExplanationStyle = string;

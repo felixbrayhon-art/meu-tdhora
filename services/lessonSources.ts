@@ -40,6 +40,8 @@ interface LawFile {
   label: string;
   url: string;
   appliesTo: RegExp;
+  // The law's own name in a topic ("abuso de autoridade"): it says which law to read, not what to look for in it.
+  name?: RegExp;
 }
 interface LawArticle {
   numero: string;
@@ -61,8 +63,9 @@ const LAWS: LawFile[] = [
   { id: 'lc-101', label: 'Lei Complementar nº 101/2000 (Responsabilidade Fiscal)', url: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp101.htm', appliesTo: /responsabilidade fiscal|\blrf\b|lc 101|101\/2000|despesa (total )?com pessoal|receita corrente liquida|renuncia de receita|divida consolidada|gestao fiscal/ },
   { id: 'codigo-tributario-nacional', label: 'Código Tributário Nacional', url: 'https://www.planalto.gov.br/ccivil_03/leis/l5172compilado.htm', appliesTo: /tributari|\bctn\b|tributo|lancamento|credito tributario|obrigacao tributaria|imposto|taxa|contribuicao de melhoria|poder de policia/ },
   { id: 'lei-11343', label: 'Lei nº 11.343/2006 (Lei de Drogas)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11343.htm', appliesTo: /droga|entorpecente|trafico|11\.?343|sisnad|usuario de droga/ },
+  { id: 'lei-13869', label: 'Lei nº 13.869/2019 (Abuso de Autoridade)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2019/lei/l13869.htm', appliesTo: /abuso de autoridade|13\.?869|crime de hermeneutica|agente publico.{0,30}abus/, name: /\b(crimes? de )?abuso de autoridade\b|\blei (n[o.]? )?13\.?869(\/2019)?/g },
 ];
-const LEGAL_RE = /direito|penal|constituc|legisla|\blei\b|\blrf\b|\blai\b|c[oó]digo|licita|servidor|improbidade|processo administrativo|responsabilidade fiscal|acesso a informac|droga/;
+const LEGAL_RE = /direito|penal|constituc|legisla|\blei\b|\blrf\b|\blai\b|c[oó]digo|licita|servidor|improbidade|processo administrativo|responsabilidade fiscal|acesso a informac|droga|abuso de autoridade/;
 const STOPWORDS = new Set(['dos', 'das', 'del', 'que', 'com', 'por', 'para', 'uma', 'nos', 'nas']);
 
 const lawCache = new Map<string, Promise<LawArticle[]>>();
@@ -314,7 +317,7 @@ const TERM_STOP = new Set(['uso', 'regras', 'regra', 'conceito', 'conceitos', 'p
 const splitTopicTerms = (topic: string): string[] =>
   topic
     .replace(/\bart(?:igos?|s?\.)?\.?\s*\d+[^\s,;)]*/gi, ' ')
-    .split(/[,;()]|\s+e\s+|\s+ou\s+|\s[-–]\s/i)
+    .split(/[,;:()]|\s+e\s+|\s+ou\s+|\s[-–]\s/i)
     .map((term) => term.trim())
     .filter((term) => term.length >= 4);
 
@@ -347,12 +350,16 @@ export const fetchLegalSourceForQuestions = async (subject: string, topic: strin
   if (!LEGAL_RE.test(subjectNorm) && !LEGAL_RE.test(topicNorm) && explicit.length === 0) return null;
 
   const wanted = LAWS.filter((law) => law.appliesTo.test(`${subjectNorm} ${topicNorm}`));
-  const laws = wanted.length > 0 ? wanted : LAWS;
+  // A topic that names a law ("Abuso de autoridade: ação penal") is read only in that law; otherwise the
+  // Código Penal, which applies to any "penal" topic, answers with its own "ação penal" articles.
+  const named = LAWS.filter((law) => law.name && new RegExp(law.name.source).test(topicNorm));
+  const laws = named.length > 0 ? named : wanted.length > 0 ? wanted : LAWS;
+  const topicTerms = named.reduce((text, law) => text.replace(law.name!, ' '), topicNorm);
   // Doctrinal names the Código Penal never writes ("erro de proibição" is art. 21, "dolo eventual" is art. 18).
   for (const [alias, num] of Object.entries(PENAL_ALIASES)) {
     if (topicNorm.includes(alias) && !explicit.includes(num)) explicit.push(num);
   }
-  const termTokens = splitTopicTerms(topic)
+  const termTokens = splitTopicTerms(topicTerms)
     .map((term) => tokens(term).filter((t) => !STOPWORDS.has(t) && !TERM_STOP.has(t) && !/^\d+$/.test(t)))
     .filter((list) => list.length > 0);
 
@@ -387,6 +394,10 @@ export const fetchLegalSourceForQuestions = async (subject: string, topic: strin
         if (loose > 0 && picked.size < 6) picked.set(key, { law, article, score: loose });
       }
     }
+  }
+  // Only the law's name was given: its opening articles (object and who can commit the crimes) frame the questions.
+  if (picked.size === 0 && termTokens.length === 0) {
+    for (const law of named) for (const article of (await loadLaw(law.id)).slice(0, 2)) picked.set(`${law.id}:${article.numero}`, { law, article, score: 100 });
   }
   if (picked.size === 0) return null;
 
