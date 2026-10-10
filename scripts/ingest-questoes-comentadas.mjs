@@ -10,6 +10,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { classify } from './lib/disciplinas.mjs';
+import { semCaveira } from './lib/limpar.mjs';
 
 const args = process.argv.slice(2);
 const dir = path.resolve(args.find((a) => !a.startsWith('--')) ?? path.join(os.homedir(), 'fontes-todahora', 'comentadas'));
@@ -20,7 +21,7 @@ fs.mkdirSync(outDir, { recursive: true });
 // Contact data of whoever downloaded the PDF must never reach the database.
 const PERSONAL = /[\w.+-]+@[\w-]+\.[a-z.]{2,}|\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}|©\s*FC Concursos|Gerado em \d|Material Exclusivo/i;
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
-const fonteOf = (arquivo) => arquivo.replace(/\.pdf\.json$/i, '').replace(/^fc_/, '').replace(/\(Comentado\)\s*/i, '').replace(/\s*-\s*Projeto Caveira/i, '').trim();
+const fonteOf = (arquivo) => semCaveira(arquivo.replace(/\.pdf\.json$/i, '').replace(/\.pdf$/i, '').replace(/^fc_/, '').replace(/\(Comentado\)\s*/i, '').replace(/\s*-\s*Projeto Caveira/i, '').trim());
 
 let total = 0, dropped = 0;
 // Discipline of each question: keyword score, then (1) the FC "matéria" votes, (2) the neighbours in the same simulado
@@ -36,7 +37,7 @@ for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.json'))) {
     const ok = letters.join('') === 'ABCDE' && letters.includes(q.gabarito) && q.enunciado?.length >= 25 && q.comentario?.length >= 20
       && !PERSONAL.test(`${q.enunciado} ${Object.values(q.alternativas).join(' ')} ${q.comentario}`);
     if (!ok) { dropped++; continue; }
-    kept.push({ ...q, fonte: fonteOf(data.arquivo ?? file), disciplina: classify(q) });
+    kept.push({ ...q, enunciado: semCaveira(q.enunciado), comentario: semCaveira(q.comentario), fonte: fonteOf(data.arquivo ?? file), disciplina: classify(q) });
   }
   perFile.push(kept);
 }
