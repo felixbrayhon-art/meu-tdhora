@@ -62,9 +62,8 @@ const OPTION = /^([a-e])[.)]\s*(.*)$/;
 const LEVEL = /^N[ií]vel da quest[aã]o/i;
 
 const parseSource = (raw) => {
-  const parts = raw.split('/').map((p) => p.trim()).filter(Boolean);
-  const adapted = parts.some((p) => /^ADAPTAD/i.test(p));
-  const clean = parts.filter((p) => !/^ADAPTAD/i.test(p));
+  const adapted = /ADAPTAD/i.test(raw);
+  const clean = raw.replace(/[-\s]*ADAPTAD[AO]S?/gi, '').split('/').map((p) => p.trim()).filter(Boolean);
   const yearAt = clean.findIndex((p) => /^(19|20)\d{2}$/.test(p));
   const year = yearAt >= 0 ? Number(clean[yearAt]) : null;
   const rest = clean.filter((_, i) => i !== yearAt);
@@ -86,18 +85,32 @@ const articleText = (numero) => {
 const lines = await readLines(pdfPath);
 const questions = [];
 const report = { total: 0, warnings: {} };
-let article = null;
-let current = null;
-
-const finish = () => {
-  if (!current) return;
-  const q = current;
-  current = null;
+// q: { source, first, body: lines (stem + options), verdict | letter, page, article, layout }
+const build = (q) => {
   report.total++;
   const warnings = [];
   const src = parseSource(q.source);
   const stemLines = [];
   const options = [];
+  if (q.layout === 'lista') {
+    // Options may share a line ("c) … d) …"): find a) b) c) … in order inside the joined text.
+    const text = joinLines([{ text: q.first }, ...q.body]);
+    const cuts = [];
+    let from = 0;
+    for (const letter of 'abcde') {
+      const re = new RegExp(`(?:^|\\s)${letter}\\)\\s`, 'g');
+      re.lastIndex = from;
+      const m = re.exec(text);
+      if (!m) break;
+      cuts.push({ letter, at: m.index, start: m.index + m[0].length });
+      from = m.index + m[0].length;
+    }
+    if (cuts.length >= 2) {
+      q.first = text.slice(0, cuts[0].at);
+      q.body = [];
+      cuts.forEach((c, i) => options.push({ letter: c.letter, lines: [{ text: text.slice(c.start, i + 1 < cuts.length ? cuts[i + 1].at : undefined).trim() }] }));
+    }
+  }
   for (const l of q.body) {
     const m = l.text.match(OPTION);
     if (m && l.x <= 85 && (options.length > 0 ? m[1].charCodeAt(0) === options[options.length - 1].letter.charCodeAt(0) + 1 : m[1] === 'a')) options.push({ letter: m[1], lines: [{ ...l, text: m[2] }] });
@@ -113,9 +126,9 @@ const finish = () => {
     correctLetter = q.verdict === 'Certo' ? 'C' : 'E';
     alternatives = [{ letter: 'C', text: 'Certo' }, { letter: 'E', text: 'Errado' }];
     if (options.length > 0) warnings.push('certo/errado com alternativas no enunciado');
-    if (NEEDS_ITEM.test(statement)) warnings.push('o item julgado pode ter ficado fora do enunciado (layout do livro)');
+    if (q.layout === 'por-artigo' && NEEDS_ITEM.test(statement)) warnings.push('o item julgado pode ter ficado fora do enunciado (layout do livro)');
     const sentences = stemLines.map((l, i) => (i > 0 && /[.:;?]$/.test(stemLines[i - 1].text) && COMMENT_START.test(l.text) ? i : -1)).filter((i) => i >= 0);
-    if (sentences.length > 0) warnings.push('comentário do professor pode estar misturado ao enunciado');
+    if (q.layout === 'por-artigo' && sentences.length > 0) warnings.push('comentário do professor pode estar misturado ao enunciado');
   } else if (q.letter) {
     questionType = 'multipla_escolha';
     correctLetter = q.letter.toUpperCase();
@@ -134,10 +147,12 @@ const finish = () => {
   statement = statement.replace(/\s+/g, ' ').trim();
 
   const numero = q.article;
-  const official = numero ? articleText(numero) : null;
+  const cited = (q.articles?.length ? q.articles : numero ? [numero] : []).filter((n) => articleText(n));
+  const official = cited.length ? cited.map((n) => articleText(n)).join(' ') : null;
   const answerText = questionType === 'certo_errado' ? (correctLetter === 'C' ? 'Certo' : 'Errado') : `Letra ${correctLetter}`;
+  const perArticle = Math.floor(2500 / Math.max(1, cited.length));
   const explanation = official
-    ? `Gabarito: ${answerText}.\n\nFundamento legal — ${lawLabel}, art. ${numero}:\n${official.slice(0, 2500)}${official.length > 2500 ? '…' : ''}`
+    ? `Gabarito: ${answerText}.\n\nFundamento legal — ${lawLabel}:\n${cited.map((n) => { const t = articleText(n); return t.length > perArticle ? `${t.slice(0, perArticle)}…` : t; }).join('\n\n')}`
     : '';
   if (!official) warnings.push('artigo da lei não localizado no Vade Mecum');
   // A gabarito from before a change to the article may no longer hold ("Redação dada pela Lei nº 15.397, de 2026").
@@ -153,7 +168,7 @@ const finish = () => {
     number: questions.length + 1,
     questionType,
     subjectRaw: subject,
-    topicRaw: numero ? `${lawLabel} — art. ${numero}${q.rubrica ? ` (${q.rubrica})` : ''}` : null,
+    topicRaw: numero ? `${lawLabel} — art. ${numero}` : lawLabel,
     importSubject: subject,
     importYear: src.year,
     statement,
@@ -175,6 +190,11 @@ const finish = () => {
   });
 };
 
+// Layout 1 ("lei em questão" books): questions under each "Artigo N" heading, each followed by its answer.
+const parseByArticle = () => {
+let article = null;
+let current = null;
+const finish = () => { if (current) build(current); current = null; };
 for (const line of lines) {
   const art = line.text.match(ARTICLE);
   if (art && line.x < 79) {
@@ -185,7 +205,7 @@ for (const line of lines) {
   const head = line.text.match(HEADER);
   if (head && line.x <= 55) {
     finish();
-    current = { source: head[2], first: head[3], body: [], verdict: null, letter: null, page: line.page, article, rubrica: null };
+    current = { source: head[2], first: head[3], body: [], verdict: null, letter: null, page: line.page, article, layout: 'por-artigo' };
     continue;
   }
   if (!current) continue;
@@ -200,6 +220,64 @@ for (const line of lines) {
   if (line.x >= 70) current.body.push(line); // unindented text before the answer is commentary
 }
 finish();
+};
+
+// Layout 2 (apostilas): a "Questões de concurso" list, a "Gabarito" (1.C, 11.d …) and a "Gabarito comentado" that
+// quotes the article each question rests on. Only the article number is taken from it, after checking that the
+// quoted wording matches the official text.
+// "016.016.NC-UFPR/…)" — the book sometimes drops the opening parenthesis.
+const LIST_HEADER = /^0*(\d{1,3})\.\s*0*\d{1,3}\.\s*\(?([^()]{3,160}\/[^()]{2,160})\)\s*(.*)$/;
+const parseList = () => {
+  const at = (re, from = 0) => lines.findIndex((l, i) => i >= from && re.test(l.text));
+  const qStart = at(/^QUEST[ÕO]ES DE CONCURSO/i);
+  const gStart = at(/^GABARITO(GABARITO)?$/i, qStart);
+  const cStart = at(/^GABARITO COMENTADO/i, gStart);
+  if (qStart < 0 || gStart < 0) return false;
+  const answers = {};
+  for (const l of lines.slice(gStart, cStart < 0 ? undefined : cStart)) {
+    const m = l.text.match(/^(\d{1,3})\.\s*([CEce]|[a-e])\.?$/);
+    if (m) answers[Number(m[1])] = m[2];
+  }
+  const split = (from, to) => {
+    const out = [];
+    for (const l of lines.slice(from, to)) {
+      const m = l.text.match(LIST_HEADER);
+      if (m) out.push({ n: Number(m[1]), source: m[2], first: m[3], page: l.page, body: [] });
+      else if (out.length) out[out.length - 1].body.push(l);
+    }
+    return out;
+  };
+  const commented = new Map(cStart < 0 ? [] : split(cStart, lines.length).map((q) => [q.n, q.body]));
+  for (const q of split(qStart, gStart)) {
+    const answer = answers[q.n];
+    const articles = [];
+    for (const l of commented.get(q.n) ?? []) {
+      const m = l.text.match(/^Art\.\s*(\d+)\s*[ºo°]?(?:-([A-Z]))?\.?\s*(.*)$/);
+      if (!m || l.x < 80) continue;
+      const numero = m[2] ? `${m[1]}-${m[2]}` : m[1];
+      // PDF text drops some spaces ("nesta Leisão"): compare without them.
+      const quoted = norm(m[3]).replace(/ /g, '').slice(0, 30);
+      const official = articleText(numero);
+      if (official && !articles.includes(numero) && (quoted.length < 8 || /^\[/.test(m[3].trim()) || norm(official).replace(/ /g, '').includes(quoted))) articles.push(numero);
+    }
+    // Commentary that names the article in prose ("previstos no art. 4º da Lei de Abuso de Autoridade", "em seu
+    // art. 5º"): accepted only when the citation clearly points at this law, never at another code.
+    if (articles.length === 0) {
+      const prose = joinLines(commented.get(q.n) ?? []);
+      const lawName = /^(da|desta|na|nesta)\s+(lei\b(?!\s+n?\.?\s*\d)(?!\s+(?:complementar|org[aâ]nica))|lei\s+n?[º°.]?\s*13\.?869|lei de abuso)/i;
+      for (const m of prose.matchAll(/(em seu\s+)?\bart\.\s*(\d+)\s*[ºo°]?(?:-([A-Z]))?/gi)) {
+        const numero = m[3] ? `${m[2]}-${m[3]}` : m[2];
+        const after = prose.slice(m.index + m[0].length).replace(/^[,\s]*(?:(?:§|inciso|caput|par[aá]grafo)[^,]{0,25},?\s*)*/i, '');
+        if ((m[1] || lawName.test(after)) && articleText(numero) && !articles.includes(numero)) articles.push(numero);
+      }
+    }
+    build({ ...q, body: q.body, articles, verdict: /^[CE]$/.test(answer ?? '') ? (answer === 'C' ? 'Certo' : 'Errado') : null, letter: /^[a-e]$/.test(answer ?? '') ? answer : null, article: articles[0] ?? null, layout: 'lista' });
+  }
+  return true;
+};
+const norm = (t) => (t ?? '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/gi, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+
+if (!parseList()) parseByArticle();
 
 const years = new Set(questions.map((q) => q.examYear).filter(Boolean));
 const payload = {
