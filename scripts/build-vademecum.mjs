@@ -17,6 +17,7 @@ export const LEIS = [
   { id: 'codigo-processo-penal', url: 'https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm' },
   { id: 'lei-11343', url: 'https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11343.htm' },
   { id: 'codigo-tributario-nacional', url: 'https://www.planalto.gov.br/ccivil_03/leis/l5172compilado.htm' },
+  { id: 'lei-13869', url: 'https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2019/lei/l13869.htm' },
 ];
 
 const OUT = path.resolve('public/vademecum');

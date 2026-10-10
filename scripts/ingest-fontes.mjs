@@ -53,12 +53,13 @@ const pageText = async (page) => {
 // Course PDFs carry the buyer's watermark (CPF + full name) and a header/footer on every page.
 // Personal data never goes into the knowledge base, and repeated page furniture is noise.
 const CPF_NAME = /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b(\s*-\s*[A-ZÀ-Ú][A-Za-zÀ-ú'.]*(\s+[A-Za-zÀ-ú'.]+){0,8})?/g;
-const NOISE_LINE = /(licenciado para|vedada, por quaisquer meios|reprodu[cç][aã]o, c[oó]pia, divulga|responsabiliza[cç][aã]o civil e criminal|voltar ao|^sum[aá]rio$|projeto lei em quest|livro eletr[oô]nico|www\.|https?:\/\/|\.com\.br|^\s*\d{1,4}\s*$|^\s*\d+\s*(de|\/)\s*\d+\s*$|estrat[eé]gia|gran cursos|^\s*autor(es)?\s*:)/i;
+const NOISE_LINE = /(licenciado para|vedada, por quaisquer meios|reprodu[cç][aã]o, c[oó]pia, divulga|responsabiliza[cç][aã]o civil e criminal|voltar ao|^sum[aá]rio$|projeto lei em quest|livro eletr[oô]nico|www\.|https?:\/\/|\.com\.br|^\s*\d{1,4}\s*$|^\s*\d+\s*(de|\/)\s*\d+\s*$|estrat[eé]gia|gran cursos|^\s*autor(es)?\s*:|^\s*prof(a|essor|essora)?\.?\s+[A-ZÀ-Ú][a-zà-ú]+(\s+[A-ZÀ-Ú][a-zà-ú]+){0,3}\s*$)/i;
 const cleanPages = (pages) => {
   const freq = new Map();
   for (const text of pages) for (const line of new Set(text.split('\n').map((l) => l.trim()).filter(Boolean))) freq.set(line, (freq.get(line) || 0) + 1);
   const limit = Math.max(3, pages.length * 0.25);
-  return pages.map((text) => text.split('\n')
+  // The credits page near the start (publisher staff, copyright notice, tracking code, author bio) is dropped whole.
+  return pages.map((text, i) => (i < 3 && /protegid[oa] por direitos autorais|diretor(a)? pedag[oó]gic/i.test(text) ? '' : text).split('\n')
     .map((line) => line.replace(CPF_NAME, '').replace(/==[0-9a-f]{4,}==/gi, '').replace(/[\w.+-]+@[\w-]+\.[a-z.]{2,}/gi, '').trim()) // tracking codes, e-mails
     // Question books repeat "Nível da questão", "Certo." and "Letra b." on most pages; they mark answers, not page furniture.
     .filter((line) => line && !NOISE_LINE.test(line) && ((freq.get(line) || 0) < limit || /^(N[ií]vel da quest|Certo\b|Errado\b|Letra\s+[a-e]\b)/i.test(line)))
