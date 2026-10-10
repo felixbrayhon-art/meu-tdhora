@@ -54,7 +54,9 @@ Para cada item, escreva QUATRO alternativas ERRADAS para a mesma pergunta:
 - cada uma deve ser FALSA segundo a explicação do item (troque o conceito, inverta a regra, confunda institutos parecidos, generalize ou restrinja indevidamente);
 - nunca "todas as anteriores", "nenhuma das anteriores", nem alternativas que digam o mesmo que a correta com outras palavras.
 Para cada errada, escreva também uma frase curta dizendo por que está errada, com base na explicação.
-Responda só JSON: {"itens":[{"id":"<id do item>","erradas":["...","...","...","..."],"por_que":["...","...","...","..."]}]}`;
+Reescreva também a alternativa CORRETA em "correta_curta": o mesmo conteúdo, sem acrescentar, tirar ou mudar nenhuma regra, em uma frase de 80 a 200 caracteres.
+As cinco alternativas (correta_curta e as quatro erradas) devem ter tamanho parecido, para que o tamanho não denuncie a resposta.
+Responda só JSON: {"itens":[{"id":"<id do item>","correta_curta":"...","erradas":["...","...","...","..."],"por_que":["...","...","...","..."]}]}`;
 
 const MODELS: Array<['groq' | 'openrouter', string]> = [
   ['groq', 'openai/gpt-oss-120b'],
@@ -85,7 +87,7 @@ const askAI = async (context: Context, original: Request, content: string) => {
       const data = await response.json() as any;
       const text = String(data?.choices?.[0]?.message?.content ?? '').replace(/^```(?:json)?|```$/g, '').trim();
       const parsed = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-      if (Array.isArray(parsed?.itens)) return { itens: parsed.itens as Array<{ id: string; erradas: string[]; por_que: string[] }> };
+      if (Array.isArray(parsed?.itens)) return { itens: parsed.itens as Array<{ id: string; correta_curta?: string; erradas: string[]; por_que: string[] }> };
       lastError = `${model}: JSON sem itens`;
     } catch (error) {
       lastError = `${model}: resposta ilegível`;
@@ -121,10 +123,15 @@ export const onRequestPost = async (context: Context) => {
   const byId = new Map((result.itens ?? []).map((i) => [String(i.id), i]));
   const questions = items.flatMap((item, index) => {
     const ai = byId.get(item.id);
-    const wrong = (ai?.erradas ?? []).map((w) => String(w).trim()).filter((w) => w && normalize(w) !== normalize(item.correta)).slice(0, 4);
+    const wrong = (ai?.erradas ?? []).map((w) => String(w).trim()).filter((w) => w && normalize(w) !== normalize(item.correta) && normalize(w) !== normalize(String(ai?.correta_curta ?? ''))).slice(0, 4);
     if (wrong.length < 4) return [];
     const why = ai?.por_que ?? [];
-    const options = [{ text: item.correta, ok: true }, ...wrong.map((text) => ({ text, ok: false }))]
+    // The card's own answer is often much longer than the wrong options and gives the key away: use the AI's short
+    // restatement when it exists and is not itself much longer than them. The explanation keeps the full answer.
+    const short = String(ai?.correta_curta ?? '').trim();
+    const longestWrong = Math.max(...wrong.map((w) => w.length));
+    const correct = short.length >= 20 && short.length <= Math.max(220, longestWrong * 1.3) ? short : item.correta;
+    const options = [{ text: correct, ok: true }, ...wrong.map((text) => ({ text, ok: false }))]
       .map((o) => ({ o, r: Math.random() })).sort((a, b) => a.r - b.r).map((x) => x.o);
     const card = cards[index];
     // The app may shuffle the options again: the explanation names options by their content, never by letter.
