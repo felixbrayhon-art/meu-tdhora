@@ -1164,8 +1164,32 @@ const shuffleOptions = <Q extends { options: string[]; correctAnswer: number }>(
   return { ...q, options: order.map((i) => q.options[i]), correctAnswer: order.indexOf(q.correctAnswer) };
 };
 
+// Questions built on the server from FC Concursos flashcards of the topic (functions/api/flashcard-questions.ts):
+// question and commented answer come from the card, the AI only adds the wrong options. Empty when the topic has
+// no cards or the server cannot answer, so the normal generation covers everything.
+const fetchFlashcardQuestions = async (topic: string, count: number): Promise<QuizQuestion[]> => {
+  if (!canUseAIProxy()) return [];
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = await auth?.currentUser?.getIdToken().catch(() => null);
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch('/api/flashcard-questions', { method: 'POST', headers, body: JSON.stringify({ topic, count }), signal: AbortSignal.timeout(60000) });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (Array.isArray(data?.questions) ? data.questions : []).filter(isUsableQuestion).slice(0, count);
+  } catch (error) {
+    console.warn('[questoes] flashcards indisponíveis:', error);
+    return [];
+  }
+};
+
 export const generateExamQuestionsFast = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => withFontes(topic, async () => {
   try {
+    const fromCards = await fetchFlashcardQuestions(topic, numQuestions);
+    if (fromCards.length > 0) console.info(`[questoes] ${fromCards.length} questão(ões) de flashcards para "${topic}"`);
+    const fromCardsChecked = fromCards.map((q) => ({ ...q, verification: { status: 'checking' as const } }));
+    if (fromCardsChecked.length >= numQuestions) return { questions: fromCardsChecked };
+    numQuestions -= fromCardsChecked.length;
     // Ground the single call in the official text (Vade Mecum / encyclopedia) like the verified path does. The lookup
     // is local and fast; if it finds nothing, the rules still forbid invented articles, súmulas and jurisprudence.
     const sources = await Promise.race([
@@ -1184,8 +1208,8 @@ export const generateExamQuestionsFast = async (topic: string, numQuestions: num
     // so the app shuffles the options itself and remaps the answer key.
     const questions = list.filter(isUsableQuestion).slice(0, numQuestions)
       .map((q) => ({ ...shuffleOptions(q), verification: { status: 'checking' as const } }));
-    if (questions.length === 0) throw new AIError('A IA não devolveu questões válidas desta vez. Tente novamente.');
-    return { questions };
+    if (questions.length === 0 && fromCardsChecked.length === 0) throw new AIError('A IA não devolveu questões válidas desta vez. Tente novamente.');
+    return { questions: [...fromCardsChecked, ...questions] };
   } catch (error) {
     return handleAIError(error);
   }
