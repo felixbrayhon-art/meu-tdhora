@@ -338,6 +338,8 @@ export interface QuizQuestion {
   examYear?: number | null;
   // Built from an FC Concursos flashcard (functions/api/flashcard-questions.ts). Shown only to admins, as a small "F".
   fromFlashcard?: boolean;
+  // Real commented question from the bank (functions/api/questoes-comentadas.ts): nothing in it was generated.
+  fromBank?: boolean;
 }
 
 export interface Notebook {

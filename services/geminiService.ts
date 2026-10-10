@@ -1164,6 +1164,19 @@ const shuffleOptions = <Q extends { options: string[]; correctAnswer: number }>(
   return { ...q, options: order.map((i) => q.options[i]), correctAnswer: order.indexOf(q.correctAnswer) };
 };
 
+// Real commented questions of the topic (functions/api/questoes-comentadas.ts): used before anything is generated.
+const fetchBankQuestions = async (topic: string, count: number): Promise<QuizQuestion[]> => {
+  try {
+    const response = await fetch('/api/questoes-comentadas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic, count }), signal: AbortSignal.timeout(15000) });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (Array.isArray(data?.questions) ? data.questions : []).filter(isUsableQuestion).slice(0, count);
+  } catch (error) {
+    console.warn('[questoes] banco de questões indisponível:', error);
+    return [];
+  }
+};
+
 // Questions built on the server from FC Concursos flashcards of the topic (functions/api/flashcard-questions.ts):
 // question and commented answer come from the card, the AI only adds the wrong options. Empty when the topic has
 // no cards or the server cannot answer, so the normal generation covers everything.
@@ -1185,9 +1198,11 @@ const fetchFlashcardQuestions = async (topic: string, count: number): Promise<Qu
 
 export const generateExamQuestionsFast = async (topic: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', banca?: string, explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.', questionProfileStyle: string = '') => withFontes(topic, async () => {
   try {
-    const fromCards = await fetchFlashcardQuestions(topic, numQuestions);
+    const fromBank = await fetchBankQuestions(topic, numQuestions);
+    const fromCards = fromBank.length >= numQuestions ? [] : await fetchFlashcardQuestions(topic, numQuestions - fromBank.length);
+    if (fromBank.length > 0) console.info(`[questoes] ${fromBank.length} questão(ões) do banco para "${topic}"`);
     if (fromCards.length > 0) console.info(`[questoes] ${fromCards.length} questão(ões) de flashcards para "${topic}"`);
-    const fromCardsChecked = fromCards.map((q) => ({ ...q, verification: { status: 'checking' as const } }));
+    const fromCardsChecked = [...fromBank, ...fromCards].map((q) => ({ ...q, verification: { status: 'checking' as const } }));
     if (fromCardsChecked.length >= numQuestions) return { questions: fromCardsChecked };
     numQuestions -= fromCardsChecked.length;
     // Ground the single call in the official text (Vade Mecum / encyclopedia) like the verified path does. The lookup
