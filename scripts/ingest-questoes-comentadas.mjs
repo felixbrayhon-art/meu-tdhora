@@ -19,7 +19,7 @@ const outDir = path.join(dir, 'sql');
 fs.mkdirSync(outDir, { recursive: true });
 
 // Contact data of whoever downloaded the PDF must never reach the database.
-const PERSONAL = /[\w.+-]+@[\w-]+\.[a-z.]{2,}|\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}|©\s*FC Concursos|Gerado em \d|Material Exclusivo/i;
+const PERSONAL = /[\w.+-]+@[\w-]+\.[a-z.]{2,}|\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}|©\s*FC Concursos|Gerado em \d|Material Exclusivo|\b\d{11}\b|\d{3}\.\d{3}\.\d{3}-\d{2}|estrategiaconcursos|www\.\w+\.com\.br/i;
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const fonteOf = (arquivo) => semCaveira(arquivo.replace(/\.pdf\.json$/i, '').replace(/\.pdf$/i, '').replace(/^fc_/, '').replace(/\(Comentado\)\s*/i, '').replace(/\s*-\s*Projeto Caveira/i, '').trim());
 
@@ -70,11 +70,14 @@ const header = [
   'CREATE TRIGGER IF NOT EXISTS questoes_comentadas_ai AFTER INSERT ON questoes_comentadas BEGIN INSERT INTO questoes_comentadas_fts(rowid, assunto, materia, enunciado, comentario) VALUES (new.id, new.assunto, new.materia, new.enunciado, new.comentario); END;',
 ];
 const rows = [...seen.values()].map((q) => `INSERT OR IGNORE INTO questoes_comentadas (hash, fonte, disciplina, materia, assunto, enunciado, alternativas, gabarito, comentario) VALUES (${[q.key, q.fonte, q.disciplina, q.materia, q.assunto, q.enunciado, JSON.stringify(q.alternativas), q.gabarito, q.comentario].map(sqlString).join(', ')});`);
+// D1 refuses a single statement above ~100 KB (SQLITE_TOOBIG): a question that long is a whole chapter, not a question.
+const fits = rows.filter((r) => r.length <= 60000);
+if (fits.length < rows.length) console.log(`${rows.length - fits.length} questão(ões) acima de 60 KB descartada(s)`);
 const CHUNK = 150;
 const files = [];
-for (let i = 0; i < rows.length; i += CHUNK) {
+for (let i = 0; i < fits.length; i += CHUNK) {
   const f = path.join(outDir, `questoes-${String(i / CHUNK).padStart(3, '0')}.sql`);
-  fs.writeFileSync(f, `${(i === 0 ? header : []).concat(rows.slice(i, i + CHUNK)).join('\n')}\n`);
+  fs.writeFileSync(f, `${(i === 0 ? header : []).concat(fits.slice(i, i + CHUNK)).join('\n')}\n`);
   files.push(f);
 }
 const byDisc = {};
