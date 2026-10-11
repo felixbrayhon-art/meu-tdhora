@@ -3,7 +3,7 @@ import DOMPurify from 'dompurify';
 import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, Database, ClipboardList } from './icons';
 import { generateExamQuestionsFast, verifyExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { fetchEnemExams, fetchEnemQuestions, enemDisciplineLabel, EnemExamInfo } from '../services/enemService';
-import { BankFacetOption, countBankQuestions, fetchBankQuestions, fetchExamQuestions, listBankAreasForSubject, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamYears } from '../services/questionBankService';
+import { BankFacetOption, countBankQuestions, fetchBankQuestions, fetchExamQuestions, listBankAllAreas, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamYears } from '../services/questionBankService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
 import LoadingFish from './LoadingFish';
 import FilterDropdown from './FilterDropdown';
@@ -82,7 +82,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
   const [bankTopics, setBankTopics] = useState<BankFacetOption[]>([]);
   const [bankTopicsTotal, setBankTopicsTotal] = useState(0);
   const [bankTopic, setBankTopic] = useState(''); // '' = qualquer assunto dentro da matéria
-  const [bankAreas, setBankAreas] = useState<BankFacetOption[]>([]);
+  const [bankAreas, setBankAreas] = useState<BankFacetOption[]>([]); // todas as áreas do banco (Área é o 1º filtro)
   const [bankArea, setBankArea] = useState(''); // '' = qualquer área dentro da matéria (ex: "Policial")
   const [bankCount, setBankCount] = useState(10);
   const [bankError, setBankError] = useState<string | null>(null);
@@ -353,17 +353,25 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
         })
         .catch((err) => setEnemError(err.message || 'Não foi possível carregar as provas do ENEM.'));
     }
-    if (inputMode === 'CONCURSO' && bankSubjects.length === 0 && !bankLoadingSubjects) {
-      setBankLoadingSubjects(true);
-      listBankImportSubjects()
-        .then((subjects) => {
-          setBankSubjects(subjects);
-          if (subjects.length > 0) setBankSubject(subjects[0].value);
-        })
-        .catch((err) => setBankError(err.message || 'Não foi possível carregar as matérias do nosso banco.'))
-        .finally(() => setBankLoadingSubjects(false));
+    if (inputMode === 'CONCURSO' && bankAreas.length === 0 && !bankLoadingAreas) {
+      setBankLoadingAreas(true);
+      listBankAllAreas().then(setBankAreas).finally(() => setBankLoadingAreas(false));
     }
   }, [inputMode]);
+
+  // Área é o 1º filtro: as matérias listadas são só as que têm questões naquela área (ou todas, em "Todas as áreas"). A matéria marcada
+  // continua a mesma se ainda existir; senão vai para a que tem mais questões (antes era a 1ª em ordem alfabética, "Agrário", que só tem Jurídica).
+  React.useEffect(() => {
+    if (inputMode !== 'CONCURSO') return;
+    setBankLoadingSubjects(true);
+    listBankImportSubjects(bankArea || null)
+      .then((subjects) => {
+        setBankSubjects(subjects);
+        setBankSubject((previous) => (subjects.some((s) => s.value === previous) ? previous : [...subjects].sort((a, b) => b.count - a.count)[0]?.value ?? ''));
+      })
+      .catch((err) => setBankError(err.message || 'Não foi possível carregar as matérias do nosso banco.'))
+      .finally(() => setBankLoadingSubjects(false));
+  }, [inputMode, bankArea]);
 
   // Matéria, área e assunto são 3 filtros INDEPENDENTES e opcionais entre si
   // — só a matéria é obrigatória (BUSCAR já funciona só com ela). Trocar de
@@ -374,7 +382,6 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
   // o aluno a preencher os três pra conseguir buscar algo.
   React.useEffect(() => {
     setBankTopic('');
-    setBankArea('');
   }, [bankSubject]);
 
   React.useEffect(() => {
@@ -392,18 +399,6 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
       .catch((err) => setBankError(err.message || 'Não foi possível carregar os assuntos dessa matéria.'))
       .finally(() => setBankLoadingTopics(false));
   }, [bankSubject, bankArea]);
-
-  React.useEffect(() => {
-    if (!bankSubject) {
-      setBankAreas([]);
-      return;
-    }
-    setBankLoadingAreas(true);
-    listBankAreasForSubject(bankSubject, bankTopic || null)
-      .then(setBankAreas)
-      .catch((err) => setBankError(err.message || 'Não foi possível carregar as áreas dessa matéria.'))
-      .finally(() => setBankLoadingAreas(false));
-  }, [bankSubject, bankTopic]);
 
   // Quantas questões existem de fato pra essa combinação matéria/assunto/área
   // — usado pro aluno saber quantas ele consegue pedir/salvar, e pra travar
@@ -1217,6 +1212,20 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                         !bankError && <p className="text-slate-400 text-sm font-bold text-center py-8">Ainda não há questões aprovadas no nosso banco.</p>
                       ) : (
                         <>
+                          {bankAreas.length > 0 && (
+                            <div className="space-y-3 text-left animate-in fade-in slide-in-from-top-2 duration-300">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Área</label>
+                              <select value={bankArea} onChange={(e) => setBankArea(e.target.value)} disabled={bankLoadingAreas} className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fec868] transition-all font-bold appearance-none cursor-pointer text-slate-700 disabled:opacity-40">
+                                <option value="">{bankLoadingAreas ? 'Carregando áreas...' : `Todas as áreas (${bankAreas.reduce((n, a) => n + a.count, 0)})`}</option>
+                                {bankAreas.map((a) => (
+                                  <option key={a.value} value={a.value}>
+                                    {a.value} ({a.count})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
                           <div className="space-y-3 text-left">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Matéria</label>
                             <select value={bankSubject} onChange={(e) => setBankSubject(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fec868] transition-all font-bold appearance-none cursor-pointer text-slate-700">
@@ -1227,20 +1236,6 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                               ))}
                             </select>
                           </div>
-
-                          {bankAreas.length > 0 && (
-                            <div className="space-y-3 text-left animate-in fade-in slide-in-from-top-2 duration-300">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Área</label>
-                              <select value={bankArea} onChange={(e) => setBankArea(e.target.value)} disabled={bankLoadingAreas} className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-5 text-lg focus:outline-none focus:border-[#fec868] transition-all font-bold appearance-none cursor-pointer text-slate-700 disabled:opacity-40">
-                                <option value="">{bankLoadingAreas ? 'Carregando áreas...' : `Todas as áreas (${bankTopicsTotal})`}</option>
-                                {bankAreas.map((a) => (
-                                  <option key={a.value} value={a.value}>
-                                    {a.value} ({a.count})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
 
                           <div className="space-y-3 text-left animate-in fade-in slide-in-from-top-2 duration-300">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Assunto</label>

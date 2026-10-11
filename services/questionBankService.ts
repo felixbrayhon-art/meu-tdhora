@@ -175,8 +175,13 @@ export interface BankTopicFacets {
 
 // Level 1: the main discipline chosen at import time (importSubject) —
 // "Direito Penal", "Direito Constitucional" etc.
-export const listBankImportSubjects = (): Promise<BankFacetOption[]> =>
-  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_subjects'), listBankImportSubjectsFirestore);
+// `area` filters the matérias to those that have questions in that área (supabase/areas-primeiro.sql); null = all.
+export const listBankImportSubjects = (area: string | null = null): Promise<BankFacetOption[]> =>
+  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_subjects', { p_area: area }), listBankImportSubjectsFirestore);
+
+// Every área of the bank with its question count (Jurídica, Policial, Tribunais, Fiscal, Administrativa, Concursos gerais…).
+export const listBankAllAreas = (): Promise<BankFacetOption[]> =>
+  bankRpc<BankFacetOption[]>('bank_all_areas').catch(() => []);
 const listBankImportSubjectsFirestore = async (): Promise<BankFacetOption[]> => {
   const snap = await getDocs(collection(db, 'questions'));
   const counts = new Map<string, number>();

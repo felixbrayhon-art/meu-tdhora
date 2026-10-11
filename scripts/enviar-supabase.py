@@ -21,6 +21,7 @@ def area_de(q):
         for rx, a in ((r'advogado|juiz|procurador|residente jur|^jur[ií]dica', 'Jurídica'), (r'investigador|agente da autoridade|policial', 'Policial'),
                       (r'judici[aá]rio', 'Tribunais'), (r'auditor|fiscal', 'Fiscal'), (r'administrativ|assistente|analista de gest', 'Administrativa')):
             if re.search(rx, pos, re.I): return a
+    if q.get('source') == 'fc_concursos': return 'Policial'      # FC Concursos: questões da área policial (confirmado pelo Brayhon)
     return 'Concursos gerais'
 
 def row(q):

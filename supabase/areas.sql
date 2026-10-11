@@ -13,7 +13,8 @@ update public.questoes set area = case
   when source = 'gran_cursos' and position ~* 'judici[aá]rio' then 'Tribunais'
   when source = 'gran_cursos' and position ~* 'auditor|fiscal' then 'Fiscal'
   when source = 'gran_cursos' and position ~* 'administrativ|assistente|analista de gest' then 'Administrativa'
-  else 'Concursos gerais'                                                                   -- FC Concursos e o que não tem área
+  when source = 'fc_concursos' then 'Policial'                                              -- FC Concursos: questões da área policial
+  else 'Concursos gerais'                                                                   -- o que não tem área
 end
 where area is null;
 
