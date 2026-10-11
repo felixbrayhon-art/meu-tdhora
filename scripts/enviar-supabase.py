@@ -1,10 +1,10 @@
-"""Envia pacotes (montar_banco_reais.py) ao Supabase: tabela public.questoes. Repetível: duplicatas (mesmo enunciado) são ignoradas.
+"""Envia pacotes (montar_banco_reais.py) ao Supabase: tabela public.questoes. Repetível: a questão com o mesmo id é ATUALIZADA no lugar (nada é apagado).
 A chave secreta vem de ~/fontes-todahora/.supabase-key e nunca é impressa.
-Uso: python3 enviar_supabase.py pacote-policial.json [pacote-juridica.json ...]"""
+Uso: python3 scripts/enviar-supabase.py pacote-policial.json [pacote-juridica.json ...]"""
 import json, os, re, sys, time, urllib.request, urllib.error
 URL = 'https://tslcjsvetgqgsgqpyruf.supabase.co'
 KEY = open(os.path.expanduser('~/fontes-todahora/.supabase-key')).read().strip()
-HDR = {'apikey': KEY, 'Authorization': f'Bearer {KEY}', 'Content-Type': 'application/json', 'Prefer': 'resolution=ignore-duplicates,return=minimal', 'User-Agent': 'curl/8.7.1'}
+HDR = {'apikey': KEY, 'Authorization': f'Bearer {KEY}', 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal', 'User-Agent': 'curl/8.7.1'}
 
 def limpa(v):
     # PDFs às vezes trazem o caractere nulo (\u0000), que o Postgres recusa em texto
@@ -22,12 +22,16 @@ def row(q):
 
 def post(batch):
     for attempt in range(4):
-        req = urllib.request.Request(f'{URL}/rest/v1/questoes?on_conflict=content_hash', data=json.dumps(batch).encode(), headers=HDR, method='POST')
+        req = urllib.request.Request(f'{URL}/rest/v1/questoes?on_conflict=id', data=json.dumps(batch).encode(), headers=HDR, method='POST')
         try:
             urllib.request.urlopen(req, timeout=120).read(); return
         except urllib.error.HTTPError as e:
             msg = e.read()[:200].decode('utf8', 'replace')
             if e.code in (429, 500, 502, 503, 504) and attempt < 3: time.sleep(5 * (attempt + 1)); continue
+            if e.code == 409 and len(batch) > 1:
+                for r in batch: post([r])
+                return
+            if e.code == 409: print('  pulada (enunciado igual a outra questão):', batch[0]['id'][:40]); return
             raise SystemExit(f'HTTP {e.code}: {msg}')
 
 def count():
@@ -37,9 +41,10 @@ def count():
 if __name__ == '__main__':
     base = os.path.expanduser('~/fontes-todahora/banco-reais/')
     print('antes:', count(), 'questões no banco')
+    seen = set()
     for name in sys.argv[1:]:
         qs = json.load(open(name if os.path.isabs(name) else base + name))['questions']
-        seen, rows = set(), []
+        rows = []
         for q in qs:
             r = limpa(row(q))
             if r['content_hash'] in seen: continue
