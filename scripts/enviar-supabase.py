@@ -13,12 +13,22 @@ def limpa(v):
     if isinstance(v, dict): return {k: limpa(x) for k, x in v.items()}
     return v
 
+def area_de(q):
+    # mesma regra do supabase/areas.sql: pasta do Drive (Estratégia) ou cargo (Gran Cursos); FC Concursos e o resto = Concursos gerais
+    pos = q.get('position') or ''
+    if pos in ('Jurídica', 'Policial'): return pos
+    if q.get('source') == 'gran_cursos':
+        for rx, a in ((r'advogado|juiz|procurador|residente jur|^jur[ií]dica', 'Jurídica'), (r'investigador|agente da autoridade|policial', 'Policial'),
+                      (r'judici[aá]rio', 'Tribunais'), (r'auditor|fiscal', 'Fiscal'), (r'administrativ|assistente|analista de gest', 'Administrativa')):
+            if re.search(rx, pos, re.I): return a
+    return 'Concursos gerais'
+
 def row(q):
     doc_id = re.sub(r'[^A-Za-z0-9_-]', '_', f"{q['source']}_{q['externalId']}")[:1400]
     return {'id': doc_id, 'source': q['source'], 'external_id': q['externalId'], 'import_subject': q.get('importSubject'), 'subject_raw': q.get('subjectRaw'),
             'topic_raw': q.get('topicRaw'), 'question_type': q.get('questionType', 'multipla_escolha'), 'statement': q['statement'], 'alternatives': q['alternatives'],
             'correct_letter': q['correctLetter'], 'explanation': q.get('explanation') or '', 'content_hash': q['contentHash'], 'exam_board': q.get('examBoard'),
-            'organization': q.get('organization'), 'position': q.get('position'), 'exam_year': q.get('examYear')}
+            'organization': q.get('organization'), 'position': q.get('position'), 'area': area_de(q), 'exam_year': q.get('examYear')}
 
 def post(batch):
     for attempt in range(4):
