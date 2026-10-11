@@ -2,9 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { QuestionDraft, QuestionImportBatch, PublishedQuestion } from '../types';
 import {
   approveDraft,
+  findPackageDuplicates,
   findPossibleDuplicates,
   listDraftsForImport,
   listImports,
+  PackageQuestion,
+  parsePackage,
+  publishPackage,
   rejectDraft,
   updateDraft,
 } from '../services/questionBankService';
@@ -184,6 +188,67 @@ const DraftEditor: React.FC<{
   );
 };
 
+// Publishes a JSON package (built by montar_banco_reais.py) straight to the published bank, skipping the draft review.
+// Admin only (firestore.rules enforces it): shows what is in the file and how many are new before anything is written.
+const PackagePublisher: React.FC<{ uid: string }> = ({ uid }) => {
+  const [fileName, setFileName] = useState('');
+  const [questions, setQuestions] = useState<PackageQuestion[]>([]);
+  const [problems, setProblems] = useState<string[]>([]);
+  const [duplicates, setDuplicates] = useState<Set<string> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [result, setResult] = useState('');
+
+  const docKey = (q: PackageQuestion) => `${q.source}_${q.externalId}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 1400);
+  const fresh = duplicates ? questions.filter(q => !duplicates.has(docKey(q))) : [];
+  const groups = new Map<string, number>();
+  fresh.forEach(q => { const k = `${q.position ?? 'Sem área'} › ${q.importSubject ?? 'Sem matéria'}`; groups.set(k, (groups.get(k) ?? 0) + 1); });
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    setResult(''); setDuplicates(null); setBusy(true); setProgress('Lendo o arquivo…');
+    try {
+      const parsed = parsePackage(JSON.parse(await file.text()));
+      setFileName(file.name); setQuestions(parsed.questions); setProblems(parsed.problems);
+      setProgress('Conferindo o que já está no banco…');
+      setDuplicates(await findPackageDuplicates(parsed.questions));
+    } catch (error) {
+      setResult(`Não consegui ler o arquivo: ${error instanceof Error ? error.message : error}`);
+    } finally { setBusy(false); setProgress(''); }
+  };
+
+  const publish = async () => {
+    if (!fresh.length || !window.confirm(`Publicar ${fresh.length} questões novas direto no banco de reais, sem passar pela revisão?`)) return;
+    setBusy(true); setResult('');
+    try {
+      const done = await publishPackage(fresh, uid, (d, t) => setProgress(`Publicando… ${d}/${t}`));
+      setResult(`Pronto: ${done} questões publicadas no banco de reais.`);
+      setDuplicates(null); setQuestions([]);
+    } catch (error) {
+      setResult(`Falhou no meio: ${error instanceof Error ? error.message : error}. O que já foi gravado fica; envie o mesmo arquivo de novo para completar (as repetidas são puladas).`);
+    } finally { setBusy(false); setProgress(''); }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 px-5 py-4 mb-4 space-y-3">
+      <p className="font-black text-gray-900">Publicar pacote de questões (JSON)</p>
+      <p className="text-xs text-gray-500">Envia direto ao banco de reais, sem a revisão de rascunhos. Questões que já existem (mesmo id ou mesmo enunciado) são puladas.</p>
+      <input type="file" accept="application/json,.json" disabled={busy} onChange={e => onFile(e.target.files?.[0])} className="text-sm" />
+      {progress && <p className="text-sm font-bold text-gray-500">{progress}</p>}
+      {fileName && duplicates && (
+        <div className="text-sm text-gray-700 space-y-1">
+          <p><b>{fileName}</b>: {questions.length} questões válidas{problems.length ? `, ${problems.length} recusadas pela validação` : ''}; <b>{fresh.length} novas</b>, {questions.length - fresh.length} já no banco.</p>
+          {[...groups.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => <p key={k} className="text-xs text-gray-500">{n} · {k}</p>)}
+          {groups.size > 12 && <p className="text-xs text-gray-400">… e mais {groups.size - 12} grupos</p>}
+          {problems.slice(0, 3).map(p => <p key={p} className="text-xs text-amber-600">{p}</p>)}
+          <button onClick={publish} disabled={busy || !fresh.length} className="mt-2 px-4 py-2 rounded-xl bg-[#fdad74] text-white font-black text-sm disabled:opacity-40">Publicar {fresh.length} questões</button>
+        </div>
+      )}
+      {result && <p className="text-sm font-bold text-gray-700">{result}</p>}
+    </div>
+  );
+};
+
 const AdminQuestionReview: React.FC<AdminQuestionReviewProps> = ({ uid, onBack }) => {
   const [imports, setImports] = useState<QuestionImportBatch[]>([]);
   const [selectedImport, setSelectedImport] = useState<QuestionImportBatch | null>(null);
@@ -242,6 +307,8 @@ const AdminQuestionReview: React.FC<AdminQuestionReviewProps> = ({ uid, onBack }
       </div>
 
       <div className="p-6 md:p-10 max-w-3xl mx-auto w-full">
+        {!selectedImport && <PackagePublisher uid={uid} />}
+
         {loading && <p className="text-center text-gray-400 font-bold py-16">Carregando…</p>}
 
         {!loading && !selectedImport && imports.length === 0 && (

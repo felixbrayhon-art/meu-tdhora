@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  documentId,
   doc,
   getDoc,
   getDocs,
@@ -9,9 +10,10 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db, cleanData } from '../src/lib/firebase';
-import { PublishedQuestion, QuestionDraft, QuestionImportBatch, QuizQuestion } from '../types';
+import { PublishedQuestion, QuestionAlternative, QuestionDraft, QuestionImportBatch, QuestionType, QuizQuestion } from '../types';
 
 export const checkIsAdmin = async (uid: string): Promise<boolean> => {
   const snap = await getDoc(doc(db, 'admins', uid));
@@ -319,4 +321,116 @@ export const fetchExamQuestions = async (
   }
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count).map(mapBankQuestion);
+};
+
+// --- Package publish (admin): a JSON package built outside the app (montar_banco_reais.py) goes straight to `questions`. ---
+// The Admin-SDK push script needs a billed Google Cloud project; this path only needs the admin's own sign-in, because
+// firestore.rules already lets an admin create published questions. Nothing is overwritten: a question whose id or
+// contentHash already exists is skipped.
+
+export interface PackageQuestion {
+  source: string;
+  externalId: string;
+  importSubject?: string | null;
+  questionType: QuestionType;
+  subjectRaw?: string | null;
+  topicRaw?: string | null;
+  statement: string;
+  alternatives: QuestionAlternative[];
+  correctLetter: string;
+  explanation: string;
+  contentHash: string;
+  examBoard?: string | null;
+  organization?: string | null;
+  position?: string | null;
+  examYear?: number | null;
+}
+
+const packageDocId = (q: Pick<PackageQuestion, 'source' | 'externalId'>) =>
+  `${q.source}_${q.externalId}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 1400);
+
+// Same structural bar as worker/lib/validation.py: 2–5 alternatives, unique letters, exactly one correct, key consistent.
+export const parsePackage = (raw: unknown): { questions: PackageQuestion[]; problems: string[] } => {
+  const list = (raw as { questions?: unknown })?.questions;
+  if (!Array.isArray(list)) return { questions: [], problems: ['O arquivo não tem a lista "questions".'] };
+  const questions: PackageQuestion[] = [];
+  const problems: string[] = [];
+  list.forEach((item: any, index) => {
+    const alts: any[] = Array.isArray(item?.alternatives) ? item.alternatives : [];
+    const letters = alts.map(a => a?.letter);
+    const why =
+      typeof item?.source !== 'string' || typeof item?.externalId !== 'string' ? 'sem source/externalId'
+      : typeof item?.statement !== 'string' || !item.statement.trim() || item.statement.length > 20000 ? 'enunciado inválido'
+      : alts.length < 2 || alts.length > 5 ? 'número de alternativas inválido'
+      : new Set(letters).size !== letters.length || alts.some(a => typeof a?.text !== 'string' || !a.text.trim()) ? 'alternativas repetidas ou vazias'
+      : !letters.includes(item.correctLetter) || alts.filter(a => a.isCorrect).length !== 1 || alts.find(a => a.isCorrect)?.letter !== item.correctLetter ? 'gabarito inconsistente'
+      : typeof item?.explanation !== 'string' || item.explanation.length > 20000 ? 'explicação inválida'
+      : typeof item?.contentHash !== 'string' ? 'sem contentHash'
+      : null;
+    if (why) problems.push(`#${index + 1}: ${why}`);
+    else questions.push(item as PackageQuestion);
+  });
+  return { questions, problems };
+};
+
+const inChunks = <T,>(items: T[], size: number): T[][] => {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+};
+
+// Which questions of the package are already in the bank (same doc id or same statement hash).
+export const findPackageDuplicates = async (questions: PackageQuestion[]): Promise<Set<string>> => {
+  const duplicated = new Set<string>();
+  const byId = new Map(questions.map(q => [packageDocId(q), q]));
+  const byHash = new Map<string, PackageQuestion[]>();
+  questions.forEach(q => byHash.set(q.contentHash, [...(byHash.get(q.contentHash) ?? []), q]));
+  for (const ids of inChunks([...byId.keys()], 30)) {
+    const snap = await getDocs(query(collection(db, 'questions'), where(documentId(), 'in', ids)));
+    snap.docs.forEach(d => duplicated.add(d.id));
+  }
+  for (const hashes of inChunks([...byHash.keys()], 30)) {
+    const snap = await getDocs(query(collection(db, 'questions'), where('contentHash', 'in', hashes)));
+    snap.docs.forEach(d => (byHash.get((d.data() as PublishedQuestion).contentHash) ?? []).forEach(q => duplicated.add(packageDocId(q))));
+  }
+  return duplicated;
+};
+
+export const publishPackage = async (
+  questions: PackageQuestion[],
+  approvedBy: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<number> => {
+  const seen = new Set<string>();
+  const unique = questions.filter(q => { const id = packageDocId(q); if (seen.has(id)) return false; seen.add(id); return true; });
+  let done = 0;
+  for (const chunk of inChunks(unique, 400)) {
+    const batch = writeBatch(db);
+    chunk.forEach(q => {
+      const published: Omit<PublishedQuestion, 'id'> = {
+        source: q.source,
+        externalId: q.externalId,
+        importSubject: q.importSubject,
+        questionType: q.questionType,
+        subjectRaw: q.subjectRaw ?? null,
+        topicRaw: q.topicRaw ?? null,
+        statement: q.statement,
+        alternatives: q.alternatives,
+        correctLetter: q.correctLetter,
+        explanation: q.explanation,
+        contentHash: q.contentHash,
+        approvedAt: Date.now(),
+        approvedBy,
+        examBoard: q.examBoard,
+        organization: q.organization,
+        position: q.position,
+        examYear: q.examYear,
+      };
+      batch.set(doc(db, 'questions', packageDocId(q)), cleanData(published));
+    });
+    await batch.commit();
+    done += chunk.length;
+    onProgress?.(done, unique.length);
+  }
+  return done;
 };
