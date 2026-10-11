@@ -323,6 +323,14 @@ const App: React.FC = () => {
   const [flashcardsSelectedFolderId, setFlashcardsSelectedFolderId] = useState<string | null>(null);
   const [flashcardsViewMode, setFlashcardsViewMode] = useState<'FOLDERS' | 'FOLDER_DETAIL' | 'REVIEW'>('FOLDERS');
 
+  // The opening screen waits for a chain of Firestore reads. When Firestore does not answer (503, billing, offline) that chain never
+  // ends and the app stayed on the splash forever: let go after 8 s. isSyncing stays true meanwhile, so nothing is written back to the cloud.
+  useEffect(() => {
+    if (!isInitializing) return undefined;
+    const timer = setTimeout(() => setIsInitializing(false), 8000);
+    return () => clearTimeout(timer);
+  }, [isInitializing]);
+
   // Authentication and Data Loading
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {

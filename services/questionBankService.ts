@@ -13,6 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db, cleanData } from '../src/lib/firebase';
+import { bankRpc, BankRow } from '../src/lib/supabaseBank';
 import { PublishedQuestion, QuestionAlternative, QuestionDraft, QuestionImportBatch, QuestionType, QuizQuestion } from '../types';
 
 export const checkIsAdmin = async (uid: string): Promise<boolean> => {
@@ -109,6 +110,36 @@ export const approveDraft = async (draft: QuestionDraft, approvedBy: string): Pr
 const escapeHtml = (text: string): string =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+const fromBankRow = (r: BankRow): PublishedQuestion => ({
+  id: r.id,
+  source: r.source,
+  externalId: r.external_id,
+  importSubject: r.import_subject,
+  questionType: r.question_type as QuestionType,
+  subjectRaw: r.subject_raw,
+  topicRaw: r.topic_raw,
+  statement: r.statement,
+  alternatives: r.alternatives,
+  correctLetter: r.correct_letter,
+  explanation: r.explanation,
+  contentHash: r.content_hash,
+  approvedAt: 0,
+  approvedBy: 'supabase',
+  examBoard: r.exam_board,
+  organization: r.organization,
+  position: r.position,
+  examYear: r.exam_year,
+});
+
+// The student-facing bank now lives on Supabase (functions in supabase-schema.sql). When it cannot answer, the old Firestore
+// read below still runs, so a question published there earlier stays reachable.
+const withBankFallback = async <T,>(viaSupabase: () => Promise<T>, viaFirestore: () => Promise<T>): Promise<T> => {
+  try { return await viaSupabase(); } catch (error) {
+    console.warn('[banco] Supabase indisponível, usando o Firestore:', error);
+    return viaFirestore();
+  }
+};
+
 const mapBankQuestion = (q: PublishedQuestion): QuizQuestion => {
   const sortedAlternatives = [...q.alternatives].sort((a, b) => a.position - b.position);
   const correctIndex = sortedAlternatives.findIndex(a => a.letter === q.correctLetter);
@@ -144,7 +175,9 @@ export interface BankTopicFacets {
 
 // Level 1: the main discipline chosen at import time (importSubject) —
 // "Direito Penal", "Direito Constitucional" etc.
-export const listBankImportSubjects = async (): Promise<BankFacetOption[]> => {
+export const listBankImportSubjects = (): Promise<BankFacetOption[]> =>
+  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_subjects'), listBankImportSubjectsFirestore);
+const listBankImportSubjectsFirestore = async (): Promise<BankFacetOption[]> => {
   const snap = await getDocs(collection(db, 'questions'));
   const counts = new Map<string, number>();
   snap.docs.forEach(d => {
@@ -181,7 +214,18 @@ const countByField = <K extends 'subjectRaw' | 'position'>(docs: { data: () => u
 // only required filter anywhere in this file — área here is an OPTIONAL
 // cross-filter: when set, assunto counts/options reflect just that área,
 // but leaving it unset never blocks fetching by matéria+assunto alone.
-export const listBankTopicsForSubject = async (importSubject: string, area: string | null = null): Promise<BankTopicFacets> => {
+export const listBankTopicsForSubject = (importSubject: string, area: string | null = null): Promise<BankTopicFacets> =>
+  withBankFallback(
+    async () => {
+      const [topics, total] = await Promise.all([
+        bankRpc<BankFacetOption[]>('bank_topics', { p_subject: importSubject, p_area: area }),
+        bankRpc<number>('bank_count', { p_subject: importSubject, p_topic: null, p_area: area }),
+      ]);
+      return { total: Number(total), topics };
+    },
+    () => listBankTopicsForSubjectFirestore(importSubject, area),
+  );
+const listBankTopicsForSubjectFirestore = async (importSubject: string, area: string | null = null): Promise<BankTopicFacets> => {
   const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, null, area)));
   return { total: snap.size, topics: countByField(snap.docs, 'subjectRaw') };
 };
@@ -194,7 +238,9 @@ export const listBankTopicsForSubject = async (importSubject: string, area: stri
 // list rather than showing as an empty-label facet. `topic` is likewise an
 // OPTIONAL cross-filter, symmetric with `area` above — assunto and área
 // never require each other, or matéria's own assunto/área picks, to work.
-export const listBankAreasForSubject = async (importSubject: string, topic: string | null = null): Promise<BankFacetOption[]> => {
+export const listBankAreasForSubject = (importSubject: string, topic: string | null = null): Promise<BankFacetOption[]> =>
+  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_areas', { p_subject: importSubject, p_topic: topic }), () => listBankAreasForSubjectFirestore(importSubject, topic));
+const listBankAreasForSubjectFirestore = async (importSubject: string, topic: string | null = null): Promise<BankFacetOption[]> => {
   const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, topic, null)));
   return countByField(snap.docs, 'position');
 };
@@ -204,12 +250,20 @@ export const listBankAreasForSubject = async (importSubject: string, topic: stri
 // against the matéria on their own in listBankTopicsForSubject/
 // listBankAreasForSubject above), so when both are set at once their real
 // overlap can only be known by asking Firestore directly.
-export const countBankQuestions = async (importSubject: string, topic: string | null, area: string | null): Promise<number> => {
+export const countBankQuestions = (importSubject: string, topic: string | null, area: string | null): Promise<number> =>
+  withBankFallback(async () => Number(await bankRpc<number>('bank_count', { p_subject: importSubject, p_topic: topic, p_area: area })), () => countBankQuestionsFirestore(importSubject, topic, area));
+const countBankQuestionsFirestore = async (importSubject: string, topic: string | null, area: string | null): Promise<number> => {
   const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, topic, area)));
   return snap.size;
 };
 
-export const fetchBankQuestions = async (
+export const fetchBankQuestions = (importSubject: string, topic: string | null, area: string | null, count: number): Promise<QuizQuestion[]> =>
+  withBankFallback(async () => {
+    const rows = await bankRpc<BankRow[]>('bank_random', { p_subject: importSubject, p_topic: topic, p_area: area, p_count: count });
+    if (rows.length === 0) throw new Error('Nenhuma questão encontrada para essa matéria/assunto/área no nosso banco ainda.');
+    return rows.map(fromBankRow).map(mapBankQuestion);
+  }, () => fetchBankQuestionsFirestore(importSubject, topic, area, count));
+const fetchBankQuestionsFirestore = async (
   importSubject: string,
   topic: string | null,
   area: string | null,
@@ -239,7 +293,9 @@ export const fetchBankQuestions = async (
 
 const nonEmpty = (value: unknown): value is string | number => value !== null && value !== undefined && value !== '';
 
-export const listExamBoards = async (): Promise<BankFacetOption[]> => {
+export const listExamBoards = (): Promise<BankFacetOption[]> =>
+  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_boards'), listExamBoardsFirestore);
+const listExamBoardsFirestore = async (): Promise<BankFacetOption[]> => {
   const snap = await getDocs(collection(db, 'questions'));
   const counts = new Map<string, number>();
   snap.docs.forEach(d => {
@@ -251,7 +307,9 @@ export const listExamBoards = async (): Promise<BankFacetOption[]> => {
     .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
 };
 
-export const listExamInstitutions = async (board: string): Promise<BankFacetOption[]> => {
+export const listExamInstitutions = (board: string): Promise<BankFacetOption[]> =>
+  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_institutions', { p_board: board }), () => listExamInstitutionsFirestore(board));
+const listExamInstitutionsFirestore = async (board: string): Promise<BankFacetOption[]> => {
   const snap = await getDocs(query(collection(db, 'questions'), where('examBoard', '==', board)));
   const counts = new Map<string, number>();
   snap.docs.forEach(d => {
@@ -263,7 +321,9 @@ export const listExamInstitutions = async (board: string): Promise<BankFacetOpti
     .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
 };
 
-export const listExamPositions = async (board: string, institution: string): Promise<BankFacetOption[]> => {
+export const listExamPositions = (board: string, institution: string): Promise<BankFacetOption[]> =>
+  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_positions', { p_board: board, p_institution: institution }), () => listExamPositionsFirestore(board, institution));
+const listExamPositionsFirestore = async (board: string, institution: string): Promise<BankFacetOption[]> => {
   const snap = await getDocs(
     query(collection(db, 'questions'), where('examBoard', '==', board), where('organization', '==', institution))
   );
@@ -280,7 +340,9 @@ export const listExamPositions = async (board: string, institution: string): Pro
 // Level 4 (ano) doubles as "how many questions exist for this exact
 // banca/órgão/cargo/ano" via BankFacetOption.count — same role
 // bankTopicsTotal/bankAvailableCount play for the matéria path.
-export const listExamYears = async (board: string, institution: string, position: string): Promise<BankFacetOption[]> => {
+export const listExamYears = (board: string, institution: string, position: string): Promise<BankFacetOption[]> =>
+  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_years', { p_board: board, p_institution: institution, p_position: position }), () => listExamYearsFirestore(board, institution, position));
+const listExamYearsFirestore = async (board: string, institution: string, position: string): Promise<BankFacetOption[]> => {
   const snap = await getDocs(
     query(
       collection(db, 'questions'),
@@ -299,7 +361,13 @@ export const listExamYears = async (board: string, institution: string, position
     .sort((a, b) => Number(b.value) - Number(a.value)); // most recent exam first
 };
 
-export const fetchExamQuestions = async (
+export const fetchExamQuestions = (board: string, institution: string, position: string, year: number, count: number): Promise<QuizQuestion[]> =>
+  withBankFallback(async () => {
+    const rows = await bankRpc<BankRow[]>('bank_exam_random', { p_board: board, p_institution: institution, p_position: position, p_year: year, p_count: count });
+    if (rows.length === 0) throw new Error('Nenhuma questão encontrada para essa banca/órgão/cargo/ano no nosso banco ainda.');
+    return rows.map(fromBankRow).map(mapBankQuestion);
+  }, () => fetchExamQuestionsFirestore(board, institution, position, year, count));
+const fetchExamQuestionsFirestore = async (
   board: string,
   institution: string,
   position: string,
