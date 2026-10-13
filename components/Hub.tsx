@@ -6,6 +6,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ScrollText, BookOpen, BarChart3, Bookmark, ClipboardList, Zap, FileText, Smile, Heart, Cloud, ArrowRight, PenLine, RotateCcw, Copy, Briefcase, Folder, Clock, Calendar, Bell, AlertTriangle, Scale, Search } from './icons';
 import MotivationView from './MotivationView';
 
+
+// Método VR ainda está em desenvolvimento: o cartão fica escondido do aluno até o fluxo estar pronto (mude para true para voltar).
+const SHOW_VR_METHOD_CARD = false;
 interface HubProps {
   setView: (view: AppView) => void;
   setTimerMode: (mode: TimerMode) => void;
@@ -346,6 +349,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Foco na Grade' : 'Foco no Edital') : 'Batalha de Simulados'}</p>
                 </button>
 
+                {SHOW_VR_METHOD_CARD && (
                 <button type="button" disabled aria-describedby="vr-method-status" className={`p-6 rounded-[30px] text-left border transition-all cursor-not-allowed opacity-75 group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
                   <span id="vr-method-status" className="absolute top-5 right-5 rounded-full bg-[#fff1e8] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-[#b65f2e] dark:bg-[#3a2f22] dark:text-[#e8a46f]">Em desenvolvimento</span>
                   <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
@@ -356,6 +360,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   </h2>
                   <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Engenharia reversa de questões</p>
                 </button>
+                )}
 
                 <button
                   onClick={() => {
