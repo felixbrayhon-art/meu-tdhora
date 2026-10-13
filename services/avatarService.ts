@@ -27,6 +27,7 @@ const FACE_ZOOM_OVERRIDES: Record<string, FaceZoom> = {
   surfista: zoomFor(1.5, 0, 0.06),
   roqueiro: zoomFor(1.5, 0, 0.09),
   'jorge-do-bem': zoomFor(1.5, 0, -0.08),
+  nativo: zoomFor(1.5, 0, 0.11),
 };
 
 export const getFaceZoom = (characterId?: string): FaceZoom => {
@@ -50,7 +51,14 @@ const REDRAWN_2D_CHARACTER_IDS = new Set([
   'militar', 'policial', 'marinheiro', 'diplomata-petrobras',
 ]);
 
+// 2D characters delivered as vector art (<id>-frente|lado-direito|costas.svg in the same folder).
+const SVG_2D_CHARACTER_IDS = new Set(['nativo']);
+
 const posesFor = (id: string): Record<CharacterPose, string> => {
+  if (SVG_2D_CHARACTER_IDS.has(id)) {
+    const base = `/character-assets/to-dahora-2d/${id}`;
+    return { frente: `${base}-frente.svg`, lado: `${base}-lado-direito.svg`, costas: `${base}-costas.svg` };
+  }
   if (REDRAWN_2D_CHARACTER_IDS.has(id)) {
     const base = `/character-assets/to-dahora-2d/${id}`;
     return { frente: `${base}-frente.webp`, lado: `${base}-lado-direito.webp`, costas: `${base}-costas.webp` };
@@ -81,6 +89,7 @@ export const CHARACTERS: CharacterOption[] = [
   { id: 'policial', name: 'Policial', poses: posesFor('policial') },
   { id: 'marinheiro', name: 'Marinheiro', poses: posesFor('marinheiro') },
   { id: 'diplomata-petrobras', name: 'Diplomata da Petrobras', poses: posesFor('diplomata-petrobras') },
+  { id: 'nativo', name: 'Nativo', poses: posesFor('nativo') },
 ];
 
 export const defaultCharacterId = CHARACTERS[0].id;
