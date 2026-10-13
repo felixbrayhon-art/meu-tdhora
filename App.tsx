@@ -1237,7 +1237,7 @@ const App: React.FC = () => {
             <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} compact={isFocusLesson} />
           </header>}
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+          <div className={`flex-1 overflow-y-auto custom-scrollbar relative ${showGlobalBar && !isQuestionSession && !isFocusLesson ? 'pb-28' : ''}`}>
             <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop />
             <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop />
             <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop />
