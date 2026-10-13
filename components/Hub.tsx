@@ -250,6 +250,11 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   </div>
                 )}
 
+                <div className="hub-section-label col-span-full flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-2">
+                  <h3 className="font-logo text-sm uppercase tracking-[0.18em] text-[#473c33] dark:text-[#f2efd2]">Ferramentas de estudo</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#b7aa96]">consultar, praticar e organizar</p>
+                </div>
+
                 <button
                   onClick={() => {
                     if (activeTab === 'EDITAL') setStrategicMode(true);
@@ -283,14 +288,14 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Arquivo da Grade' : 'Arquivo Estratégico') : 'Resumos & Cadernos'}</p>
                 </button>
 
-                <button onClick={() => setView('DRIVE_READER')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-gradient-to-br from-[#473c33] to-[#473c33] dark:from-[#2e2519] dark:to-[#2e2519] text-white shadow-xl dark:shadow-none border-0 dark:border dark:border-white/[0.06]'}`}>
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fec868] text-white shadow-md'}`}>
+                <button onClick={() => setView('DRIVE_READER')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
                     <Folder className="w-7 h-7" />
                   </div>
                   <h2 className="font-logo text-2xl mb-2 uppercase">
                     BIBLIOTECA <span className="text-[#fed386]">drive</span>
                   </h2>
-                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-[#ffe6b9]'}`}>Livros & PDFs do Drive</p>
+                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Livros & PDFs do Drive</p>
                 </button>
 
                 <button onClick={() => setView('VADE_MECUM')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
@@ -361,6 +366,11 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Engenharia reversa de questões</p>
                 </button>
                 )}
+
+                <div className="hub-section-label col-span-full flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-2">
+                  <h3 className="font-logo text-sm uppercase tracking-[0.18em] text-[#473c33] dark:text-[#f2efd2]">Aulas com IA</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#b7aa96]">a IA ensina o conteúdo para você</p>
+                </div>
 
                 <button
                   onClick={() => {
