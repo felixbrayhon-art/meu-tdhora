@@ -49,6 +49,7 @@ const REDRAWN_2D_CHARACTER_IDS = new Set([
   'gato-jaqueta', 'surfista', 'roqueiro', 'engenheiro', 'juiz',
   'biomedica', 'nutricionista', 'fisioterapeuta', 'jorge-do-bem', 'raposa',
   'militar', 'policial', 'marinheiro', 'diplomata-petrobras',
+  'homem-jaqueta-jeans', 'rapaz-regata', 'senhor-bone', 'vira-lata-caramelo',
 ]);
 
 // 2D characters delivered as vector art (<id>-frente|lado-direito|costas.svg in the same folder).
@@ -90,6 +91,10 @@ export const CHARACTERS: CharacterOption[] = [
   { id: 'marinheiro', name: 'Marinheiro', poses: posesFor('marinheiro') },
   { id: 'diplomata-petrobras', name: 'Diplomata da Petrobras', poses: posesFor('diplomata-petrobras') },
   { id: 'nativo', name: 'Nativo', poses: posesFor('nativo') },
+  { id: 'homem-jaqueta-jeans', name: 'Homem de Jaqueta Jeans', poses: posesFor('homem-jaqueta-jeans') },
+  { id: 'rapaz-regata', name: 'Rapaz de Regata', poses: posesFor('rapaz-regata') },
+  { id: 'senhor-bone', name: 'Senhor de Boné', poses: posesFor('senhor-bone') },
+  { id: 'vira-lata-caramelo', name: 'Vira-Lata Caramelo', poses: posesFor('vira-lata-caramelo') },
 ];
 
 export const defaultCharacterId = CHARACTERS[0].id;
