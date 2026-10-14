@@ -22,6 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [questionNavigationOpen, setQuestionNavigationOpen] = useState(false);
+  const [navTip, setNavTip] = useState<{ label: string; top: number; left: number } | null>(null);
 
   useEffect(() => {
     setQuestionNavigationOpen(false);
@@ -60,6 +61,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
 
   const collapsed = questionSession ? false : isCollapsed;
 
+  // Barra recolhida só tem ícones: mostra o nome na hora (mouse ou teclado), em vez da dica lenta do navegador.
+  const showTip = (e: React.SyntheticEvent<HTMLElement>, label: string) => {
+    if (!collapsed) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    setNavTip({ label, top: r.top + r.height / 2, left: r.right + 12 });
+  };
+  const hideTip = () => setNavTip(null);
+
   const toggleFolder = (id: string) => {
     setExpandedFolders((prev) => ({ ...prev, [id]: !prev[id] }));
   };
@@ -87,6 +96,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
 
   return (
     <div className={`${collapsed ? 'w-20' : 'w-72'} h-full bg-[#FDFBF7] dark:bg-[#1c1712] text-[#473c33] dark:text-[#f4ebdd] flex flex-col border-r border-[#eee6d6] dark:border-white/[0.06] relative ${questionSession ? 'z-50' : 'z-[1000]'} overflow-hidden transition-all duration-300 ease-in-out`}>
+      {collapsed && navTip && (
+        <div role="tooltip" className="pointer-events-none fixed z-[2000] -translate-y-1/2 whitespace-nowrap rounded-lg bg-[#473c33] px-3 py-1.5 text-xs font-bold text-[#fdfbf7] shadow-lg dark:bg-[#f4ebdd] dark:text-[#2d2118]" style={{ top: navTip.top, left: navTip.left }}>
+          {navTip.label}
+        </div>
+      )}
       {/* Header / Logo */}
       <div className={`p-8 pb-4 ${collapsed ? 'px-4' : 'px-8'}`}>
         <div className={`flex items-center gap-2 ${collapsed ? 'flex-col' : 'justify-between'}`}>
@@ -116,7 +130,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
           <button
             onClick={() => setView('PROFILE')}
             aria-label="Acessar perfil"
-            title="Acessar perfil"
+            title={collapsed ? undefined : 'Acessar perfil'}
+            onMouseEnter={(e) => showTip(e, 'Acessar perfil')} onFocus={(e) => showTip(e, 'Acessar perfil')} onMouseLeave={hideTip} onBlur={hideTip}
             className={`mt-8 flex items-center gap-3 w-full bg-[#f4ebdd] dark:bg-[#272019] p-3 rounded-2xl border border-[#eee6d6] dark:border-white/[0.06] overflow-hidden transition-all hover:bg-[#eee6d6] dark:hover:bg-[#322922] hover:border-[#e3d9ca] dark:hover:border-white/[0.1] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fec868] ${collapsed ? 'justify-center' : ''}`}
           >
             {stats.characterId ? (
@@ -142,7 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
         <div className="space-y-1">
           {!collapsed && <p className="px-4 text-[9px] font-black text-[#a79c8e] dark:text-[#7d6f5c] uppercase tracking-[0.3em] mb-4">Funções</p>}
           {navItems.map((item) => (
-            <button key={item.id} aria-label={item.label} aria-current={currentView === item.id ? 'page' : undefined} title={collapsed ? item.label : undefined} onClick={() => setView(item.id)} className={`sidebar-nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs transition-all ${collapsed ? 'justify-center' : ''} ${currentView === item.id ? 'sidebar-nav-item-active' : 'text-[#725442] dark:text-[#a89680] hover:bg-[#f4ebdd] dark:hover:bg-[#272019]'}`}>
+            <button key={item.id} aria-label={item.label} aria-current={currentView === item.id ? 'page' : undefined} onMouseEnter={(e) => showTip(e, item.label)} onFocus={(e) => showTip(e, item.label)} onMouseLeave={hideTip} onBlur={hideTip} onClick={() => { hideTip(); setView(item.id); }} className={`sidebar-nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs transition-all ${collapsed ? 'justify-center' : ''} ${currentView === item.id ? 'sidebar-nav-item-active' : 'text-[#725442] dark:text-[#a89680] hover:bg-[#f4ebdd] dark:hover:bg-[#272019]'}`}>
               <item.icon className={`w-5 h-5 shrink-0 ${currentView === item.id ? '' : 'text-[#a79c8e] dark:text-[#7d6f5c]'}`} />
               {!collapsed && <span>{item.label}</span>}
             </button>

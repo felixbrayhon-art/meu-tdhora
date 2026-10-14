@@ -77,7 +77,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
 
   return (
     <div className="hub-main-layout space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
-      <div className="sticky top-3 z-20 flex items-center gap-2 rounded-[20px] border border-[#e9e0d4] bg-white p-2 shadow-sm dark:border-white/[0.06] dark:bg-[#272019] xl:hidden">
+      <div className="sticky top-0 z-20 flex items-center gap-2 rounded-[20px] border border-[#e9e0d4] bg-white p-2 shadow-sm dark:border-white/[0.06] dark:bg-[#272019] xl:hidden">
         <label htmlFor="hub-section" className="sr-only">Seção do painel</label>
         <select id="hub-section" value={activeTab} onChange={(event) => setActiveTab(event.target.value as HubCategory)} className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#e9e0d4] bg-[#fdfbf7] px-3 text-xs font-black uppercase tracking-wide text-[#473c33] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e96f34] dark:border-white/10 dark:bg-[#1c1712] dark:text-[#f4ebdd]">
           <option value="ESTUDO">Estudo</option>
@@ -92,7 +92,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
         </button>
       </div>
 
-      <nav aria-label="Navegação do painel" className="sticky top-3 z-20 hidden w-full max-w-full items-center justify-center gap-2 overflow-x-auto rounded-[24px] border border-[#e9e0d4] bg-white p-2 shadow-[0_8px_22px_rgba(71,60,51,0.07)] no-scrollbar scroll-smooth dark:border-white/[0.06] dark:bg-[#272019] dark:shadow-none xl:flex">
+      <nav aria-label="Navegação do painel" className="sticky top-0 z-20 hidden w-full max-w-full items-center justify-center gap-2 overflow-x-auto rounded-[24px] border border-[#e9e0d4] bg-white p-2 shadow-[0_8px_22px_rgba(71,60,51,0.07)] no-scrollbar scroll-smooth dark:border-white/[0.06] dark:bg-[#272019] dark:shadow-none xl:flex">
         <div role="tablist" aria-label="Seções do painel" onKeyDown={handleHubTabKeyDown} className="flex shrink-0 items-center gap-1">
         <button role="tab" tabIndex={activeTab === 'ESTUDO' ? 0 : -1} aria-selected={activeTab === 'ESTUDO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('ESTUDO')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'ESTUDO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
           <BookOpen className="w-4 h-4" />
