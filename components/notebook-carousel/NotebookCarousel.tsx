@@ -53,6 +53,7 @@ const NotebookCarousel: React.FC<NotebookCarouselProps> = ({ notebooks, initialI
   const [active, setActive] = useState(startIndex);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const coverRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const rootRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const pos = useRef(startIndex);
   const target = useRef(startIndex);
@@ -94,6 +95,34 @@ const NotebookCarousel: React.FC<NotebookCarouselProps> = ({ notebooks, initialI
     pos.current = target.current;
     render();
   }, [N, render]);
+
+  // Tela fixa: o carrossel ocupa exatamente o espaço que sobra no painel rolável e o painel não rola enquanto ele estiver na tela.
+  // Se a janela for baixa demais para caber (menos de 440 px), mantém a rolagem normal.
+  useEffect(() => {
+    let scroller: HTMLElement | null = rootRef.current?.parentElement ?? null;
+    while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement;
+    const previousOverflow = scroller ? scroller.style.overflowY : '';
+    const fit = () => {
+      const el = rootRef.current;
+      if (!el) return;
+      if (scroller) scroller.style.overflowY = previousOverflow; // mede com a rolagem original
+      const box = scroller ?? document.documentElement;
+      const boxTop = scroller ? scroller.getBoundingClientRect().top : 0;
+      const offset = el.getBoundingClientRect().top - boxTop + (scroller ? scroller.scrollTop : 0);
+      const room = box.clientHeight - offset - 20;
+      el.style.height = `${Math.max(440, room)}px`;
+      if (scroller && room >= 440) { scroller.scrollTop = 0; scroller.style.overflowY = 'hidden'; }
+      render();
+    };
+    fit();
+    const t = window.setTimeout(fit, 350); // depois que o layout da página assenta
+    window.addEventListener('resize', fit);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener('resize', fit);
+      if (scroller) scroller.style.overflowY = previousOverflow;
+    };
+  }, [render]);
 
   useEffect(() => {
     const onResize = () => render();
@@ -203,7 +232,7 @@ const NotebookCarousel: React.FC<NotebookCarouselProps> = ({ notebooks, initialI
   const current = notebooks[clamp(active, 0, N - 1)];
 
   return (
-    <section className="nc-root" aria-roledescription="carrossel de cadernos" aria-label="Seus cadernos" onKeyDown={onKeyDown}>
+    <section ref={rootRef} className="nc-root" aria-roledescription="carrossel de cadernos" aria-label="Seus cadernos" onKeyDown={onKeyDown}>
       <div
         ref={stageRef}
         className="nc-stage"
@@ -263,49 +292,53 @@ const NotebookCarousel: React.FC<NotebookCarouselProps> = ({ notebooks, initialI
         </div>
       </div>
 
-      <div className="nc-info" aria-live="polite">
-        <strong>{current.name}</strong>
-        <span>{current.accuracy == null ? questionsLabel(current.questionCount) : `${questionsLabel(current.questionCount)} · ${current.accuracy}% de acertos`}</span>
-      </div>
-
-      {N <= 12 ? (
-        <div className="nc-dots">
-          {notebooks.map((nb, i) => (
-            <button key={nb.id} type="button" className="nc-dot" aria-label={`Ir para o caderno ${nb.name}`} aria-current={i === active ? 'true' : 'false'} onClick={() => go(i)} />
-          ))}
+      <div className="nc-foot">
+        <div className="nc-info" aria-live="polite">
+          <strong>{current.name}</strong>
+          <span>{current.accuracy == null ? questionsLabel(current.questionCount) : `${questionsLabel(current.questionCount)} · ${current.accuracy}% de acertos`}</span>
         </div>
-      ) : (
-        <p className="nc-count">{active + 1} de {N}</p>
-      )}
 
-      <div className="nc-actions">
-        <button type="button" className="nc-btn" aria-label="Caderno anterior" disabled={active === 0} onClick={() => go(target.current - 1)}>←</button>
-        <button type="button" className="nc-btn nc-primary" onClick={() => enter(clamp(Math.round(pos.current), 0, N - 1))}>Abrir caderno</button>
-        <button type="button" className="nc-btn" aria-label="Próximo caderno" disabled={active === N - 1} onClick={() => go(target.current + 1)}>→</button>
-      </div>
+        {N <= 12 ? (
+          <div className="nc-dots">
+            {notebooks.map((nb, i) => (
+              <button key={nb.id} type="button" className="nc-dot" aria-label={`Ir para o caderno ${nb.name}`} aria-current={i === active ? 'true' : 'false'} onClick={() => go(i)} />
+            ))}
+          </div>
+        ) : (
+          <p className="nc-count">{active + 1} de {N}</p>
+        )}
 
-      {(onEdit || onMove || onDelete) && (
-        <div className="nc-tools" role="group" aria-label={`Ações do caderno ${current.name}`}>
-          {onEdit && (
-            <button type="button" className="nc-tool" title="Editar título e cor da capa" onClick={() => onEdit(current.id)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" /></svg>
-              Editar
-            </button>
-          )}
-          {onMove && (
-            <button type="button" className="nc-tool" title="Mover as questões deste caderno" onClick={() => onMove(current.id)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-              Mover questões
-            </button>
-          )}
-          {onDelete && (
-            <button type="button" className="nc-tool nc-danger" title="Apagar caderno" onClick={() => onDelete(current.id)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              Apagar
-            </button>
+        <div className="nc-controls">
+          <div className="nc-actions">
+            <button type="button" className="nc-btn" aria-label="Caderno anterior" disabled={active === 0} onClick={() => go(target.current - 1)}>←</button>
+            <button type="button" className="nc-btn nc-primary" onClick={() => enter(clamp(Math.round(pos.current), 0, N - 1))}>Abrir caderno</button>
+            <button type="button" className="nc-btn" aria-label="Próximo caderno" disabled={active === N - 1} onClick={() => go(target.current + 1)}>→</button>
+          </div>
+
+          {(onEdit || onMove || onDelete) && (
+            <div className="nc-tools" role="group" aria-label={`Ações do caderno ${current.name}`}>
+              {onEdit && (
+                <button type="button" className="nc-tool" title="Editar título e cor da capa" aria-label="Editar caderno" onClick={() => onEdit(current.id)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" /></svg>
+                  <span className="nc-tool-label">Editar</span>
+                </button>
+              )}
+              {onMove && (
+                <button type="button" className="nc-tool" title="Mover as questões deste caderno" aria-label="Mover questões do caderno" onClick={() => onMove(current.id)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                  <span className="nc-tool-label">Mover questões</span>
+                </button>
+              )}
+              {onDelete && (
+                <button type="button" className="nc-tool nc-danger" title="Apagar caderno" aria-label="Apagar caderno" onClick={() => onDelete(current.id)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  <span className="nc-tool-label">Apagar</span>
+                </button>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
     </section>
   );
 };
