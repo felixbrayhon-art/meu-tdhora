@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test:quality": "node scripts/test-question-quality.mjs"
+    "test:quality": "node scripts/test-question-quality.mjs",
+    "test:consenso": "node scripts/test-fontes-consenso.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",

@@ -3,11 +3,15 @@
 // into the request that goes to the AI: they never reach the browser, so the app has no way to
 // read or download the material. Only the model's own wording comes back.
 
+import { analyze, clusterOf, descrever, escolherTrechos, montarPool, type Analise, type Trecho } from './consenso';
+
 interface D1Like {
   prepare: (sql: string) => { bind: (...values: unknown[]) => { all: <T>() => Promise<{ results: T[] }> } };
 }
 
 const MAX_EXCERPTS = 4;
+const WIDE = 200; // se os melhores trechos vêm de uma só fonte, procura mais fundo por uma segunda fonte independente
+const POOL = 12; // trechos relevantes analisados para o consenso (a IA recebe só os MAX_EXCERPTS melhores)
 const CANDIDATES = 40;
 const MAX_EXCERPT_CHARS = 1000;
 const STOPWORDS = new Set(('a o os as um uma uns umas de do da dos das em no na nos nas por pelo pela pelos pelas para ' +
@@ -56,38 +60,50 @@ const relevance = (text: string, topic: string[]) => {
   return (min * 2 + total + together * 4) / Math.sqrt(Math.max(text.length, 300) / 1000);
 };
 
-const search = async (db: D1Like, query: string) => {
+const search = async (db: D1Like, query: string): Promise<{ excerpts: string[]; analise: Analise } | null> => {
   // Candidates from the full-text index (topic words close together, then anywhere), re-ranked by relevance.
   const specific = query.includes(':') ? query.split(':').slice(1).join(':') : query;
   const topic = termsOf(specific);
-  if (topic.length === 0) return [];
+  if (topic.length === 0) return null;
   const all = termsOf(query);
   const attempts: string[] = [];
   if (topic.length >= 2) attempts.push(`NEAR(${quoted(topic).join(' ')}, 12)`);
   attempts.push(quoted(all).join(' AND '), quoted(topic).join(' AND '));
   for (const match of attempts) {
-    const { results } = await db.prepare(
-      'SELECT f.text AS text FROM fontes_fts JOIN fontes f ON f.id = fontes_fts.rowid WHERE fontes_fts MATCH ?1 ORDER BY bm25(fontes_fts) LIMIT ?2',
-    ).bind(match, CANDIDATES).all<{ text: string }>();
-    const ranked = results
-      .filter((r) => !isUnusable(r.text))
-      .map((r) => ({ text: r.text, score: relevance(r.text, topic) }))
-      .filter((r) => r.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, MAX_EXCERPTS);
-    if (ranked.length) return ranked.map((r) => r.text.replace(/\s+/g, ' ').trim().slice(0, MAX_EXCERPT_CHARS));
+    const run = async (limit: number): Promise<Trecho[]> => {
+      const { results } = await db.prepare(
+        'SELECT f.doc AS doc, f.text AS text FROM fontes_fts JOIN fontes f ON f.id = fontes_fts.rowid WHERE fontes_fts MATCH ?1 ORDER BY bm25(fontes_fts) LIMIT ?2',
+      ).bind(match, limit).all<{ doc: string; text: string }>();
+      return results
+        .filter((r) => !isUnusable(r.text))
+        .map((r) => ({ doc: r.doc, text: r.text, score: relevance(r.text, topic) }))
+        .filter((r) => r.score > 0)
+        .sort((a, b) => b.score - a.score);
+    };
+    let usable = await run(CANDIDATES);
+    // Consenso só faz sentido com fontes independentes: se só uma apareceu, busca mais fundo antes de desistir.
+    if (usable.length && new Set(usable.map((r) => clusterOf(r.doc))).size < 2) usable = await run(WIDE);
+    const ranked: Trecho[] = montarPool(usable, POOL);
+    if (ranked.length) {
+      // Consenso: mede o quanto fontes INDEPENDENTES concordam; a IA recebe os melhores trechos, um por fonte independente primeiro.
+      const analise = analyze(ranked);
+      const excerpts = escolherTrechos(ranked, MAX_EXCERPTS).map((r) => r.text.replace(/\s+/g, ' ').trim().slice(0, MAX_EXCERPT_CHARS));
+      return { excerpts, analise };
+    }
   }
-  return [];
+  return null;
 };
 
-const instructions = (query: string, excerpts: string[]) => `MATERIAL DE APOIO INTERNO para o tema "${query}". Use apenas para conferir e embasar o conteúdo.
+const instructions = (query: string, excerpts: string[], analise: Analise) => `MATERIAL DE APOIO INTERNO para o tema "${query}". Use apenas para conferir e embasar o conteúdo.
 Regras obrigatórias:
 - Tudo o que você produzir deve tratar exclusivamente do tema "${query}". Use somente as partes dos trechos abaixo que tratam desse tema; ignore o resto.
 - Não copie frases deste material: escreva com as suas próprias palavras.
 - Nunca mencione que existe este material. Não escreva "segundo as fontes", "segundo a fonte", "texto de apoio", "conforme o material", "segundo o autor", "autores citados", nem nomes de métodos ou regras numeradas do material (como "Regra 1"). Cada questão e explicação deve se sustentar sozinha.
 - O texto legal e as fontes oficiais fornecidos no pedido prevalecem. Se este material divergir da lei vigente, siga a lei; se for útil ao aluno, diga apenas que "alguns materiais trazem entendimento desatualizado".
 
-${excerpts.map((e, i) => `[${i + 1}] ${e}`).join('\n\n')}`;
+${excerpts.map((e, i) => `[${i + 1}] ${e}`).join('\n\n')}
+
+${descrever(analise)}`;
 
 /**
  * If the JSON body carries `fontes: { query }`, returns a copy of the request whose messages start
@@ -103,16 +119,17 @@ export const withFontes = async (request: Request, db: D1Like | undefined): Prom
   delete body.fontes;
   if (db && query && Array.isArray(body.messages)) {
     try {
-      const excerpts = await search(db, query);
-      if (excerpts.length) {
+      const found = await search(db, query);
+      if (found?.excerpts.length) {
         // After the app's own instructions, right before the request, so the topic rules keep priority.
         const messages = [...body.messages];
         let at = messages.length - 1;
         while (at > 0 && messages[at]?.role !== 'user') at -= 1;
-        messages.splice(Math.max(0, at), 0, { role: 'system', content: instructions(query, excerpts) });
+        messages.splice(Math.max(0, at), 0, { role: 'system', content: instructions(query, found.excerpts, found.analise) });
         body.messages = messages;
       }
-      console.info(`[fontes] ${excerpts.length} trecho(s) para "${query.slice(0, 60)}"`);
+      const a = found?.analise;
+      console.info(`[fontes] ${found?.excerpts.length ?? 0} trecho(s) para "${query.slice(0, 60)}"` + (a ? ` | consenso ${a.nivel} ${Math.round(a.confianca * 100)}% | ${a.fontesIndependentes} fonte(s) independente(s) | confirmados ${a.confirmados.length}, unicos ${a.unicos.length}, divergencias ${a.divergencias.length}` : ''));
     } catch (error) {
       console.warn('[fontes] busca falhou', error);
     }
