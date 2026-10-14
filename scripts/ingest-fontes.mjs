@@ -53,20 +53,20 @@ const pageText = async (page) => {
 // Course PDFs carry the buyer's watermark (CPF + full name) and a header/footer on every page.
 // Personal data never goes into the knowledge base, and repeated page furniture is noise.
 const CPF_NAME = /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b(\s*-\s*[A-ZÀ-Ú][A-Za-zÀ-ú'.]*(\s+[A-Za-zÀ-ú'.]+){0,8})?/g;
-const NOISE_LINE = /(preparado exclusivamente para|licenciado para|vedada, por quaisquer meios|reprodu[cç][aã]o, c[oó]pia, divulga|responsabiliza[cç][aã]o civil e criminal|voltar ao|^sum[aá]rio$|projeto lei em quest|livro eletr[oô]nico|www\.|https?:\/\/|\.com\.br|^\s*\d{1,4}\s*$|^\s*\d+\s*(de|\/)\s*\d+\s*$|estrat[eé]gia|gran cursos|^\s*autor(es)?\s*:|^\s*prof(a|essor|essora)?\.?\s+[A-ZÀ-Ú][a-zà-ú]+(\s+[A-ZÀ-Ú][a-zà-ú]+){0,3}\s*$)/i;
+const NOISE_LINE = /(preparado exclusivamente para|licensed\s+to|marcelo\s*mapas|^resumo$|licenciado para|vedada, por quaisquer meios|reprodu[cç][aã]o, c[oó]pia, divulga|responsabiliza[cç][aã]o civil e criminal|voltar ao|^sum[aá]rio$|projeto lei em quest|livro eletr[oô]nico|www\.|https?:\/\/|\.com\.br|^\s*\d{1,4}\s*$|^\s*\d+\s*(de|\/)\s*\d+\s*$|estrat[eé]gia|gran cursos|^\s*autor(es)?\s*:|^\s*prof(a|essor|essora)?\.?\s+[A-ZÀ-Ú][a-zà-ú]+(\s+[A-ZÀ-Ú][a-zà-ú]+){0,3}\s*$)/i;
 const cleanPages = (pages) => {
   const freq = new Map();
   for (const text of pages) for (const line of new Set(text.split('\n').map((l) => l.trim()).filter(Boolean))) freq.set(line, (freq.get(line) || 0) + 1);
   const limit = Math.max(3, pages.length * 0.25);
   // The credits page near the start (publisher staff, copyright notice, tracking code, author bio) is dropped whole.
-  return pages.map((text, i) => (i < 3 && /protegid[oa] por direitos autorais|diretor(a)? pedag[oó]gic/i.test(text) ? '' : text).split('\n')
+  return pages.map((text, i) => (i < 3 && /protegid[oa] por direitos autorais|diretor(a)? pedag[oó]gic|ato de pirataria/i.test(text) ? '' : text).split('\n')
     .map((line) => line.replace(CPF_NAME, '').replace(/==[0-9a-f]{4,}==/gi, '').replace(/[\w.+-]+@[\w-]+\.[a-z.]{2,}/gi, '').trim()) // tracking codes, e-mails
     // Question books repeat "Nível da questão", "Certo." and "Letra b." on most pages; they mark answers, not page furniture.
     .filter((line) => line && !NOISE_LINE.test(line) && ((freq.get(line) || 0) < limit || /^(N[ií]vel da quest|Certo\b|Errado\b|Letra\s+[a-e]\b)/i.test(line)))
     .join('\n'));
 };
 
-const chunkPages = (pages) => {
+const chunkPages = (pages, firstPage = 1) => {
   // Joins pages, then cuts ~CHUNK chars at paragraph/sentence boundaries, remembering the page.
   const chunks = [];
   let buf = '';
@@ -78,18 +78,111 @@ const chunkPages = (pages) => {
   };
   pages.forEach((text, i) => {
     for (const para of text.split(/\n(?=[A-ZÀ-Ú§0-9IVXLC]|\s*Art\.)/)) {
-      if (bufPage === null || !buf.trim()) bufPage = i + 1;
-      if ((buf + '\n' + para).length > CHUNK && buf.length > CHUNK * 0.4) { flush(); bufPage = i + 1; }
+      if (bufPage === null || !buf.trim()) bufPage = firstPage + i;
+      if ((buf + '\n' + para).length > CHUNK && buf.length > CHUNK * 0.4) { flush(); bufPage = firstPage + i; }
       buf += (buf ? '\n' : '') + para;
       while (buf.length > CHUNK * 1.6) {
         const cut = buf.lastIndexOf('. ', CHUNK) > CHUNK * 0.5 ? buf.lastIndexOf('. ', CHUNK) + 1 : CHUNK;
         const head = buf.slice(0, cut);
         const rest = buf.slice(cut);
-        buf = head; flush(); buf = (buf ? buf + ' ' : '') + rest.trim(); bufPage = i + 1;
+        buf = head; flush(); buf = (buf ? buf + ' ' : '') + rest.trim(); bufPage = firstPage + i;
       }
     }
   });
   flush();
+  return chunks;
+};
+
+
+// Summaries with a table of contents ("Título ........ 17"): each entry opens a topic, and chunks never cross topics.
+// Every chunk starts with its topic, which also makes the topic searchable. Entries are located by title inside the page
+// text (page numbers in the table are only used to find where to look).
+const TOC_ENTRY = /^(.{3,160}?)\s*(?:\.\s*){6,}\s*(\d{1,4})\s*$/;
+const plain = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const parseToc = (rawPages) => {
+  const entries = [];
+  let pending = '';
+  for (const raw of rawPages.slice(0, 8)) {
+    if (!/sum[aá]rio|[ií]ndice/i.test(raw.slice(0, 600)) && !entries.length) continue;
+    for (const line of raw.split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean)) {
+      const m = (pending ? `${pending} ${line}` : line).match(TOC_ENTRY);
+      if (m) { entries.push({ title: m[1].replace(/[\s.]+$/, '').trim(), page: Number(m[2]) }); pending = ''; }
+      else pending = /^(sum[aá]rio|[ií]ndice)$/i.test(line) || /Legisla[çc][ãa]o Esquematizada|^www\./i.test(line) || /^\d{1,3}$/.test(line) ? '' : (pending + ' ' + line).trim().slice(-200);
+    }
+  }
+  // Only a real table: ascending pages, enough entries.
+  const ok = entries.filter((e, i) => e.title.length >= 3 && e.page >= 1 && (i === 0 || e.page >= entries[i - 1].page));
+  return ok.length >= 4 ? ok : [];
+};
+const tocPageCount = (rawPages, toc) => {
+  let last = 0;
+  rawPages.slice(0, 8).forEach((t, i) => { if (toc.some((e) => t.includes(e.title.slice(0, 20)) && /(?:\.\s*){6,}/.test(t))) last = i + 1; });
+  return last;
+};
+const topicLabel = (title) => {
+  const t = title.replace(/\s+/g, ' ').trim().replace(/\b(T[ií]tulo|Cap[ií]tulo|Se[cç][aã]o)\s+([IVXL]+)\b/gi, (_m, a, r) => `${a} ${r.toUpperCase()}`);
+  return t === t.toUpperCase() ? t.toLowerCase().replace(/(^|[\s(/-])\S/g, (c) => c.toUpperCase()).replace(/\b(Do|Da|Dos|Das|De|E|Em|No|Na|Ao|A|O)\b(?!$)/g, (w, i) => (i === 0 ? w : w.toLowerCase())).replace(/\b([IVXL]{1,5})\b/gi, (w) => (/^[ivxl]+$/i.test(w) && /^[A-Z][a-z]*$/.test(w) ? w.toUpperCase() : w)) : t;
+};
+
+// Mind-map summaries ("Marcelomapas"): the table is a block of titles followed by "SUMÁRIO" and a block of page numbers
+// printed twice ("06 06"), in the same order. Topics here start on a page, not on a text line.
+const parseSplitToc = (rawPages) => {
+  for (const raw of rawPages.slice(0, 5)) {
+    const lines = raw.split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const at = lines.findIndex((l) => /^sum[aá]rio\s*sum[aá]rio$/i.test(l) || /^sum[aá]rio$/i.test(l));
+    if (at < 1) continue;
+    const titles = lines.slice(0, at).reduce((acc, l) => { if (acc.length && /[,\-–]$/.test(acc[acc.length - 1])) acc[acc.length - 1] += ` ${l}`; else acc.push(l); return acc; }, []);
+    const nums = lines.slice(at + 1).map((l) => l.match(/^(\d{1,3})\s*\1$/) || l.match(/^(\d{1,3})$/)).filter(Boolean).map((m) => Number(m[1]));
+    if (titles.length >= 4 && titles.length === nums.length) return Object.assign(titles.map((title, i) => ({ title, page: nums[i] })), { contentFrom: rawPages.indexOf(raw) + 1 });
+  }
+  return [];
+};
+const chunkByPages = (cleaned, toc, firstContentPage) => {
+  const groups = [];
+  for (const e of toc) {
+    const last = groups[groups.length - 1];
+    if (last && last.page === e.page) last.labels.push(topicLabel(e.title));
+    else groups.push({ page: e.page, labels: [topicLabel(e.title)] });
+  }
+  const chunks = [];
+  groups.forEach((g, i) => {
+    const from = i === 0 ? firstContentPage : Math.max(g.page - 1, firstContentPage);
+    const to = i + 1 < groups.length ? Math.max(groups[i + 1].page - 1, from + 1) : cleaned.length;
+    for (const c of chunkPages(cleaned.slice(from, to), from + 1)) chunks.push({ page: c.page, text: `[${g.labels.join(' / ')}] ${c.text}` });
+  });
+  return chunks;
+};
+const chunkByToc = (cleaned, toc, firstContentPage) => {
+  // Find the start (page index + line index) of each topic.
+  const starts = [];
+  let pageIdx = firstContentPage; let lineIdx = 0;
+  for (const e of toc) {
+    const key = plain(e.title);
+    if (!key) continue;
+    let found = null;
+    for (let p = Math.max(e.page - 1, pageIdx); p < Math.min(cleaned.length, Math.max(e.page, pageIdx) + 6) && !found; p++) {
+      const lines = cleaned[p].split('\n');
+      for (let l = p === pageIdx ? lineIdx : 0; l < lines.length; l++) {
+        const k = plain(lines[l]);
+        if (k && (k === key || (k.length > 8 && key.startsWith(k) && k.length >= key.length * 0.6))) { found = { p, l }; break; }
+      }
+    }
+    if (found) { starts.push({ label: topicLabel(e.title), ...found }); pageIdx = found.p; lineIdx = found.l + 1; }
+  }
+  if (process.env.DEBUG_TOC) console.error(`TOC ${toc.length} entradas, ${starts.length} localizadas; não achadas:`, toc.map((e) => e.title).filter((t) => !starts.some((s) => s.label === topicLabel(t))).slice(0, 12));
+  if (starts.length < 3) return null;
+  const chunks = [];
+  starts.forEach((s, i) => {
+    const end = starts[i + 1];
+    const pages = [];
+    for (let p = s.p; p <= (end ? end.p : cleaned.length - 1); p++) {
+      let lines = cleaned[p].split('\n');
+      if (p === (end ? end.p : -1)) lines = lines.slice(0, end.l);
+      if (p === s.p) lines = lines.slice(s.l);
+      pages.push(lines.join('\n'));
+    }
+    for (const c of chunkPages(pages, s.p + 1)) chunks.push({ page: c.page, text: `[${s.label}] ${c.text}` });
+  });
   return chunks;
 };
 
@@ -242,8 +335,11 @@ for (const root of args) {
         continue;
       }
       const cleaned = cleanPages(pages);
-      const chunks = isQuestionBook(cleaned) ? chunkQuestionBook(cleaned, /penal/i.test(name + folder) ? 'Código Penal' : subjectOf(folder)) : chunkPages(cleaned);
-      const subject = /administrativo/i.test(name) ? 'Direito Administrativo' : /constitucional/i.test(name) ? 'Direito Constitucional'
+      const toc = parseToc(pages);
+      const splitToc = toc.length ? [] : parseSplitToc(pages);
+      const chunks = isQuestionBook(cleaned) ? chunkQuestionBook(cleaned, /penal/i.test(name + folder) ? 'Código Penal' : subjectOf(folder)) : ((toc.length && chunkByToc(cleaned, toc, tocPageCount(pages, toc))) || (splitToc.length && chunkByPages(cleaned, splitToc, splitToc.contentFrom)) || chunkPages(cleaned));
+      const esquem = name.match(/^(?:Quebrando Quest[õo]es|Marcelomapas) - (.+?)(?: - .+)? \((?:resumo )?esquematizado\)$/);
+      const subject = esquem ? esquem[1] : /administrativo/i.test(name) ? 'Direito Administrativo' : /constitucional/i.test(name) ? 'Direito Constitucional'
         : /penal/i.test(name) && !/processo|processual/i.test(name) ? 'Direito Penal' : subjectOf(folder);
       docs.push({ name: `${subject} · ${name}`, subject, folder, hash, pages: pdf.numPages, chars, chunks });
       console.log(`✓ ${folder}/${name}: ${pdf.numPages} págs, ${chunks.length} trechos`);
