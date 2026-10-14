@@ -1496,10 +1496,10 @@ html:not(.dark) .text-\[\#fec868\] { color: #96590a; }
 html:not(.dark) .text-\[\#fdad74\] { color: #b4531a; }
 html:not(.dark) .text-white .text-\[\#fecc73\],
 html:not(.dark) .text-white .text-\[\#fec868\],
-html:not(.dark) [class*="bg-[#473c33]"] .text-\[\#fecc73\],
-html:not(.dark) [class*="bg-[#473c33]"] .text-\[\#fec868\] { color: #fecc73; }
+html:not(.dark) :is([class^="bg-[#473c33]"], [class*=" bg-[#473c33]"]) .text-\[\#fecc73\],
+html:not(.dark) :is([class^="bg-[#473c33]"], [class*=" bg-[#473c33]"]) .text-\[\#fec868\] { color: #fecc73; }
 html:not(.dark) .text-white .text-\[\#fdad74\],
-html:not(.dark) [class*="bg-[#473c33]"] .text-\[\#fdad74\] { color: #fdad74; }
+html:not(.dark) :is([class^="bg-[#473c33]"], [class*=" bg-[#473c33]"]) .text-\[\#fdad74\] { color: #fdad74; }
 
 /* Thin triangle strip at the top of section views. The SVG is used as a mask so the colour can follow the theme
    and differ from the orange header band above it. */
@@ -1696,9 +1696,9 @@ html.dark [class*="text-[#473c33]"],
 html.dark [class*="text-[#f4ebdd]"],
 html.dark [class*="text-[#f2efd2]"],
 html.dark [class*="text-[#eee7cf]"] { color: var(--palette-buttercream) !important; }
-html:not(.dark) [class*="bg-[#473c33]"] [class*="text-[#f4ebdd]"],
-html:not(.dark) [class*="bg-[#473c33]"] [class*="text-[#f2efd2]"],
-html:not(.dark) [class*="bg-[#473c33]"] [class*="text-[#eee7cf]"] { color: var(--palette-buttercream) !important; }
+html:not(.dark) :is([class^="bg-[#473c33]"], [class*=" bg-[#473c33]"]) [class*="text-[#f4ebdd]"],
+html:not(.dark) :is([class^="bg-[#473c33]"], [class*=" bg-[#473c33]"]) [class*="text-[#f2efd2]"],
+html:not(.dark) :is([class^="bg-[#473c33]"], [class*=" bg-[#473c33]"]) [class*="text-[#eee7cf]"] { color: var(--palette-buttercream) !important; }
 
 html:not(.dark) [class*="bg-[#FDFBF7]"],
 html:not(.dark) [class*="bg-[#fdfbf7]"],
@@ -2157,10 +2157,10 @@ html:not(.dark) [class~="text-[#b7ac9e]"] {
 
 /* Dark cards inside the light theme need a warm light foreground. */
 html:not(.dark) :is(
-    [class*="bg-[#473c33]"], [class*="bg-[#42251d]"],
-    [class*="bg-[#1E293B]"], [class*="bg-[#1e293b]"],
-    [class*="bg-[#211c15]"], [class*="bg-[#2d2e27]"],
-    [class*="bg-[#272019]"], [class*="bg-[#24251f]"],
+    :is([class^="bg-[#473c33]"], [class*=" bg-[#473c33]"]), :is([class^="bg-[#42251d]"], [class*=" bg-[#42251d]"]),
+    :is([class^="bg-[#1E293B]"], [class*=" bg-[#1E293B]"]), :is([class^="bg-[#1e293b]"], [class*=" bg-[#1e293b]"]),
+    :is([class^="bg-[#211c15]"], [class*=" bg-[#211c15]"]), :is([class^="bg-[#2d2e27]"], [class*=" bg-[#2d2e27]"]),
+    :is([class^="bg-[#272019]"], [class*=" bg-[#272019]"]), :is([class^="bg-[#24251f]"], [class*=" bg-[#24251f]"]),
     [class~="bg-slate-900"], [class~="bg-slate-800"],
     [class~="bg-gray-900"], [class~="bg-gray-800"]
 ) :is(
@@ -2220,10 +2220,10 @@ html:not(.dark) :is(
 
 /* Restore light foregrounds when those same labels sit on a dark card. */
 html:not(.dark) :is(
-    [class*="bg-[#473c33]"], [class*="bg-[#42251d]"],
-    [class*="bg-[#1E293B]"], [class*="bg-[#1e293b]"],
-    [class*="bg-[#211c15]"], [class*="bg-[#2d2e27]"],
-    [class*="bg-[#272019]"], [class*="bg-[#24251f]"],
+    :is([class^="bg-[#473c33]"], [class*=" bg-[#473c33]"]), :is([class^="bg-[#42251d]"], [class*=" bg-[#42251d]"]),
+    :is([class^="bg-[#1E293B]"], [class*=" bg-[#1E293B]"]), :is([class^="bg-[#1e293b]"], [class*=" bg-[#1e293b]"]),
+    :is([class^="bg-[#211c15]"], [class*=" bg-[#211c15]"]), :is([class^="bg-[#2d2e27]"], [class*=" bg-[#2d2e27]"]),
+    :is([class^="bg-[#272019]"], [class*=" bg-[#272019]"]), :is([class^="bg-[#24251f]"], [class*=" bg-[#24251f]"]),
     [class~="bg-slate-900"], [class~="bg-slate-800"],
     [class~="bg-gray-900"], [class~="bg-gray-800"]
 ) :is(
@@ -2248,10 +2248,10 @@ html:not(.dark) :is(
     [class~="text-[#8eaf58]"]
 ),
 html:not(.dark) :is(
-    [class*="bg-[#473c33]"], [class*="bg-[#42251d]"],
-    [class*="bg-[#1E293B]"], [class*="bg-[#1e293b]"],
-    [class*="bg-[#211c15]"], [class*="bg-[#2d2e27]"],
-    [class*="bg-[#272019]"], [class*="bg-[#24251f]"],
+    :is([class^="bg-[#473c33]"], [class*=" bg-[#473c33]"]), :is([class^="bg-[#42251d]"], [class*=" bg-[#42251d]"]),
+    :is([class^="bg-[#1E293B]"], [class*=" bg-[#1E293B]"]), :is([class^="bg-[#1e293b]"], [class*=" bg-[#1e293b]"]),
+    :is([class^="bg-[#211c15]"], [class*=" bg-[#211c15]"]), :is([class^="bg-[#2d2e27]"], [class*=" bg-[#2d2e27]"]),
+    :is([class^="bg-[#272019]"], [class*=" bg-[#272019]"]), :is([class^="bg-[#24251f]"], [class*=" bg-[#24251f]"]),
     [class~="bg-slate-900"], [class~="bg-slate-800"],
     [class~="bg-gray-900"], [class~="bg-gray-800"]
 ):is(
