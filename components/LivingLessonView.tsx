@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, RotateCcw } from './icons';
 import { IllustratedLesson, IllustratedLessonBox, IllustratedLessonPage, StudyProfile, ExplanationStyle } from '../types';
 import { generateLivingLesson } from '../services/geminiService';
 import BookLoader from './BookLoader';
+import ConsensoBadge from './ConsensoBadge';
 
 const SOURCE_LABEL: Record<NonNullable<IllustratedLesson['sources']>[number]['kind'], string> = {
   lei: 'Vade Mecum',
@@ -151,6 +152,7 @@ const PageContent: React.FC<{ page: IllustratedLessonPage; lesson: IllustratedLe
         <p className="text-xs font-black uppercase tracking-[0.2em] text-[#e96f34]">{lesson.subject}</p>
         <h1 className={`font-logo leading-tight ${INK} ${first ? 'text-4xl sm:text-5xl' : 'text-2xl sm:text-3xl'}`}>{lesson.topic}</h1>
         {page.lead && <p className={`mt-3 max-w-3xl text-base font-semibold leading-relaxed ${INK}`}>{page.lead}</p>}
+        {first && <ConsensoBadge consenso={lesson.consenso} className="mt-3" />}
       </header>
 
       {page.quote && (

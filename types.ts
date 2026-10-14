@@ -199,6 +199,7 @@ export interface GuidedLesson {
   steps: GuidedLessonStep[];
   quiz?: QuizQuestion[];
   createdAt: number;
+  consenso?: ConsensoFontes;
 }
 
 export interface SavedGuidedLesson {
@@ -316,6 +317,15 @@ export interface QuestionVerification {
   note?: string;
 }
 
+// How much independent study sources agreed on the topic when the AI wrote this (functions/_lib/consenso.ts).
+// Consistency between sources, not proof of truth: the app shows it as a hint, next to the official-text check.
+export interface ConsensoFontes {
+  nivel: 'ALTO' | 'MEDIO' | 'BAIXO';
+  confianca: number; // 0-1
+  fontes: number; // independent sources
+  divergencias: number;
+}
+
 export interface QuizQuestion {
   id: string;
   question: string;
@@ -329,6 +339,7 @@ export interface QuizQuestion {
   explanationImages?: string[];
   explanationImageSizes?: string[];
   verification?: QuestionVerification;
+  consenso?: ConsensoFontes;
   // Optional exam metadata, carried through from PublishedQuestion when the
   // source question bank has it (see Método VR) — absent for every other
   // question source (AI-generated, ENEM, pasted, etc).
@@ -569,4 +580,5 @@ export interface IllustratedLesson {
   seeAlso: string[];
   pages: IllustratedLessonPage[];
   sources?: { kind: 'wikipedia' | 'wikilivros' | 'lei' | 'wikidata'; title: string; url: string }[];
+  consenso?: ConsensoFontes;
 }
