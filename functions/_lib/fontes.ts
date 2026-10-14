@@ -28,7 +28,8 @@ const isUnusable = (text: string) => !isCommentedQuestion(text) && (
   (text.match(/(^|\n|\s)[a-eA-E]\)\s/g) || []).length >= 3
   || /\bgabarito\b|\bcoment[aá]rios?\s*:|\bjulgue(-os)?\b|\bassinale\b|\(\s*(certo|errado)\s*\)|lista de quest/i.test(text)
   || BANCAS.test(text)
-  || /estrat[eé]gia|gran cursos|\bautor(es)?\s*:|\bíndice\b|\bsum[aá]rio\b|apresenta[cç][aã]o da aula/i.test(text));
+  || /estrat[eé]gia|gran cursos|\bautor(es)?\s*:|\bíndice\b|\bsum[aá]rio\b|apresenta[cç][aã]o da aula/i.test(text)
+  || normalize(text).replace(/\s+/g, '').includes('concurseiroforadacaixa')); // título do autor sai espaçado no PDF ("C o n c u r s e i r o ...")
 
 // How much an excerpt is really about the topic: every word must occur, ideally several times and
 // close together (the words of "segurança da informação" within a few words, in any order).
