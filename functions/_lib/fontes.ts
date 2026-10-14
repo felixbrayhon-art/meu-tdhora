@@ -94,6 +94,9 @@ const search = async (db: D1Like, query: string): Promise<{ excerpts: string[]; 
   return null;
 };
 
+/** "ALTO;93;3;0" = nível; confiança em %; fontes independentes; divergências. */
+const cabecalhoConsenso = (a: Analise) => `${a.nivel};${Math.round(a.confianca * 100)};${a.fontesIndependentes};${a.divergencias.length}`;
+
 const instructions = (query: string, excerpts: string[], analise: Analise) => `MATERIAL DE APOIO INTERNO para o tema "${query}". Use apenas para conferir e embasar o conteúdo.
 Regras obrigatórias:
 - Tudo o que você produzir deve tratar exclusivamente do tema "${query}". Use somente as partes dos trechos abaixo que tratam desse tema; ignore o resto.
@@ -109,12 +112,14 @@ ${descrever(analise)}`;
  * If the JSON body carries `fontes: { query }`, returns a copy of the request whose messages start
  * with the matching excerpts as a system message. The `fontes` field is always removed.
  */
-export const withFontes = async (request: Request, db: D1Like | undefined): Promise<Request> => {
-  if (request.method !== 'POST' || !(request.headers.get('content-type') || '').includes('json')) return request;
+export const withFontes = async (request: Request, db: D1Like | undefined): Promise<{ request: Request; consenso: string | null }> => {
+  const untouched = { request, consenso: null };
+  if (request.method !== 'POST' || !(request.headers.get('content-type') || '').includes('json')) return untouched;
   const raw = await request.clone().text();
   let body: any;
-  try { body = JSON.parse(raw); } catch { return request; }
-  if (!body || typeof body !== 'object' || !('fontes' in body)) return request;
+  try { body = JSON.parse(raw); } catch { return untouched; }
+  if (!body || typeof body !== 'object' || !('fontes' in body)) return untouched;
+  let consenso: string | null = null;
   const query = typeof body.fontes?.query === 'string' ? body.fontes.query.slice(0, 200) : '';
   delete body.fontes;
   if (db && query && Array.isArray(body.messages)) {
@@ -129,10 +134,19 @@ export const withFontes = async (request: Request, db: D1Like | undefined): Prom
         body.messages = messages;
       }
       const a = found?.analise;
+      if (a && found?.excerpts.length) consenso = cabecalhoConsenso(a);
       console.info(`[fontes] ${found?.excerpts.length ?? 0} trecho(s) para "${query.slice(0, 60)}"` + (a ? ` | consenso ${a.nivel} ${Math.round(a.confianca * 100)}% | ${a.fontesIndependentes} fonte(s) independente(s) | confirmados ${a.confirmados.length}, unicos ${a.unicos.length}, divergencias ${a.divergencias.length}` : ''));
     } catch (error) {
       console.warn('[fontes] busca falhou', error);
     }
   }
-  return new Request(request, { body: JSON.stringify(body) });
+  return { request: new Request(request, { body: JSON.stringify(body) }), consenso };
+};
+
+/** Copy of the response carrying the consensus summary for the app's badge. Only counts and a level: no source names or text. */
+export const anexarConsenso = (response: Response, consenso: string | null): Response => {
+  if (!consenso) return response;
+  const headers = new Headers(response.headers);
+  headers.set('x-consenso', consenso);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 };

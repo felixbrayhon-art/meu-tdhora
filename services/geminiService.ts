@@ -3,7 +3,7 @@ import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { applySourceGuard, TopicSource } from './topicSource';
 import { gatherSources, sourcesPromptBlock, fetchLegalSourceForQuestions } from './lessonSources';
 import { buildVerifiedQuestions, gatherQuestionSources, questionGenerationRules, doctrineNotes } from './questionQuality';
-import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle, IllustratedLesson } from "../types";
+import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle, IllustratedLesson, ConsensoFontes } from "../types";
 import { auth } from "../src/lib/firebase";
 
 const ai = new GoogleGenAI({ 
@@ -232,13 +232,31 @@ const canUseAIProxy = (): boolean => import.meta.env.DEV || !!auth?.currentUser;
 // from the private study-material base (functions/_lib/fontes.ts). Only the topic leaves the browser;
 // the material itself is added on the server and never sent back.
 let fontesTopic: string | null = null;
+let consensoColetado: ConsensoFontes | null = null;
+const readConsenso = (response: Response) => {
+  const [nivel, pct, fontes, divergencias] = (response.headers.get('x-consenso') || '').split(';');
+  if (nivel !== 'ALTO' && nivel !== 'MEDIO' && nivel !== 'BAIXO') return;
+  const next: ConsensoFontes = { nivel, confianca: Number(pct) / 100, fontes: Number(fontes), divergencias: Number(divergencias) };
+  if (!consensoColetado || next.confianca >= consensoColetado.confianca) consensoColetado = next;
+};
+// Adds the consensus found while generating to the result: to every generated question, or to the lesson object.
+const withConsenso = <T,>(result: T, consenso: ConsensoFontes | null): T => {
+  if (!consenso || !result || typeof result !== 'object' || Array.isArray(result)) return result;
+  const out: any = { ...(result as any) };
+  if (Array.isArray(out.questions)) out.questions = out.questions.map((q: any) => (q && !q.fromBank && !q.fromFlashcard ? { ...q, consenso } : q));
+  else out.consenso = consenso;
+  return out;
+};
 const withFontes = async <T>(topic: string, run: () => Promise<T>): Promise<T> => {
   const previous = fontesTopic;
+  const previousConsenso = consensoColetado;
   fontesTopic = topic;
+  consensoColetado = null;
   try {
-    return await run();
+    return withConsenso(await run(), consensoColetado);
   } finally {
     fontesTopic = previous;
+    consensoColetado = previousConsenso;
   }
 };
 const attachFontes = (body: string): string => {
@@ -254,7 +272,9 @@ const aiProxyFetch = async (provider: 'groq' | 'openrouter', init: { body: strin
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const token = await auth?.currentUser?.getIdToken().catch(() => null);
   if (token) headers.Authorization = `Bearer ${token}`;
-  return fetch(`/api/ai?provider=${provider}`, { method: 'POST', headers, body: attachFontes(init.body), signal: init.signal });
+  const response = await fetch(`/api/ai?provider=${provider}`, { method: 'POST', headers, body: attachFontes(init.body), signal: init.signal });
+  readConsenso(response);
+  return response;
 };
 
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
@@ -309,6 +329,7 @@ const requestFreeLLMAPI = async (body: Record<string, unknown>): Promise<any> =>
     signal: AbortSignal.timeout(FREELLMAPI_TIMEOUT_MS),
   });
 
+  readConsenso(response);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = typeof data?.error === 'string' ? data.error : `HTTP ${response.status}`;

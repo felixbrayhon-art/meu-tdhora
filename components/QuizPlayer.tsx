@@ -5,6 +5,7 @@ import QuestionInkLayer, { InkTool, QuestionInkLayerHandle } from './QuestionInk
 import { QuizFolder, Notebook, QuizQuestion, ExplanationStyle } from '../types';
 import MarkdownContent from './MarkdownContent';
 import VerificationBadge from './VerificationBadge';
+import ConsensoBadge from './ConsensoBadge';
 import { RichTextEditor } from './RichTextEditor';
 import { MoveToNotebookModal } from './MoveToNotebookModal';
 import { updateQuestionExplanation } from '../services/questionBankService';
@@ -1066,6 +1067,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                 ) : (
                   <>
                     <VerificationBadge verification={currentQ.verification} />
+                    <ConsensoBadge consenso={currentQ.consenso} />
                     <MarkdownContent content={currentQ.explanation} />
                   </>
                 )}

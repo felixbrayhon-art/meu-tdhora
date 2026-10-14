@@ -5,6 +5,7 @@ import { gsap } from 'gsap';
 import { GuidedLesson, GuidedLessonStep, StudyProfile, ExplanationStyle, SavedGuidedLesson } from '../types';
 import { generateGuidedLesson } from '../services/geminiService';
 import BookLoader from './BookLoader';
+import ConsensoBadge from './ConsensoBadge';
 import { jsPDF } from 'jspdf';
 
 interface GuidedLessonViewProps {
@@ -537,6 +538,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
                   <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#bd5628]">Resumo visual da aula</p>
                   <h2 className="mt-2 text-2xl font-black tracking-tight text-[#473c33] sm:text-3xl">Pontos importantes</h2>
                   <p className="guided-highlight-description mt-2 max-w-2xl text-sm leading-relaxed text-[#76695b] sm:text-base">Acompanhe a explicação completa. Os trechos sublinhados marcam conceitos, regras e ideias para guardar.</p>
+                  <ConsensoBadge consenso={lesson?.consenso} className="mt-3" />
                 </div>
                 <span className="guided-highlight-count rounded-full border border-[#efdbb9] bg-[#fff6e7] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#80531b]">{lessonSteps.length} etapas</span>
               </div>
