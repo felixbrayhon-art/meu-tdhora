@@ -194,6 +194,10 @@ const App: React.FC = () => {
     folderId: string;
     notebookId: string;
   } | null>(null);
+  // Reloading mid-quiz loses the open notebook: send the student to the materials list instead of a blank screen.
+  useEffect(() => {
+    if (currentView === 'QUIZ_PLAYER' && !activeNotebookInfo) setCurrentView('MATERIALS');
+  }, [currentView, activeNotebookInfo]);
   const [guidedLessonData, setGuidedLessonData] = useState<{
     subject: string;
     topic: string;

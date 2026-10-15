@@ -364,7 +364,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
                   Começar aula
                   <ChevronRight className="h-4 w-4" />
                 </button>
-                <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-wider text-[#b7ac9e]">Pressione Enter no assunto para continuar</p>
+                <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-wider text-[#b7ac9e]">{!setupSubject.trim() || !setupTopic.trim() ? 'Preencha a matéria e o assunto para liberar o botão' : 'Pressione Enter no assunto para continuar'}</p>
               </div>
             </div>
           </section>
