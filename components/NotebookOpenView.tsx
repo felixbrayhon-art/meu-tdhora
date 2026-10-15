@@ -68,7 +68,7 @@ const NotebookOpenView: React.FC<NotebookOpenViewProps> = ({ title, pageIndex, t
               <line x1="245" y1="150" x2="245" y2="260" stroke="#a79c8e" strokeWidth="2" strokeDasharray="4 4" />
 
               <circle cx="156" cy="70" r="46" fill={accent} />
-              <text x="156" y="66" textAnchor="middle" fill="#fdfbf7" fontFamily="Righteous" fontSize="14">crase</text>
+              <text x="156" y="66" textAnchor="middle" fill="#fdfbf7" fontFamily="Syne" fontSize="14">crase</text>
               <text x="156" y="82" textAnchor="middle" fill="#fdfbf7" fontFamily="Manrope" fontSize="10">a + a = à</text>
 
               <circle cx="70" cy="150" r="38" fill="#fbf7f0" stroke="#473c33" strokeWidth="2" />

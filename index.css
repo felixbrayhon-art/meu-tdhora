@@ -13,8 +13,8 @@ body {
 /* Interface titles share the logo's bold, all-caps display face. Preserve
    editorial and generated study content in its readable text styling. */
 :is(h1, h2, h3, h4, h5, h6):not(.markdown-body h1):not(.markdown-body h2):not(.markdown-body h3):not(.markdown-body h4):not(.markdown-body h5):not(.markdown-body h6):not(.prose h1):not(.prose h2):not(.prose h3):not(.prose h4):not(.prose h5):not(.prose h6) {
-    font-family: 'Righteous', sans-serif !important;
-    font-weight: 900;
+    font-family: 'Syne', sans-serif !important;
+    font-weight: 800;
     text-transform: uppercase;
 }
 
@@ -57,7 +57,7 @@ body {
     background: linear-gradient(105deg, rgba(217, 119, 43, 0.08), transparent 38%, transparent 72%, rgba(254, 178, 42, 0.035));
 }
 
-.font-logo { font-family: 'Righteous', sans-serif; }
+.font-logo { font-family: 'Syne', sans-serif; }
 .gradient-yellow { background: linear-gradient(135deg, #FACC15 0%, #EAB308 100%); }
 .gradient-orange { background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); }
 .gradient-dark { background: linear-gradient(135deg, #0A0F1E 0%, #1A2235 100%); }
@@ -1232,7 +1232,7 @@ html.dark .curriculum-editor > div {
         color-mix(in srgb, var(--flashcard-deck-accent), white 12%),
         color-mix(in srgb, var(--flashcard-deck-accent), black 14%));
     box-shadow: 0 4px 8px rgba(66,37,29,.2);
-    font-family: 'Righteous', sans-serif;
+    font-family: 'Syne', sans-serif;
     font-size: 24px;
     line-height: 1;
 }
@@ -2024,7 +2024,7 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
 #avatar-selection-screen .cs-footer__thumb img { height: 115%; max-width: none; object-fit: cover; object-position: top; }
 #avatar-selection-screen .cs-footer__name {
     display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    font-family: 'Righteous', sans-serif; font-size: 15px; text-transform: uppercase; color: var(--cs-cream);
+    font-family: 'Syne', sans-serif; font-size: 15px; text-transform: uppercase; color: var(--cs-cream);
 }
 #avatar-selection-screen .cs-footer__meta {
     display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--cs-cream-soft);
