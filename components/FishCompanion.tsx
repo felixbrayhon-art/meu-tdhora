@@ -6,9 +6,11 @@ import { getCharacterSrc, getCharacter } from '../services/avatarService';
 interface FishCompanionProps {
   studyProfile?: StudyProfile;
   characterId?: string;
+  /** A mini-barra do Pomodoro está visível: ancora o mascote acima dela para não cobrir controles. */
+  liftForBar?: boolean;
 }
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   const [isOpen, setIsOpen] = useState(false);
@@ -60,10 +62,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end">
+    <div className="fixed right-3 lg:right-6 z-[60] flex flex-col items-end pointer-events-none [&>*]:pointer-events-auto" style={{ bottom: liftForBar ? 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' : 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
       {/* Janela de Chat */}
       {isOpen && (
-        <div className="mb-4 w-[350px] md:w-[400px] h-[500px] bg-white rounded-[40px] shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+        <div className="mb-4 w-[calc(100vw-1.5rem)] max-w-[400px] h-[min(500px,60vh)] bg-white rounded-[40px] shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
           {/* Header do Chat */}
           <div className="p-6 bg-[#fed386] text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -75,7 +77,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1">{studyProfile ? `MODO ${studyProfile}` : 'Sempre focado por você'}</p>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
+            <button onClick={() => setIsOpen(false)} aria-label="Fechar conversa" className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 hover:bg-white/20 rounded-xl transition-colors">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -134,8 +136,8 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
           </svg>
         </button>
       ) : characterId ? (
-        <button onClick={() => setIsOpen(true)} className="relative group flex items-end justify-center h-32 sm:h-40 w-24 sm:w-28 hover:scale-105 active:scale-95 transition-transform duration-300">
-          <img src={companionIconSrc} alt={`Pergunte ao ${companionName}`} className="h-full object-contain drop-shadow-2xl" />
+        <button onClick={() => setIsOpen(true)} className="relative group flex items-end justify-center h-14 w-14 rounded-full overflow-hidden bg-[#fed386] shadow-xl border-2 border-white lg:h-40 lg:w-28 lg:rounded-none lg:overflow-visible lg:bg-transparent lg:shadow-none lg:border-0 hover:scale-105 active:scale-95 transition-transform duration-300">
+          <img src={companionIconSrc} alt={`Pergunte ao ${companionName}`} className="h-full w-full object-cover object-top lg:object-contain lg:drop-shadow-2xl" />
           <div className="absolute top-2 right-2 w-4 h-4 bg-[#fff1e8] border-2 border-white rounded-full animate-pulse"></div>
         </button>
       ) : (

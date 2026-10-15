@@ -18,6 +18,7 @@ interface ProfileViewProps {
   onLogout?: () => void;
   onLogin?: () => void;
   isLoggedIn?: boolean;
+  onNotify?: (message: string) => void;
 }
 
 const AVATAR_OPTIONS = [
@@ -50,7 +51,7 @@ const HERO_TINT_OPTIONS: { color: string | null; name: string }[] = [
   { color: '#10B981', name: 'Verde' },
 ];
 
-const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled, onLogout, onLogin, isLoggedIn }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled, onLogout, onLogin, isLoggedIn, onNotify }) => {
   const [name, setName] = useState(stats.name);
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [characterId, setCharacterId] = useState<string | undefined>(stats.characterId);
@@ -93,6 +94,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
       heroScenario,
       heroTintColor,
     });
+    const sizeLabel = fontSizeMultiplier === 1 ? 'Normal' : fontSizeMultiplier === 1.25 ? 'Grande' : 'Gigante';
+    onNotify?.(fontSizeMultiplier !== (stats.fontSizeMultiplier || 1) ? `Alterações salvas. Tamanho da fonte: ${sizeLabel}.` : 'Alterações salvas.');
     onBack();
   };
 

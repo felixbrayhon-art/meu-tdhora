@@ -1,5 +1,6 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { isChunkLoadError } from '../utils/lazyWithRetry';
 
 interface Props {
   children: ReactNode;
@@ -25,6 +26,25 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public render() {
+    if (this.state.hasError && isChunkLoadError(this.state.error)) {
+      return (
+        <div role="alert" className="fixed inset-0 flex flex-col items-center justify-center bg-[#473c33] text-white p-8 text-center">
+          <div className="bg-white/10 p-10 rounded-[40px] border border-white/20 max-w-md shadow-2xl">
+            <h1 className="font-logo text-3xl mb-4 uppercase">Não deu para abrir esta tela</h1>
+            <p className="text-white/80 font-bold mb-8 leading-relaxed">
+              Parece que a conexão falhou ou o app foi atualizado. Seus dados estão salvos. Toque no botão para tentar de novo.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="min-h-[44px] bg-white text-[#473c33] px-8 py-4 text-sm rounded-2xl font-black uppercase tracking-widest hover:bg-[#fecc73] transition-all shadow-xl active:scale-95"
+            >
+              Tentar de novo
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (this.state.hasError) {
       return (
         <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#473c33] text-white p-8 text-center">

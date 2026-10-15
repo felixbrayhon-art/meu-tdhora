@@ -16,9 +16,12 @@ interface SidebarProps {
   questionSession?: boolean;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
+  /** Modo gaveta (celular/tablet): sempre expandida e com botão de fechar no lugar de recolher. */
+  drawer?: boolean;
+  onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, flashcardFolders, stats, onSelectNotebook, onSelectFlashcardFolder, questionSession = false, isDarkMode = false, onToggleDarkMode }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, flashcardFolders, stats, onSelectNotebook, onSelectFlashcardFolder, questionSession = false, isDarkMode = false, onToggleDarkMode, drawer = false, onClose }) => {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [questionNavigationOpen, setQuestionNavigationOpen] = useState(false);
@@ -28,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
     setQuestionNavigationOpen(false);
   }, [questionSession]);
 
-  if (questionSession && !questionNavigationOpen) {
+  if (questionSession && !questionNavigationOpen && !drawer) {
     return (
       <aside aria-label="Navegação durante questões" className="w-16 h-full bg-[#FDFBF7] dark:bg-[#1c1712] text-[#725442] dark:text-[#a89680] border-r border-[#eee6d6] dark:border-white/[0.06] flex flex-col items-center py-4 gap-6">
         <button
@@ -59,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
     );
   }
 
-  const collapsed = questionSession ? false : isCollapsed;
+  const collapsed = questionSession || drawer ? false : isCollapsed;
 
   // Barra recolhida só tem ícones: mostra o nome na hora (mouse ou teclado), em vez da dica lenta do navegador.
   const showTip = (e: React.SyntheticEvent<HTMLElement>, label: string) => {
@@ -95,7 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
   const rank = getFishRank(stats.totalDaysStudied);
 
   return (
-    <div className={`${collapsed ? 'w-20' : 'w-72'} h-full bg-[#FDFBF7] dark:bg-[#1c1712] text-[#473c33] dark:text-[#f4ebdd] flex flex-col border-r border-[#eee6d6] dark:border-white/[0.06] relative ${questionSession ? 'z-50' : 'z-[1000]'} overflow-hidden transition-all duration-300 ease-in-out`}>
+    <div className={`${collapsed ? 'w-20' : drawer ? 'w-72 max-w-[85vw]' : 'w-72'} h-full bg-[#FDFBF7] dark:bg-[#1c1712] text-[#473c33] dark:text-[#f4ebdd] flex flex-col border-r border-[#eee6d6] dark:border-white/[0.06] relative ${questionSession ? 'z-50' : 'z-[1000]'} overflow-hidden transition-all duration-300 ease-in-out`}>
       {collapsed && navTip && (
         <div role="tooltip" className="pointer-events-none fixed z-[2000] -translate-y-1/2 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold shadow-lg" style={{ top: navTip.top, left: navTip.left, background: '#2b1d16', color: '#fdf5e6', border: '1px solid rgba(253,245,230,0.28)' }}>
           {navTip.label}
@@ -104,6 +107,17 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
       {/* Header / Logo */}
       <div className={`p-8 pb-4 ${collapsed ? 'px-4' : 'px-8'}`}>
         <div className={`flex items-center gap-2 ${collapsed ? 'flex-col' : 'justify-between'}`}>
+          {drawer ? (
+            <button
+              onClick={onClose}
+              autoFocus
+              aria-label="Fechar menu"
+              title="Fechar menu"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#473c33] dark:bg-[#272019] text-[#fdfbf7] dark:text-[#d9772b] transition-all active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fec868]"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          ) : (
           <button
             onClick={() => setIsCollapsed(!collapsed)}
             aria-label={collapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'}
@@ -113,6 +127,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
           >
             {collapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
           </button>
+          )}
           {onToggleDarkMode && (
             <button
               onClick={onToggleDarkMode}
@@ -126,7 +141,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
           )}
         </div>
 
-        {!questionSession && (
+        {(!questionSession || drawer) && (
           <button
             onClick={() => setView('PROFILE')}
             aria-label="Acessar perfil"
