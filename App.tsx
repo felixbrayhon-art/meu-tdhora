@@ -1335,6 +1335,7 @@ const App: React.FC = () => {
                 <Suspense fallback={<div role="status" className="flex min-h-[45vh] flex-col items-center justify-center gap-3 text-sm font-bold text-[#725442] dark:text-[#c2b6a6]"><span className="h-8 w-8 animate-spin rounded-full border-4 border-[#e96f34]/20 border-t-[#e96f34]" aria-hidden="true" />Carregando ferramenta…</div>}>
                   {currentView === 'HUB' && (
                     <Hub
+                      onReactivateEdital={() => { setEditalConfig({ ...editalConfig, isActive: true }); setCurrentView('EDITAL_VIEW'); }}
                       setView={setCurrentView}
                       setTimerMode={(mode) => {
                         setTimerMode(mode);
