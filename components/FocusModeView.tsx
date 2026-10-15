@@ -99,7 +99,7 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({ settings, onUpdate, onBac
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-black uppercase leading-none">Virote de Trabalho</h3>
+                <h3 className="text-xl font-black uppercase leading-none">Virada para o trabalho</h3>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Sair do Hiperfoco</p>
               </div>
             </div>
