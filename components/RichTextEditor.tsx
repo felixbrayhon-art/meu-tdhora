@@ -54,7 +54,7 @@ export const RichTextEditor = ({ content, onChange, fontSize = 18 }: RichTextEdi
           <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={`p-2.5 rounded-xl transition-all ${editor.isActive('bold') ? 'bg-[#fec868] text-white shadow-md' : 'text-slate-400 hover:text-[#fec868] hover:bg-slate-50'}`}>
             <Bold className="w-4 h-4" />
           </button>
-          <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={`p-2.5 rounded-xl transition-all ${editor.isActive('') ? 'bg-[#fec868] text-white shadow-md' : 'text-slate-400 hover:text-[#fec868] hover:bg-slate-50'}`}>
+          <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={`p-2.5 rounded-xl transition-all ${editor.isActive('italic') ? 'bg-[#fec868] text-white shadow-md' : 'text-slate-400 hover:text-[#fec868] hover:bg-slate-50'}`}>
             <Italic className="w-4 h-4" />
           </button>
           <button type="button" onClick={() => editor.chain().focus().toggleUnderline().run()} className={`p-3 rounded-xl transition-all ${editor.isActive('underline') ? 'bg-[#fec868] text-white shadow-md' : 'text-slate-400 hover:text-[#fec868] hover:bg-slate-50'}`}>

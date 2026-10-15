@@ -382,8 +382,15 @@ const NoteEditor: React.FC<{
     });
   }, []);
 
+  const wasBlankOnOpen = !note.title.trim() && (note.excalidrawElements ?? []).length === 0;
   const handleSaveAndClose = async () => {
     savedRef.current = true;
+    // Anotação nova que continua vazia (sem título e sem traço) é descartada, em vez de virar uma nota "Sem título" em "Sem pasta".
+    if (wasBlankOnOpen && !title.trim()) {
+      let hasInk = false;
+      try { hasInk = (excalidrawAPIRef.current?.getSceneElements().length ?? 0) > 0; } catch { /* sem API: trata como vazio */ }
+      if (!hasInk) { onClose(); return; }
+    }
     const api = excalidrawAPIRef.current;
     let elements = note.excalidrawElements ?? [];
     let appState = note.excalidrawAppState;
@@ -1007,7 +1014,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
             )}
 
             {folders.length === 0 && unfiledNotes.length === 0 && !creatingFolder && (
-              <div className="flex flex-col items-center justify-center text-center min-h-[340px] sm:min-h-[400px] rounded-[24px] border-2 border-dashed border-[#eee6d6] bg-[#fdfbf7] px-4 sm:px-8 py-10">
+              <div className="col-span-full flex flex-col items-center justify-center text-center min-h-[340px] sm:min-h-[400px] rounded-[24px] border-2 border-dashed border-[#eee6d6] bg-[#fdfbf7] px-4 sm:px-8 py-10">
                 <div className="w-20 h-20 rounded-[24px] bg-[#fff1e8] text-[#ec6300] flex items-center justify-center mb-6">
                   <PenLine className="w-9 h-9" />
                 </div>
