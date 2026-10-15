@@ -142,7 +142,7 @@ export const RichTextEditor = ({ content, onChange, fontSize = 18 }: RichTextEdi
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 custom-scrollbar">
-        <EditorContent editor={editor} className="prose prose-slate max-w-none focus:outline-none font-medium selection:bg-[#fecc73]/10 [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror]:outline-none [&_.ProseMirror]:cursor-text" style={{ fontSize: `${fontSize}px` }} />
+        <EditorContent editor={editor} className="prose prose-slate max-w-none focus:outline-none font-medium selection:bg-amber-300/10 [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror]:outline-none [&_.ProseMirror]:cursor-text" style={{ fontSize: `${fontSize}px` }} />
       </div>
 
       {/* Backdrop to close menus */}

@@ -114,7 +114,7 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
             onPointerMove={handlePointerMove}
             onPointerLeave={() => setTilt({ x: 0, y: 0 })}
             style={{ transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
-            className="relative w-full rounded-[34px] border-[7px] border-[#473c33] bg-[#473c33] p-1.5 shadow-[0_28px_65px_rgba(50,38,25,.24),0_7px_0_#ddceb0,0_13px_0_#f8f1e4] transition-transform duration-200 ease-out motion-reduce:transform-none motion-reduce:transition-none dark:border-[#514638] dark:bg-[#514638] dark:shadow-[0_28px_65px_rgba(0,0,0,.52),0_7px_0_#514638,0_13px_0_#292a23]"
+            className="relative w-full rounded-[34px] border-[7px] border-[#473c33] bg-[#473c34] p-1.5 shadow-[0_28px_65px_rgba(50,38,25,.24),0_7px_0_#ddceb0,0_13px_0_#f8f1e4] transition-transform duration-200 ease-out motion-reduce:transform-none motion-reduce:transition-none dark:border-[#514638] dark:bg-[#514638] dark:shadow-[0_28px_65px_rgba(0,0,0,.52),0_7px_0_#514638,0_13px_0_#292a23]"
           >
             <div className="relative grid overflow-hidden rounded-[27px] border border-[#d9cdb8] bg-[#fffaf0] md:min-h-[620px] md:grid-cols-[.88fr_1.12fr] dark:border-[#655b48] dark:bg-[#292a23]">
               <aside className="profile-book-page-left relative flex min-h-[285px] flex-col justify-between overflow-hidden bg-[#f1e9d9] px-6 py-6 sm:min-h-[330px] sm:px-9 sm:py-8 md:min-h-[620px] md:px-10 md:py-9 dark:bg-[#34342b] md:shadow-[inset_-18px_0_20px_-14px_rgba(71,60,51,.24)] md:dark:shadow-[inset_-18px_0_20px_-14px_rgba(0,0,0,.5)]">
@@ -155,7 +155,7 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
 
                 <div className="relative z-10 mx-auto w-full max-w-[540px]">
                   <div className="mb-5 border-b-2 border-[#e96f34]/30 pb-3 pr-8 dark:border-[#fec868]/30">
-                    <p className="text-[9px] font-black uppercase tracking-[.23em] text-[#c9773e] dark:text-[#f3a06c]">Seu caderno começa aqui</p>
+                    <p className="text-[9px] font-black uppercase tracking-[.23em] text-[#9a4f1c] dark:text-[#f3a06c]">Seu caderno começa aqui</p>
                     <h2 className="mt-1 font-logo text-2xl uppercase leading-tight tracking-tight text-[#473c33] dark:text-[#f2efd2] sm:text-[28px]">Escolha seu perfil</h2>
                   </div>
 
@@ -204,7 +204,7 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
             role="dialog"
             aria-modal="true"
             aria-labelledby="profile-name-title"
-            className="relative w-full max-w-[440px] overflow-hidden rounded-[28px] border-[5px] border-[#473c33] bg-[#473c33] p-1 shadow-[0_28px_70px_rgba(0,0,0,.42),0_6px_0_#ddceb0] dark:border-[#514638] dark:bg-[#514638] dark:shadow-[0_28px_70px_rgba(0,0,0,.58),0_6px_0_#292a23]"
+            className="relative w-full max-w-[440px] overflow-hidden rounded-[28px] border-[5px] border-[#473c33] bg-[#473c34] p-1 shadow-[0_28px_70px_rgba(0,0,0,.42),0_6px_0_#ddceb0] dark:border-[#514638] dark:bg-[#514638] dark:shadow-[0_28px_70px_rgba(0,0,0,.58),0_6px_0_#292a23]"
           >
             <div className="relative overflow-hidden rounded-[21px] border border-[#d9cdb8] bg-[#fffaf0] px-6 py-7 text-center sm:px-8 dark:border-[#655b48] dark:bg-[#292a23]">
               <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-55 dark:opacity-30" style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(201,119,62,.15) 32px)' }} />
@@ -213,7 +213,7 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
                 <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#fff1dd] text-[#e96f34] dark:bg-[#e96f34]/15 dark:text-[#fec868]">
                   <BookOpen className="h-5 w-5" />
                 </div>
-                <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#c9773e] dark:text-[#f3a06c]">Só falta uma coisa</p>
+                <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#9a4f1c] dark:text-[#f3a06c]">Só falta uma coisa</p>
                 <h2 id="profile-name-title" className="mt-1 font-logo text-2xl uppercase leading-tight text-[#473c33] dark:text-[#f2efd2]">Como podemos te chamar?</h2>
                 <p className="mt-2 text-xs font-semibold text-[#8f8375] dark:text-[#c8c5a9]">Seu nome aparece no seu espaço de estudos.</p>
                 <input

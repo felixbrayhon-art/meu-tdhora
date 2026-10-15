@@ -2284,6 +2284,13 @@ html:not(.dark) textarea::placeholder {
     opacity: 1;
 }
 
+/* Campos sobre painéis escuros (modais sempre torrados): placeholder claro, nos dois temas. */
+html input.ph-on-dark::placeholder,
+html textarea.ph-on-dark::placeholder {
+    color: var(--palette-on-dark-muted) !important;
+    opacity: .75;
+}
+
 /* Keep the focus card on the same dark-roast / buttercream contrast system
    as the rest of the dashboard in both themes. */
 .hub-focus-card {

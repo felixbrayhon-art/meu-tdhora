@@ -158,11 +158,11 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
       </div>
 
       {isCreating && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#473c33]/40 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-stone-900/40 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-[40px] shadow-2xl p-7 sm:p-10 animate-in zoom-in-95 duration-500">
             <div className="flex justify-between items-center mb-8">
               <h3 className="text-2xl font-black tracking-tighter uppercase">{isCreating === 'FOLDER' ? (selectedFolderId ? 'CRIAR SUBPASTA' : 'CRIAR NOVA PASTA') : editingNotebookId ? 'EDITAR CADERNO' : 'CRIAR NOVO CADERNO'}</h3>
-              <button onClick={() => { setIsCreating(null); setEditingNotebookId(null); }} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setIsCreating(null); setEditingNotebookId(null); }} className="text-gray-500 hover:text-gray-700" aria-label="Fechar" title="Fechar">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -282,8 +282,8 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
             {currentFolders.map((folder) => {
               const totalQuestionsInFolder = folder.notebooks.reduce((acc, n) => acc + n.questions.length, 0);
               return (
-                <div key={folder.id} onClick={() => setSelectedFolderId(folder.id)} className="bg-white rounded-[30px] p-6 border border-gray-100 hover:shadow-xl hover:shadow-[#ac4800]/5 transform hover:-translate-x-1 transition-all group cursor-pointer relative flex items-center gap-6">
-                  <div className="w-28 sm:w-32 shrink-0 px-1 py-3">
+                <div key={folder.id} onClick={() => setSelectedFolderId(folder.id)} className="bg-white rounded-[30px] p-6 border border-gray-100 hover:shadow-xl hover:shadow-[#ac4800]/5 transform hover:-translate-x-1 transition-all group cursor-pointer relative flex items-start sm:items-center gap-3 sm:gap-6 max-sm:p-4">
+                  <div className="w-20 sm:w-32 shrink-0 px-0 sm:px-1 py-2 sm:py-3">
                     <Folder3D color={folder.color || FOLDER_COLORS[0].value} />
                   </div>
 
@@ -327,7 +327,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                       </form>
                     ) : (
                       <div className="flex min-w-0 items-center gap-2">
-                        <h3 className="min-w-0 truncate text-xl font-black uppercase tracking-tighter">{folder.name}</h3>
+                        <h3 className="min-w-0 break-words line-clamp-2 text-lg sm:text-xl font-black uppercase tracking-tighter">{folder.name}</h3>
                         <button
                           type="button"
                           aria-label={`Editar nome da pasta ${folder.name}`}
@@ -347,9 +347,9 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                         </button>
                       </div>
                     )}
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-[#fecc73] bg-[#fff6e8] px-2 py-0.5 rounded-full">{folder.notebooks.length} CADERNOS</span>
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">{totalQuestionsInFolder} QUESTÕES TOTAIS</span>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                      <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-amber-900 bg-amber-100 dark:text-amber-200 dark:bg-amber-200/15 px-2 py-0.5 rounded-full">{folder.notebooks.length} CADERNOS</span>
+                      <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-gray-600">{totalQuestionsInFolder} QUESTÕES TOTAIS</span>
                     </div>
                     <div className="relative mt-3 w-fit" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -357,7 +357,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                         aria-label={`Mudar cor da pasta ${folder.name}`}
                         aria-expanded={openColorPickerId === folder.id}
                         onClick={() => setOpenColorPickerId(openColorPickerId === folder.id ? null : folder.id)}
-                        className="inline-flex items-center gap-2 rounded-full border border-gray-100 bg-[#faf8f3] px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-gray-500 transition-colors hover:border-[#e9d8b8] hover:text-[#473c33]"
+                        className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-[#faf8f3] px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-600 transition-colors hover:border-[#e9d8b8] hover:text-[#473c33]"
                       >
                         <span className="h-3 w-3 rounded-full ring-1 ring-black/10" style={{ backgroundColor: folder.color || FOLDER_COLORS[0].value }} />
                         Cor da pasta
@@ -391,7 +391,9 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                         e.stopPropagation();
                         if (window.confirm('Deseja realmente apagar esta pasta?')) onDeleteFolder(folder.id);
                       }}
-                      className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                      aria-label={`Apagar pasta ${folder.name}`}
+                      title="Apagar pasta"
+                      className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center p-2 sm:p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1.012 0 00-1-1h-4a1 1.012 0 00-1 1v3M4 7h16" />
@@ -399,7 +401,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
                     </button>
                   )}
 
-                  <div className="text-gray-300 group-hover:text-[#fecc73] transition-colors">
+                  <div className="hidden sm:block text-gray-300 group-hover:text-[#fecc73] transition-colors">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
                     </svg>

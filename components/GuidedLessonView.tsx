@@ -306,20 +306,20 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
 
             <div className="grid lg:grid-cols-[1.02fr_0.98fr]">
               <div className="bg-[#473c33] px-6 py-8 sm:px-10 sm:py-12 text-white">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fecc73] text-[#473c33] shadow-lg shadow-black/10">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-300 text-[#473c33] shadow-lg shadow-black/10">
                   <BookOpen className="h-6 w-6" />
                 </div>
-                <p className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-[#fed386]">Aprendizado guiado</p>
+                <p className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-amber-200">Aprendizado guiado</p>
                 <h1 className="mt-3 max-w-md text-3xl font-black uppercase leading-[0.98] tracking-tight sm:text-4xl">Sobre o que vamos aprender?</h1>
                 <p className="mt-5 max-w-md text-sm font-medium leading-relaxed text-[#e7ddd1]">Escolha uma matéria e um assunto. A IA organiza uma explicação contínua, com exemplos e pausas para você acompanhar no seu ritmo.</p>
                 <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#fed386]">01</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-200">01</p>
                     <p className="mt-2 text-sm font-bold text-white">Defina o tema</p>
                     <p className="mt-1 text-xs text-[#c8bbaa]">Comece pelo conteúdo que quer entender.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#fed386]">02</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-200">02</p>
                     <p className="mt-2 text-sm font-bold text-white">Acompanhe a aula</p>
                     <p className="mt-1 text-xs text-[#c8bbaa]">Avance e pause quando precisar.</p>
                   </div>
@@ -387,11 +387,11 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="min-w-0 flex-1 text-center sm:text-left">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#fed386]">AULA GUIADA</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-200">AULA GUIADA</p>
               <h1 className="mt-1 text-sm sm:text-base font-black text-white truncate" title={activeTopic}>{activeTopic}</h1>
             </div>
             <div className="hidden sm:flex items-center gap-2 shrink-0 text-[9px] font-black uppercase tracking-widest text-white/60">
-              <span className="w-2 h-2 rounded-full bg-[#fecc73] animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" />
               Preparando
             </div>
           </div>
@@ -428,7 +428,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
     : 0;
 
   return (
-    <div className="absolute inset-0 z-[200] flex flex-col h-full bg-[#473c33] text-slate-100 font-sans selection:bg-[#fecc73]/30 overflow-hidden">
+    <div className="absolute inset-0 z-[200] flex flex-col h-full bg-[#473c33] text-slate-100 font-sans selection:bg-amber-300/30 overflow-hidden">
       {/* Header Imersivo */}
       <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-white/5 bg-[#473c33]/40 px-3 py-2 backdrop-blur-2xl sm:flex-nowrap sm:px-5 sm:py-3">
         <button onClick={onBack} className="group shrink-0 rounded-xl p-2 transition-colors hover:bg-white/10 active:scale-95" aria-label="Voltar">
@@ -437,24 +437,24 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
         <div className="order-3 flex w-full min-w-0 flex-none items-center justify-center gap-3 sm:order-none sm:w-auto sm:flex-1">
           <div className="min-w-0 text-center sm:text-left">
             <div className="mb-0.5 flex items-center justify-center gap-2 sm:justify-start">
-              <span className={`h-2 w-2 rounded-full bg-[#fecc73] ${studyView === 'immersive' ? 'animate-pulse' : ''}`}></span>
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#fed386] sm:text-[10px] sm:tracking-[0.3em]">{studyView === 'immersive' ? 'IMERSÃO ATIVA' : 'PONTOS-CHAVE'}</span>
+              <span className={`h-2 w-2 rounded-full bg-amber-300 ${studyView === 'immersive' ? 'animate-pulse' : ''}`}></span>
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-200 sm:text-[10px] sm:tracking-[0.3em]">{studyView === 'immersive' ? 'IMERSÃO ATIVA' : 'PONTOS-CHAVE'}</span>
             </div>
             <h1 className="max-w-full truncate text-xs font-black uppercase tracking-tight text-white sm:text-sm">{activeSubject} • {activeTopic}</h1>
           </div>
           <div className="inline-flex shrink-0 rounded-xl border border-white/10 bg-black/10 p-0.5" role="group" aria-label="Visualização da aula">
-            <button type="button" aria-pressed={studyView === 'immersive'} onClick={() => setStudyView('immersive')} className={`rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-wider transition-colors sm:px-3 sm:text-[9px] ${studyView === 'immersive' ? 'bg-[#fecc73] text-[#473c33]' : 'text-white/70 hover:text-white'}`}>Imersão</button>
-            <button type="button" aria-pressed={studyView === 'highlights'} onClick={() => setStudyView('highlights')} className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-wider transition-colors sm:px-3 sm:text-[9px] ${studyView === 'highlights' ? 'bg-[#fecc73] text-[#473c33]' : 'text-white/70 hover:text-white'}`}><BookOpen className="h-3 w-3" /> Destaques</button>
+            <button type="button" aria-pressed={studyView === 'immersive'} onClick={() => setStudyView('immersive')} className={`rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-wider transition-colors sm:px-3 sm:text-[9px] ${studyView === 'immersive' ? 'bg-amber-300 text-stone-900' : 'text-white/70 hover:text-white'}`}>Imersão</button>
+            <button type="button" aria-pressed={studyView === 'highlights'} onClick={() => setStudyView('highlights')} className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-wider transition-colors sm:px-3 sm:text-[9px] ${studyView === 'highlights' ? 'bg-amber-300 text-stone-900' : 'text-white/70 hover:text-white'}`}><BookOpen className="h-3 w-3" /> Destaques</button>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <button onClick={toggleSaveLesson} className={`rounded-xl p-2 transition-all active:scale-90 ${isSaved ? 'bg-[#fecc73] text-white' : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/20'}`} title={isSaved ? 'Salvo no App' : 'Salvar no App (Offline)'} aria-label={isSaved ? 'Aula salva' : 'Salvar aula'}>
+          <button onClick={toggleSaveLesson} className={`rounded-xl p-2 transition-all active:scale-90 ${isSaved ? 'bg-amber-300 text-[#2b1810]' : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/20'}`} title={isSaved ? 'Salvo no App' : 'Salvar no App (Offline)'} aria-label={isSaved ? 'Aula salva' : 'Salvar aula'}>
             {isSaved ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
           </button>
           <button onClick={downloadPDF} className="rounded-xl bg-white/10 p-2 text-white/60 transition-all hover:bg-white/20 hover:text-white active:scale-90" title="Baixar em PDF" aria-label="Baixar aula em PDF">
             <Download className="h-5 w-5" />
           </button>
-          {studyView === 'immersive' && <button onClick={() => setIsPaused(!isPaused)} aria-label={isPaused ? 'Retomar aula automática' : 'Pausar aula automática'} title={isPaused ? 'Retomar aula' : 'Pausar aula'} className={`rounded-xl p-2 transition-all shadow-xl active:scale-90 ${isPaused ? 'bg-[#fdad74] text-white animate-pulse' : 'bg-white/10 text-white/60 hover:text-white'}`}>
+          {studyView === 'immersive' && <button onClick={() => setIsPaused(!isPaused)} aria-label={isPaused ? 'Retomar aula automática' : 'Pausar aula automática'} title={isPaused ? 'Retomar aula' : 'Pausar aula'} className={`rounded-xl p-2 transition-all shadow-xl active:scale-90 ${isPaused ? 'bg-orange-300 text-[#2b1810] animate-pulse' : 'bg-white/10 text-white/60 hover:text-white'}`}>
             {isPaused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
           </button>}
         </div>
@@ -463,14 +463,14 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
       {studyView === 'immersive' ? <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-20 space-y-20 scrollbar-none" style={{ scrollBehavior: 'smooth' }}>
         <AnimatePresence initial={false}>
           {displayedSteps.map((step, idx) => (
-            <motion.div key={`${step.type}-${idx}`} initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className={`max-w-2xl mx-auto relative ${step.type === 'QUESTION_PAUSE' ? 'bg-[#fecc73]/5 border-2 border-[#fecc73]/20 p-10 rounded-[40px] shadow-2xl' : step.type === 'ANALOGY' ? 'bg-[#fdad74]/5 border-2 border-[#fdad74]/20 p-10 rounded-[40px] shadow-2xl shadow-[#ac4800]/20' : ''}`}>
+            <motion.div key={`${step.type}-${idx}`} initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className={`max-w-2xl mx-auto relative ${step.type === 'QUESTION_PAUSE' ? 'bg-amber-300/5 border-2 border-amber-300/20 p-10 rounded-[40px] shadow-2xl' : step.type === 'ANALOGY' ? 'bg-orange-300/5 border-2 border-orange-300/20 p-10 rounded-[40px] shadow-2xl shadow-[#ac4800]/20' : ''}`}>
               {step.type === 'QUESTION_PAUSE' && (
-                <div className="absolute -top-4 left-10 bg-[#fec868] text-white px-4 py-1.5 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-lg">
+                <div className="absolute -top-4 left-10 bg-amber-300 text-[#2b1810] px-4 py-1.5 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-lg">
                   <Brain className="w-4 h-4" /> MOMENTO DE REFLEXÃO
                 </div>
               )}
               {step.type === 'ANALOGY' && (
-                <div className="absolute -top-4 left-10 bg-[#fda769] text-white px-4 py-1.5 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-lg">
+                <div className="absolute -top-4 left-10 bg-orange-300 text-[#2b1810] px-4 py-1.5 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-lg">
                   <RotateCcw className="w-4 h-4" /> BIZU DE MEMÓRIA
                 </div>
               )}
@@ -479,8 +479,8 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
                 className={`
  ${step.type === 'OPENING' ? 'text-4xl font-black leading-none text-white tracking-tighter' : ''}
  ${step.type === 'OVERVIEW' ? 'text-2xl font-bold text-slate-400 leading-tight' : ''}
- ${step.type === 'QUESTION_PAUSE' ? 'text-2xl font-black text-[#fff0d5] ' : ''}
- ${step.type === 'CONCEPT' ? 'text-xl leading-relaxed text-slate-200 border-l-4 border-[#fecc73]/30 pl-8' : ''}
+ ${step.type === 'QUESTION_PAUSE' ? 'text-2xl font-black text-amber-50 ' : ''}
+ ${step.type === 'CONCEPT' ? 'text-xl leading-relaxed text-slate-200 border-l-4 border-amber-300/30 pl-8' : ''}
  ${step.type === 'REINFORCEMENT' ? 'text-2xl font-black text-[#bcce8d] uppercase ' : ''}
  ${!['OPENING', 'OVERVIEW', 'QUESTION_PAUSE', 'CONCEPT', 'REINFORCEMENT'].includes(step.type) ? 'text-xl leading-relaxed text-slate-300' : ''}
  `}
@@ -501,9 +501,9 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
               transition={{ repeat: Infinity, duration: 2 }}
               className="flex gap-2"
             >
-              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50 dark:shadow-black/30" />
-              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50 dark:shadow-black/30" />
-              <div className="w-3 h-3 bg-[#fecc73] rounded-full shadow-lg shadow-[#fecc73]/50 dark:shadow-black/30" />
+              <div className="w-3 h-3 bg-amber-300 rounded-full shadow-lg shadow-amber-300/50 dark:shadow-black/30" />
+              <div className="w-3 h-3 bg-amber-300 rounded-full shadow-lg shadow-amber-300/50 dark:shadow-black/30" />
+              <div className="w-3 h-3 bg-amber-300 rounded-full shadow-lg shadow-amber-300/50 dark:shadow-black/30" />
             </motion.div>
           </div>
         )}
@@ -519,7 +519,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
             </div>
             <button
               onClick={() => onComplete(5)} // Give a small reward for completion
-              className="w-full bg-[#fec868] hover:bg-[#fecc73] text-white py-6 rounded-3xl font-black uppercase tracking-[0.2em] shadow-2xl flex items-center justify-center gap-4 transition-all hover:scale-105 active:scale-95 group"
+              className="w-full bg-amber-300 hover:bg-amber-300 text-[#2b1810] py-6 rounded-3xl font-black uppercase tracking-[0.2em] shadow-2xl flex items-center justify-center gap-4 transition-all hover:scale-105 active:scale-95 group"
             >
               CONCLUIR AULA <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
             </button>
@@ -578,11 +578,11 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
         <div className="mx-auto max-w-2xl space-y-2">
           <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
             <span>{studyView === 'immersive' ? 'PROGRESSO DA AULA' : 'LEITURA DOS PONTOS-CHAVE'}</span>
-            <span className="text-[#fecc73]">{Math.round(lessonProgress)}%</span>
+            <span className="text-amber-300">{Math.round(lessonProgress)}%</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full border border-white/5 bg-white/5 p-px">
             <motion.div
-              className="h-full bg-gradient-to-r from-[#fec868] to-[#fec868] rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]"
+              className="h-full bg-gradient-to-r from-amber-300 to-amber-300 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]"
               initial={{ width: 0 }}
               animate={{
                 width: `${lessonProgress}%`,
