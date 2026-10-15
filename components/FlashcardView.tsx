@@ -28,6 +28,9 @@ interface FlashcardViewProps {
 
 type ManagedView = 'FOLDERS' | 'FOLDER_DETAIL' | 'REVIEW';
 
+// Card fields come from a rich editor as HTML; lists and checks need the plain text.
+const plainText = (html: string): string => (html || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
 const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards, folders, setFolders, onBack, studyProfile, strategicMode, editalConfig, onReviewBatchComplete, selectedFolderId, setSelectedFolderId, viewMode, setViewMode }) => {
   const shouldReduceMotion = useReducedMotion();
   const [showAddCardModal, setShowAddCardModal] = useState(false);
@@ -99,11 +102,23 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
     setNewFolder({ name: '', color: '#f97316' });
   };
 
+  const [cardError, setCardError] = useState('');
+  // The message sits above the sticky footer, possibly below the visible part of the form: bring it into view.
+  useEffect(() => { if (cardError) document.getElementById('card-error')?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, [cardError]);
+  const cardHasDraft = () => Boolean(plainText(newCard.question) || plainText(newCard.answer) || plainText(newCard.explanation));
+  const closeCardModal = () => {
+    if (cardHasDraft() && !window.confirm('Descartar o que você escreveu neste card?')) return;
+    setCardError('');
+    setShowAddCardModal(false);
+  };
+
   const handleCreateCard = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCard.question) return;
-    if (newCard.type === 'SIMPLE' && !newCard.answer) return;
-    if (newCard.type === 'MULTIPLE_CHOICE' && (!newCard.options || newCard.options.some((o) => !o))) return;
+    // The rich editor reports an empty field as "<p></p>", so check the visible text, and say what is missing.
+    if (!plainText(newCard.question)) { setCardError('Escreva a pergunta do card antes de salvar.'); return; }
+    if (newCard.type === 'SIMPLE' && !plainText(newCard.answer)) { setCardError('Escreva a resposta do card antes de salvar.'); return; }
+    if (newCard.type === 'MULTIPLE_CHOICE' && (!newCard.options || newCard.options.some((o) => !o))) { setCardError('Preencha as cinco alternativas.'); return; }
+    setCardError('');
 
     const card: Flashcard = {
       id: Math.random().toString(36).substr(2, 9),
@@ -359,7 +374,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                   </div>
                 </div>
                 <div className="flex gap-4">
-                  <button onClick={() => setShowAddCardModal(true)} className="p-4 bg-white/5 border border-white/10 text-white rounded-2xl hover:bg-white hover:text-[#473c33] transition-all active:scale-90" title="Novo Card Manual">
+                  <button onClick={() => { setCardError(""); setShowAddCardModal(true); }} aria-label="Novo card manual" className="p-4 bg-white/5 border border-white/10 text-white rounded-2xl hover:bg-white hover:text-[#473c33] transition-all active:scale-90" title="Novo Card Manual">
                     <Plus className="w-6 h-6" />
                   </button>
                 </div>
@@ -408,7 +423,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                         folderCards.map((card) => (
                           <div key={card.id} className="bg-white/5 backdrop-blur-lg p-8 rounded-[35px] border border-white/5 flex items-center justify-between group hover:border-white/20 transition-all">
                             <div className="flex-1 min-w-0 pr-6">
-                              <p className="text-white font-bold text-lg truncate ">{card.question}</p>
+                              <p className="text-white font-bold text-lg truncate ">{plainText(card.question)}</p>
                               <div className="flex items-center gap-4 mt-2">
                                 <span className="text-gray-500 text-[9px] font-black uppercase tracking-widest">PRÓXIMA REVISÃO:</span>
                                 <span className="text-[#fdad74]/60 font-black text-[9px] uppercase tracking-widest">{card.nextReview ? new Date(card.nextReview).toLocaleDateString() : 'IMEDIATA'}</span>
@@ -723,8 +738,9 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                     </div>
                   </div>
                 )}
+                {cardError && <p id="card-error" role="alert" className="rounded-2xl border border-[#e58a76]/40 bg-[#a94432]/20 px-5 py-3 text-sm font-bold text-[#f2b3a6]">{cardError}</p>}
                 <div className="flex gap-4 pt-4 sticky bottom-0 bg-[#473c33] py-4 border-t border-white/5">
-                  <button type="button" onClick={() => setShowAddCardModal(false)} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-gray-500 hover:text-white transition-colors">
+                  <button type="button" onClick={closeCardModal} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-gray-500 hover:text-white transition-colors">
                     Abortar
                   </button>
                   <button type="submit" className="flex-[2] bg-[#fdad74] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl active:scale-95">
