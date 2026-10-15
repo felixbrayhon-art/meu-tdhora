@@ -100,7 +100,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
 
   if (loading) {
     return (
-      <div className="relative isolate w-full min-h-[calc(100dvh-8rem)] rounded-[32px] bg-[#473c33] text-white selection:bg-[#fecc73]/30 p-3 sm:p-6">
+      <div className="relative isolate w-full min-h-[calc(100dvh-8rem)] rounded-[32px] bg-[#473c33] text-white selection:bg-amber-300/30 p-3 sm:p-6">
         <div className="relative h-full min-h-[calc(100dvh-11rem)] w-full overflow-hidden rounded-[28px] border border-white/10 shadow-2xl flex flex-col items-center justify-center gap-6 animate-in fade-in duration-500">
           <BookLoader className="scale-[2.4] sm:scale-[3]" />
           <div className="text-center px-6 mt-4">
@@ -128,7 +128,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
   }
 
   return (
-    <div className={`relative isolate w-full min-h-full min-w-0 rounded-[32px] selection:bg-[#fecc73]/30 font-sans ${result ? 'bg-[#473c33] text-white' : 'bg-[#f7f3ed] text-[#473c33]'}`}>
+    <div className={`relative isolate w-full min-h-full min-w-0 rounded-[32px] selection:bg-amber-300/30 font-sans ${result ? 'bg-[#473c33] text-white' : 'bg-[#f7f3ed] text-[#473c33]'}`}>
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 xl:px-10 pt-6 sm:pt-10 pb-32 animate-in fade-in slide-in-from-bottom-10 duration-700">
         {!result ? (
           <div className="w-full max-w-6xl mx-auto py-2 md:py-4">

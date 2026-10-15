@@ -772,15 +772,15 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                         handleSelect(idx);
                       }
                     }}
-                    className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full min-w-0 flex-1 text-left p-4 sm:p-5 rounded-2xl flex items-center gap-4 sm:gap-5'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#e96f34]/30 ${btnClass} relative overflow-hidden`}
+                    className={`${isQuickMode ? 'w-14 h-14 rounded-2xl flex items-center justify-center' : 'w-full min-w-0 flex-1 text-left p-3 sm:p-5 rounded-2xl flex items-center gap-3 sm:gap-5'} font-bold transition-all duration-300 select-none cursor-pointer group active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#e96f34]/30 ${btnClass} relative overflow-hidden`}
                     aria-label={`Alternativa ${String.fromCharCode(65 + idx)}${opt ? `: ${opt}` : ''}`}
                     aria-pressed={isUserSelection}
                     aria-disabled={isConfirmed}
                     tabIndex={isConfirmed ? -1 : 0}
                   >
-                    <div className={`flex items-center flex-1 ${isQuickMode ? 'justify-center' : 'gap-4 sm:gap-5'}`}>
-                      <span className={`${isQuickMode ? 'w-10 h-10 rounded-xl' : 'w-12 h-12 rounded-full'} border flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-all ${circleClass}`}>{String.fromCharCode(65 + idx)}</span>
-                      {!isQuickMode && <span className="text-[16px] font-semibold leading-snug">{opt}</span>}
+                    <div className={`flex items-center flex-1 min-w-0 ${isQuickMode ? 'justify-center' : 'gap-3 sm:gap-5'}`}>
+                      <span className={`${isQuickMode ? 'w-10 h-10 rounded-xl' : 'w-9 h-9 sm:w-12 sm:h-12 aspect-square rounded-full'} border flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-all ${circleClass}`}>{String.fromCharCode(65 + idx)}</span>
+                      {!isQuickMode && <span className="min-w-0 break-words text-[16px] font-semibold leading-snug">{opt}</span>}
                     </div>
 
                     {!isQuickMode && isConfirmed && isCorrectAnswer && (
@@ -793,18 +793,18 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                         <span className="text-sm">✗</span>
                       </div>
                     )}
-                    {!isQuickMode && !isConfirmed && <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isUserSelection ? 'border-[#a8431a] bg-[#a8431a]' : 'border-[#e8dcc8] dark:border-white/20'}`}>{isUserSelection && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}</div>}
+                    {!isQuickMode && !isConfirmed && <div className={`hidden sm:flex w-6 h-6 rounded-full border-2 items-center justify-center transition-all ${isUserSelection ? 'border-[#a8431a] bg-[#a8431a]' : 'border-[#e8dcc8] dark:border-white/20'}`}>{isUserSelection && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}</div>}
                   </button>
                   {!isQuickMode && !isConfirmed && (
                     <button
                       type="button"
                       onClick={() => toggleCrossedOut(idx)}
-                      className={`shrink-0 w-11 rounded-2xl border flex items-center justify-center transition-all active:scale-95 ${isCrossedOut ? 'border-[#a8431a] bg-[#a8431a] text-white' : `${QP_RULE} ${QP_CARD} ${QP_MUTED} hover:border-[#e96f34]`}`}
+                      className={`shrink-0 w-10 sm:w-11 rounded-2xl border flex items-center justify-center transition-all active:scale-95 ${isCrossedOut ? 'border-[#a8431a] bg-[#a8431a] text-white' : `${QP_RULE} ${QP_CARD} ${QP_MUTED} hover:border-[#e96f34]`}`}
                       aria-label={`${isCrossedOut ? 'Desfazer risco da' : 'Riscar'} alternativa ${String.fromCharCode(65 + idx)}`}
                       aria-pressed={isCrossedOut}
                       title={isCrossedOut ? 'Desfazer risco' : 'Riscar alternativa'}
                     >
-                      <span className="text-sm font-black line-through decoration-2">abc</span>
+                      <span className="text-xs sm:text-sm font-black line-through decoration-2">abc</span>
                     </button>
                   )}
                 </div>
@@ -906,7 +906,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                 <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl ${selectedAnswer === currentQ.correctAnswer ? 'bg-[#4c6324]' : 'bg-[#9a3b26]'}`}>{selectedAnswer === currentQ.correctAnswer ? '✓' : '✗'}</div>
                   <div>
-                    <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedAnswer === currentQ.correctAnswer ? 'text-[#596b2a] dark:text-[#c4d99a]' : 'text-[#984b39] dark:text-[#f1a58b]'}`}>{selectedAnswer === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}</p>
+                    <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedAnswer === currentQ.correctAnswer ? 'text-[#596b2a] dark:text-[#c4d99a]' : 'text-[#984b39] dark:text-[#f1a58b]'}`}>{selectedAnswer === currentQ.correctAnswer ? 'RESPOSTA CORRETA' : 'RESPOSTA INCORRETA'}</p>
                     <p className={`text-[17px] font-bold ${selectedAnswer === currentQ.correctAnswer ? 'text-[#46523a] dark:text-[#f2efd2]' : 'text-[#713a2e] dark:text-[#f1c5b4]'}`}>{selectedAnswer === currentQ.correctAnswer ? 'Resposta correta! Você consolidou este conhecimento.' : `A resposta correta é a alternativa ${String.fromCharCode(65 + currentQ.correctAnswer)}.`}</p>
                   </div>
                 </div>

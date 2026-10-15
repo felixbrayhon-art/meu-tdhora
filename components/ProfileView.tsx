@@ -18,6 +18,7 @@ interface ProfileViewProps {
   onLogout?: () => void;
   onLogin?: () => void;
   isLoggedIn?: boolean;
+  onNotify?: (message: string) => void;
 }
 
 const AVATAR_OPTIONS = [
@@ -50,7 +51,7 @@ const HERO_TINT_OPTIONS: { color: string | null; name: string }[] = [
   { color: '#10B981', name: 'Verde' },
 ];
 
-const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled, onLogout, onLogin, isLoggedIn }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled, onLogout, onLogin, isLoggedIn, onNotify }) => {
   const [name, setName] = useState(stats.name);
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [characterId, setCharacterId] = useState<string | undefined>(stats.characterId);
@@ -93,6 +94,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
       heroScenario,
       heroTintColor,
     });
+    const sizeLabel = fontSizeMultiplier === 1 ? 'Normal' : fontSizeMultiplier === 1.25 ? 'Grande' : 'Gigante';
+    onNotify?.(fontSizeMultiplier !== (stats.fontSizeMultiplier || 1) ? `Alterações salvas. Tamanho da fonte: ${sizeLabel}.` : 'Alterações salvas.');
     onBack();
   };
 
@@ -127,7 +130,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
               </button>
 
               <div className="flex-1 text-center md:text-left">
-                <h2 className="font-logo text-3xl uppercase">{name || 'Nadador'}</h2>
+                <h2 className="font-logo text-3xl uppercase">{name || 'Estudante'}</h2>
                 <div className="mt-1 flex flex-wrap items-center justify-center gap-2 md:justify-start">
                   <span className="text-xs font-black uppercase text-[#fedda1]">{currentRank.label}</span>
                   {myId && <span className="rounded-full bg-white/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-gray-300">ID: {myId}</span>}
@@ -161,7 +164,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
           {/* Formulário de edição */}
           <div className="space-y-10 p-8 md:p-12">
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Nome do Nadador</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Seu nome</label>
               <input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-50 border-2 border-transparent rounded-3xl px-6 py-4 text-xl font-bold focus:outline-none focus:border-[#fed386] transition-all shadow-sm" placeholder="Digite seu apelido..." />
             </div>
 
@@ -181,7 +184,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
             </div>
 
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Cor do Peixe</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Cor do personagem</label>
               <div className="grid grid-cols-5 gap-4">
                 {AVATAR_OPTIONS.map((opt) => (
                   <button key={opt.color} onClick={() => setSelectedColor(opt.color)} aria-label={`Cor do avatar ${opt.color}`} aria-pressed={selectedColor === opt.color} className={`aspect-square rounded-2xl flex items-center justify-center transition-all ${selectedColor === opt.color ? 'ring-4 ring-[#fed386] ring-offset-4 scale-110' : 'opacity-60 grayscale hover:opacity-100 hover:grayscale-0'}`} style={{ backgroundColor: opt.color }}>
@@ -254,12 +257,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
               </div>
             </div>
 
-            <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Provedor de IA</label>
+            <details className="group/ia rounded-3xl border border-gray-200 p-4">
+              <summary className="cursor-pointer text-xs font-black uppercase tracking-widest text-gray-600">Avançado: qual serviço de IA usar (opcional)</summary>
+              <p className="mt-3 text-xs font-medium text-gray-600">Se você não sabe o que escolher, deixe em Automático: o app usa o serviço que estiver funcionando.</p>
+              <label className="text-[10px] font-black text-gray-600 uppercase tracking-widest mt-4 mb-4 block">Serviço de IA</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button type="button" aria-pressed={aiProvider === 'auto'} onClick={() => setAiProvider('auto')} className={`rounded-2xl border-2 p-4 text-left transition-all ${aiProvider === 'auto' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
                   <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">Automático</span>
-                  <span className="mt-1 block text-[10px] font-medium text-gray-500">Groq → FreeLLMAPI → OpenRouter → Gemini</span>
+                  <span className="mt-1 block text-[10px] font-medium text-gray-500">Escolhe sozinho o serviço que estiver funcionando</span>
                 </button>
                 <button type="button" aria-pressed={aiProvider === 'groq'} onClick={() => setAiProvider('groq')} className={`rounded-2xl border-2 p-4 text-left transition-all ${aiProvider === 'groq' ? 'border-[#e96f34] bg-[#fff6e8] shadow-md' : 'border-gray-100 bg-gray-50 hover:border-[#fed386]'}`}>
                   <span className="block text-xs font-black uppercase tracking-wide text-[#473c33]">Groq</span>
@@ -278,8 +283,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
                   <span className="mt-1 block text-[10px] font-medium text-gray-500">{!freeLLMAPIAvailable ? 'Aguardando configuração no servidor' : !isLoggedIn && localFreeLLMPreview ? 'Disponível nesta prévia local' : !isLoggedIn ? 'Entre com Google para usar' : 'Roteamento multi provedores'}</span>
                 </button>
               </div>
-              <p className="mt-3 text-[10px] font-medium text-gray-400">O provedor escolhido é tentado primeiro. Se estiver indisponível, o app tenta os outros na ordem Groq → FreeLLMAPI → OpenRouter → Gemini.</p>
-            </div>
+              <p className="mt-3 text-[11px] font-medium text-gray-600">O serviço escolhido é tentado primeiro. Se estiver indisponível, o app tenta os outros na ordem Groq → FreeLLMAPI → OpenRouter → Gemini.</p>
+            </details>
 
             <div>
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Mentoria por IA</label>

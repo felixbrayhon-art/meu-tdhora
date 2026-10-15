@@ -32,7 +32,7 @@ const SaveToFolderModal: React.FC<SaveToFolderModalProps> = ({ folders, suggeste
         <div className="p-10">
           <div className="flex justify-between items-center mb-10">
             <h3 className="text-2xl font-black tracking-tighter text-white">SALVAR EM CADERNO</h3>
-            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-gray-500 hover:text-white transition-colors">
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-[#e4d4bd] hover:text-white transition-colors" aria-label="Fechar" title="Fechar">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -41,7 +41,7 @@ const SaveToFolderModal: React.FC<SaveToFolderModalProps> = ({ folders, suggeste
 
           <div className="space-y-8">
             <div className="space-y-4">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] block ml-2">Destino do Material</label>
+              <label className="text-[11px] font-black text-[#e4d4bd] uppercase tracking-[0.3em] block ml-2">Destino do material</label>
               <div className="space-y-3 max-h-56 overflow-y-auto pr-2 custom-scrollbar">
                 {folders.map((f) => {
                   const getFullPath = (folder: QuizFolder): string => {
@@ -51,8 +51,8 @@ const SaveToFolderModal: React.FC<SaveToFolderModalProps> = ({ folders, suggeste
                   const fullPath = getFullPath(f);
 
                   return (
-                    <button key={f.id} onClick={() => setSelectedFolderId(f.id)} className={`w-full p-6 rounded-[30px] border-2 text-left transition-all flex items-center gap-4 group ${selectedFolderId === f.id ? 'border-[#fdad74] bg-[#fdad74]/10 shadow-lg shadow-[#fdad74]/10 dark:shadow-black/30' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedFolderId === f.id ? 'bg-[#fdad74] border-[#fdad74]' : 'border-white/10 group-hover:border-white/30'}`}>
+                    <button key={f.id} onClick={() => setSelectedFolderId(f.id)} className={`w-full p-6 rounded-[30px] border-2 text-left transition-all flex items-center gap-4 group ${selectedFolderId === f.id ? 'border-orange-300 bg-orange-300/15 shadow-lg dark:shadow-black/30' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedFolderId === f.id ? 'bg-orange-300 border-orange-300' : 'border-white/30 group-hover:border-white/50'}`}>
                         {selectedFolderId === f.id && (
                           <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" />
@@ -60,49 +60,54 @@ const SaveToFolderModal: React.FC<SaveToFolderModalProps> = ({ folders, suggeste
                         )}
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <span className={`font-black text-xs uppercase tracking-tight transition-colors block truncate ${selectedFolderId === f.id ? 'text-white' : 'text-slate-400'}`}>{fullPath}</span>
-                        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{f.notebooks.length} cadernos</p>
+                        <span className={`font-black text-xs uppercase tracking-tight transition-colors block truncate ${selectedFolderId === f.id ? 'text-white' : 'text-[#e4d4bd]'}`}>{fullPath}</span>
+                        <p className="text-[10px] font-bold text-[#d8c9b3] uppercase tracking-widest">{f.notebooks.length} cadernos</p>
                       </div>
                     </button>
                   );
                 })}
 
-                <button onClick={() => setSelectedFolderId('NEW')} className={`w-full p-6 rounded-[30px] border-2 border-dashed text-left transition-all flex items-center gap-4 group ${selectedFolderId === 'NEW' ? 'border-[#fecc73] bg-[#fecc73]/10' : 'border-white/5 bg-white/5 hover:border-white/20'}`}>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedFolderId === 'NEW' ? 'bg-[#fecc73] border-[#fecc73]' : 'border-white/10 group-hover:border-white/30'}`}>
+                <button onClick={() => setSelectedFolderId('NEW')} className={`w-full p-6 rounded-[30px] border-2 border-dashed text-left transition-all flex items-center gap-4 group ${selectedFolderId === 'NEW' ? 'border-amber-200 bg-amber-200/15' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedFolderId === 'NEW' ? 'bg-amber-200 border-amber-200' : 'border-white/30 group-hover:border-white/50'}`}>
                     {selectedFolderId === 'NEW' && (
                       <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M12 4v16m8-8H4" />
                       </svg>
                     )}
                   </div>
-                  <span className={`font-black text-sm uppercase tracking-tight ${selectedFolderId === 'NEW' ? 'text-white' : 'text-slate-500'}`}>+ CRIAR NOVA PASTA</span>
+                  <span className={`font-black text-sm uppercase tracking-tight ${selectedFolderId === 'NEW' ? 'text-white' : 'text-[#e4d4bd]'}`}>+ CRIAR NOVA PASTA</span>
                 </button>
               </div>
             </div>
 
             {selectedFolderId === 'NEW' && (
               <div className="animate-in slide-in-from-top-4 duration-300 space-y-4">
-                <label className="text-[10px] font-black text-[#fecc73] uppercase tracking-[0.3em] block mb-3 ml-2">Nome da Nova Pasta</label>
-                <input autoFocus value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="EX: DIREITO CONSTITUCIONAL" className="w-full bg-white/5 border-2 border-[#fecc73]/30 rounded-[25px] px-8 py-5 text-lg font-black text-white focus:outline-none focus:border-[#fecc73] transition-all placeholder:text-white/10 uppercase " />
+                <label className="text-[11px] font-black text-amber-200 uppercase tracking-[0.3em] block mb-3 ml-2">Nome da nova pasta</label>
+                <input autoFocus value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="EX: DIREITO CONSTITUCIONAL" className="w-full bg-white/5 border-2 border-amber-200/40 rounded-[25px] px-8 py-5 text-lg font-black text-white focus:outline-none focus:border-amber-200 transition-all ph-on-dark uppercase " />
                 <CustomColorField dark label="Cor da pasta" color={folderColor} onChange={setFolderColor} />
               </div>
             )}
 
             <div className="space-y-4">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] block mb-3 ml-2">Título do Caderno</label>
+              <label className="text-[11px] font-black text-[#e4d4bd] uppercase tracking-[0.3em] block mb-3 ml-2">Título do caderno</label>
               <div className="flex items-center gap-4">
                 <div className="w-16 shrink-0"><StudyBook3D title={notebookName || 'Novo caderno'} color={notebookColor} /></div>
-                <input value={notebookName} onChange={(e) => setNotebookName(e.target.value)} placeholder="Ex: Resumo de Atos Administrativos" className="w-full min-w-0 bg-white/5 border-2 border-white/10 rounded-[25px] px-6 py-5 text-lg font-black text-white focus:outline-none focus:border-[#fdad74] transition-all placeholder:text-white/10 " />
+                <input value={notebookName} onChange={(e) => setNotebookName(e.target.value)} placeholder="Ex: Resumo de Atos Administrativos" className="w-full min-w-0 bg-white/5 border-2 border-white/10 rounded-[25px] px-6 py-5 text-lg font-black text-white focus:outline-none focus:border-orange-300 transition-all ph-on-dark " />
               </div>
               <CustomColorField dark label="Cor da capa" color={notebookColor} onChange={setNotebookColor} />
             </div>
           </div>
 
-          <div className="mt-12 grid grid-cols-2 gap-4">
-            <button onClick={onClose} className="py-6 text-gray-500 font-black text-[10px] uppercase tracking-[0.4em] hover:text-white transition-all active:scale-95">
+          {(!notebookName.trim() || (selectedFolderId === 'NEW' && !newFolderName.trim())) && (
+            <p role="status" className="mt-8 text-center text-xs font-bold text-[#e4d4bd]">
+              {selectedFolderId === 'NEW' && !newFolderName.trim() ? 'Dê um nome à nova pasta para continuar.' : 'Dê um título ao caderno para continuar.'}
+            </p>
+          )}
+          <div className="mt-6 grid grid-cols-2 gap-4">
+            <button onClick={onClose} className="py-6 text-[#e4d4bd] font-black text-[11px] uppercase tracking-[0.3em] hover:text-white transition-all active:scale-95">
               CANCELAR
             </button>
-            <button onClick={handleConfirm} disabled={!notebookName.trim() || (selectedFolderId === 'NEW' && !newFolderName.trim())} className="bg-[#fdad74] text-white py-6 rounded-[30px] font-black text-[10px] uppercase tracking-[0.4em] shadow-2xl shadow-[#ac4800]/40 hover:bg-[#fdb887] active:scale-95 transition-all disabled:opacity-20 disabled:grayscale">
+            <button onClick={handleConfirm} disabled={!notebookName.trim() || (selectedFolderId === 'NEW' && !newFolderName.trim())} className="bg-orange-300 text-[#2b1810] py-6 rounded-[30px] font-black text-[11px] uppercase tracking-[0.3em] shadow-2xl hover:bg-orange-200 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
               SALVAR AGORA
             </button>
           </div>

@@ -108,6 +108,13 @@ const NoteEditor: React.FC<{
   const [showPenMenu, setShowPenMenu] = useState(false);
   const [mainMenuOpen, setMainMenuOpen] = useState(false);
   const initialPenPreset = PEN_PRESETS.find(preset => preset.id === (note.penPreset ?? 'ballpoint')) ?? PEN_PRESETS[0];
+  // Tema escuro: o traço preto padrão sumia sobre o papel marrom; o Excalidraw inverte as cores no tema escuro.
+  const [isDarkTheme, setIsDarkTheme] = useState(() => document.documentElement.classList.contains('dark'));
+  useEffect(() => {
+    const obs = new MutationObserver(() => setIsDarkTheme(document.documentElement.classList.contains('dark')));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
   const [strokeColor, setStrokeColor] = useState(() => typeof note.excalidrawAppState?.currentItemStrokeColor === 'string' ? note.excalidrawAppState.currentItemStrokeColor : '#473c33');
   const [strokeWidth, setStrokeWidth] = useState(() => typeof note.excalidrawAppState?.currentItemStrokeWidth === 'number' ? note.excalidrawAppState.currentItemStrokeWidth : initialPenPreset.width);
   const [strokeOpacity, setStrokeOpacity] = useState(() => typeof note.excalidrawAppState?.currentItemOpacity === 'number' ? note.excalidrawAppState.currentItemOpacity : initialPenPreset.opacity);
@@ -337,7 +344,46 @@ const NoteEditor: React.FC<{
     el.style.backgroundPosition = `${appState.scrollX * zoom}px ${appState.scrollY * zoom}px`;
   };
 
+  // Rascunho: se o editor for fechado por outro caminho (ex.: botão Voltar do
+  // navegador), salva automaticamente o que existir em vez de perder o trabalho.
+  const savedRef = useRef(false);
+  const draftRef = useRef({ title, coverColor, folderId, paperStyle, penPreset });
+  draftRef.current = { title, coverColor, folderId, paperStyle, penPreset };
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  useEffect(() => () => {
+    if (savedRef.current) return;
+    let elements: readonly unknown[] = note.excalidrawElements ?? [];
+    let appState = note.excalidrawAppState;
+    let files = note.excalidrawFiles;
+    try {
+      const api = excalidrawAPIRef.current;
+      if (api) {
+        elements = api.getSceneElements();
+        const st = api.getAppState();
+        appState = { viewBackgroundColor: st.viewBackgroundColor, scrollX: st.scrollX, scrollY: st.scrollY, zoom: st.zoom };
+        files = api.getFiles();
+      }
+    } catch { /* editor já desmontado: usa o último estado conhecido */ }
+    const d = draftRef.current;
+    if (!d.title.trim() && elements.length === 0) return;
+    onSaveRef.current({
+      ...note,
+      title: d.title.trim() || 'Sem título',
+      color: d.coverColor,
+      folderId: d.folderId || undefined,
+      paperStyle: d.paperStyle,
+      penPreset: d.penPreset,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      excalidrawElements: elements as any,
+      excalidrawAppState: appState,
+      excalidrawFiles: files,
+      updatedAt: Date.now(),
+    });
+  }, []);
+
   const handleSaveAndClose = async () => {
+    savedRef.current = true;
     const api = excalidrawAPIRef.current;
     let elements = note.excalidrawElements ?? [];
     let appState = note.excalidrawAppState;
@@ -423,8 +469,9 @@ const NoteEditor: React.FC<{
   return (
     <div className="fixed inset-0 z-[1100] bg-white flex flex-col">
       <div className="relative bg-white px-3 sm:px-4 lg:px-6 py-3 shadow-sm border-b border-gray-100 flex-shrink-0 flex flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-3">
-        <button aria-label="Salvar e fechar anotação" onClick={handleSaveAndClose} className="order-1 inline-flex h-11 w-11 items-center justify-center rounded-xl hover:bg-gray-100 transition-colors flex-shrink-0 touch-manipulation">
-          <X className="w-6 h-6 text-gray-500" />
+        <button aria-label="Salvar e fechar anotação" title="Salvar e fechar" onClick={handleSaveAndClose} className="order-1 inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-2.5 hover:bg-gray-100 transition-colors flex-shrink-0 touch-manipulation">
+          <X className="w-6 h-6 text-gray-600" />
+          <span className="hidden text-xs font-black uppercase tracking-wide text-gray-600 sm:inline">Salvar e fechar</span>
         </button>
         <input
           value={title}
@@ -621,6 +668,7 @@ const NoteEditor: React.FC<{
         <div ref={excalidrawWrapperRef} data-constant-pressure={PEN_PRESETS.find(p => p.id === penPreset)?.constantPressure ? 'true' : 'false'} className="notes-excalidraw-surface absolute inset-0">
           <Excalidraw
             langCode="pt-BR"
+            theme={isDarkTheme ? 'dark' : 'light'}
             excalidrawAPI={api => {
               excalidrawAPIRef.current = api;
               api.updateScene({ appState: { currentItemStrokeColor: strokeColor, currentItemStrokeWidth: strokeWidth, currentItemOpacity: strokeOpacity } });
@@ -693,9 +741,12 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
     setEditingNote(note);
   };
 
+  const folderSubmitRef = useRef(false);
+  useEffect(() => { if (!creatingFolder) folderSubmitRef.current = false; }, [creatingFolder]);
   const confirmCreateFolder = () => {
-    if (!newFolderName.trim()) return;
-    onCreateFolder(newFolderName.trim(), newFolderColor);
+    if (!newFolderName.trim() || folderSubmitRef.current) return;
+    folderSubmitRef.current = true;
+    onCreateFolder(newFolderName.trim().slice(0, 60), newFolderColor);
     setNewFolderName('');
     setCreatingFolder(false);
   };
@@ -823,6 +874,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
               autoFocus
               required
               value={newFolderName}
+              maxLength={60}
               onChange={e => setNewFolderName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName(''); } }}
               placeholder="Nome da pasta"

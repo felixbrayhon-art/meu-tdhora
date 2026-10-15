@@ -13,6 +13,7 @@ interface TimerViewProps {
 
 const TimerView: React.FC<TimerViewProps> = ({ isActive, setIsActive, seconds, setSeconds, mode, onBack, onComplete }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [editError, setEditError] = useState('');
   const [tempMinutes, setTempMinutes] = useState(Math.floor(seconds / 60).toString());
 
   const formatTime = (s: number) => {
@@ -22,10 +23,15 @@ const TimerView: React.FC<TimerViewProps> = ({ isActive, setIsActive, seconds, s
   };
 
   const handleEditConfirm = () => {
-    const val = parseInt(tempMinutes);
-    if (!isNaN(val) && val > 0 && val <= 240) {
-      setSeconds(val * 60);
+    const raw = tempMinutes.trim();
+    const val = Number(raw);
+    if (raw === '' || !Number.isInteger(val) || val < 1 || val > 180) {
+      setEditError('Digite um número inteiro de minutos entre 1 e 180.');
+      return;
     }
+    setSeconds(val * 60);
+    try { localStorage.setItem(`tdh_timer_minutes_${mode}`, String(val)); } catch { /* sem armazenamento */ }
+    setEditError('');
     setIsEditing(false);
   };
 
@@ -59,10 +65,10 @@ const TimerView: React.FC<TimerViewProps> = ({ isActive, setIsActive, seconds, s
           {isEditing ? (
             <div className="flex flex-col items-center">
               <div className="flex items-center gap-4">
-                <input autoFocus type="number" value={tempMinutes} onChange={(e) => setTempMinutes(e.target.value)} onBlur={handleEditConfirm} onKeyPress={(e) => e.key === 'Enter' && handleEditConfirm()} className="text-[100px] md:text-[140px] font-black text-center bg-gray-50 rounded-[40px] w-48 md:w-80 outline-none border-4 border-[#ffe6b9] tabular-nums" />
+                <input autoFocus type="number" value={tempMinutes} onChange={(e) => { setTempMinutes(e.target.value); setEditError(''); }} onBlur={() => { if (tempMinutes.trim() !== '' && !editError) handleEditConfirm(); }} onKeyDown={(e) => { if (e.key === 'Enter') handleEditConfirm(); if (e.key === 'Escape') { setEditError(''); setIsEditing(false); } }} aria-invalid={!!editError} aria-label="Duração em minutos" min={1} max={180} className="text-[100px] md:text-[140px] font-black text-center bg-gray-50 rounded-[40px] w-48 md:w-80 outline-none border-4 border-[#ffe6b9] tabular-nums" />
                 <span className="text-2xl font-black text-gray-300">MIN</span>
               </div>
-              <p className="mt-4 text-[10px] font-black text-[#fecc73] uppercase tracking-widest">ENTER PARA CONFIRMAR</p>
+              {editError ? <p role="alert" className="mt-4 text-xs font-bold text-red-600">{editError}</p> : <p className="mt-4 text-[10px] font-black text-[#fecc73] uppercase tracking-widest">ENTER PARA CONFIRMAR (1 a 180 min)</p>}
             </div>
           ) : (
             <button type="button" disabled={isActive} aria-label={`Editar duração do timer: ${formatTime(seconds)}`} className={`text-[110px] md:text-[150px] font-black leading-none tracking-tighter tabular-nums transition-all disabled:cursor-default ${!isActive ? 'cursor-pointer hover:scale-105 hover:text-[#fecc73] focus-visible:outline-4 focus-visible:outline-[#fecc73]' : ''}`} onClick={() => setIsEditing(true)}>

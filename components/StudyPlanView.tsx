@@ -21,6 +21,7 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [aiStatus, setAiStatus] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
   const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
 
   // States for form
@@ -48,6 +49,11 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
   }, [plan.subjects]);
 
   const handleAIPlan = async () => {
+    if (!editalConfig.subjects || editalConfig.subjects.length === 0) {
+      setAiStatus({ kind: 'error', text: studyProfile === 'FACULDADE' ? 'Para a IA montar o cronograma, primeiro cadastre suas matérias na grade.' : 'Para a IA montar o cronograma, primeiro cadastre as matérias do seu edital (menu Edital).' });
+      return;
+    }
+    setAiStatus(null);
     setIsOptimizing(true);
     try {
       const result = await optimizeStudyPlan(editalConfig, plan.subjects, studyProfile);
@@ -81,10 +87,12 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
         subjects: updatedSubjects as StudySubject[],
         schedule: result.proposedSchedule,
       });
-      alert(`IA Planejou: ${result.advice}`);
+      setAiStatus({ kind: 'success', text: `Cronograma atualizado pela IA. ${result.advice || ''}`.trim() });
     } catch (error) {
       console.error(error);
-      alert('Erro ao otimizar com IA.');
+      const msg = String((error as any)?.message || '');
+      const needsLogin = /login|entrar|autentic|auth|401|403|conta|recus|negad|unauthor/i.test(msg);
+      setAiStatus({ kind: 'error', text: needsLogin ? 'Para usar a Ajuda da IA é preciso entrar na sua conta (botão "Entrar com o Google" no Perfil). Sem login a IA recusa o pedido.' : `Não foi possível montar o cronograma agora. ${msg ? msg + ' ' : ''}Se você não entrou na conta, entre e tente de novo.` });
     } finally {
       setIsOptimizing(false);
     }
@@ -210,14 +218,14 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="flex bg-white shadow-xl shadow-gray-100/50 dark:shadow-black/30 border border-gray-100 p-1.5 rounded-[22px]">
-          <button onClick={() => setActiveTab('DASHBOARD')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'DASHBOARD' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60 dark:shadow-black/30' : 'text-gray-400 hover:text-gray-600'}`}>
+        <div className="flex bg-white shadow-xl shadow-gray-100/50 dark:shadow-black/30 border border-gray-100 p-1.5 rounded-[22px] max-w-[calc(100vw-7rem)] overflow-x-auto">
+          <button onClick={() => setActiveTab('DASHBOARD')} className={`min-h-[44px] px-3 sm:px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'DASHBOARD' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60 dark:shadow-black/30' : 'text-gray-400 hover:text-gray-600'}`}>
             RESUMO
           </button>
-          <button onClick={() => setActiveTab('CRONOGRAMA')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'CRONOGRAMA' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60 dark:shadow-black/30' : 'text-gray-400 hover:text-gray-600'}`}>
+          <button onClick={() => setActiveTab('CRONOGRAMA')} className={`min-h-[44px] px-3 sm:px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'CRONOGRAMA' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60 dark:shadow-black/30' : 'text-gray-400 hover:text-gray-600'}`}>
             CRONOGRAMA
           </button>
-          <button onClick={() => setActiveTab('SETUP')} className={`min-h-[44px] px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'SETUP' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60 dark:shadow-black/30' : 'text-gray-400 hover:text-gray-600'}`}>
+          <button onClick={() => setActiveTab('SETUP')} className={`min-h-[44px] px-3 sm:px-8 py-3 rounded-2xl text-xs font-black tracking-widest transition-all ${activeTab === 'SETUP' ? 'bg-[#fed386] text-white shadow-lg shadow-[#ffe6b9]/60 dark:shadow-black/30' : 'text-gray-400 hover:text-gray-600'}`}>
             AJUSTES
           </button>
         </div>
@@ -229,7 +237,10 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
           {isOptimizing && <LoadingFish message={studyProfile === 'FACULDADE' ? 'Analisando sua grade e montando o cronograma...' : 'Analisando o edital e montando o cronograma...'} />}
 
           {/* AI Banner */}
-          <div className="bg-[#473c33] p-8 rounded-[40px] text-white flex justify-between items-center group relative overflow-hidden">
+          {aiStatus && (
+            <div role="status" className={`p-4 rounded-2xl border text-sm font-bold ${aiStatus.kind === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>{aiStatus.text}</div>
+          )}
+          <div className="bg-[#473c33] p-6 sm:p-8 rounded-[40px] text-white flex flex-col sm:flex-row gap-5 sm:justify-between sm:items-center group relative overflow-hidden">
             <div className="relative z-10">
               <span className="text-[#fed386] text-[10px] font-black uppercase tracking-widest mb-2 block">SEU PLANO DE ESTUDOS</span>
               <h2 className="text-3xl font-black tracking-tighter uppercase leading-none">
@@ -240,8 +251,8 @@ const StudyPlanView: React.FC<StudyPlanViewProps> = ({ onBack, plan, history, on
                 <div className="bg-white/10 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest backdrop-blur-md">{editalConfig.dailyHours}h diárias</div>
               </div>
             </div>
-            <button onClick={handleAIPlan} className="bg-[#fec868] text-white px-8 py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all relative z-10">
-              AJUDA DA IA
+            <button onClick={handleAIPlan} disabled={isOptimizing} className="bg-[#fec868] text-white px-8 py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all relative z-10 self-start sm:self-auto shrink-0 disabled:opacity-50">
+              {isOptimizing ? 'ANALISANDO...' : 'AJUDA DA IA'}
             </button>
             <div className="absolute top-0 right-0 p-8 text-black/5 scale-150 rotate-12 transition-transform group-hover:scale-[1.8] group-hover:rotate-0">
               <svg className="w-48 h-48" fill="currentColor" viewBox="0 0 24 24">

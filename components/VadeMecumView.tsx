@@ -8,6 +8,13 @@ interface VadeMecumViewProps {
   onBack: () => void;
 }
 
+// Only inserts line breaks before §, Parágrafo único, incisos (I -) and alíneas (a)); the legal text itself is untouched.
+const LEGAL_BREAK = /(?<=[.;:)])[ \t]+(?=(?:§\s*\d+|Parágrafo único|[IVXLC]{1,6}\s*[-–—]\s|[a-z]\)\s))/g;
+const splitLegalText = (texto: string): string[] =>
+  texto.split(/\n+/).flatMap((line) => line.split(LEGAL_BREAK)).map((part) => part.trim()).filter(Boolean);
+const legalIndentClass = (part: string): string =>
+  /^[a-z]\)\s/.test(part) ? 'pl-10' : /^[IVXLC]{1,6}\s*[-–—]\s/.test(part) ? 'pl-5' : '';
+
 const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
   const bookTextSizes = [15, 17, 19, 21] as const;
   const [lawId, setLawId] = useState(VADE_MECUM_LAWS[0].id);
@@ -126,7 +133,7 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
     }
 
     const context = [article.titulo, article.capitulo, article.secao, article.subsecao].filter(Boolean).join(' · ');
-    const paragraphs = article.texto.split(/\n+/).map((part) => part.trim()).filter(Boolean);
+    const paragraphs = splitLegalText(article.texto);
 
     return (
       <article key={article.numero} className="vade-book-page relative flex flex-col overflow-clip bg-[#fffaf0] px-6 py-7 text-[#473c33] sm:px-9 sm:py-9 md:px-10 dark:bg-[#292a23] dark:text-[#eee9d0]">
@@ -139,7 +146,7 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
         <div className="vade-book-page-content min-h-0 flex-1 overflow-y-auto pr-2 font-serif leading-[1.75]" style={{ fontSize: `${bookTextSizes[bookTextSizeIndex]}px` }}>
           <div className="space-y-4">
           {paragraphs.map((paragraph, index) => (
-            <p key={`${article.numero}-${index}`} className={index === 0 ? 'first-letter:float-left first-letter:mr-2 first-letter:mt-1 first-letter:text-[3em] first-letter:font-bold first-letter:leading-[0.8] first-letter:text-[#d86632] dark:first-letter:text-[#f28a4c]' : 'indent-6'}>
+            <p key={`${article.numero}-${index}`} className={index === 0 ? 'first-letter:float-left first-letter:mr-2 first-letter:mt-1 first-letter:text-[3em] first-letter:font-bold first-letter:leading-[0.8] first-letter:text-[#d86632] dark:first-letter:text-[#f28a4c]' : legalIndentClass(paragraph) || 'indent-6'}>
               {paragraph}
             </p>
           ))}
@@ -177,7 +184,7 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
       <div className="p-6 md:p-10 w-full max-w-6xl mx-auto space-y-6">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input value={query} onChange={(e) => { cancelPageTurn(); setQuery(e.target.value); }} placeholder="Buscar por número do artigo ou palavra-chave..." className="w-full bg-white border-2 border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-base font-medium focus:outline-none focus:border-[#fdb887] transition-colors dark:bg-[#292a23] dark:border-white/10 dark:text-[#f4ebdd] dark:placeholder:text-[#aaa58e]" />
+          <input value={query} onChange={(e) => { cancelPageTurn(); setQuery(e.target.value); }} placeholder="Número do artigo ou palavra..." className="w-full bg-white border-2 border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-base font-medium focus:outline-none focus:border-[#fdb887] transition-colors dark:bg-[#292a23] dark:border-white/10 dark:text-[#f4ebdd] dark:placeholder:text-[#aaa58e]" />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#eadfce] bg-white p-3 dark:border-[#454438] dark:bg-[#292a23]">
@@ -274,7 +281,11 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
                         </div>
                       </div>
 
-                      <div className="text-slate-100 text-xl md:text-2xl leading-[1.6] font-medium whitespace-pre-wrap">{article.texto}</div>
+                      <div className="text-slate-100 text-xl md:text-2xl leading-[1.6] font-medium space-y-4">
+                        {splitLegalText(article.texto).map((part, i) => (
+                          <p key={i} className={legalIndentClass(part)}>{part}</p>
+                        ))}
+                      </div>
                     </div>
                   );
                 }

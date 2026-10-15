@@ -546,10 +546,11 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     setShowCommentary(false);
     setSaved(false);
     setUserAnswers({});
-    setTopic(`ENEM ${enemYear} · ${enemDisciplineLabel(enemDiscipline)}`);
+    const typedTopic = topic.trim().startsWith('ENEM ') ? '' : topic.trim();
+    setTopic(`ENEM ${enemYear} · ${enemDisciplineLabel(enemDiscipline)}${typedTopic ? ` · ${typedTopic}` : ''}`);
 
     try {
-      const formatted = await fetchEnemQuestions(enemYear, enemDiscipline, enemCount);
+      const formatted = await fetchEnemQuestions(enemYear, enemDiscipline, enemCount, 'espanhol', typedTopic);
       setQuestions(formatted);
       setTempSelectedOpt(null);
       setIsSubmitted(false);
@@ -913,7 +914,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
   }
 
   return (
-    <div className={`${questions.length ? 'fixed inset-0 z-[200] overflow-y-auto' : 'relative w-full min-h-full rounded-[32px]'} bg-[#f8fafc] dark:bg-[#24251f] text-[#1e293b] dark:text-[#f2efd2] selection:bg-[#fec868]/30 font-sans`}>
+    <div className={`${questions.length ? 'fixed inset-0 z-[200] overflow-y-auto' : 'relative w-full min-h-full rounded-[32px]'} bg-[#f8fafc] dark:bg-[#24251f] text-[#1e293b] dark:text-[#f2efd2] selection:bg-amber-300/30 font-sans`}>
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
         {!questions.length ? (
           <div className="py-2">
@@ -1085,7 +1086,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                     <div className="space-y-6 text-left relative z-20 animate-in fade-in slide-in-from-bottom-4">
                       <div className="bg-[#fec868]/10 p-6 rounded-3xl border border-[#fec868]/15 mb-2 font-medium text-[#ffb22a] text-sm flex items-center gap-3">
                         <BookOpen className="w-5 h-5 flex-shrink-0" />
-                        <span>Questões oficiais de provas reais do ENEM, direto do banco público enem.dev.</span>
+                        <span>Questões oficiais de provas reais do ENEM. Se você digitou um assunto acima, só mostramos questões que citem esse termo na prova e matéria escolhidas; se não houver, avisamos.</span>
                       </div>
 
                       {enemError && <div className="bg-red-50 p-4 rounded-2xl border border-red-100 text-red-600 text-sm font-bold">{enemError}</div>}
@@ -1562,7 +1563,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                     <div className="flex items-center gap-6">
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg dark:shadow-none ${selectedOpt === currentQ.correctAnswer ? 'bg-[#82995a]' : 'bg-[#c96f53]'}`}>{selectedOpt === currentQ.correctAnswer ? '✓' : '✗'}</div>
                       <div>
-                        <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedOpt === currentQ.correctAnswer ? 'text-[#596b2a] dark:text-[#c4d99a]' : 'text-[#984b39] dark:text-[#f1a58b]'}`}>{selectedOpt === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}</p>
+                        <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedOpt === currentQ.correctAnswer ? 'text-[#596b2a] dark:text-[#c4d99a]' : 'text-[#984b39] dark:text-[#f1a58b]'}`}>{selectedOpt === currentQ.correctAnswer ? 'RESPOSTA CORRETA' : 'RESPOSTA INCORRETA'}</p>
                         <p className={`text-[17px] font-bold ${selectedOpt === currentQ.correctAnswer ? 'text-[#46523a] dark:text-[#f2efd2]' : 'text-[#713a2e] dark:text-[#f1c5b4]'}`}>
                           Gabarito: <span className={selectedOpt === currentQ.correctAnswer ? 'text-[#596b2a] dark:text-[#d9e9b2]' : 'text-[#984b39] dark:text-[#f1a58b]'}>{String.fromCharCode(65 + currentQ.correctAnswer)}</span>
                         </p>
