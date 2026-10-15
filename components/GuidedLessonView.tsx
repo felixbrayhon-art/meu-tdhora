@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { scrollMainToTop } from '../utils/scrollTop';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Play, Pause, RotateCcw, Brain, CheckCircle2, ChevronRight, BookOpen, Download, Bookmark, BookmarkCheck } from './icons';
 import { gsap } from 'gsap';
@@ -42,6 +43,8 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
     }
   });
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Trocar de subtela (formulário -> carregando -> aula) volta ao topo.
+  useEffect(() => { scrollMainToTop(); }, [loading, !!lesson]);
   const highlightViewRef = useRef<HTMLDivElement>(null);
   const [highlightProgress, setHighlightProgress] = useState(0);
   const lastPushedStepIndexRef = useRef<number>(-1);

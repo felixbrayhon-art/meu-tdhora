@@ -343,17 +343,14 @@ const App: React.FC = () => {
   };
 
   // Tamanho da fonte (Perfil): escala o texto em rem e as classes text-[Npx] (ver index.css).
-  const fontScale = stats.fontSizeMultiplier || 1;
+  // Limite de 1.3: acima disso o cabeçalho, o seletor de estudo e a gaveta quebravam no celular.
+  const fontScale = Math.min(stats.fontSizeMultiplier || 1, 1.3);
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--font-scale', String(fontScale));
     root.style.fontSize = fontScale === 1 ? '' : `${16 * fontScale}px`;
     return () => { root.style.fontSize = ''; root.style.removeProperty('--font-scale'); };
   }, [fontScale]);
-  // Ao trocar de tela, volta ao topo (antes a nova tela abria rolada).
-  useEffect(() => {
-    scrollAreaRef.current?.scrollTo({ top: 0 });
-  }, [currentView]);
 
   const pendingRevisionCount = getPendingRevisionsCount();
   const showRevisionNotice = STUDY_VIEWS.includes(currentView) && pendingRevisionCount > 0 && !isRevisionNoticeDismissed;
@@ -370,6 +367,10 @@ const App: React.FC = () => {
   const [materialsSelectedNotebookId, setMaterialsSelectedNotebookId] = useState<string | null>(null);
   const [flashcardsSelectedFolderId, setFlashcardsSelectedFolderId] = useState<string | null>(null);
   const [flashcardsViewMode, setFlashcardsViewMode] = useState<'FOLDERS' | 'FOLDER_DETAIL' | 'REVIEW'>('FOLDERS');
+  // Ao trocar de tela ou de subtela (pasta/deck aberto), volta ao topo (antes a nova tela abria rolada).
+  useEffect(() => {
+    scrollAreaRef.current?.scrollTo({ top: 0 });
+  }, [currentView, flashcardsViewMode, flashcardsSelectedFolderId, materialsSelectedFolderId, materialsSelectedNotebookId]);
 
   // The opening screen waits for a chain of Firestore reads. When Firestore does not answer (503, billing, offline) that chain never
   // ends and the app stayed on the splash forever: let go after 8 s. isSyncing stays true meanwhile, so nothing is written back to the cloud.
@@ -1300,10 +1301,10 @@ const App: React.FC = () => {
             <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} compact={isFocusLesson} onMenuClick={() => setIsMenuOpen(true)} />
           </header>}
 
-          <div ref={scrollAreaRef} className={`flex-1 overflow-y-auto custom-scrollbar relative ${showMiniBar && !isQuestionSession && !isFocusLesson ? 'pb-28' : ''}`}>
-            <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop />
-            <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop />
-            <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop />
+          <div ref={scrollAreaRef} data-main-scroll className={`flex-1 overflow-y-auto custom-scrollbar relative ${showMiniBar && !isQuestionSession && !isFocusLesson ? 'pb-28' : ''}`}>
+            <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop preload="none" />
+            <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop preload="none" />
+            <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop preload="none" />
 
             {showGlobalBar && isFocusLesson && !lessonDockOpen && (
               <button
@@ -1320,14 +1321,14 @@ const App: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setLessonDockOpen(false)}
-                className="fixed right-4 z-[151] min-h-[44px] rounded-full bg-[#e96f34] px-4 text-xs font-black uppercase tracking-wide text-white shadow-lg"
+                className="fixed right-4 z-[91] min-h-[44px] rounded-full bg-[#e96f34] px-4 text-xs font-black uppercase tracking-wide text-white shadow-lg"
                 style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
               >
                 Recolher relógio
               </button>
             )}
             {showMiniBar && !isQuestionSession && (!isFocusLesson || lessonDockOpen) && (
-              <div className="fixed left-1/2 -translate-x-1/2 z-[150] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500" style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
+              <div className="fixed left-1/2 -translate-x-1/2 z-[90] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500" style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
                 {isStorageFull && !user && <div className="bg-red-500 text-white text-[10px] font-black uppercase tracking-widest py-1 px-4 rounded-t-xl mb-[-10px] mx-auto w-fit shadow-lg animate-bounce">⚠️ Memória do Navegador Cheia! Entre com o Google para salvar na nuvem</div>}
                 <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl rounded-[35px] p-2 flex items-center justify-between gap-3 relative">
                   <button onClick={handleCloseGlobalBar} className="absolute -top-3 -right-3 w-8 h-8 bg-white shadow-md border border-gray-100 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 transition-all hover:scale-110 z-20" title="Parar atividades e fechar">
@@ -1843,7 +1844,7 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {!isQuestionSession && !isFocusLesson && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} liftForBar={showMiniBar} />}
+        {!isQuestionSession && !isFocusLesson && currentView !== 'SMART_REVISION' && currentView !== 'MATERIALS' && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} liftForBar={showMiniBar} />}
         {toast && (
           <div role="status" aria-live="polite" className="fixed left-1/2 top-4 z-[2000] -translate-x-1/2 rounded-2xl bg-[#473c33] px-5 py-3 text-sm font-bold text-white shadow-2xl dark:bg-[#d9772b]">
             {toast}

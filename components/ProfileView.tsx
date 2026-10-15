@@ -64,6 +64,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
   const [fontSizeMultiplier, setFontSizeMultiplier] = useState(stats.fontSizeMultiplier || 1);
   const [heroScenario, setHeroScenario] = useState(stats.heroScenario || 'quarto');
   const [heroTintColor, setHeroTintColor] = useState(stats.heroTintColor);
+  const [justSaved, setJustSaved] = useState(false);
   const [freeLLMAPIAvailable, setFreeLLMAPIAvailable] = useState(false);
   const localFreeLLMPreview = import.meta.env.DEV &&
     typeof window !== 'undefined' &&
@@ -96,7 +97,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
     });
     const sizeLabel = fontSizeMultiplier === 1 ? 'Normal' : fontSizeMultiplier === 1.25 ? 'Grande' : 'Gigante';
     onNotify?.(fontSizeMultiplier !== (stats.fontSizeMultiplier || 1) ? `Alterações salvas. Tamanho da fonte: ${sizeLabel}.` : 'Alterações salvas.');
-    onBack();
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 6000);
   };
 
   return (
@@ -248,9 +250,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
 
             <div>
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Tamanho da Fonte (Acessibilidade)</label>
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-3">
                 {[1, 1.25, 1.5].map((size) => (
-                  <button key={size} onClick={() => setFontSizeMultiplier(size)} className={`flex-1 p-4 rounded-[20px] border-2 font-black text-xs uppercase transition-all ${fontSizeMultiplier === size ? 'bg-[#fecc73] border-[#fecc73] text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>
+                  <button key={size} onClick={() => setFontSizeMultiplier(size)} aria-pressed={fontSizeMultiplier === size} className={`flex-1 min-w-[6.5rem] px-3 py-4 rounded-[20px] border-2 font-black text-xs uppercase transition-all ${fontSizeMultiplier === size ? 'bg-[#fecc73] border-[#fecc73] text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>
                     {size === 1 ? 'Normal' : size === 1.25 ? 'Grande' : 'Gigante'}
                   </button>
                 ))}
@@ -310,6 +312,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
               <button onClick={handleSave} className="w-full bg-[#e96f34] hover:bg-[#f07b40] text-white py-6 rounded-[30px] font-black text-xl shadow-xl shadow-[#e96f34]/30 hover:scale-[1.02] transition-all active:scale-95">
                 SALVAR ALTERAÇÕES
               </button>
+              {justSaved && (
+                <p role="status" className="mt-4 rounded-2xl bg-green-50 px-4 py-3 text-center text-sm font-bold text-green-800">Alterações salvas. Você continua no seu Perfil.</p>
+              )}
               {!isLoggedIn && onLogin && (
                 <button onClick={onLogin} className="w-full mt-4 bg-white border-2 border-[#fed386] text-[#473c33] py-4 rounded-[25px] font-black text-[10px] uppercase tracking-widest hover:bg-[#fff6e8] transition-all">
                   ENTRAR COM O GOOGLE (SALVAR NA NUVEM)

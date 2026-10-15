@@ -198,6 +198,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveMode, setSaveMode] = useState<'ALL' | 'SINGLE'>('ALL');
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   // Assim que o filtro/geração termina, abrimos o modal "Salvar em Caderno"
   // pra escolher pasta e nome — só ao confirmar é que o pai (App.tsx) recebe
@@ -1825,13 +1826,24 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
           suggestedName={saveMode === 'SINGLE' ? currentQ.topic || topic : topic}
           onConfirm={handleConfirmSave}
           onClose={() => {
+            // Cancelar não descarta mais as questões geradas em silêncio:
+            // no fluxo de lote pede confirmação antes de voltar ao filtro.
+            if (onQuestionsReady) { setConfirmDiscard(true); return; }
             setShowSaveModal(false);
-            // Sem prática interna nesta view, cancelar aqui só faz sentido
-            // voltando pro filtro — senão o aluno ficaria preso na tela de
-            // "abrindo em Meus Materiais" sem nenhuma ação possível.
-            if (onQuestionsReady) setQuestions([]);
           }}
         />
+      )}
+      {showSaveModal && confirmDiscard && (
+        <div className="fixed inset-0 z-[310] flex items-center justify-center p-6 bg-black/60" role="alertdialog" aria-modal="true" aria-label="Descartar questões geradas?">
+          <div className="w-full max-w-sm rounded-[32px] bg-white p-8 text-center shadow-2xl dark:bg-[#473c33]">
+            <h4 className="text-lg font-black uppercase tracking-tight text-[#473c33] dark:text-white">Descartar as questões?</h4>
+            <p className="mt-3 text-sm font-medium text-[#6b5a4c] dark:text-[#e4d4bd]">As questões geradas ainda não foram salvas. Se descartar, será preciso gerar de novo.</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button onClick={() => setConfirmDiscard(false)} className="min-h-[44px] rounded-full bg-orange-300 px-4 text-[11px] font-black uppercase tracking-widest text-[#2b1810]">Voltar e salvar</button>
+              <button onClick={() => { setConfirmDiscard(false); setShowSaveModal(false); setQuestions([]); }} className="min-h-[44px] rounded-full border border-[#473c33]/30 px-4 text-[11px] font-black uppercase tracking-widest text-[#473c33] dark:border-white/30 dark:text-white">Descartar</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Floating Action Buttons Sidebar */}
