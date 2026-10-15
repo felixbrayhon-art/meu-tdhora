@@ -11,34 +11,35 @@ import AvatarBuilder from './components/AvatarBuilder';
 import ProfileSelection from './components/ProfileSelection';
 import { checkIsAdmin } from './services/questionBankService';
 import Sidebar from './components/Sidebar';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 
-const TimerView = lazy(() => import('./components/TimerView'));
-const FlashcardView = lazy(() => import('./components/FlashcardView'));
-const AIView = lazy(() => import('./components/AIView'));
-const MaterialsManager = lazy(() => import('./components/MaterialsManager'));
-const QuizPlayer = lazy(() => import('./components/QuizPlayer'));
-const TDHQuestoes = lazy(() => import('./components/TDHQuestoes'));
-const StudyPlanView = lazy(() => import('./components/StudyPlanView'));
-const ProfileView = lazy(() => import('./components/ProfileView'));
-const CommunityView = lazy(() => import('./components/CommunityView'));
-const FocusModeView = lazy(() => import('./components/FocusModeView'));
-const FishCatalog = lazy(() => import('./components/FishCatalog'));
-const VadeMecumView = lazy(() => import('./components/VadeMecumView'));
-const NotesView = lazy(() => import('./components/NotesView'));
-const AdminQuestionReview = lazy(() => import('./components/AdminQuestionReview'));
-const VRMethodView = lazy(() => import('./components/VRMethodView'));
-const DynamicTimer = lazy(() => import('./components/DynamicTimer'));
-const EditalSetup = lazy(() => import('./components/EditalSetup'));
-const EditalView = lazy(() => import('./components/EditalView'));
-const SmartRevisionView = lazy(() => import('./components/SmartRevisionView'));
-const SocialModule = lazy(() => import('./components/SocialModule'));
-const StudyCycleView = lazy(() => import('./components/StudyCycleView'));
-const GuidedLessonView = lazy(() => import('./components/GuidedLessonView'));
-const LivingLessonView = lazy(() => import('./components/LivingLessonView'));
-const PerformanceView = lazy(() => import('./components/PerformanceView'));
-const SavedGuidedLessonsView = lazy(() => import('./components/SavedGuidedLessonsView'));
-const DriveReader = lazy(() => import('./components/DriveReader').then(({ DriveReader: Component }) => ({ default: Component })));
-const DigitalNotebookView = lazy(() => import('./components/DigitalNotebookView'));
+const TimerView = lazyWithRetry(() => import('./components/TimerView'));
+const FlashcardView = lazyWithRetry(() => import('./components/FlashcardView'));
+const AIView = lazyWithRetry(() => import('./components/AIView'));
+const MaterialsManager = lazyWithRetry(() => import('./components/MaterialsManager'));
+const QuizPlayer = lazyWithRetry(() => import('./components/QuizPlayer'));
+const TDHQuestoes = lazyWithRetry(() => import('./components/TDHQuestoes'));
+const StudyPlanView = lazyWithRetry(() => import('./components/StudyPlanView'));
+const ProfileView = lazyWithRetry(() => import('./components/ProfileView'));
+const CommunityView = lazyWithRetry(() => import('./components/CommunityView'));
+const FocusModeView = lazyWithRetry(() => import('./components/FocusModeView'));
+const FishCatalog = lazyWithRetry(() => import('./components/FishCatalog'));
+const VadeMecumView = lazyWithRetry(() => import('./components/VadeMecumView'));
+const NotesView = lazyWithRetry(() => import('./components/NotesView'));
+const AdminQuestionReview = lazyWithRetry(() => import('./components/AdminQuestionReview'));
+const VRMethodView = lazyWithRetry(() => import('./components/VRMethodView'));
+const DynamicTimer = lazyWithRetry(() => import('./components/DynamicTimer'));
+const EditalSetup = lazyWithRetry(() => import('./components/EditalSetup'));
+const EditalView = lazyWithRetry(() => import('./components/EditalView'));
+const SmartRevisionView = lazyWithRetry(() => import('./components/SmartRevisionView'));
+const SocialModule = lazyWithRetry(() => import('./components/SocialModule'));
+const StudyCycleView = lazyWithRetry(() => import('./components/StudyCycleView'));
+const GuidedLessonView = lazyWithRetry(() => import('./components/GuidedLessonView'));
+const LivingLessonView = lazyWithRetry(() => import('./components/LivingLessonView'));
+const PerformanceView = lazyWithRetry(() => import('./components/PerformanceView'));
+const SavedGuidedLessonsView = lazyWithRetry(() => import('./components/SavedGuidedLessonsView'));
+const DriveReader = lazyWithRetry(() => import('./components/DriveReader').then(({ DriveReader: Component }) => ({ default: Component })));
+const DigitalNotebookView = lazyWithRetry(() => import('./components/DigitalNotebookView'));
 
 const LOFI_RELAX_URL = 'https://stream.zeno.fm/0r0xa792kwzuv';
 const MPB_LOFI_URL = 'https://stream.zeno.fm/f978v6v6h0huv';
@@ -124,6 +125,20 @@ const App: React.FC = () => {
   }, []);
   const [timerMode, setTimerMode] = useState<TimerMode>(TimerMode.POMODORO);
   const [showGlobalBar, setShowGlobalBar] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = window.setTimeout(() => setToast(null), 3500);
+    return () => window.clearTimeout(t);
+  }, [toast]);
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsMenuOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isMenuOpen]);
 
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('focus_dark_mode') === 'true');
   useEffect(() => {
@@ -306,6 +321,19 @@ const App: React.FC = () => {
     const todayStr = toLocalDateKey();
     return smartSystem.queue.filter((item) => item.status === 'PENDING' && item.scheduledDate <= todayStr).length;
   };
+
+  // Tamanho da fonte (Perfil): escala o texto em rem e as classes text-[Npx] (ver index.css).
+  const fontScale = stats.fontSizeMultiplier || 1;
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--font-scale', String(fontScale));
+    root.style.fontSize = fontScale === 1 ? '' : `${16 * fontScale}px`;
+    return () => { root.style.fontSize = ''; root.style.removeProperty('--font-scale'); };
+  }, [fontScale]);
+  // Ao trocar de tela, volta ao topo (antes a nova tela abria rolada).
+  useEffect(() => {
+    scrollAreaRef.current?.scrollTo({ top: 0 });
+  }, [currentView]);
 
   const pendingRevisionCount = getPendingRevisionsCount();
   const showRevisionNotice = STUDY_VIEWS.includes(currentView) && pendingRevisionCount > 0 && !isRevisionNoticeDismissed;
@@ -1186,42 +1214,57 @@ const App: React.FC = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Na tela do Timer o relógio já aparece grande: a mini-barra só duplicaria e cobriria os botões.
+  const showMiniBar = showGlobalBar && currentView !== 'TIMER';
+  const sidebarProps = {
+    currentView,
+    questionSession: isQuestionSession,
+    setView: (v: AppView) => {
+      setIsMenuOpen(false);
+      setCurrentView(v);
+      if (v === 'MATERIALS') {
+        setMaterialsSelectedFolderId(null);
+        setMaterialsSelectedNotebookId(null);
+      }
+      if (v === 'FLASHCARDS') {
+        setFlashcardsSelectedFolderId(null);
+        setFlashcardsViewMode('FOLDERS');
+      }
+    },
+    quizFolders: folders,
+    flashcardFolders,
+    stats,
+    onSelectNotebook: (fid: string, nid: string) => {
+      setIsMenuOpen(false);
+      setMaterialsSelectedFolderId(fid);
+      setMaterialsSelectedNotebookId(nid);
+      setCurrentView('MATERIALS');
+    },
+    onSelectFlashcardFolder: (fid: string) => {
+      setIsMenuOpen(false);
+      setFlashcardsSelectedFolderId(fid);
+      setFlashcardsViewMode('FOLDER_DETAIL');
+      setCurrentView('FLASHCARDS');
+    },
+    isDarkMode,
+    onToggleDarkMode: () => setIsDarkMode((v) => !v),
+  };
+
   return (
     <CharacterProvider characterId={stats.characterId}>
       <div className="min-h-screen w-screen bg-[#E8DDCC] dark:bg-[#141110] p-2 lg:p-5 flex">
       <div className="flex w-full h-[calc(100vh-16px)] lg:h-[calc(100vh-40px)] bg-[#FDFBF7] dark:bg-[#1c1712] text-[#473c33] dark:text-[#f4ebdd] overflow-hidden rounded-[24px] lg:rounded-[32px] shadow-2xl dark:shadow-none">
         <div className="hidden lg:block shrink-0">
-          <Sidebar
-            currentView={currentView}
-            questionSession={isQuestionSession}
-            setView={(v) => {
-              setCurrentView(v);
-              if (v === 'MATERIALS') {
-                setMaterialsSelectedFolderId(null);
-                setMaterialsSelectedNotebookId(null);
-              }
-              if (v === 'FLASHCARDS') {
-                setFlashcardsSelectedFolderId(null);
-                setFlashcardsViewMode('FOLDERS');
-              }
-            }}
-            quizFolders={folders}
-            flashcardFolders={flashcardFolders}
-            stats={stats}
-            onSelectNotebook={(fid, nid) => {
-              setMaterialsSelectedFolderId(fid);
-              setMaterialsSelectedNotebookId(nid);
-              setCurrentView('MATERIALS');
-            }}
-            onSelectFlashcardFolder={(fid) => {
-              setFlashcardsSelectedFolderId(fid);
-              setFlashcardsViewMode('FOLDER_DETAIL');
-              setCurrentView('FLASHCARDS');
-            }}
-            isDarkMode={isDarkMode}
-            onToggleDarkMode={() => setIsDarkMode((v) => !v)}
-          />
+          <Sidebar {...sidebarProps} />
         </div>
+        {isMenuOpen && (
+          <div className="fixed inset-0 z-[1100] lg:hidden" role="dialog" aria-modal="true" aria-label="Menu principal">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setIsMenuOpen(false)} aria-hidden="true" />
+            <div className="absolute left-0 top-0 h-full shadow-2xl animate-in slide-in-from-left duration-200">
+              <Sidebar {...sidebarProps} questionSession={false} drawer onClose={() => setIsMenuOpen(false)} />
+            </div>
+          </div>
+        )}
 
         {/* A transformed pane contains fixed quiz headers, dialogs and progress bars within the space beside the sidebar. */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative" style={isQuestionSession ? { transform: 'translateZ(0)' } : undefined}>
@@ -1234,10 +1277,10 @@ const App: React.FC = () => {
             </div>
           )}
           {!isQuestionSession && <header className="shrink-0 z-50">
-            <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} compact={isFocusLesson} />
+            <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} compact={isFocusLesson} onMenuClick={() => setIsMenuOpen(true)} />
           </header>}
 
-          <div className={`flex-1 overflow-y-auto custom-scrollbar relative ${showGlobalBar && !isQuestionSession && !isFocusLesson ? 'pb-28' : ''}`}>
+          <div ref={scrollAreaRef} className={`flex-1 overflow-y-auto custom-scrollbar relative ${showMiniBar && !isQuestionSession && !isFocusLesson ? 'pb-28' : ''}`}>
             <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop />
             <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop />
             <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop />
@@ -1263,7 +1306,7 @@ const App: React.FC = () => {
                 Recolher relógio
               </button>
             )}
-            {showGlobalBar && !isQuestionSession && (!isFocusLesson || lessonDockOpen) && (
+            {showMiniBar && !isQuestionSession && (!isFocusLesson || lessonDockOpen) && (
               <div className="fixed left-1/2 -translate-x-1/2 z-[150] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500" style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
                 {isStorageFull && !user && <div className="bg-red-500 text-white text-[10px] font-black uppercase tracking-widest py-1 px-4 rounded-t-xl mb-[-10px] mx-auto w-fit shadow-lg animate-bounce">⚠️ Memória do Navegador Cheia! Entre com o Google para salvar na nuvem</div>}
                 <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl rounded-[35px] p-2 flex items-center justify-between gap-3 relative">
@@ -1313,7 +1356,7 @@ const App: React.FC = () => {
               </div>
             )}
 
-            <main className="max-w-[1400px] min-h-full mx-auto px-4 pt-8 relative" style={{ paddingBottom: showGlobalBar && !isQuestionSession && !isFocusLesson ? 'calc(10rem + env(safe-area-inset-bottom, 0px))' : '2rem' }}>
+            <main className="max-w-[1400px] min-h-full mx-auto px-4 pt-8 relative" style={{ paddingBottom: !isQuestionSession && !isFocusLesson ? `calc(${showMiniBar ? '11rem' : '7rem'} + env(safe-area-inset-bottom, 0px))` : '2rem' }}>
               {showRevisionNotice && (
                 <aside role="status" className="mb-5 flex flex-col gap-3 rounded-2xl border border-[#e5d7bd] bg-[#fff8ec] px-4 py-3 text-[#473c33] shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-[#65533d] dark:bg-[#2b241b] dark:text-[#f4ebdd]">
                   <p className="text-sm font-semibold">
@@ -1689,7 +1732,7 @@ const App: React.FC = () => {
 
                   {currentView === 'SOCIAL_MODULE' && <SocialModule myUid={user?.uid} myStats={stats} isLoggedIn={!!user} onLogin={handleLogin} isStudyMode={globalTimerActive} onBack={() => setCurrentView('HUB')} />}
 
-                  {currentView === 'PROFILE' && <ProfileView stats={stats} onUpdate={setStats} onBack={() => setCurrentView('HUB')} onOpenCatalog={() => setCurrentView('FISH_CATALOG')} myId={socialState.myId} isAIEnabled={isAIEnabled} setIsAIEnabled={setIsAIEnabled} onLogout={handleLogout} onLogin={handleLogin} isLoggedIn={!!user} />}
+                  {currentView === 'PROFILE' && <ProfileView stats={stats} onUpdate={setStats} onBack={() => setCurrentView('HUB')} onOpenCatalog={() => setCurrentView('FISH_CATALOG')} myId={socialState.myId} isAIEnabled={isAIEnabled} setIsAIEnabled={setIsAIEnabled} onLogout={handleLogout} onLogin={handleLogin} isLoggedIn={!!user} onNotify={setToast} />}
                   {currentView === 'COMMUNITY' && <CommunityView activities={activities} onBack={() => setCurrentView('HUB')} onPostManual={handleManualPost} />}
                   {currentView === 'FISH_CATALOG' && <FishCatalog onBack={() => setCurrentView('HUB')} />}
                   {currentView === 'VADE_MECUM' && <VadeMecumView onBack={() => setCurrentView('HUB')} />}
@@ -1779,7 +1822,12 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {!isQuestionSession && !isFocusLesson && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} />}
+        {!isQuestionSession && !isFocusLesson && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} liftForBar={showMiniBar} />}
+        {toast && (
+          <div role="status" aria-live="polite" className="fixed left-1/2 top-4 z-[2000] -translate-x-1/2 rounded-2xl bg-[#473c33] px-5 py-3 text-sm font-bold text-white shadow-2xl dark:bg-[#d9772b]">
+            {toast}
+          </div>
+        )}
         <BuildTag />
         <LoginModal
           isOpen={isLoginModalOpen}

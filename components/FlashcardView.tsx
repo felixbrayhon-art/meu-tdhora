@@ -61,6 +61,10 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
 
   // Review State
   const [reviewQueue, setReviewQueue] = useState<string[]>([]);
+  // Voltar do navegador pode restaurar o modo REVIEW sem fila (sessão fantasma "1 / 0"): volta às pastas.
+  useEffect(() => {
+    if (viewMode === 'REVIEW' && reviewQueue.length === 0) setViewMode('FOLDERS');
+  }, [viewMode, reviewQueue.length, setViewMode]);
   const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isReviewDone, setIsReviewDone] = useState(false);
