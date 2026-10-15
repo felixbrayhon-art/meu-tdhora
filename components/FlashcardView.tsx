@@ -233,14 +233,14 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
   if (isGeneratingAI) return <LoadingFish message="Criando seus flashcards..." submessage="A IA está organizando o conteúdo para você." />;
 
   return (
-    <div className="relative z-10 bg-[#473c33] text-white selection:bg-[#fdad74]/30 font-sans min-h-[80vh] rounded-[40px] shadow-2xl overflow-hidden border border-white/5">
+    <div className="relative z-10 bg-[#473c33] text-white selection:bg-orange-400/30 font-sans min-h-[80vh] rounded-[40px] shadow-2xl overflow-hidden border border-white/5">
       <div className="w-full max-w-5xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-10 duration-700">
         <AnimatePresence mode="wait">
           {viewMode === 'FOLDERS' && (
             <motion.div key="folders" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-12">
               <div className="flex flex-wrap justify-between items-center gap-4 bg-[#473c33]/40 backdrop-blur-2xl p-5 sm:p-8 rounded-[40px] border border-white/5 shadow-2xl">
                 <div className="flex min-w-0 items-center gap-4 sm:gap-6">
-                  <button onClick={onBack} aria-label="Voltar" className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90">
+                  <button onClick={onBack} aria-label="Voltar" title="Voltar" className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90">
                     <ChevronLeft className="w-6 h-6 text-white/50 group-hover:text-white" />
                   </button>
                   <div>
@@ -348,28 +348,29 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
             <motion.div key="folder-detail" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12">
               <div className="flex justify-between items-center bg-[#473c33]/40 backdrop-blur-2xl p-8 rounded-[40px] border border-white/5 shadow-2xl">
                 <div className="flex items-center gap-6">
-                  <button onClick={() => setViewMode('FOLDERS')} aria-label="Voltar às pastas" className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90">
+                  <button onClick={() => setViewMode('FOLDERS')} aria-label="Voltar às pastas" title="Voltar às pastas" className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90">
                     <ChevronLeft className="w-6 h-6 text-white/50 group-hover:text-white" />
                   </button>
                   <div>
                     <h2 className="text-4xl font-black tracking-tighter uppercase leading-none" style={{ color: activeFolder.color }}>
                       {activeFolder.name}
                     </h2>
-                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mt-1">{folderCards.length} CARDS NO MÓDULO</p>
+                    <p className="text-[10px] font-black text-[#e4d4bd] uppercase tracking-[0.2em] mt-1">{folderCards.length} CARDS NO MÓDULO</p>
                   </div>
                 </div>
                 <div className="flex gap-4">
-                  <button onClick={() => setShowAddCardModal(true)} className="p-4 bg-white/5 border border-white/10 text-white rounded-2xl hover:bg-white hover:text-[#473c33] transition-all active:scale-90" title="Novo Card Manual">
+                  <button onClick={() => setShowAddCardModal(true)} className="p-4 flex items-center gap-2 bg-white/5 border border-white/10 text-white rounded-2xl hover:bg-white hover:text-stone-900 transition-all active:scale-90" title="Novo card" aria-label="Novo card">
                     <Plus className="w-6 h-6" />
+                    <span className="hidden sm:inline text-xs font-black uppercase tracking-widest">Novo card</span>
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <button onClick={() => startReview(activeFolder.id)} className="lg:col-span-1 bg-[#f97316] text-white p-12 rounded-[50px] flex flex-col justify-between hover:scale-[1.02] transition-all shadow-3xl shadow-[#733000]/20 group relative overflow-hidden">
+                <button onClick={() => startReview(activeFolder.id)} className="lg:col-span-1 bg-[#9a3412] text-white p-12 rounded-[50px] flex flex-col justify-between hover:scale-[1.02] transition-all shadow-3xl shadow-[#733000]/20 group relative overflow-hidden">
                   <div className="relative z-10">
                     <h3 className="text-4xl font-black uppercase tracking-tighter leading-none mb-2">REVISAR AGORA</h3>
-                    <p className="text-white/60 text-[10px] uppercase font-black tracking-widest leading-tight">REVISÃO PROGRAMADA</p>
+                    <p className="text-white text-[10px] uppercase font-black tracking-widest leading-tight">REVISÃO PROGRAMADA</p>
                   </div>
                   <div className="flex items-end justify-between mt-16 relative z-10">
                     <span className="text-8xl font-black tabular-nums">{getFolderDueCount(activeFolder.id)}</span>
@@ -385,24 +386,24 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                 </button>
 
                 <div className="lg:col-span-2 space-y-8">
-                  <button onClick={() => setShowAIModal(true)} className="w-full bg-white/5 border-2 border-dashed border-white/10 p-12 rounded-[50px] hover:border-[#fdad74]/50 hover:bg-[#fdad74]/5 transition-all group flex flex-col items-center justify-center gap-6">
-                    <div className="w-20 h-20 bg-[#fdad74]/10 text-[#fdad74] rounded-[30px] flex items-center justify-center group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
+                  <button onClick={() => setShowAIModal(true)} className="w-full bg-white/5 border-2 border-dashed border-white/10 p-12 rounded-[50px] hover:border-orange-300/50 hover:bg-orange-300/5 transition-all group flex flex-col items-center justify-center gap-6">
+                    <div className="w-20 h-20 bg-orange-300/10 text-orange-300 rounded-[30px] flex items-center justify-center group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
                       <Sparkles className="w-10 h-10" />
                     </div>
                     <div className="text-center">
                       <h4 className="text-2xl font-black uppercase tracking-tight mb-2">Gerar com IA</h4>
-                      <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Criar 5 flashcards técnicos via Inteligência Artificial</p>
+                      <p className="text-[#d8c9b3] text-[10px] font-black uppercase tracking-widest">Criar flashcards prontos com a IA</p>
                     </div>
                   </button>
 
                   <div className="space-y-4">
                     <div className="flex justify-between items-center px-4">
-                      <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">ACERVO DE CARDS ({folderCards.length})</h3>
+                      <h3 className="text-[10px] font-black text-[#e4d4bd] uppercase tracking-[0.4em]">ACERVO DE CARDS ({folderCards.length})</h3>
                     </div>
                     <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
                       {folderCards.length === 0 ? (
                         <div className="p-16 text-center bg-white/2 border-2 border-dashed border-white/5 rounded-[40px]">
-                          <p className="text-gray-600 font-black text-[10px] uppercase tracking-widest">Nenhum card cadastrado</p>
+                          <p className="text-[#d8c9b3] font-black text-[10px] uppercase tracking-widest">Nenhum card cadastrado</p>
                         </div>
                       ) : (
                         folderCards.map((card) => (
@@ -410,8 +411,8 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                             <div className="flex-1 min-w-0 pr-6">
                               <p className="text-white font-bold text-lg truncate ">{card.question}</p>
                               <div className="flex items-center gap-4 mt-2">
-                                <span className="text-gray-500 text-[9px] font-black uppercase tracking-widest">PRÓXIMA REVISÃO:</span>
-                                <span className="text-[#fdad74]/60 font-black text-[9px] uppercase tracking-widest">{card.nextReview ? new Date(card.nextReview).toLocaleDateString() : 'IMEDIATA'}</span>
+                                <span className="text-[#d8c9b3] text-[9px] font-black uppercase tracking-widest">PRÓXIMA REVISÃO:</span>
+                                <span className="text-orange-300/80 font-black text-[9px] uppercase tracking-widest">{card.nextReview ? new Date(card.nextReview).toLocaleDateString() : 'IMEDIATA'}</span>
                               </div>
                             </div>
                             <button
@@ -446,7 +447,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                         <h2 className="text-3xl font-black tracking-tight uppercase mb-4">Missão Cumprida</h2>
                         <p className="text-gray-400 font-bold uppercase tracking-widest text-xs max-w-sm mx-auto leading-relaxed">Sessão de reforço sináptico concluída com sucesso. Seu cérebro está mais denso!</p>
                       </div>
-                      <button onClick={() => setViewMode('FOLDERS')} className="bg-[#fdad74] text-white px-16 py-8 rounded-full font-black uppercase tracking-[0.3em] text-xs hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[#fdad74]/20 dark:shadow-black/30">
+                      <button onClick={() => setViewMode('FOLDERS')} className="bg-orange-300 text-[#2b1810] px-16 py-8 rounded-full font-black uppercase tracking-[0.3em] text-xs hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-orange-300/20 dark:shadow-black/30">
                         Voltar ao HUB
                       </button>
                     </div>
@@ -496,7 +497,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                                 <div className="flashcard-face flashcard-face--question" aria-hidden={showAnswer}>
                                   <div className="flashcard-face__content items-center text-center">
                                     <div
-                                      className="text-[15px] font-normal leading-relaxed mb-10 markdown-body overflow-y-auto max-h-[320px] custom-scrollbar selection:bg-[#fdad74]/50 px-4"
+                                      className="text-[15px] font-normal leading-relaxed mb-10 markdown-body overflow-y-auto max-h-[320px] custom-scrollbar selection:bg-orange-400/50 px-4"
                                       dangerouslySetInnerHTML={{ __html: currentCard?.question || '' }}
                                     />
 
@@ -605,15 +606,15 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
         {showAddFolderModal && (
           <div className="fixed inset-0 bg-[#473c33]/80 backdrop-blur-xl z-[1000] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#473c33] border border-white/10 rounded-[60px] w-full max-w-lg p-12 shadow-3xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-2 h-full bg-[#fdad74]"></div>
+              <div className="absolute top-0 left-0 w-2 h-full bg-orange-300"></div>
               <h3 className="text-3xl font-black mb-8 uppercase tracking-tighter">
-                {editingFolderId ? 'Editar' : 'Novo'} <span className="text-[#fdad74]">Módulo</span>
+                {editingFolderId ? 'Editar' : 'Novo'} <span className="text-orange-300">Módulo</span>
               </h3>
               <form onSubmit={handleCreateFolder} className="space-y-8">
                 <div className="grid grid-cols-[minmax(100px,130px)_1fr] items-center gap-4">
                   <StudyBook3D title={newFolder.name || 'Novo caderno'} color={newFolder.color} />
                   <div className="space-y-3">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Nome da Pasta</label>
+                  <label className="text-[10px] font-black text-[#e4d4bd] uppercase tracking-widest ml-4">Nome da Pasta</label>
                   <input
                     required
                     autoFocus
@@ -624,7 +625,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                         name: e.target.value,
                       }))
                     }
-                    className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-8 py-6 focus:outline-none focus:border-[#fdad74] transition-all font-black text-xl"
+                    className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-8 py-6 focus:outline-none focus:border-orange-300 transition-all font-black text-xl text-white ph-on-dark"
                     placeholder="Ex: Legislação Penal"
                   />
                   </div>
@@ -644,10 +645,10 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                   ))}
                 </div>
                 <div className="flex gap-4 pt-6">
-                  <button type="button" onClick={() => { setShowAddFolderModal(false); setEditingFolderId(null); }} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-gray-500 hover:text-white transition-colors uppercase">
+                  <button type="button" onClick={() => { setShowAddFolderModal(false); setEditingFolderId(null); }} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-[#e4d4bd] hover:text-white transition-colors uppercase">
                     Cancelar
                   </button>
-                  <button type="submit" className="flex-[2] bg-[#fdad74] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl shadow-[#fdad74]/20 dark:shadow-black/30 active:scale-95">
+                  <button type="submit" className="flex-[2] bg-orange-300 text-[#2b1810] py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-2xl shadow-orange-300/20 dark:shadow-black/30 active:scale-95">
                     {editingFolderId ? 'Salvar alterações' : 'Criar módulo'}
                   </button>
                 </div>
@@ -739,29 +740,29 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
         {showAIModal && (
           <div className="fixed inset-0 bg-[#473c33]/80 backdrop-blur-xl z-[1000] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#473c33] text-white rounded-[60px] w-full max-w-lg p-12 shadow-3xl border border-white/10 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-2 bg-[#fdad74] shadow-[0_0_20px_rgba(249,115,22,0.5)]"></div>
+              <div className="absolute top-0 left-0 w-full h-2 bg-orange-300 shadow-[0_0_20px_rgba(249,115,22,0.5)]"></div>
 
-              <div className="w-20 h-20 bg-[#fdad74]/10 text-[#fdad74] rounded-[30px] flex items-center justify-center mb-10 shadow-xl mx-auto">
+              <div className="w-20 h-20 bg-orange-300/10 text-orange-300 rounded-[30px] flex items-center justify-center mb-10 shadow-xl mx-auto">
                 <Sparkles className="w-12 h-12" />
               </div>
 
               <h3 className="text-4xl font-black mb-4 uppercase tracking-tighter text-center">
-                Flashcards <span className="text-[#fdad74]">com IA</span>
+                Flashcards <span className="text-orange-300">com IA</span>
               </h3>
-              <p className="text-gray-500 text-xs mb-12 text-center leading-relaxed font-black uppercase tracking-[0.2em] px-4">{strategicMode ? (studyProfile === 'FACULDADE' ? 'A IA vai usar as disciplinas da sua grade para criar flashcards de revisão.' : 'A IA vai usar as matérias do seu edital para criar flashcards de revisão.') : 'Informe um tema para criar flashcards com os principais conceitos.'}</p>
+              <p className="text-[#e4d4bd] text-xs mb-12 text-center leading-relaxed font-black uppercase tracking-[0.2em] px-4">{strategicMode ? (studyProfile === 'FACULDADE' ? 'A IA vai usar as disciplinas da sua grade para criar flashcards de revisão.' : 'A IA vai usar as matérias do seu edital para criar flashcards de revisão.') : 'Informe um tema para criar flashcards com os principais conceitos.'}</p>
 
               <div className="space-y-8">
                 {strategicMode && editalConfig ? (
                   <div className="space-y-6">
                     <div className="space-y-3">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>
+                      <label className="text-[10px] font-black text-[#e4d4bd] uppercase tracking-widest ml-4">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>
                       <select
                         value={selectedSubject}
                         onChange={(e) => {
                           setSelectedSubject(e.target.value);
                           setSelectedTopic('');
                         }}
-                        className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-8 py-6 focus:outline-none focus:border-[#fdad74] transition-all font-black text-lg appearance-none cursor-pointer text-white"
+                        className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-8 py-6 focus:outline-none focus:border-orange-300 transition-all font-black text-lg appearance-none cursor-pointer text-white"
                       >
                         <option value="" className="bg-[#473c33]">
                           Selecionar Matéria...
@@ -774,8 +775,8 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                       </select>
                     </div>
                     <div className="space-y-3">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Assunto Específico</label>
-                      <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)} disabled={!selectedSubject} className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-8 py-6 focus:outline-none focus:border-[#fdad74] transition-all font-black text-lg appearance-none cursor-pointer disabled:opacity-20 text-white">
+                      <label className="text-[10px] font-black text-[#e4d4bd] uppercase tracking-widest ml-4">Assunto Específico</label>
+                      <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)} disabled={!selectedSubject} className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-8 py-6 focus:outline-none focus:border-orange-300 transition-all font-black text-lg appearance-none cursor-pointer disabled:opacity-20 text-white">
                         <option value="" className="bg-[#473c33]">
                           Selecionar Assunto...
                         </option>
@@ -791,16 +792,16 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">Tema do Card</label>
-                    <input required autoFocus value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-10 py-8 focus:outline-none focus:border-[#fdad74] transition-all font-black text-2xl text-center text-white placeholder:text-white/10" placeholder="Ex: Mitose vs Meiose" onKeyPress={(e) => e.key === 'Enter' && generateAICards()} />
+                    <label className="text-[10px] font-black text-[#e4d4bd] uppercase tracking-widest ml-4">Tema do Card</label>
+                    <input required autoFocus value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} className="w-full bg-white/5 border-2 border-white/5 rounded-[30px] px-10 py-8 focus:outline-none focus:border-orange-300 transition-all font-black text-2xl text-center text-white ph-on-dark" placeholder="Ex: Mitose vs Meiose" onKeyPress={(e) => e.key === 'Enter' && generateAICards()} />
                   </div>
                 )}
 
                 <div className="flex gap-4 pt-6">
-                  <button onClick={() => setShowAIModal(false)} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-gray-500 hover:text-white transition-colors">
+                  <button onClick={() => setShowAIModal(false)} className="flex-1 py-6 font-black uppercase tracking-widest text-[10px] text-[#e4d4bd] hover:text-white transition-colors">
                     Cancelar
                   </button>
-                  <button onClick={() => generateAICards()} disabled={strategicMode ? !selectedSubject || !selectedTopic : !aiTopic.trim()} className="flex-[2] bg-[#fdad74] text-white py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-3xl shadow-[#fdad74]/20 dark:shadow-black/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed">
+                  <button onClick={() => generateAICards()} disabled={strategicMode ? !selectedSubject || !selectedTopic : !aiTopic.trim()} className="flex-[2] bg-orange-300 text-[#2b1810] py-6 rounded-[30px] font-black uppercase tracking-widest text-xs shadow-3xl shadow-orange-300/20 dark:shadow-black/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed">
                     Criar flashcards
                   </button>
                 </div>

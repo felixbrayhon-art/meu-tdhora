@@ -428,7 +428,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
     : 0;
 
   return (
-    <div className="absolute inset-0 z-[200] flex flex-col h-full bg-[#473c33] text-slate-100 font-sans selection:bg-[#fecc73]/30 overflow-hidden">
+    <div className="absolute inset-0 z-[200] flex flex-col h-full bg-[#473c33] text-slate-100 font-sans selection:bg-amber-300/30 overflow-hidden">
       {/* Header Imersivo */}
       <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-white/5 bg-[#473c33]/40 px-3 py-2 backdrop-blur-2xl sm:flex-nowrap sm:px-5 sm:py-3">
         <button onClick={onBack} className="group shrink-0 rounded-xl p-2 transition-colors hover:bg-white/10 active:scale-95" aria-label="Voltar">
