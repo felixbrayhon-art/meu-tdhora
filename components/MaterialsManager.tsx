@@ -105,15 +105,15 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
 
   return (
     <div className="animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-        <button onClick={selectedNotebookId ? () => setSelectedNotebookId(null) : selectedFolderId ? () => setSelectedFolderId(selectedFolder?.parentId || null) : onBack} className="text-gray-400 font-bold text-xs tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors uppercase">
+      <div className="flex flex-col md:flex-row md:flex-wrap justify-between items-start md:items-center gap-x-6 gap-y-4 mb-12">
+        <button onClick={selectedNotebookId ? () => setSelectedNotebookId(null) : selectedFolderId ? () => setSelectedFolderId(selectedFolder?.parentId || null) : onBack} className="md:basis-full text-gray-400 font-bold text-xs tracking-widest flex items-center gap-2 hover:text-gray-600 transition-colors uppercase">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
           </svg>
           {selectedNotebookId ? 'VOLTAR PARA PASTA' : selectedFolderId ? (selectedFolder?.parentId ? 'VOLTAR PARA PASTA PAI' : 'VOLTAR ÀS PASTAS') : 'HUB PRINCIPAL'}
         </button>
 
-        <div className="flex flex-col gap-3 flex-1">
+        <div className="flex flex-col gap-3 flex-1 min-w-0">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar max-w-full md:max-w-2xl">
             {breadcrumbs.map((crumb, idx) => (
               <React.Fragment key={crumb.id || 'root'}>
