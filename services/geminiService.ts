@@ -1129,9 +1129,12 @@ export const generateExamQuestions = async (topic: string, numQuestions: number,
 // Fast path, like the app worked before the quality layer: one model call, questions shown right away with a
 // "checking" badge. verifyExamQuestions then runs the same checks as generateExamQuestions on this exact batch
 // and updates each badge, so the student is never left waiting on (or blocked by) the verification.
+// Two options that read the same make the answer key meaningless (seen in generated sets: options 0 and 4 identical).
+const foldOption = (o: string) => o.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const isUsableQuestion = (q: any): boolean =>
   !!q && typeof q.question === 'string' && q.question.trim().length > 0 &&
   Array.isArray(q.options) && q.options.length === 5 && q.options.every((o: unknown) => typeof o === 'string' && o.trim().length > 0) &&
+  new Set(q.options.map((o: string) => foldOption(o))).size === q.options.length &&
   Number.isInteger(q.correctAnswer) && q.correctAnswer >= 0 && q.correctAnswer < q.options.length;
 
 // The law lookup matches article text by topic words, so qualifiers ("furto qualificado", "homicídio culposo")
@@ -1242,8 +1245,18 @@ export const generateExamQuestionsFast = async (topic: string, numQuestions: num
     const list: any[] = (Array.isArray(raw) ? raw : raw?.questions) ?? [];
     // Models put the right answer first most of the time; asking them to spread the key made the content worse,
     // so the app shuffles the options itself and remaps the answer key.
-    const questions = list.filter(isUsableQuestion).slice(0, numQuestions)
-      .map((q) => ({ ...shuffleOptions(q), verification: { status: 'checking' as const } }));
+    let usable = list.filter(isUsableQuestion).slice(0, numQuestions);
+    // Discarded questions (repeated options, bad key) are replaced with one extra call for just the missing ones.
+    if (usable.length > 0 && usable.length < numQuestions) {
+      try {
+        const more = await requestExamQuestions(topic, numQuestions - usable.length, profile, banca, explanationStyle, questionProfileStyle, rules, true);
+        const extra: any[] = (Array.isArray(more) ? more : more?.questions) ?? [];
+        usable = [...usable, ...extra.filter(isUsableQuestion)].slice(0, numQuestions);
+      } catch (error) {
+        console.warn('[questoes] reposição de questões descartadas falhou', error);
+      }
+    }
+    const questions = usable.map((q) => ({ ...shuffleOptions(q), verification: { status: 'checking' as const } }));
     if (questions.length === 0 && fromCardsChecked.length === 0) throw new AIError('A IA não devolveu questões válidas desta vez. Tente novamente.');
     return { questions: [...fromCardsChecked, ...questions] };
   } catch (error) {
