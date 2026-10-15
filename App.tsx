@@ -122,6 +122,9 @@ const App: React.FC = () => {
     window.addEventListener('popstate', syncViewWithHistory);
     return () => window.removeEventListener('popstate', syncViewWithHistory);
   }, []);
+  // Each tool opens at its top, not at the scroll position of the previous one.
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { scrollAreaRef.current?.scrollTo({ top: 0 }); }, [currentView]);
   const [timerMode, setTimerMode] = useState<TimerMode>(TimerMode.POMODORO);
   const [showGlobalBar, setShowGlobalBar] = useState(true);
 
@@ -194,6 +197,17 @@ const App: React.FC = () => {
     folderId: string;
     notebookId: string;
   } | null>(null);
+  // A quiz needs the notebook held in memory. Reloading (or going forward) on ?view=QUIZ_PLAYER would show a blank page:
+  // send the student to their notebooks instead.
+  useEffect(() => {
+    if (currentView !== 'QUIZ_PLAYER' || activeNotebookInfo) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'MATERIALS');
+    window.history.replaceState({ ...window.history.state, appView: 'MATERIALS' }, '', `${url.pathname}${url.search}${url.hash}`);
+    viewHistoryRef.current[viewHistoryRef.current.length - 1] = 'MATERIALS';
+    setCurrentViewState('MATERIALS');
+  }, [currentView, activeNotebookInfo]);
+
   const [guidedLessonData, setGuidedLessonData] = useState<{
     subject: string;
     topic: string;
@@ -1237,7 +1251,7 @@ const App: React.FC = () => {
             <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} compact={isFocusLesson} />
           </header>}
 
-          <div className={`flex-1 overflow-y-auto custom-scrollbar relative ${showGlobalBar && !isQuestionSession && !isFocusLesson ? 'pb-28' : ''}`}>
+          <div ref={scrollAreaRef} className={`flex-1 overflow-y-auto custom-scrollbar relative ${showGlobalBar && !isQuestionSession && !isFocusLesson ? 'pb-28' : ''}`}>
             <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop />
             <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop />
             <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop />
