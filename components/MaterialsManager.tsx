@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import DOMPurify from 'dompurify';
 import { QuizFolder, Notebook, QuizAttempt, EditalConfig } from '../types';
 import { MoveAllNotebookQuestionsModal } from './MoveAllNotebookQuestionsModal';
@@ -78,8 +78,20 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
 
   const breadcrumbs = getBreadcrumbs();
 
+  const createLock = useRef(false);
+  useEffect(() => {
+    if (!isCreating) return;
+    createLock.current = false;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setNewName(''); setEditingNotebookId(null); setIsCreating(null); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isCreating]);
+
   const handleCreate = () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() || createLock.current) return;
+    createLock.current = true;
     if (isCreating === 'FOLDER') {
       onCreateFolder(newName.trim(), selectedFolderId || undefined, newFolderColor);
     } else if (isCreating === 'NOTEBOOK' && selectedFolderId) {
@@ -160,7 +172,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ folders, attempts, 
               <div className="w-20 shrink-0">
                 <StudyBook3D title={newName || (isCreating === 'NOTEBOOK' ? 'Novo caderno' : 'Nova pasta')} color={newFolderColor} />
               </div>
-              <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={isCreating === 'FOLDER' ? 'Ex: Revisão OAB' : 'Ex: Atos Administrativos'} className="min-w-0 flex-1 bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-base font-bold focus:outline-none focus:border-[#fed386] transition-all" onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreate())} />
+              <input autoFocus value={newName} maxLength={60} onChange={(e) => setNewName(e.target.value)} placeholder={isCreating === 'FOLDER' ? 'Ex: Revisão OAB' : 'Ex: Atos Administrativos'} className="min-w-0 flex-1 bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-base font-bold focus:outline-none focus:border-[#fed386] transition-all" onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreate())} />
             </div>
             <CustomColorField label={isCreating === 'FOLDER' ? 'Cor da pasta' : 'Cor da capa'} color={newFolderColor} onChange={setNewFolderColor} />
             <div className="flex gap-4">

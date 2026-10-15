@@ -337,7 +337,46 @@ const NoteEditor: React.FC<{
     el.style.backgroundPosition = `${appState.scrollX * zoom}px ${appState.scrollY * zoom}px`;
   };
 
+  // Rascunho: se o editor for fechado por outro caminho (ex.: botão Voltar do
+  // navegador), salva automaticamente o que existir em vez de perder o trabalho.
+  const savedRef = useRef(false);
+  const draftRef = useRef({ title, coverColor, folderId, paperStyle, penPreset });
+  draftRef.current = { title, coverColor, folderId, paperStyle, penPreset };
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  useEffect(() => () => {
+    if (savedRef.current) return;
+    let elements: readonly unknown[] = note.excalidrawElements ?? [];
+    let appState = note.excalidrawAppState;
+    let files = note.excalidrawFiles;
+    try {
+      const api = excalidrawAPIRef.current;
+      if (api) {
+        elements = api.getSceneElements();
+        const st = api.getAppState();
+        appState = { viewBackgroundColor: st.viewBackgroundColor, scrollX: st.scrollX, scrollY: st.scrollY, zoom: st.zoom };
+        files = api.getFiles();
+      }
+    } catch { /* editor já desmontado: usa o último estado conhecido */ }
+    const d = draftRef.current;
+    if (!d.title.trim() && elements.length === 0) return;
+    onSaveRef.current({
+      ...note,
+      title: d.title.trim() || 'Sem título',
+      color: d.coverColor,
+      folderId: d.folderId || undefined,
+      paperStyle: d.paperStyle,
+      penPreset: d.penPreset,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      excalidrawElements: elements as any,
+      excalidrawAppState: appState,
+      excalidrawFiles: files,
+      updatedAt: Date.now(),
+    });
+  }, []);
+
   const handleSaveAndClose = async () => {
+    savedRef.current = true;
     const api = excalidrawAPIRef.current;
     let elements = note.excalidrawElements ?? [];
     let appState = note.excalidrawAppState;
@@ -693,9 +732,12 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
     setEditingNote(note);
   };
 
+  const folderSubmitRef = useRef(false);
+  useEffect(() => { if (!creatingFolder) folderSubmitRef.current = false; }, [creatingFolder]);
   const confirmCreateFolder = () => {
-    if (!newFolderName.trim()) return;
-    onCreateFolder(newFolderName.trim(), newFolderColor);
+    if (!newFolderName.trim() || folderSubmitRef.current) return;
+    folderSubmitRef.current = true;
+    onCreateFolder(newFolderName.trim().slice(0, 60), newFolderColor);
     setNewFolderName('');
     setCreatingFolder(false);
   };
@@ -823,6 +865,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
               autoFocus
               required
               value={newFolderName}
+              maxLength={60}
               onChange={e => setNewFolderName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName(''); } }}
               placeholder="Nome da pasta"
