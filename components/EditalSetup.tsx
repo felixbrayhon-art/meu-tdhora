@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EditalConfig, EditalSubject, StudyProfile } from '../types';
 import LoadingFish from './LoadingFish';
+import { scrollMainToTop } from '../utils/scrollTop';
 import CharacterTip from './CharacterTip';
 import { MEDICINA_CURRICULUM, MedicinaPeriod } from '../services/medicinaCurriculum';
 import { BookOpen, Sparkles, Plus, Trash2, HelpCircle, Calendar, Clock, SkipForward } from './icons';
@@ -66,6 +67,8 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMedicinaSelector, setShowMedicinaSelector] = useState(draft?.showMedicinaSelector ?? false);
   const [selectedMedPeriod, setSelectedMedPeriod] = useState<number | null>(draft?.selectedMedPeriod ?? null);
+  // Cada passo do assistente abre no topo (antes herdava a rolagem do passo anterior).
+  useEffect(() => { scrollMainToTop(); }, [step, currentSubjectIndex, isProcessing, showMedicinaSelector]);
 
   // College curriculum custom period mapping state
   const [numPeriods, setNumPeriods] = useState<number>(draft?.numPeriods ?? 8);
