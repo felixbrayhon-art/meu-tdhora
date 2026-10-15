@@ -14,9 +14,13 @@ body {
    editorial and generated study content in its readable text styling. */
 :is(h1, h2, h3, h4, h5, h6):not(.markdown-body h1):not(.markdown-body h2):not(.markdown-body h3):not(.markdown-body h4):not(.markdown-body h5):not(.markdown-body h6):not(.prose h1):not(.prose h2):not(.prose h3):not(.prose h4):not(.prose h5):not(.prose h6) {
     font-family: 'Syne', sans-serif !important;
-    font-weight: 800;
+    font-weight: var(--heading-weight, 800);
     text-transform: uppercase;
 }
+/* Syne runs from 400 to 800: the weight steps down with the heading level so titles, sections and labels read as a hierarchy. */
+h2 { --heading-weight: 700; }
+h3, h4 { --heading-weight: 600; }
+h5, h6 { --heading-weight: 500; }
 
 .dark body {
     background-color: #1c1712;
