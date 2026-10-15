@@ -42,6 +42,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
   const [guidedTopic, setGuidedTopic] = useState('');
   const [livingSubject, setLivingSubject] = useState('');
   const [livingTopic, setLivingTopic] = useState('');
+  const [livingHint, setLivingHint] = useState(false);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -431,6 +432,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                         <ArrowRight className="w-5 h-5" />
                       </button>
                     </div>
+                    {livingHint && (!livingSubject.trim() || !livingTopic.trim()) && <p role="alert" className="text-xs font-bold text-[#fff6e8]">Preencha a disciplina e o assunto para criar a aula.</p>}
                   </div>
 
                   <div className="absolute -right-4 -bottom-4 transition-opacity">
@@ -467,8 +469,11 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                         aria-label="Criar Aula Viva"
                         onClick={() => {
                           if (livingSubject.trim() && livingTopic.trim()) {
+                            setLivingHint(false);
                             setLivingLessonData({ subject: livingSubject.trim(), topic: livingTopic.trim() });
                             setView('LIVING_LESSON');
+                          } else {
+                            setLivingHint(true);
                           }
                         }}
                         className="bg-[#fecc73] hover:bg-[#fec868] text-white min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl transition-all"

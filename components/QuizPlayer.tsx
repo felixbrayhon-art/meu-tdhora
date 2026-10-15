@@ -906,7 +906,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                 <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl ${selectedAnswer === currentQ.correctAnswer ? 'bg-[#4c6324]' : 'bg-[#9a3b26]'}`}>{selectedAnswer === currentQ.correctAnswer ? '✓' : '✗'}</div>
                   <div>
-                    <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedAnswer === currentQ.correctAnswer ? 'text-[#596b2a] dark:text-[#c4d99a]' : 'text-[#984b39] dark:text-[#f1a58b]'}`}>{selectedAnswer === currentQ.correctAnswer ? 'TARGET ACQUIRED' : 'ROUTE ERROR'}</p>
+                    <p className={`text-[10px] font-black uppercase tracking-[0.4em] mb-1 ${selectedAnswer === currentQ.correctAnswer ? 'text-[#596b2a] dark:text-[#c4d99a]' : 'text-[#984b39] dark:text-[#f1a58b]'}`}>{selectedAnswer === currentQ.correctAnswer ? 'RESPOSTA CORRETA' : 'RESPOSTA INCORRETA'}</p>
                     <p className={`text-[17px] font-bold ${selectedAnswer === currentQ.correctAnswer ? 'text-[#46523a] dark:text-[#f2efd2]' : 'text-[#713a2e] dark:text-[#f1c5b4]'}`}>{selectedAnswer === currentQ.correctAnswer ? 'Resposta correta! Você consolidou este conhecimento.' : `A resposta correta é a alternativa ${String.fromCharCode(65 + currentQ.correctAnswer)}.`}</p>
                   </div>
                 </div>
