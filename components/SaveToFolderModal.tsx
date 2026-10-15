@@ -92,7 +92,7 @@ const SaveToFolderModal: React.FC<SaveToFolderModalProps> = ({ folders, suggeste
               <label className="text-[11px] font-black text-[#e4d4bd] uppercase tracking-[0.3em] block mb-3 ml-2">Título do caderno</label>
               <div className="flex items-center gap-4">
                 <div className="w-16 shrink-0"><StudyBook3D title={notebookName || 'Novo caderno'} color={notebookColor} /></div>
-                <input value={notebookName} onChange={(e) => setNotebookName(e.target.value)} placeholder="Ex: Resumo de Atos Administrativos" className="w-full min-w-0 bg-white/5 border-2 border-white/10 rounded-[25px] px-6 py-5 text-lg font-black text-white focus:outline-none focus:border-orange-300 transition-all ph-on-dark " />
+                <input value={notebookName} onChange={(e) => setNotebookName(e.target.value)} placeholder="Ex: Resumo de Atos Administrativos" title={notebookName} className="w-full min-w-0 bg-white/5 border-2 border-white/10 rounded-[25px] px-4 py-4 text-base font-black text-white focus:outline-none focus:border-orange-300 transition-all ph-on-dark " />
               </div>
               <CustomColorField dark label="Cor da capa" color={notebookColor} onChange={setNotebookColor} />
             </div>
