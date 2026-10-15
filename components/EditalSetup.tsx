@@ -506,7 +506,7 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
                     setSubjects((prev) =>
                       prev.map((s) => ({
                         ...s,
-                        content: s.content.trim() || `Conceitos integrados e tópicos acadêmicos para a disciplina de ${s.name}.`,
+                        content: s.content.trim(),
                       })),
                     );
                     setStep(3);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EditalConfig, EditalSubject, StudyProfile } from '../types';
 import { extractTopicsFromEdital } from '../services/geminiService';
@@ -35,18 +35,17 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
   } | null>(null);
   const [newTopicName, setNewTopicName] = useState('');
 
+  const extractingRef = useRef(false);
+  const [pendingDelete, setPendingDelete] = useState<{ subjectId: string; topic: string } | null>(null);
+  const [confirmDisable, setConfirmDisable] = useState(false);
+
   const activeSubject = config.subjects.find((s) => s.id === activeSubjectId);
   const isExtracting = extractingSubjectIds.length > 0;
 
-  useEffect(() => {
-    const subjectsToExtract = config.subjects.filter((s) => s.content.trim() && s.topics.length === 0 && !extractingSubjectIds.includes(s.id) && !failedSubjectIds.includes(s.id));
-    if (subjectsToExtract.length > 0 && extractingSubjectIds.length < 2) {
-      // Process up to 2 at a time for speed
-      handleAutoExtract(subjectsToExtract[0]);
-    }
-  }, [config.subjects, extractingSubjectIds, failedSubjectIds]);
-
   const handleAutoExtract = async (subject: EditalSubject) => {
+    // Sequencial: só uma chamada de IA por vez, sempre pedida pelo aluno.
+    if (extractingRef.current) return;
+    extractingRef.current = true;
     setExtractingSubjectIds((prev) => [...prev, subject.id]);
     // Clear any previous failure flag for this subject while we retry it
     setFailedSubjectIds((prev) => prev.filter((id) => id !== subject.id));
@@ -60,6 +59,7 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
       // The auto-extract effect excludes failed subjects, so the user must explicitly retry.
       setFailedSubjectIds((prev) => (prev.includes(subject.id) ? prev : [...prev, subject.id]));
     } finally {
+      extractingRef.current = false;
       setExtractingSubjectIds((prev) => prev.filter((id) => id !== subject.id));
     }
   };
@@ -170,7 +170,7 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
               <p className="text-xs font-black uppercase leading-none mt-1">{studyProfile === 'FACULDADE' ? 'Finais / Fim' : 'A Prova'}</p>
             </div>
           </div>
-          <button onClick={onDisable} className="bg-gray-100 text-gray-400 px-6 py-4 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-all">
+          <button onClick={() => setConfirmDisable(true)} className="bg-gray-100 text-gray-400 px-6 py-4 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-all">
             Desativar
           </button>
         </div>
@@ -331,13 +331,15 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
                                     newTopic: topic,
                                   })
                                 }
+                                aria-label={`Editar tópico ${topic}`}
+                                title="Editar tópico"
                                 className="text-[#fed386] hover:text-[#fec868] p-1"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                 </svg>
                               </button>
-                              <button onClick={() => removeTopic(activeSubject.id, topic)} className="text-red-300 hover:text-red-500 p-1">
+                              <button onClick={() => setPendingDelete({ subjectId: activeSubject.id, topic })} aria-label={`Excluir tópico ${topic}`} title="Excluir tópico" className="text-red-300 hover:text-red-500 p-1">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
@@ -363,7 +365,16 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
                 {activeSubject.topics.length === 0 && !isExtracting && !failedSubjectIds.includes(activeSubject.id) && (
                   <div className="flex flex-col items-center justify-center h-96 text-center space-y-4">
                     <div className="text-5xl opacity-20">📖</div>
-                    <p className="text-gray-400 font-bold max-w-xs">Aguardando mapeamento estratégico deste conteúdo...</p>
+                    {activeSubject.content.trim() ? (
+                      <>
+                        <p className="text-gray-400 font-bold max-w-xs">Esta matéria ainda não tem tópicos. Você pode mapeá-los com IA a partir do conteúdo informado.</p>
+                        <button onClick={() => handleRetryExtraction(activeSubject)} className="bg-[#fec868] text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
+                          Mapear tópicos com IA
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-gray-400 font-bold max-w-xs">Esta matéria ainda não tem tópicos. Use "Adicionar" para criar os seus próprios tópicos.</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -515,6 +526,31 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
           </>
         )}
       </AnimatePresence>
+
+      {(pendingDelete || confirmDisable) && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[#473c33]/60 p-4" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') { setPendingDelete(null); setConfirmDisable(false); } }}>
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-left shadow-2xl">
+            <h3 className="text-lg font-black text-[#473c33]">{pendingDelete ? 'Excluir tópico?' : studyProfile === 'FACULDADE' ? 'Desativar a grade?' : 'Desativar o edital?'}</h3>
+            <p className="mt-2 text-sm font-medium text-gray-600">
+              {pendingDelete ? `"${pendingDelete.topic}" será removido da lista e do seu progresso.` : 'Seus dados são mantidos. Você pode reativar depois na aba inicial, pelo botão "Reativar".'}
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button autoFocus onClick={() => { setPendingDelete(null); setConfirmDisable(false); }} className="rounded-xl bg-gray-100 px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-600">Cancelar</button>
+              <button
+                onClick={() => {
+                  if (pendingDelete) removeTopic(pendingDelete.subjectId, pendingDelete.topic);
+                  else onDisable();
+                  setPendingDelete(null);
+                  setConfirmDisable(false);
+                }}
+                className="rounded-xl bg-red-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white"
+              >
+                {pendingDelete ? 'Excluir' : 'Desativar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

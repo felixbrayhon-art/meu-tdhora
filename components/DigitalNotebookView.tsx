@@ -31,7 +31,7 @@ export default function DigitalNotebookView({ owner, onBack }: { owner: string; 
 
   const change = (notebook: DigitalNotebook) => {
     setActive(notebook);
-    setNotes(previous => previous.map(note => note.id === notebook.id ? notebook : note));
+    setNotes(previous => previous.some(note => note.id === notebook.id) ? previous.map(note => note.id === notebook.id ? notebook : note) : [notebook, ...previous]);
     const version = ++saveVersion.current;
     setStatus('saving');
     latestSave.current = saveNotebook(notebook).then(() => {
@@ -42,15 +42,26 @@ export default function DigitalNotebookView({ owner, onBack }: { owner: string; 
       return false;
     });
   };
+  const adding = useRef(false);
+  const isBlank = (note: DigitalNotebook) => note.title === 'Caderno sem título' && note.pages.length === 1 && !note.pages[0].background && note.pages[0].elements.length === 0;
   const add = async (file?: File) => {
+    if (adding.current) return;
+    if (!file) {
+      // Reaproveita um caderno vazio já existente; um novo só é gravado na primeira edição.
+      const blank = notes.find(isBlank);
+      if (blank) { setStatus('saved'); setActive(blank); return; }
+      setError(''); setStatus('saved'); setActive(createNotebook(owner));
+      return;
+    }
+    adding.current = true;
     setBusy(true); setError('');
     try {
-      const notebook = file ? await importBackup(file, owner) : createNotebook(owner);
+      const notebook = await importBackup(file, owner);
       await saveNotebook(notebook);
       setNotes(previous => [notebook, ...previous]);
       setStatus('saved'); setActive(notebook);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível criar o caderno.'); }
-    finally { setBusy(false); if (fileInput.current) fileInput.current.value = ''; }
+    finally { adding.current = false; setBusy(false); if (fileInput.current) fileInput.current.value = ''; }
   };
   const leaveEditor = async () => {
     if (await latestSave.current === false) return;

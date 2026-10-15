@@ -68,6 +68,15 @@ import { CharacterProvider } from './contexts/CharacterContext';
 import { syncPublicProfile } from './services/socialService';
 import { addLocalDays, toLocalDateKey } from './utils/localDate';
 
+const readTimerMinutes = (mode: TimerMode, fallback: number): number => {
+  try {
+    const v = parseInt(localStorage.getItem(`tdh_timer_minutes_${mode}`) || '', 10);
+    return Number.isFinite(v) && v >= 1 && v <= 180 ? v : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   // Tracks whether the SplashScreen's own on-screen animation has finished — kept
@@ -157,7 +166,7 @@ const App: React.FC = () => {
 
   // Global Timer State
   const [globalTimerActive, setGlobalTimerActive] = useState(false);
-  const [globalTimerSeconds, setGlobalTimerSeconds] = useState(1500);
+  const [globalTimerSeconds, setGlobalTimerSeconds] = useState(() => readTimerMinutes(TimerMode.POMODORO, 25) * 60);
 
   const safeJsonParse = (key: string, defaultValue: any) => {
     try {
@@ -1389,10 +1398,11 @@ const App: React.FC = () => {
                 <Suspense fallback={<div role="status" className="flex min-h-[45vh] flex-col items-center justify-center gap-3 text-sm font-bold text-[#725442] dark:text-[#c2b6a6]"><span className="h-8 w-8 animate-spin rounded-full border-4 border-[#e96f34]/20 border-t-[#e96f34]" aria-hidden="true" />Carregando ferramenta…</div>}>
                   {currentView === 'HUB' && (
                     <Hub
+                      onReactivateEdital={() => { setEditalConfig({ ...editalConfig, isActive: true }); setCurrentView('EDITAL_VIEW'); }}
                       setView={setCurrentView}
                       setTimerMode={(mode) => {
                         setTimerMode(mode);
-                        setGlobalTimerSeconds(mode === TimerMode.EMERGENCY ? 300 : 1500);
+                        setGlobalTimerSeconds(readTimerMinutes(mode, mode === TimerMode.EMERGENCY ? 5 : 25) * 60);
                         setShowGlobalBar(true);
                       }}
                       flashcardCount={dueFlashcardsCount}

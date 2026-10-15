@@ -31,9 +31,10 @@ interface HubProps {
   folders: QuizFolder[];
   smartSystem: SmartRevisionSystem;
   isAdmin?: boolean;
+  onReactivateEdital?: () => void;
 }
 
-const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats, activeChannel, setActiveChannel, isPlayingRain, setIsPlayingRain, editalConfig, setStrategicMode, setGuidedLessonData, setLivingLessonData, smartRevisionItems, isAIEnabled, isSyncing, attempts, folders, smartSystem, isAdmin }) => {
+const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats, activeChannel, setActiveChannel, isPlayingRain, setIsPlayingRain, editalConfig, setStrategicMode, setGuidedLessonData, setLivingLessonData, smartRevisionItems, isAIEnabled, isSyncing, attempts, folders, smartSystem, isAdmin, onReactivateEdital }) => {
   const [activeTab, setActiveTab] = useState<HubCategory>('ESTUDO');
   const [copyFeedback, setCopyFeedback] = useState(false);
 
@@ -172,6 +173,11 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
             {/* Edital-only Strategic Entry if not active */}
             {activeTab === 'EDITAL' && !editalConfig.isActive && (
               <div className="lg:col-span-3">
+                {onReactivateEdital && editalConfig.subjects.length > 0 && (
+                  <button onClick={onReactivateEdital} className="mb-4 w-full rounded-2xl border-2 border-[#fec868] bg-white px-6 py-4 text-left text-sm font-black uppercase tracking-widest text-[#473c33] hover:bg-[#fff6ed]">
+                    Reativar {stats.studyProfile === 'FACULDADE' ? 'grade' : 'edital'} anterior ({editalConfig.subjects.length} matérias, dados preservados)
+                  </button>
+                )}
                 <button onClick={() => setView('EDITAL_SETUP')} className="w-full bg-[#473c33] text-white p-8 rounded-[35px] text-left relative overflow-hidden group transition-all hover:scale-[1.01] hover:shadow-2xl animate-in zoom-in-95 duration-300">
                   <div className="absolute top-0 right-0 p-8 text-black/10 scale-150 rotate-12 transition-transform group-hover:scale-[1.8] group-hover:rotate-0">
                     <Zap className="w-48 h-48" fill="currentColor" />
