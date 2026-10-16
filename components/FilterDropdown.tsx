@@ -34,7 +34,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   const selected = options.find(o => o.value === value);
   const isDisabled = disabled || loading || options.length === 0;
   const filtered = search
-    ? options.filter(o => o.value.toLowerCase().includes(search.toLowerCase()))
+    ? options.filter(o => (o.label ?? o.value).toLowerCase().includes(search.toLowerCase()))
     : options;
 
   const close = () => {
@@ -54,7 +54,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
       >
         {selected ? (
           <span className="inline-flex items-center gap-2 bg-[#fec868] text-white text-sm font-bold px-4 py-1.5 rounded-full truncate max-w-[85%]">
-            <span className="truncate">{selected.value}</span>
+            <span className="truncate">{selected.label ?? selected.value}</span>
             <span className="text-white/70 font-black text-[11px] flex-shrink-0">{selected.count}</span>
           </span>
         ) : (
@@ -96,7 +96,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                       onClick={() => { onChange(o.value); close(); }}
                       className={`w-full flex items-center justify-between gap-3 px-5 py-3 text-left transition-colors ${isSelected ? 'bg-[#fec868]/10 text-[#fec868]' : 'text-slate-600 hover:bg-slate-50'}`}
                     >
-                      <span className="font-bold text-sm truncate">{o.value}</span>
+                      <span className="font-bold text-sm truncate">{o.label ?? o.value}</span>
                       <span className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-[11px] font-black text-slate-300">{o.count}</span>
                         {isSelected && <Check className="w-4 h-4 text-[#fec868]" />}
