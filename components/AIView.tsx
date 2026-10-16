@@ -32,6 +32,14 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
   const [generatingCards, setGeneratingCards] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
+  // The dossier has a light and a dark look; the markdown renderer needs to know which one is active.
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  useEffect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => setIsDark(root.classList.contains('dark')));
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
   // Trocar entre formulário, "Preparando…" e resultado volta ao topo (antes abria rolado).
   useEffect(() => { scrollMainToTop(); }, [loading, !!result]);
 
@@ -141,7 +149,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
   }
 
   return (
-    <div className={`relative isolate w-full min-h-full min-w-0 rounded-[32px] selection:bg-amber-300/30 font-sans ${result ? 'bg-[#473c33] text-white' : 'bg-[#f7f3ed] text-[#473c33]'}`}>
+    <div className={`relative isolate w-full min-h-full min-w-0 rounded-[32px] selection:bg-amber-300/30 font-sans ${result && isDark ? 'bg-[#473c33] text-white' : 'bg-[#f7f3ed] text-[#473c33]'}`}>
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 xl:px-10 pt-6 sm:pt-10 pb-32 animate-in fade-in slide-in-from-bottom-10 duration-700">
         {!result ? (
           <div className="w-full max-w-6xl mx-auto py-2 md:py-4">
@@ -249,8 +257,8 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
           </div>
         ) : (
           <div className="max-w-7xl mx-auto py-6">
-            <div className="flex justify-between items-center mb-16 bg-white/5 backdrop-blur-xl p-8 rounded-[40px] border border-white/10 shadow-2xl">
-              <button onClick={() => setResult(null)} className="text-gray-500 font-black uppercase text-[10px] tracking-[0.4em] flex items-center gap-3 hover:text-white transition-all group">
+            <div className={isDark ? "flex justify-between items-center mb-16 backdrop-blur-xl p-8 rounded-[40px] border shadow-2xl bg-white/5 border-white/10" : "flex justify-between items-center mb-16 bg-white backdrop-blur-xl p-8 rounded-[40px] border border-[#e9e0d4] shadow-2xl"}>
+              <button onClick={() => setResult(null)} className={isDark ? "font-black uppercase text-[10px] tracking-[0.4em] flex items-center gap-3 transition-all group text-gray-500 hover:text-white" : "text-[#8f8375] font-black uppercase text-[10px] tracking-[0.4em] flex items-center gap-3 hover:text-[#473c33] transition-all group"}>
                 <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
                 </svg>
@@ -258,83 +266,83 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
               </button>
               <div className="flex items-center gap-6">
                 <div className="hidden md:flex flex-col items-end">
-                  <span className="text-[#fecc73] text-[10px] font-black tracking-[0.4em] uppercase mb-1">Material pronto</span>
-                  <span className="text-white font-black tracking-tighter uppercase">{topic}</span>
+                  <span className={isDark ? "text-[10px] font-black tracking-[0.4em] uppercase mb-1 text-[#fecc73]" : "text-[#bd5628] text-[10px] font-black tracking-[0.4em] uppercase mb-1"}>Material pronto</span>
+                  <span className={isDark ? "font-black tracking-tighter uppercase text-white" : "text-[#473c33] font-black tracking-tighter uppercase"}>{topic}</span>
                 </div>
-                <button onClick={onBack} className="min-h-[44px] bg-white/10 text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-[0.4em] uppercase hover:bg-red-500 transition-all active:scale-95">
+                <button onClick={onBack} className={isDark ? "min-h-[44px] hover:text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-[0.4em] uppercase hover:bg-red-500 transition-all active:scale-95 bg-white/10 text-white" : "min-h-[44px] bg-stone-200 text-[#473c33] hover:text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-[0.4em] uppercase hover:bg-red-500 transition-all active:scale-95"}>
                   SAIR
                 </button>
               </div>
             </div>
 
             {result.quizVerificationNotice && (
-              <div role="status" className="mb-8 flex items-start gap-3 rounded-2xl border border-amber-300/20 bg-amber-200/10 px-5 py-4 text-sm font-medium leading-relaxed text-amber-100">
-                <span aria-hidden="true" className="mt-0.5 shrink-0 text-[#fecc73]">●</span>
+              <div role="status" className={isDark ? "mb-8 flex items-start gap-3 rounded-2xl border px-5 py-4 text-sm font-medium leading-relaxed border-amber-300/20 bg-amber-200/10 text-amber-100" : "mb-8 flex items-start gap-3 rounded-2xl border border-amber-300/60 bg-amber-100 px-5 py-4 text-sm font-medium leading-relaxed text-amber-900"}>
+                <span aria-hidden="true" className={isDark ? "mt-0.5 shrink-0 text-[#fecc73]" : "mt-0.5 shrink-0 text-[#bd5628]"}>●</span>
                 <p><strong className="font-black">Questões não exibidas:</strong> {result.quizVerificationNotice}</p>
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start pb-32">
-              <div className="lg:col-span-8 space-y-12">
+            <div className="grid grid-cols-1 2xl:grid-cols-12 gap-12 items-start pb-32">
+              <div className="2xl:col-span-8 space-y-12">
                 {/* RESUMO EXPANDIDO */}
-                <div className="bg-white/5 rounded-[60px] p-12 md:p-20 border border-white/10 relative overflow-hidden backdrop-blur-2xl shadow-3xl">
+                <div className={isDark ? "rounded-[60px] p-12 md:p-20 border relative overflow-hidden backdrop-blur-2xl shadow-3xl bg-white/5 border-white/10" : "bg-white rounded-[60px] p-12 md:p-20 border border-[#e9e0d4] relative overflow-hidden backdrop-blur-2xl shadow-3xl"}>
                   <div className="absolute top-0 left-0 w-3 h-full bg-[#fec868] opacity-50"></div>
                   <div className="flex items-center gap-6 mb-16">
-                    <div className="w-16 h-16 bg-[#fecc73] text-white rounded-[25px] flex items-center justify-center shadow-lg">
+                    <div className="w-16 h-16 bg-[#fecc73] text-[#473c33] rounded-[25px] flex items-center justify-center shadow-lg">
                       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                       </svg>
                     </div>
                     <div>
-                      <h2 className="text-[#fecc73] font-black uppercase text-[10px] tracking-[0.4em] mb-2">Resumo Executivo Expandido</h2>
-                      <h3 className="text-5xl font-black tracking-tighter uppercase text-white leading-none">{topic}</h3>
+                      <h2 className={isDark ? "font-black uppercase text-[10px] tracking-[0.4em] mb-2 text-[#fecc73]" : "text-[#bd5628] font-black uppercase text-[10px] tracking-[0.4em] mb-2"}>Resumo Executivo Expandido</h2>
+                      <h3 className={isDark ? "text-5xl font-black tracking-tighter uppercase leading-none text-white" : "text-5xl font-black tracking-tighter uppercase text-[#473c33] leading-none"}>{topic}</h3>
                     </div>
                   </div>
 
                   <div className="max-w-none">
-                    <div className="text-slate-100 text-2xl leading-[1.6] font-medium space-y-8">
-                      <MarkdownContent content={result.executiveSummary} isDark />
+                    <div className={isDark ? "text-2xl leading-[1.6] font-medium space-y-8 text-slate-100" : "text-[#473c33] text-2xl leading-[1.6] font-medium space-y-8"}>
+                      <MarkdownContent content={result.executiveSummary} isDark={isDark} />
                     </div>
                   </div>
 
-                  <div className="mt-20 p-12 bg-white/[0.03] rounded-[50px] border border-white/10 shadow-inner">
-                    <h4 className="text-[10px] font-black text-[#fecc73] uppercase tracking-[0.4em] mb-8 flex items-center gap-3">
+                  <div className={isDark ? "mt-20 p-12 rounded-[50px] border shadow-inner bg-white/[0.03] border-white/10" : "mt-20 p-12 bg-white rounded-[50px] border border-[#e9e0d4] shadow-inner"}>
+                    <h4 className={isDark ? "text-[10px] font-black uppercase tracking-[0.4em] mb-8 flex items-center gap-3 text-[#fecc73]" : "text-[10px] font-black text-[#bd5628] uppercase tracking-[0.4em] mb-8 flex items-center gap-3"}>
                       <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                       Ponto em destaque
                     </h4>
                     <div className="max-w-none">
-                      <MarkdownContent content={result.deepDive} isDark />
+                      <MarkdownContent content={result.deepDive} isDark={isDark} />
                     </div>
                   </div>
                 </div>
 
                 {/* COMPARAÇÃO BIZURADA */}
                 {result.comparison && (
-                  <div className="bg-white/5 backdrop-blur-xl rounded-[60px] border border-white/10 p-12 md:p-16 relative shadow-2xl overflow-hidden">
-                    <div className="absolute left-1/2 top-0 bottom-0 border-l border-white/5 -translate-x-1/2 hidden md:block"></div>
-                    <div className="absolute left-1/2 top-4 -translate-x-1/2 bg-[#fec868] text-white w-14 h-14 rounded-full flex items-center justify-center font-black hidden md:flex text-2xl shadow-2xl ring-8 ring-[#473c33]">VS</div>
+                  <div className={isDark ? "backdrop-blur-xl rounded-[60px] border p-12 md:p-16 relative shadow-2xl overflow-hidden bg-white/5 border-white/10" : "bg-white backdrop-blur-xl rounded-[60px] border border-[#e9e0d4] p-12 md:p-16 relative shadow-2xl overflow-hidden"}>
+                    <div className={isDark ? "absolute left-1/2 top-0 bottom-0 border-l -translate-x-1/2 hidden md:block border-white/5" : "absolute left-1/2 top-0 bottom-0 border-l border-[#eee6d6] -translate-x-1/2 hidden md:block"}></div>
+                    <div className={isDark ? "absolute left-1/2 top-4 -translate-x-1/2 bg-[#fec868] text-[#473c33] w-14 h-14 rounded-full flex items-center justify-center font-black hidden md:flex text-2xl shadow-2xl ring-[#473c33]" : "absolute left-1/2 top-4 -translate-x-1/2 bg-[#fec868] text-[#473c33] w-14 h-14 rounded-full flex items-center justify-center font-black hidden md:flex text-2xl shadow-2xl ring-8 ring-[#f7f3ed]"}>VS</div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-20 relative">
                       <div className="space-y-8">
-                        <h4 className="text-4xl font-black text-[#fdad74] uppercase tracking-tighter leading-none">{result.comparison.leftConcept}</h4>
+                        <h4 className={isDark ? "text-4xl font-black uppercase tracking-tighter leading-none text-[#fdad74]" : "text-4xl font-black text-[#a2561f] uppercase tracking-tighter leading-none"}>{result.comparison.leftConcept}</h4>
                         <div className="max-w-none">
-                          <MarkdownContent content={result.comparison.leftData?.desc || ''} isDark />
+                          <MarkdownContent content={result.comparison.leftData?.desc || ''} isDark={isDark} />
                         </div>
                         {result.comparison.leftData?.example && (
-                          <div className="bg-[#fdad74]/10 p-8 rounded-[35px] text-lg text-slate-100 border border-[#fdad74]/20 shadow-lg">
-                            <span className="font-black text-[#fdad74] block mb-2 uppercase tracking-widest text-xs ">EXEMPLO PRÁTICO:</span>
+                          <div className={isDark ? "bg-[#fdad74]/10 p-8 rounded-[35px] text-lg border border-[#fdad74]/20 shadow-lg text-slate-100" : "bg-[#fdad74]/10 p-8 rounded-[35px] text-lg text-[#473c33] border border-[#fdad74]/20 shadow-lg"}>
+                            <span className={isDark ? "font-black block mb-2 uppercase tracking-widest text-xs text-[#fdad74]" : "font-black text-[#a2561f] block mb-2 uppercase tracking-widest text-xs"}>EXEMPLO PRÁTICO:</span>
                             {result.comparison.leftData.example}
                           </div>
                         )}
                       </div>
                       <div className="space-y-8 md:text-right">
-                        <h4 className="text-4xl font-black text-white uppercase tracking-tighter leading-none">{result.comparison.rightConcept}</h4>
+                        <h4 className={isDark ? "text-4xl font-black uppercase tracking-tighter leading-none text-white" : "text-4xl font-black text-[#473c33] uppercase tracking-tighter leading-none"}>{result.comparison.rightConcept}</h4>
                         <div className="max-w-none">
-                          <MarkdownContent content={result.comparison.rightData?.desc || ''} isDark />
+                          <MarkdownContent content={result.comparison.rightData?.desc || ''} isDark={isDark} />
                         </div>
                         {result.comparison.rightData?.example && (
-                          <div className="bg-white/5 p-8 rounded-[35px] text-lg text-slate-100 border border-white/10 shadow-lg">
+                          <div className={isDark ? "p-8 rounded-[35px] text-lg border shadow-lg bg-white/5 text-slate-100 border-white/10" : "bg-white p-8 rounded-[35px] text-lg text-[#473c33] border border-[#e9e0d4] shadow-lg"}>
                             <span className="font-black text-[#fecc73] block mb-2 uppercase tracking-widest text-xs ">EXEMPLO PRÁTICO:</span>
                             {result.comparison.rightData.example}
                           </div>
@@ -345,33 +353,33 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                 )}
               </div>
 
-              <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-12">
+              <div className="2xl:col-span-4 2xl:sticky 2xl:top-24 space-y-12">
                 {/* MENU DE EXPLORAÇÃO DINÂMICA */}
-                <div className="bg-white/5 backdrop-blur-2xl rounded-[50px] p-10 border border-white/10 shadow-3xl">
-                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-10 flex items-center gap-3">
+                <div className={isDark ? "backdrop-blur-2xl rounded-[50px] p-10 border shadow-3xl bg-white/5 border-white/10" : "bg-white backdrop-blur-2xl rounded-[50px] p-10 border border-[#e9e0d4] shadow-3xl"}>
+                  <h3 className={isDark ? "text-[10px] font-black uppercase tracking-[0.4em] mb-10 flex items-center gap-3 text-slate-500" : "text-[10px] font-black text-[#6b5e50] uppercase tracking-[0.4em] mb-10 flex items-center gap-3"}>
                     <span className="w-2 h-2 rounded-full bg-[#fecc73] animate-pulse"></span>
                     MAPAS DE CONEXÃO
                   </h3>
                   <div className="space-y-5">
                     {result.explorationMenu?.map((item: any, idx: number) => (
-                      <button key={idx} onClick={() => handleGenerate(item.topic)} className="w-full text-left p-6 rounded-[30px] bg-white/5 hover:bg-[#fec868] transition-all group border border-transparent hover:border-white/20 active:scale-95 shadow-lg">
-                        <p className="font-black text-sm uppercase tracking-tight mb-2 text-white transition-colors">{item.topic}</p>
-                        <p className="text-[11px] text-slate-400 font-bold group-hover:text-[#fff0d5] leading-relaxed transition-colors line-clamp-2">{item.description}</p>
+                      <button key={idx} onClick={() => handleGenerate(item.topic)} className={isDark ? "w-full text-left p-6 rounded-[30px] transition-all group border border-[#eee6d6] hover:border-[#e0cfae] active:scale-95 shadow-lg bg-white/5 hover:bg-amber-300 border-transparent" : "w-full text-left p-6 rounded-[30px] bg-[#f7f3ed] hover:bg-amber-300 transition-all group border border-[#eee6d6] hover:border-[#e0cfae] active:scale-95 shadow-lg"}>
+                        <p className={isDark ? "font-black text-sm uppercase tracking-tight mb-2 group-hover:text-[#473c33] transition-colors text-white" : "font-black text-sm uppercase tracking-tight mb-2 text-[#473c33] group-hover:text-[#473c33] transition-colors"}>{item.topic}</p>
+                        <p className={isDark ? "text-[11px] font-bold group-hover:text-[#473c33] leading-relaxed transition-colors line-clamp-2 text-slate-400" : "text-[11px] text-[#6b5e50] font-bold group-hover:text-[#473c33] leading-relaxed transition-colors line-clamp-2"}>{item.description}</p>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {/* SALVAR E PRATICAR */}
-                <div className="bg-[#fec868] rounded-[50px] p-12 text-white shadow-[0_35px_60px_-15px_rgba(37,99,235,0.3)] relative overflow-hidden group">
+                <div className="bg-[#fec868] rounded-[50px] p-12 text-[#473c33] shadow-[0_35px_60px_-15px_rgba(37,99,235,0.3)] relative overflow-hidden group">
                   <div className="absolute -top-32 -right-32 w-80 h-80 bg-white/10 blur-[80px] rounded-full group-hover:scale-110 transition-transform duration-1000"></div>
                   <div className="relative z-10">
-                    <h3 className="text-3xl font-black mb-6 leading-none uppercase tracking-tighter">
-                      Fixar <span className="text-[#ffe6b9]">conhecimento</span>
+                    <h3 className="text-3xl font-black mb-6 leading-none uppercase tracking-tighter break-words">
+                      Fixar <span className="text-[#8a4b00]">conhecimento</span>
                     </h3>
-                    <p className="text-[#fff0d5] text-sm mb-12 font-bold leading-relaxed uppercase tracking-widest text-[10px] opacity-80">Converta o dossier em cadernos de treino prático imediato</p>
+                    <p className="text-[#473c33] text-sm mb-12 font-bold leading-relaxed uppercase tracking-widest text-[10px] opacity-80">Converta o dossier em cadernos de treino prático imediato</p>
 
-                    <button onClick={() => setShowSaveModal(true)} disabled={saved} className={`w-full py-8 rounded-[35px] font-black text-lg flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-95 ${saved ? 'bg-[#b1c77b] text-white' : 'bg-white text-[#fec868] hover:bg-[#fff6e8]'}`}>
+                    <button onClick={() => setShowSaveModal(true)} disabled={saved} className={`w-full py-8 rounded-[35px] font-black text-lg flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-95 ${saved ? 'bg-[#b1c77b] text-[#473c33]' : 'bg-stone-800 text-stone-50 hover:bg-stone-700'}`}>
                       {saved ? (
                         <>
                           CONDOMÍNIO SALVO
@@ -392,17 +400,17 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                 </div>
 
                 {/* GERAR FLASHCARDS */}
-                <div className="bg-white/[0.03] backdrop-blur-xl rounded-[50px] p-12 border border-white/10 shadow-2xl relative overflow-hidden group">
+                <div className={isDark ? "backdrop-blur-xl rounded-[50px] p-12 border shadow-2xl relative overflow-hidden group bg-white/[0.03] border-white/10" : "bg-white backdrop-blur-xl rounded-[50px] p-12 border border-[#e9e0d4] shadow-2xl relative overflow-hidden group"}>
                   <div className="relative z-10">
-                    <h3 className="text-3xl font-black mb-6 leading-none uppercase text-white tracking-tighter">
-                      Gerar <span className="text-[#fecc73]">flashcards</span>
+                    <h3 className={isDark ? "text-3xl font-black mb-6 leading-none uppercase tracking-tighter text-white" : "text-3xl font-black mb-6 leading-none uppercase text-[#473c33] tracking-tighter"}>
+                      Gerar <span className={isDark ? "text-[#fecc73]" : "text-[#bd5628]"}>flashcards</span>
                     </h3>
-                    <p className="text-slate-500 text-xs mb-10 leading-relaxed font-black uppercase tracking-[0.3em]">A IA identifica pontos importantes do material para ajudar você a revisar.</p>
+                    <p className={isDark ? "text-xs mb-10 leading-relaxed font-black uppercase tracking-[0.3em] text-slate-500" : "text-[#6b5e50] text-xs mb-10 leading-relaxed font-black uppercase tracking-[0.3em]"}>A IA identifica pontos importantes do material para ajudar você a revisar.</p>
 
-                    <button onClick={handleGenerateFlashcards} disabled={generatingCards} className={`w-full py-8 rounded-[35px] font-black text-lg flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-95 ${generatingCards ? 'bg-white/5 text-gray-500 border border-white/5' : 'bg-white/5 text-white hover:bg-white/10 border-2 border-white/10'}`}>
+                    <button onClick={handleGenerateFlashcards} disabled={generatingCards} className={`w-full py-8 rounded-[35px] font-black text-lg flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-95 ${generatingCards ? (isDark ? 'bg-white/5 text-gray-500 border border-white/5' : 'bg-stone-100 text-[#8f8375] border border-[#eee6d6]') : (isDark ? 'bg-white/5 text-white hover:bg-white/10 border-2 border-white/10' : 'bg-white text-[#473c33] hover:bg-stone-100 border-2 border-[#e9e0d4]')}`}>
                       {generatingCards ? 'CRIANDO...' : 'CRIAR FLASHCARDS'}
                       {!generatingCards && (
-                        <svg className="w-8 h-8 text-[#fecc73]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className={isDark ? "w-8 h-8 text-[#fecc73]" : "w-8 h-8 text-[#bd5628]"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                       )}
