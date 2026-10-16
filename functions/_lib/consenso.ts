@@ -55,7 +55,8 @@ export const clusterOf = (doc: string): string => {
     .replace(/[\d()_.–-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return autor || 'aulas';
+  // "curso-223981-aula-03-…" são as aulas do mesmo curso, não um autor por arquivo.
+  return autor && !/^curso\b/.test(autor) ? autor : 'aulas';
 };
 
 const ARTIGO = /\bart(?:igo|s?\.)\s*(\d+)\s*[º°o]?(?:\s*-\s*([A-Z])\b)?/gi;

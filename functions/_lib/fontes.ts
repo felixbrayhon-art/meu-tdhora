@@ -10,6 +10,10 @@ interface D1Like {
 }
 
 const MAX_EXCERPTS = 4;
+// Autores com poucos documentos ficam atrás de quem tem milhares de trechos na busca geral. Se um deles não apareceu,
+// uma busca só nele (pelo nome no início do documento) tenta incluí-lo no consenso.
+const AUTORES = ['Radegondes', 'Marcelomapas', 'Quebrando Questões', 'Concurseiro Fora da Caixa'];
+const BUSCA_POR_AUTOR = 15;
 const WIDE = 200; // se os melhores trechos vêm de uma só fonte, procura mais fundo por uma segunda fonte independente
 const POOL = 12; // trechos relevantes analisados para o consenso (a IA recebe só os MAX_EXCERPTS melhores)
 const CANDIDATES = 40;
@@ -83,6 +87,16 @@ const search = async (db: D1Like, query: string): Promise<{ excerpts: string[]; 
     let usable = await run(CANDIDATES);
     // Consenso só faz sentido com fontes independentes: se só uma apareceu, busca mais fundo antes de desistir.
     if (usable.length && new Set(usable.map((r) => clusterOf(r.doc))).size < 2) usable = await run(WIDE);
+    // Autores que não apareceram na busca geral: busca direcionada só neles.
+    const presentes = new Set(usable.map((r) => clusterOf(r.doc)));
+    for (const autor of AUTORES) {
+      if ([...presentes].some((c) => c.includes(normalize(autor).replace(/[^a-z0-9 ]/g, '').trim()))) continue;
+      const { results } = await db.prepare(
+        'SELECT f.doc AS doc, f.text AS text FROM fontes_fts JOIN fontes f ON f.id = fontes_fts.rowid WHERE fontes_fts MATCH ?1 AND f.doc LIKE ?2 ORDER BY bm25(fontes_fts) LIMIT ?3',
+      ).bind(match, `% · ${autor} - %`, BUSCA_POR_AUTOR).all<{ doc: string; text: string }>();
+      const extra = results.filter((r) => !isUnusable(r.text)).map((r) => ({ doc: r.doc, text: r.text, score: relevance(r.text, topic) })).filter((r) => r.score > 0);
+      if (extra.length) usable = [...usable, ...extra].sort((a, b) => b.score - a.score);
+    }
     const ranked: Trecho[] = montarPool(usable, POOL);
     if (ranked.length) {
       // Consenso: mede o quanto fontes INDEPENDENTES concordam; a IA recebe os melhores trechos, um por fonte independente primeiro.
