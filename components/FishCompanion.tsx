@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { chatWithFish } from '../services/geminiService';
 import { StudyProfile } from '../types';
 import { getCharacterSrc, getCharacter } from '../services/avatarService';
+import AvatarDisplay from './AvatarDisplay';
 
 interface FishCompanionProps {
   studyProfile?: StudyProfile;
@@ -69,8 +70,8 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
           {/* Header do Chat */}
           <div className="p-6 bg-[#fed386] text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl overflow-hidden shrink-0">
-                <img src={companionIconSrc} alt="" className="w-full h-full object-cover object-top" />
+              <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
+                {characterId ? <AvatarDisplay characterId={characterId} className="h-full w-full" /> : <img src={companionIconSrc} alt="" className="w-full h-full object-cover object-top" />}
               </div>
               <div>
                 <h3 className="font-black text-lg leading-none uppercase">{companionName}</h3>
@@ -130,15 +131,16 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
 
       {/* Botão Flutuante (O Peixe / Personagem) */}
       {isOpen ? (
-        <button onClick={() => setIsOpen(false)} className="w-20 h-20 rounded-[30px] shadow-2xl flex items-center justify-center transition-all duration-500 hover:scale-110 active:scale-95 bg-[#473c33] rotate-[360deg]">
+        <button onClick={() => setIsOpen(false)} aria-label="Fechar conversa" className="w-14 h-14 lg:w-16 lg:h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-500 hover:scale-110 active:scale-95 bg-[#473c33]">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       ) : characterId ? (
-        <button onClick={() => setIsOpen(true)} className="relative group flex items-end justify-center h-14 w-14 rounded-full overflow-hidden bg-[#fed386] shadow-xl border-2 border-white lg:h-40 lg:w-28 lg:rounded-none lg:overflow-visible lg:bg-transparent lg:shadow-none lg:border-0 hover:scale-105 active:scale-95 transition-transform duration-300">
-          <img src={companionIconSrc} alt={`Pergunte ao ${companionName}`} className="h-full w-full object-cover object-top lg:object-contain lg:drop-shadow-2xl" />
-          <div className="absolute top-2 right-2 w-4 h-4 bg-[#fff1e8] border-2 border-white rounded-full animate-pulse"></div>
+        // Só o rosto do personagem (mesmo recorte do avatar do perfil): o corpo inteiro cobria botões e textos.
+        <button onClick={() => setIsOpen(true)} aria-label={`Pergunte ao ${companionName}`} title={`Pergunte ao ${companionName}`} className="relative group h-14 w-14 lg:h-16 lg:w-16 rounded-full bg-[#fed386] shadow-xl border-2 border-white transition-transform duration-300 hover:scale-110 active:scale-95">
+          <AvatarDisplay characterId={characterId} className="h-full w-full rounded-full" />
+          <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#fff1e8] border-2 border-white rounded-full animate-pulse"></div>
         </button>
       ) : (
         <button onClick={() => setIsOpen(true)} className="w-20 h-20 rounded-[30px] shadow-2xl flex items-center justify-center transition-all duration-500 hover:scale-110 active:scale-95 group overflow-hidden bg-[#fed386] hover:bg-[#fecc73]">
