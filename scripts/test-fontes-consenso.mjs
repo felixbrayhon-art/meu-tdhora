@@ -19,6 +19,11 @@ ok('Condorcet: com p=0,8, 1 fonte 80%, 2 fontes 94%, 3 fontes 98,5%', () => {
   near(sigmoid(r), 0.8); near(sigmoid(2 * r), 0.941); near(sigmoid(3 * r), 0.985);
 });
 
+ok('clusterOf: arquivos "curso-NNN-aula-…" são as aulas (um voto), não um autor por arquivo', () => {
+  assert.equal(clusterOf('Informática · curso-223975-aula-01-7ec9-completo'), clusterOf('Direito Administrativo · AULA 00'));
+  assert.equal(clusterOf('Português · curso-223971-aula-00-feb2-completo'), clusterOf('Informática · curso-223975-aula-04-5cc5-completo'));
+});
+
 ok('clusterOf: aulas do mesmo curso são UM voto; autor diferente é outro', () => {
   assert.equal(clusterOf('Direito Administrativo · AULA 00'), clusterOf('Direito Administrativo · AULA 09'));
   assert.notEqual(clusterOf('Direito Administrativo · AULA 00'), clusterOf('Direito Administrativo · Concurseiro Fora da Caixa - Direito Administrativo (resumo)'));
