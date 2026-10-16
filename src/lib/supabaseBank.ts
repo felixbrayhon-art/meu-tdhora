@@ -33,3 +33,13 @@ export const bankRpc = async <T,>(name: string, args: Record<string, unknown> = 
   if (!response.ok) throw new Error(`Banco de questões indisponível (${response.status}).`);
   return response.json() as Promise<T>;
 };
+
+/** Leitura direta da tabela (a chave pública só tem a política SELECT). `path` já vem com os filtros do PostgREST. */
+export const bankSelect = async <T,>(path: string, headers: Record<string, string> = {}): Promise<{ data: T; response: Response }> => {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`, ...headers },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!response.ok) throw new Error(`Banco de questões indisponível (${response.status}).`);
+  return { data: (await response.json()) as T, response };
+};

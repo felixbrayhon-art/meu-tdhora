@@ -13,7 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db, cleanData } from '../src/lib/firebase';
-import { bankRpc, BankRow } from '../src/lib/supabaseBank';
+import { bankRpc, bankSelect, BankRow } from '../src/lib/supabaseBank';
 import { PublishedQuestion, QuestionAlternative, QuestionDraft, QuestionImportBatch, QuestionType, QuizQuestion } from '../types';
 
 export const checkIsAdmin = async (uid: string): Promise<boolean> => {
@@ -166,6 +166,8 @@ const mapBankQuestion = (q: PublishedQuestion): QuizQuestion => {
 export interface BankFacetOption {
   value: string;
   count: number;
+  /** Texto mostrado no lugar de `value` (usado em "Todas as bancas"). */
+  label?: string;
 }
 
 export interface BankTopicFacets {
@@ -298,8 +300,45 @@ const fetchBankQuestionsFirestore = async (
 
 const nonEmpty = (value: unknown): value is string | number => value !== null && value !== undefined && value !== '';
 
-export const listExamBoards = (): Promise<BankFacetOption[]> =>
-  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_boards'), listExamBoardsFirestore);
+// "Todas as bancas / órgãos / cargos / anos": o valor especial abaixo no lugar de um item da lista. As funções do banco (bank_exam_*) só aceitam
+// igualdade, então quando algum nível é "todos" as listas e a busca saem de uma leitura direta da tabela (só as 4 colunas, uma vez por sessão).
+export const EXAM_ALL = '__todas__';
+export const isExamAll = (value: string) => value === EXAM_ALL;
+type ExamRow = { exam_board: string | null; organization: string | null; position: string | null; exam_year: number | null };
+let examRowsPromise: Promise<ExamRow[]> | null = null;
+const loadExamRows = (): Promise<ExamRow[]> => {
+  if (!examRowsPromise) {
+    examRowsPromise = (async () => {
+      const rows: ExamRow[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data } = await bankSelect<ExamRow[]>(`questoes?select=exam_board,organization,position,exam_year&order=id&offset=${offset}&limit=1000`);
+        rows.push(...data);
+        if (data.length < 1000) return rows;
+      }
+    })().catch((error) => { examRowsPromise = null; throw error; });
+  }
+  return examRowsPromise;
+};
+const facetOf = (rows: ExamRow[], pick: (r: ExamRow) => string | number | null, year = false): BankFacetOption[] => {
+  const counts = new Map<string, number>();
+  rows.forEach((r) => { const v = pick(r); if (v !== null && v !== undefined && String(v).trim() !== '') counts.set(String(v), (counts.get(String(v)) ?? 0) + 1); });
+  return [...counts.entries()].map(([value, count]) => ({ value, count })).sort((a, b) => (year ? Number(b.value) - Number(a.value) : a.value.localeCompare(b.value, 'pt-BR')));
+};
+const withAll = (options: BankFacetOption[], label: string, total?: number): BankFacetOption[] =>
+  options.length === 0 ? options : [{ value: EXAM_ALL, label, count: total ?? options.reduce((n, o) => n + o.count, 0) }, ...options];
+// Total de "todos": as questões que realmente passam pelos níveis acima (inclui as sem órgão/cargo/ano informados), não a soma das opções.
+const totalOf = (board: string, institution?: string, position?: string): Promise<number | undefined> =>
+  loadExamRows().then((rows) => matchRows(rows, board, institution, position).length).catch(() => undefined);
+const matchRows = (rows: ExamRow[], board: string, institution?: string, position?: string, year?: number | string) => rows.filter((r) =>
+  (isExamAll(board) || r.exam_board === board) && (!institution || isExamAll(institution) || r.organization === institution) &&
+  (!position || isExamAll(position) || r.position === position) && (year === undefined || isExamAll(String(year)) || r.exam_year === Number(year)));
+
+export const listExamBoards = async (): Promise<BankFacetOption[]> => {
+  const boards = await withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_boards'), listExamBoardsFirestore);
+  // O total de "todas as bancas" inclui as questões sem banca informada.
+  const total = await loadExamRows().then((rows) => rows.length).catch(() => undefined);
+  return withAll(boards, 'Todas as bancas', total);
+};
 const listExamBoardsFirestore = async (): Promise<BankFacetOption[]> => {
   const snap = await getDocs(collection(db, 'questions'));
   const counts = new Map<string, number>();
@@ -312,8 +351,10 @@ const listExamBoardsFirestore = async (): Promise<BankFacetOption[]> => {
     .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
 };
 
-export const listExamInstitutions = (board: string): Promise<BankFacetOption[]> =>
-  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_institutions', { p_board: board }), () => listExamInstitutionsFirestore(board));
+export const listExamInstitutions = async (board: string): Promise<BankFacetOption[]> => {
+  if (isExamAll(board)) return withAll(facetOf(await loadExamRows(), (r) => r.organization), 'Todos os órgãos', await totalOf(board));
+  return withAll(await withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_institutions', { p_board: board }), () => listExamInstitutionsFirestore(board)), 'Todos os órgãos', await totalOf(board));
+};
 const listExamInstitutionsFirestore = async (board: string): Promise<BankFacetOption[]> => {
   const snap = await getDocs(query(collection(db, 'questions'), where('examBoard', '==', board)));
   const counts = new Map<string, number>();
@@ -326,8 +367,10 @@ const listExamInstitutionsFirestore = async (board: string): Promise<BankFacetOp
     .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
 };
 
-export const listExamPositions = (board: string, institution: string): Promise<BankFacetOption[]> =>
-  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_positions', { p_board: board, p_institution: institution }), () => listExamPositionsFirestore(board, institution));
+export const listExamPositions = async (board: string, institution: string): Promise<BankFacetOption[]> => {
+  if (isExamAll(board) || isExamAll(institution)) return withAll(facetOf(matchRows(await loadExamRows(), board, institution), (r) => r.position), 'Todos os cargos', await totalOf(board, institution));
+  return withAll(await withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_positions', { p_board: board, p_institution: institution }), () => listExamPositionsFirestore(board, institution)), 'Todos os cargos', await totalOf(board, institution));
+};
 const listExamPositionsFirestore = async (board: string, institution: string): Promise<BankFacetOption[]> => {
   const snap = await getDocs(
     query(collection(db, 'questions'), where('examBoard', '==', board), where('organization', '==', institution))
@@ -345,8 +388,10 @@ const listExamPositionsFirestore = async (board: string, institution: string): P
 // Level 4 (ano) doubles as "how many questions exist for this exact
 // banca/órgão/cargo/ano" via BankFacetOption.count — same role
 // bankTopicsTotal/bankAvailableCount play for the matéria path.
-export const listExamYears = (board: string, institution: string, position: string): Promise<BankFacetOption[]> =>
-  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_years', { p_board: board, p_institution: institution, p_position: position }), () => listExamYearsFirestore(board, institution, position));
+export const listExamYears = async (board: string, institution: string, position: string): Promise<BankFacetOption[]> => {
+  if (isExamAll(board) || isExamAll(institution) || isExamAll(position)) return withAll(facetOf(matchRows(await loadExamRows(), board, institution, position), (r) => r.exam_year, true), 'Todos os anos', await totalOf(board, institution, position));
+  return withAll(await withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_years', { p_board: board, p_institution: institution, p_position: position }), () => listExamYearsFirestore(board, institution, position)), 'Todos os anos', await totalOf(board, institution, position));
+};
 const listExamYearsFirestore = async (board: string, institution: string, position: string): Promise<BankFacetOption[]> => {
   const snap = await getDocs(
     query(
@@ -366,12 +411,26 @@ const listExamYearsFirestore = async (board: string, institution: string, positi
     .sort((a, b) => Number(b.value) - Number(a.value)); // most recent exam first
 };
 
-export const fetchExamQuestions = (board: string, institution: string, position: string, year: number, count: number): Promise<QuizQuestion[]> =>
+const fetchExamQuestionsAll = async (board: string, institution: string, position: string, year: number | string, count: number): Promise<QuizQuestion[]> => {
+  const filters = [['exam_board', board], ['organization', institution], ['position', position], ['exam_year', year]]
+    .filter(([, v]) => !isExamAll(String(v))).map(([k, v]) => `${k}=eq.${encodeURIComponent(String(v))}`).join('&');
+  const base = `questoes?select=*${filters ? `&${filters}` : ''}&order=id`;
+  const head = await bankSelect<unknown[]>(`${base}&limit=1`, { Prefer: 'count=exact', Range: '0-0' });
+  const total = Number((head.response.headers.get('content-range') ?? '').split('/')[1]) || 0;
+  if (!total) throw new Error('Nenhuma questão encontrada para esse filtro no nosso banco ainda.');
+  const window = Math.max(count * 8, 80);
+  const from = Math.floor(Math.random() * Math.max(1, total - window + 1));
+  const { data } = await bankSelect<BankRow[]>(`${base}&offset=${from}&limit=${window}`);
+  return data.sort(() => Math.random() - 0.5).slice(0, count).map(fromBankRow).map(mapBankQuestion);
+};
+
+export const fetchExamQuestions = (board: string, institution: string, position: string, year: number | string, count: number): Promise<QuizQuestion[]> =>
+  [board, institution, position, String(year)].some(isExamAll) ? fetchExamQuestionsAll(board, institution, position, year, count) :
   withBankFallback(async () => {
     const rows = await bankRpc<BankRow[]>('bank_exam_random', { p_board: board, p_institution: institution, p_position: position, p_year: year, p_count: count });
     if (rows.length === 0) throw new Error('Nenhuma questão encontrada para essa banca/órgão/cargo/ano no nosso banco ainda.');
     return rows.map(fromBankRow).map(mapBankQuestion);
-  }, () => fetchExamQuestionsFirestore(board, institution, position, year, count));
+  }, () => fetchExamQuestionsFirestore(board, institution, position, Number(year), count));
 const fetchExamQuestionsFirestore = async (
   board: string,
   institution: string,

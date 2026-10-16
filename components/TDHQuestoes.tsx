@@ -3,7 +3,7 @@ import DOMPurify from 'dompurify';
 import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, Database, ClipboardList } from './icons';
 import { generateExamQuestionsFast, verifyExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { fetchEnemExams, fetchEnemQuestions, enemDisciplineLabel, EnemExamInfo } from '../services/enemService';
-import { BankFacetOption, countBankQuestions, fetchBankQuestions, fetchExamQuestions, listBankAllAreas, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamYears } from '../services/questionBankService';
+import { BankFacetOption, countBankQuestions, fetchBankQuestions, fetchExamQuestions, isExamAll, listBankAllAreas, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamYears } from '../services/questionBankService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
 import LoadingFish from './LoadingFish';
 import FilterDropdown from './FilterDropdown';
@@ -448,7 +448,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     setExamLoadingInstitutions(true);
     setExamInstitution('');
     listExamInstitutions(examBoard)
-      .then(setExamInstitutions)
+      .then((options) => { setExamInstitutions(options); if (options.length > 0) setExamInstitution(options[0].value); })   // começa em "Todos os órgãos"
       .catch((err) => setExamError(err.message || 'Não foi possível carregar os órgãos dessa banca.'))
       .finally(() => setExamLoadingInstitutions(false));
   }, [examBoard]);
@@ -462,7 +462,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     setExamLoadingPositions(true);
     setExamPosition('');
     listExamPositions(examBoard, examInstitution)
-      .then(setExamPositions)
+      .then((options) => { setExamPositions(options); if (options.length > 0) setExamPosition(options[0].value); })   // começa em "Todos os cargos"
       .catch((err) => setExamError(err.message || 'Não foi possível carregar os cargos desse órgão.'))
       .finally(() => setExamLoadingPositions(false));
   }, [examBoard, examInstitution]);
@@ -501,10 +501,11 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     setShowCommentary(false);
     setSaved(false);
     setUserAnswers({});
-    setTopic(`${examBoard} · ${examInstitution} · ${examPosition} · ${examYear}`);
+    const nome = (options: { value: string; label?: string }[], v: string) => options.find((o) => o.value === v)?.label ?? v;
+    setTopic(`${nome(examBoards, examBoard)} · ${nome(examInstitutions, examInstitution)} · ${nome(examPositions, examPosition)} · ${nome(examYears, examYear)}`);
 
     try {
-      const formatted = await fetchExamQuestions(examBoard, examInstitution, examPosition, Number(examYear), examCount);
+      const formatted = await fetchExamQuestions(examBoard, examInstitution, examPosition, isExamAll(examYear) ? examYear : Number(examYear), examCount);
       setQuestions(formatted);
       setTempSelectedOpt(null);
       setIsSubmitted(false);
