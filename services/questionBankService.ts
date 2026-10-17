@@ -304,14 +304,14 @@ const nonEmpty = (value: unknown): value is string | number => value !== null &&
 // igualdade, então quando algum nível é "todos" as listas e a busca saem de uma leitura direta da tabela (só as 4 colunas, uma vez por sessão).
 export const EXAM_ALL = '__todas__';
 export const isExamAll = (value: string) => value === EXAM_ALL;
-type ExamRow = { exam_board: string | null; organization: string | null; position: string | null; exam_year: number | null };
+type ExamRow = { exam_board: string | null; organization: string | null; position: string | null; exam_year: number | null; import_subject: string | null; subject_raw: string | null };
 let examRowsPromise: Promise<ExamRow[]> | null = null;
 const loadExamRows = (): Promise<ExamRow[]> => {
   if (!examRowsPromise) {
     examRowsPromise = (async () => {
       const rows: ExamRow[] = [];
       for (let offset = 0; ; offset += 1000) {
-        const { data } = await bankSelect<ExamRow[]>(`questoes?select=exam_board,organization,position,exam_year&order=id&offset=${offset}&limit=1000`);
+        const { data } = await bankSelect<ExamRow[]>(`questoes?select=exam_board,organization,position,exam_year,import_subject,subject_raw&order=id&offset=${offset}&limit=1000`);
         rows.push(...data);
         if (data.length < 1000) return rows;
       }
@@ -329,9 +329,22 @@ const withAll = (options: BankFacetOption[], label: string, total?: number): Ban
 // Total de "todos": as questões que realmente passam pelos níveis acima (inclui as sem órgão/cargo/ano informados), não a soma das opções.
 const totalOf = (board: string, institution?: string, position?: string): Promise<number | undefined> =>
   loadExamRows().then((rows) => matchRows(rows, board, institution, position).length).catch(() => undefined);
-const matchRows = (rows: ExamRow[], board: string, institution?: string, position?: string, year?: number | string) => rows.filter((r) =>
+const matchRows = (rows: ExamRow[], board: string, institution?: string, position?: string, year?: number | string, subject?: string, topic?: string) => rows.filter((r) =>
   (isExamAll(board) || r.exam_board === board) && (!institution || isExamAll(institution) || r.organization === institution) &&
-  (!position || isExamAll(position) || r.position === position) && (year === undefined || isExamAll(String(year)) || r.exam_year === Number(year)));
+  (!position || isExamAll(position) || r.position === position) && (year === undefined || isExamAll(String(year)) || r.exam_year === Number(year)) &&
+  (!subject || isExamAll(subject) || r.import_subject === subject) && (!topic || isExamAll(topic) || r.subject_raw === topic));
+
+// Matéria e assunto dentro da prova escolhida (os níveis de cima podem estar em "todos").
+export const listExamSubjects = async (board: string, institution: string, position: string, year: number | string): Promise<BankFacetOption[]> => {
+  const rows = matchRows(await loadExamRows(), board, institution, position, year);
+  return withAll(facetOf(rows, (r) => r.import_subject), 'Todas as matérias', rows.length);
+};
+export const listExamTopics = async (board: string, institution: string, position: string, year: number | string, subject: string): Promise<BankFacetOption[]> => {
+  const rows = matchRows(await loadExamRows(), board, institution, position, year, subject);
+  return withAll(facetOf(rows, (r) => r.subject_raw), 'Todos os assuntos', rows.length);
+};
+export const countExamQuestions = async (board: string, institution: string, position: string, year: number | string, subject: string, topic: string): Promise<number> =>
+  matchRows(await loadExamRows(), board, institution, position, year, subject, topic).length;
 
 export const listExamBoards = async (): Promise<BankFacetOption[]> => {
   const boards = await withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_boards'), listExamBoardsFirestore);
@@ -411,8 +424,8 @@ const listExamYearsFirestore = async (board: string, institution: string, positi
     .sort((a, b) => Number(b.value) - Number(a.value)); // most recent exam first
 };
 
-const fetchExamQuestionsAll = async (board: string, institution: string, position: string, year: number | string, count: number): Promise<QuizQuestion[]> => {
-  const filters = [['exam_board', board], ['organization', institution], ['position', position], ['exam_year', year]]
+const fetchExamQuestionsAll = async (board: string, institution: string, position: string, year: number | string, count: number, subject: string = EXAM_ALL, topic: string = EXAM_ALL): Promise<QuizQuestion[]> => {
+  const filters = [['exam_board', board], ['organization', institution], ['position', position], ['exam_year', year], ['import_subject', subject], ['subject_raw', topic]]
     .filter(([, v]) => !isExamAll(String(v))).map(([k, v]) => `${k}=eq.${encodeURIComponent(String(v))}`).join('&');
   const base = `questoes?select=*${filters ? `&${filters}` : ''}&order=id`;
   const head = await bankSelect<unknown[]>(`${base}&limit=1`, { Prefer: 'count=exact', Range: '0-0' });
@@ -424,8 +437,8 @@ const fetchExamQuestionsAll = async (board: string, institution: string, positio
   return data.sort(() => Math.random() - 0.5).slice(0, count).map(fromBankRow).map(mapBankQuestion);
 };
 
-export const fetchExamQuestions = (board: string, institution: string, position: string, year: number | string, count: number): Promise<QuizQuestion[]> =>
-  [board, institution, position, String(year)].some(isExamAll) ? fetchExamQuestionsAll(board, institution, position, year, count) :
+export const fetchExamQuestions = (board: string, institution: string, position: string, year: number | string, count: number, subject: string = EXAM_ALL, topic: string = EXAM_ALL): Promise<QuizQuestion[]> =>
+  [board, institution, position, String(year), subject, topic].some(isExamAll) ? fetchExamQuestionsAll(board, institution, position, year, count, subject, topic) :
   withBankFallback(async () => {
     const rows = await bankRpc<BankRow[]>('bank_exam_random', { p_board: board, p_institution: institution, p_position: position, p_year: year, p_count: count });
     if (rows.length === 0) throw new Error('Nenhuma questão encontrada para essa banca/órgão/cargo/ano no nosso banco ainda.');

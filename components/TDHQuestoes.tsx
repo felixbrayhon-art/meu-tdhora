@@ -3,7 +3,7 @@ import DOMPurify from 'dompurify';
 import { Scissors, Trash2, ChevronLeft, ChevronRight, Save, HelpCircle, FileText, CheckCircle2, RotateCcw, Brain, Copy, Maximize2, Minimize2, Flag, Bookmark, Share2, Shuffle, LogOut, Highlighter, PenLine, Eraser, Undo2, Image as ImageIcon, X, MessageSquarePlus, BookOpen, Database, ClipboardList } from './icons';
 import { generateExamQuestionsFast, verifyExamQuestions, parsePastedQuestions, identifyQuestionCount } from '../services/geminiService';
 import { fetchEnemExams, fetchEnemQuestions, enemDisciplineLabel, EnemExamInfo } from '../services/enemService';
-import { BankFacetOption, countBankQuestions, fetchBankQuestions, fetchExamQuestions, isExamAll, listBankAllAreas, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamYears } from '../services/questionBankService';
+import { BankFacetOption, countBankQuestions, fetchBankQuestions, EXAM_ALL, fetchExamQuestions, isExamAll, listBankAllAreas, listBankImportSubjects, listBankTopicsForSubject, listExamBoards, listExamInstitutions, listExamPositions, listExamSubjects, listExamTopics, countExamQuestions, listExamYears } from '../services/questionBankService';
 import { QuizQuestion, QuizFolder, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
 import LoadingFish from './LoadingFish';
 import FilterDropdown from './FilterDropdown';
@@ -105,6 +105,11 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
   const [examPosition, setExamPosition] = useState('');
   const [examYears, setExamYears] = useState<BankFacetOption[]>([]);
   const [examYear, setExamYear] = useState('');
+  const [examSubjects, setExamSubjects] = useState<BankFacetOption[]>([]);
+  const [examSubject, setExamSubject] = useState('');
+  const [examTopics, setExamTopics] = useState<BankFacetOption[]>([]);
+  const [examTopic, setExamTopic] = useState('');
+  const [examFilteredCount, setExamFilteredCount] = useState<number | null>(null);
   const [examCount, setExamCount] = useState(10);
   const [examError, setExamError] = useState<string | null>(null);
   const [examLoadingBoards, setExamLoadingBoards] = useState(false);
@@ -484,7 +489,29 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
       .finally(() => setExamLoadingYears(false));
   }, [examBoard, examInstitution, examPosition]);
 
-  const examAvailableCount = examYear ? (examYears.find((y) => y.value === examYear)?.count ?? 0) : 0;
+  // Matéria e assunto dentro da prova escolhida (começam em "Todas as matérias" / "Todos os assuntos").
+  React.useEffect(() => {
+    if (!examBoard || !examInstitution || !examPosition || !examYear) { setExamSubjects([]); setExamSubject(''); return; }
+    let vivo = true;
+    listExamSubjects(examBoard, examInstitution, examPosition, examYear).then((options) => { if (!vivo) return; setExamSubjects(options); setExamSubject(options[0]?.value ?? ''); }).catch(() => { if (vivo) { setExamSubjects([]); setExamSubject(''); } });
+    return () => { vivo = false; };
+  }, [examBoard, examInstitution, examPosition, examYear]);
+
+  React.useEffect(() => {
+    if (!examSubject) { setExamTopics([]); setExamTopic(''); return; }
+    let vivo = true;
+    listExamTopics(examBoard, examInstitution, examPosition, examYear, examSubject).then((options) => { if (!vivo) return; setExamTopics(options); setExamTopic(options[0]?.value ?? ''); }).catch(() => { if (vivo) { setExamTopics([]); setExamTopic(''); } });
+    return () => { vivo = false; };
+  }, [examSubject]);
+
+  React.useEffect(() => {
+    if (!examBoard || !examInstitution || !examPosition || !examYear || !examSubject || !examTopic) { setExamFilteredCount(null); return; }
+    let vivo = true;
+    countExamQuestions(examBoard, examInstitution, examPosition, examYear, examSubject, examTopic).then((n) => { if (vivo) setExamFilteredCount(n); }).catch(() => { if (vivo) setExamFilteredCount(null); });
+    return () => { vivo = false; };
+  }, [examBoard, examInstitution, examPosition, examYear, examSubject, examTopic]);
+
+  const examAvailableCount = examFilteredCount ?? (examYear ? (examYears.find((y) => y.value === examYear)?.count ?? 0) : 0);
 
   React.useEffect(() => {
     if (examAvailableCount > 0 && examCount > examAvailableCount) {
@@ -502,10 +529,10 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     setSaved(false);
     setUserAnswers({});
     const nome = (options: { value: string; label?: string }[], v: string) => options.find((o) => o.value === v)?.label ?? v;
-    setTopic(`${nome(examBoards, examBoard)} · ${nome(examInstitutions, examInstitution)} · ${nome(examPositions, examPosition)} · ${nome(examYears, examYear)}`);
+    setTopic(`${nome(examBoards, examBoard)} · ${nome(examInstitutions, examInstitution)} · ${nome(examPositions, examPosition)} · ${nome(examYears, examYear)} · ${nome(examSubjects, examSubject)} · ${nome(examTopics, examTopic)}`);
 
     try {
-      const formatted = await fetchExamQuestions(examBoard, examInstitution, examPosition, isExamAll(examYear) ? examYear : Number(examYear), examCount);
+      const formatted = await fetchExamQuestions(examBoard, examInstitution, examPosition, isExamAll(examYear) ? examYear : Number(examYear), examCount, examSubject || EXAM_ALL, examTopic || EXAM_ALL);
       setQuestions(formatted);
       setTempSelectedOpt(null);
       setIsSubmitted(false);
@@ -1186,15 +1213,21 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                                 <FilterDropdown label="Ano" placeholder="Selecionar ano..." value={examYear} options={examYears} onChange={setExamYear} loading={examLoadingYears} loadingLabel="Carregando anos..." />
                               </div>
 
+                              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                <FilterDropdown label="Matéria" placeholder="Selecionar matéria..." value={examSubject} options={examSubjects} onChange={setExamSubject} />
+                              </div>
+
+                              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                <FilterDropdown label="Assunto" placeholder="Selecionar assunto..." value={examTopic} options={examTopics} onChange={setExamTopic} />
+                              </div>
+
                               <div className="bg-slate-50 p-8 rounded-[35px] text-left border border-slate-100">
                                 <div className="flex justify-between items-center mb-2">
                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ">Qtd. Questões</label>
                                   <span className="text-[#fec868] font-black text-2xl tabular-nums">{examCount}</span>
                                 </div>
                                 <p className="text-[11px] font-bold text-slate-400 mb-4">
-                                  {examAvailableCount} questão
-                                  {examAvailableCount === 1 ? '' : 'ões'} disponível
-                                  {examAvailableCount === 1 ? '' : 'is'} nessa prova
+                                  {examAvailableCount} {examAvailableCount === 1 ? 'questão disponível' : 'questões disponíveis'} com esse filtro
                                 </p>
                                 <input type="range" min="1" max={Math.max(1, examAvailableCount)} value={examCount} onChange={(e) => setExamCount(Number(e.target.value))} disabled={examAvailableCount === 0} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer disabled:opacity-40" />
                               </div>
@@ -1258,7 +1291,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ">Qtd. Questões</label>
                               <span className="text-[#fec868] font-black text-2xl tabular-nums">{bankCount}</span>
                             </div>
-                            <p className="text-[11px] font-bold text-slate-400 mb-4">{bankLoadingCount ? 'Verificando disponibilidade...' : `${bankMatchCount} questão${bankMatchCount === 1 ? '' : 'ões'} disponível${bankMatchCount === 1 ? '' : 'is'} nessa seleção`}</p>
+                            <p className="text-[11px] font-bold text-slate-400 mb-4">{bankLoadingCount ? 'Verificando disponibilidade...' : `${bankMatchCount} ${bankMatchCount === 1 ? 'questão disponível' : 'questões disponíveis'} nessa seleção`}</p>
                             <input type="range" min="1" max={Math.max(1, bankMatchCount)} value={bankCount} onChange={(e) => setBankCount(Number(e.target.value))} disabled={bankMatchCount === 0} className="w-full h-1.5 bg-slate-200 rounded-full accent-[#fec868] cursor-pointer disabled:opacity-40" />
                           </div>
 
