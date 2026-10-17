@@ -153,6 +153,8 @@ const ExamFilterBoard: React.FC<Props> = ({ loading, error, onGenerate }) => {
   return (
     <div className="efb">
       <style>{CSS}</style>
+      <p className="efb-kicker">Concurso · Por Prova Oficial</p>
+      <div className="efb-titulo" role="heading" aria-level={2}>Monte seu caderno de questões</div>
       {error && <div className="efb-erro">{error}</div>}
 
       <div className="efb-grid">
@@ -166,7 +168,7 @@ const ExamFilterBoard: React.FC<Props> = ({ loading, error, onGenerate }) => {
         </nav>
 
         <section className="efb-painel">
-          <div className="efb-head"><h3>{facetInfo.title}</h3><small>{lista.length} {lista.length === 1 ? 'opção' : 'opções'}</small></div>
+          <div className="efb-head"><div className="efb-ht" role="heading" aria-level={3}>{facetInfo.title}</div><small>{lista.length} {lista.length === 1 ? 'opção' : 'opções'}</small></div>
           <div className="efb-busca">
             <Search size={16} aria-hidden="true" />
             <input type="text" value={find} onChange={(e) => setFind(e.target.value)} placeholder="Pesquisar por nome" aria-label="Pesquisar por nome" />
@@ -209,12 +211,12 @@ const ExamFilterBoard: React.FC<Props> = ({ loading, error, onGenerate }) => {
         </section>
 
         <section className="efb-painel">
-          <div className="efb-head"><h3>Filtros ativos: {nActive}</h3><button type="button" className="efb-link" onClick={() => setFilter(emptyExamFilter())} disabled={nActive === 0}>Limpar</button></div>
+          <div className="efb-head"><div className="efb-ht" role="heading" aria-level={3}>Filtros ativos: {nActive}</div><button type="button" className="efb-link" onClick={() => setFilter(emptyExamFilter())} disabled={nActive === 0}>Limpar</button></div>
           <div className="efb-ativos">
             {active.length === 0 && <p className="efb-vazio">Nenhum filtro ainda. Escolha matéria, banca, órgão, ano ou área na lista ao lado.</p>}
             {active.map((g) => (
               <div key={g.titulo}>
-                <h4>{g.titulo}</h4>
+                <div className="efb-gt">{g.titulo}</div>
                 <div className="efb-tags">
                   {g.itens.map((i) => (
                     <button type="button" key={i.rotulo} className="efb-tag" onClick={i.remover} aria-label={`Remover ${i.rotulo}`}>{i.rotulo}<span aria-hidden="true">×</span></button>
@@ -226,24 +228,32 @@ const ExamFilterBoard: React.FC<Props> = ({ loading, error, onGenerate }) => {
           <div className="efb-total">
             <div className="efb-num"><b>{fmt(total)}</b><span>{total === 1 ? 'questão encontrada' : 'questões encontradas'}</span></div>
             <div className="efb-barra" aria-hidden="true"><i style={{ width: `${total === 0 ? 0 : Math.max(2, Math.round((total / Math.max(1, baseTotal)) * 100))}%` }} /></div>
-            <div className="efb-qtd">
-              <label htmlFor="efb-qtd">Quantidade</label>
-              <input id="efb-qtd" type="range" min={1} max={max} value={Math.min(count, max)} disabled={total === 0} onChange={(e) => setCount(Number(e.target.value))} />
-              <strong>{Math.min(count, max)}</strong>
-            </div>
-            <button type="button" className="efb-gerar" onClick={generate} disabled={loading || total === 0}>
-              {loading ? 'Buscando...' : total === 0 ? 'Sem questões com esses filtros' : 'Gerar questões'}
-            </button>
           </div>
         </section>
+      </div>
+
+      <div className="efb-rodape">
+        <div className="efb-campo">
+          <label htmlFor="efb-qtd">Quantidade de questões</label>
+          <div className="efb-qtd">
+            <input id="efb-qtd" type="range" min={1} max={max} value={Math.min(count, max)} disabled={total === 0} onChange={(e) => setCount(Number(e.target.value))} />
+            <strong>{Math.min(count, max)}</strong>
+          </div>
+        </div>
+        <button type="button" className="efb-gerar" onClick={generate} disabled={loading || total === 0}>
+          {loading ? 'Buscando...' : total === 0 ? 'Sem questões com esses filtros' : 'Gerar questões'}
+        </button>
       </div>
     </div>
   );
 };
 
 const CSS = `
-.efb{--c-card:#FBF7F0;--c-sand:#E8DDCC;--c-ink:#4A352A;--c-ink2:#725442;--c-terra:#C96C4A;--c-on:#FFFFFF;--c-olive:#446B4E;--c-gold:#D8A53A;--c-line:rgba(74,53,42,.16);--c-chip:#F0E3D0;--c-field:#F4EBDD;color:var(--c-ink);text-align:left;font-size:14px;line-height:1.45}
-html.dark .efb{--c-card:#2E221B;--c-sand:#3A2C23;--c-ink:#F1E6D6;--c-ink2:#C9B49E;--c-terra:#E07F5C;--c-on:#2A1710;--c-olive:#8FB596;--c-gold:#E4B955;--c-line:rgba(241,230,214,.16);--c-chip:#40312A;--c-field:#241A14}
+.efb{--c-bg:#F4EBDD;--c-pat:#4A352A;--c-card:#FBF7F0;--c-sand:#E8DDCC;--c-ink:#4A352A;--c-ink2:#725442;--c-terra:#C96C4A;--c-on:#FFFFFF;--c-olive:#446B4E;--c-gold:#D8A53A;--c-line:rgba(74,53,42,.16);--c-chip:#F0E3D0;--c-field:#F4EBDD;background:var(--c-bg);color:var(--c-ink);text-align:left;font-size:14px;line-height:1.45;font-family:'Manrope',system-ui,sans-serif;position:relative;overflow:hidden;border-radius:26px;padding:22px;isolation:isolate}
+.efb::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--c-pat);opacity:.015;-webkit-mask:url(/padrao-fundo.png) 0 0/420px auto repeat;mask:url(/padrao-fundo.png) 0 0/420px auto repeat}
+.efb-kicker{margin:0;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink2)}
+.efb-titulo{font-family:'Righteous','Trebuchet MS',sans-serif;font-weight:400;font-size:28px;margin:2px 0 16px;text-wrap:balance;color:var(--c-ink)}
+html.dark .efb{--c-bg:#241A14;--c-pat:#F1E6D6;--c-card:#2E221B;--c-sand:#3A2C23;--c-ink:#F1E6D6;--c-ink2:#C9B49E;--c-terra:#E07F5C;--c-on:#2A1710;--c-olive:#8FB596;--c-gold:#E4B955;--c-line:rgba(241,230,214,.16);--c-chip:#40312A;--c-field:#241A14}
 .efb *{box-sizing:border-box}
 .efb button,.efb input{font:inherit;color:inherit}
 .efb-grid{display:grid;grid-template-columns:190px minmax(0,1.3fr) minmax(0,1fr);gap:14px;align-items:start}
@@ -255,7 +265,7 @@ html.dark .efb{--c-card:#2E221B;--c-sand:#3A2C23;--c-ink:#F1E6D6;--c-ink2:#C9B49
 .efb-badge{font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;background:var(--c-olive);color:#fff;min-width:20px;text-align:center}
 .efb-faceta.on .efb-badge{background:rgba(255,255,255,.28)}
 .efb-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--c-line);background:var(--c-sand)}
-.efb-head h3{margin:0;font-size:14px;font-weight:700}
+.efb-ht{font-size:14px;font-weight:700}
 .efb-head small{color:var(--c-ink2);font-weight:600}
 .efb-busca{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--c-line);color:var(--c-ink2)}
 .efb-busca input{flex:1;min-width:0;border:0;background:transparent;outline:0;padding:4px 0;color:var(--c-ink)}
@@ -276,21 +286,24 @@ html.dark .efb{--c-card:#2E221B;--c-sand:#3A2C23;--c-ink:#F1E6D6;--c-ink2:#C9B49
 .efb-erro{background:#FBEAE4;color:#8A2F1A;border-radius:14px;padding:12px 14px;font-weight:700;margin-bottom:12px}
 html.dark .efb-erro{background:#4A2A20;color:#F3C2B2}
 .efb-ativos{padding:12px 14px;min-height:150px;max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:12px}
-.efb-ativos h4{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink2)}
+.efb-gt{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink2)}
 .efb-tags{display:flex;flex-wrap:wrap;gap:6px}
-.efb-tag{display:inline-flex;align-items:center;gap:6px;background:var(--c-terra);color:var(--c-on);border:0;border-radius:999px;padding:4px 10px 4px 12px;font-weight:600;font-size:13px;cursor:pointer;max-width:100%;text-align:left}
+.efb-tag{display:inline-flex;align-items:center;gap:6px;background:var(--c-terra);color:var(--c-on);border:0;border-radius:999px;padding:5px 6px 5px 11px;font-weight:600;font-size:13px;cursor:pointer;max-width:100%;text-align:left}
 .efb-link{background:none;border:0;padding:0;color:var(--c-olive);font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .efb-link:disabled{opacity:.4;cursor:default}
 .efb-total{border-top:1px solid var(--c-line);padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--c-sand)}
 .efb-num{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.efb-num b{font-size:36px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums}
+.efb-num b{font-family:'Righteous','Trebuchet MS',sans-serif;font-size:40px;line-height:1;font-weight:400;font-variant-numeric:tabular-nums}
 .efb-num span{color:var(--c-ink2);font-weight:600}
 .efb-barra{height:6px;border-radius:3px;background:var(--c-line);overflow:hidden}
 .efb-barra i{display:block;height:100%;background:var(--c-olive);border-radius:3px;transition:width .25s}
+.efb-rodape{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end;background:var(--c-card);border:1px solid var(--c-line);border-radius:18px;padding:14px;margin-top:14px}
+.efb-campo{display:flex;flex-direction:column;gap:6px;min-width:0}
+.efb-campo label{font-size:12px;font-weight:600;color:var(--c-ink2)}
 .efb-qtd{display:flex;align-items:center;gap:10px;font-weight:600}
 .efb-qtd input{flex:1;min-width:0;accent-color:var(--c-terra)}
 .efb-qtd strong{min-width:28px;text-align:right;font-variant-numeric:tabular-nums}
-.efb-gerar{background:var(--c-terra);color:var(--c-on);border:0;border-radius:14px;padding:14px;font-weight:800;cursor:pointer}
+.efb-gerar{background:var(--c-terra);color:var(--c-on);border:0;border-radius:14px;padding:12px 22px;font-weight:700;cursor:pointer;white-space:nowrap}
 .efb-gerar:hover:not(:disabled){filter:brightness(1.07)}
 .efb-gerar:disabled{opacity:.45;cursor:not-allowed}
 .efb :focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
@@ -299,6 +312,7 @@ html.dark .efb-erro{background:#4A2A20;color:#F3C2B2}
   .efb-facetas{flex-direction:row;overflow-x:auto}
   .efb-faceta{flex:none;white-space:nowrap}
   .efb-lista{max-height:340px}
+  .efb-rodape{grid-template-columns:minmax(0,1fr)}
 }
 @media (prefers-reduced-motion:reduce){.efb-barra i,.efb-seta{transition:none}}
 `;
