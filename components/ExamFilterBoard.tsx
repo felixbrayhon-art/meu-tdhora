@@ -153,7 +153,7 @@ const ExamFilterBoard: React.FC<Props> = ({ loading, error, onGenerate }) => {
   return (
     <div className="efb">
       <style>{CSS}</style>
-      <p className="efb-kicker">Concurso · Por Prova Oficial</p>
+      <p className="efb-kicker">Concurso · Filtrar questões</p>
       <div className="efb-titulo" role="heading" aria-level={2}>Monte seu caderno de questões</div>
       {error && <div className="efb-erro">{error}</div>}
 
@@ -249,7 +249,7 @@ const ExamFilterBoard: React.FC<Props> = ({ loading, error, onGenerate }) => {
 };
 
 const CSS = `
-.efb{--c-bg:#F4EBDD;--c-pat:#4A352A;--c-card:#FBF7F0;--c-sand:#E8DDCC;--c-ink:#4A352A;--c-ink2:#725442;--c-terra:#C96C4A;--c-on:#FFFFFF;--c-olive:#446B4E;--c-gold:#D8A53A;--c-line:rgba(74,53,42,.16);--c-chip:#F0E3D0;--c-field:#F4EBDD;background:var(--c-bg);color:var(--c-ink);text-align:left;font-size:14px;line-height:1.45;font-family:'Manrope',system-ui,sans-serif;position:relative;overflow:hidden;border-radius:26px;padding:22px;isolation:isolate}
+.efb{--c-bg:#F4EBDD;--c-pat:#4A352A;--c-card:#FBF7F0;--c-sand:#E8DDCC;--c-ink:#4A352A;--c-ink2:#725442;--c-terra:#C96C4A;--c-on:#FFFFFF;--c-olive:#446B4E;--c-gold:#D8A53A;--c-line:rgba(74,53,42,.16);--c-chip:#F0E3D0;--c-field:#F4EBDD;background:var(--c-bg);color:var(--c-ink);text-align:left;font-size:14px;line-height:1.45;font-family:'Manrope',system-ui,sans-serif;position:relative;overflow:hidden;border-radius:26px;padding:22px;isolation:isolate;container-type:inline-size}
 .efb::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--c-pat);opacity:.015;-webkit-mask:url(/padrao-fundo.png) 0 0/420px auto repeat;mask:url(/padrao-fundo.png) 0 0/420px auto repeat}
 .efb-kicker{margin:0;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink2)}
 .efb-titulo{font-family:'Righteous','Trebuchet MS',sans-serif;font-weight:400;font-size:28px;margin:2px 0 16px;text-wrap:balance;color:var(--c-ink)}
@@ -307,7 +307,7 @@ html.dark .efb-erro{background:#4A2A20;color:#F3C2B2}
 .efb-gerar:hover:not(:disabled){filter:brightness(1.07)}
 .efb-gerar:disabled{opacity:.45;cursor:not-allowed}
 .efb :focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
-@media (max-width:860px){
+@container (max-width:900px){
   .efb-grid{grid-template-columns:minmax(0,1fr)}
   .efb-facetas{flex-direction:row;overflow-x:auto}
   .efb-faceta{flex:none;white-space:nowrap}
