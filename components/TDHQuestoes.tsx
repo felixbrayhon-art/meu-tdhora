@@ -833,9 +833,11 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
     );
   }
 
+  const wideBoard = inputMode === 'CONCURSO' && bankFilterMode === 'PROVA'; // o filtro em três colunas usa a largura toda
+
   return (
     <div className={`${questions.length ? 'fixed inset-0 z-[200] overflow-y-auto' : 'relative w-full min-h-full rounded-[32px]'} bg-[#f8fafc] dark:bg-[#24251f] text-[#1e293b] dark:text-[#f2efd2] selection:bg-amber-300/30 font-sans`}>
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
+      <div className={`w-full ${wideBoard ? 'max-w-none' : 'max-w-6xl'} mx-auto ${wideBoard ? 'px-1 sm:px-2' : 'px-4 sm:px-6'} py-4 sm:py-6 animate-in fade-in slide-in-from-bottom-6 duration-700`}>
         {!questions.length ? (
           <div className="py-2">
             <button onClick={onBack} className="min-h-[44px] mb-4 text-gray-500 font-black uppercase text-[10px] tracking-[0.25em] flex items-center gap-2 hover:text-[#473c33] transition-all group">
@@ -843,12 +845,12 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
               VOLTAR
             </button>
 
-            <div className="bg-white rounded-[32px] p-5 sm:p-8 md:p-10 border border-slate-200 dark:border-white/10 relative overflow-hidden shadow-sm">
+            <div className={`bg-white rounded-[32px] ${wideBoard ? 'p-3 sm:p-4 md:p-5' : 'p-5 sm:p-8 md:p-10'} border border-slate-200 dark:border-white/10 relative overflow-hidden shadow-sm`}>
               <div className="absolute top-0 right-0 p-6 opacity-[0.035] pointer-events-none text-[#fec868]">
                 <FileText className="w-28 h-28" />
               </div>
 
-              <div className="relative z-10 max-w-4xl mx-auto">
+              <div className={`relative z-10 ${wideBoard ? 'max-w-none' : 'max-w-4xl'} mx-auto`}>
                 <div className="mb-7 flex items-center gap-4 text-left">
                   <div className="w-12 h-12 shrink-0 bg-[#fec868]/10 text-[#fec868] border border-[#fec868]/20 rounded-2xl flex items-center justify-center shadow-sm">
                     <Scissors className="w-5 h-5" />

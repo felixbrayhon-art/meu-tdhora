@@ -270,7 +270,7 @@ html.dark .efb{--c-bg:#241A14;--c-pat:#F1E6D6;--c-card:#2E221B;--c-sand:#3A2C23;
 .efb-busca{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--c-line);color:var(--c-ink2)}
 .efb-busca input{flex:1;min-width:0;border:0;background:transparent;outline:0;padding:4px 0;color:var(--c-ink)}
 .efb-busca input::placeholder{color:var(--c-ink2);opacity:.8}
-.efb-lista{max-height:430px;overflow:auto;padding:6px}
+.efb-lista{max-height:max(340px,calc(100dvh - 430px));overflow:auto;padding:6px}
 .efb-linha{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px}
 .efb-linha:hover{background:var(--c-chip)}
 .efb-linha.sub{margin-left:30px}
