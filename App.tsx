@@ -1273,8 +1273,8 @@ const App: React.FC = () => {
 
   return (
     <CharacterProvider characterId={stats.characterId}>
-      <div className="min-h-screen w-screen bg-[#E8DDCC] dark:bg-[#141110] p-2 lg:p-5 flex">
-      <div className="flex w-full h-[calc(100vh-16px)] lg:h-[calc(100vh-40px)] bg-[#FDFBF7] dark:bg-[#1c1712] text-[#473c33] dark:text-[#f4ebdd] overflow-hidden rounded-[24px] lg:rounded-[32px] shadow-2xl dark:shadow-none">
+      <div className="min-h-screen w-screen bg-[#E8DDCC] dark:bg-[#141110] flex">
+      <div className="flex w-full h-[100dvh] bg-[#FDFBF7] dark:bg-[#1c1712] text-[#473c33] dark:text-[#f4ebdd] overflow-hidden">
         <div className="hidden lg:block shrink-0">
           <Sidebar {...sidebarProps} />
         </div>
@@ -1377,7 +1377,7 @@ const App: React.FC = () => {
               </div>
             )}
 
-            <main className="max-w-[1400px] min-h-full mx-auto px-4 pt-8 relative" style={{ paddingBottom: !isQuestionSession && !isFocusLesson ? `calc(${showMiniBar ? '11rem' : '7rem'} + env(safe-area-inset-bottom, 0px))` : '2rem' }}>
+            <main className="max-w-[1760px] min-h-full mx-auto px-4 lg:px-8 pt-8 relative" style={{ paddingBottom: !isQuestionSession && !isFocusLesson ? `calc(${showMiniBar ? '11rem' : '7rem'} + env(safe-area-inset-bottom, 0px))` : '2rem' }}>
               {showRevisionNotice && (
                 <aside role="status" className="mb-5 flex flex-col gap-3 rounded-2xl border border-[#e5d7bd] bg-[#fff8ec] px-4 py-3 text-[#473c33] shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-[#65533d] dark:bg-[#2b241b] dark:text-[#f4ebdd]">
                   <p className="text-sm font-semibold">
