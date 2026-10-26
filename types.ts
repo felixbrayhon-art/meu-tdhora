@@ -582,3 +582,16 @@ export interface IllustratedLesson {
   sources?: { kind: 'wikipedia' | 'wikilivros' | 'lei' | 'wikidata'; title: string; url: string }[];
   consenso?: ConsensoFontes;
 }
+
+/** Uma norma do catálogo de leis federais (indice.json do Vade Mecum ampliado). */
+export interface LeiFederal {
+  id: string;
+  tipo: string;
+  numero: string;
+  data: string;
+  ementa: string;
+  /** "compilada" = texto vigente com as alterações; "original" = texto da publicação, que pode ter sido alterado depois. */
+  versao: 'compilada' | 'original';
+  bloco: string;
+  artigos: number;
+}
