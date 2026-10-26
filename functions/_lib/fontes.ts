@@ -12,7 +12,7 @@ interface D1Like {
 const MAX_EXCERPTS = 4;
 // Autores com poucos documentos ficam atrás de quem tem milhares de trechos na busca geral. Se um deles não apareceu,
 // uma busca só nele (pelo nome no início do documento) tenta incluí-lo no consenso.
-const AUTORES = ['Radegondes', 'Marcelomapas', 'Quebrando Questões', 'Concurseiro Fora da Caixa'];
+const AUTORES = ['Radegondes', 'Marcelomapas', 'Quebrando Questões', 'Concurseiro Fora da Caixa', 'Lei Federal'];
 const BUSCA_POR_AUTOR = 15;
 const WIDE = 200; // se os melhores trechos vêm de uma só fonte, procura mais fundo por uma segunda fonte independente
 const POOL = 12; // trechos relevantes analisados para o consenso (a IA recebe só os MAX_EXCERPTS melhores)
@@ -32,6 +32,9 @@ const BANCAS = /\((?:[^)]*\b)?(CESPE|CEBRASPE|FGV|FCC|VUNESP|IDECAN|IBFC|IESES|A
 // Commented questions from "lei em questões" books are stored already structured (article, point tested,
 // right answer, explanation, no loose options), so they are usable even though they mention the exam.
 const isCommentedQuestion = (text: string) => /^[^.]{3,80}, art\. \S+[^]{0,120}?Ponto cobrado em prova/.test(text);
+// Trechos de lei (scripts/ingest-leis-d1.mjs) não passam pelo filtro de questões: alíneas "a) b) c)" e palavras como "julgue" ou "assinale"
+// aparecem no texto legal e seriam confundidas com alternativas de prova.
+const isLei = (doc: string) => doc.startsWith('Legislação Federal · ');
 const isUnusable = (text: string) => !isCommentedQuestion(text) && (
   (text.match(/(^|\n|\s)[a-eA-E]\)\s/g) || []).length >= 3
   || /\bgabarito\b|\bcoment[aá]rios?\s*:|\bjulgue(-os)?\b|\bassinale\b|\(\s*(certo|errado)\s*\)|lista de quest/i.test(text)
@@ -79,7 +82,7 @@ const search = async (db: D1Like, query: string): Promise<{ excerpts: string[]; 
         'SELECT f.doc AS doc, f.text AS text FROM fontes_fts JOIN fontes f ON f.id = fontes_fts.rowid WHERE fontes_fts MATCH ?1 ORDER BY bm25(fontes_fts) LIMIT ?2',
       ).bind(match, limit).all<{ doc: string; text: string }>();
       return results
-        .filter((r) => !isUnusable(r.text))
+        .filter((r) => isLei(r.doc) || !isUnusable(r.text))
         .map((r) => ({ doc: r.doc, text: r.text, score: relevance(r.text, topic) }))
         .filter((r) => r.score > 0)
         .sort((a, b) => b.score - a.score);
@@ -94,7 +97,7 @@ const search = async (db: D1Like, query: string): Promise<{ excerpts: string[]; 
       const { results } = await db.prepare(
         'SELECT f.doc AS doc, f.text AS text FROM fontes_fts JOIN fontes f ON f.id = fontes_fts.rowid WHERE fontes_fts MATCH ?1 AND f.doc LIKE ?2 ORDER BY bm25(fontes_fts) LIMIT ?3',
       ).bind(match, `% · ${autor} - %`, BUSCA_POR_AUTOR).all<{ doc: string; text: string }>();
-      const extra = results.filter((r) => !isUnusable(r.text)).map((r) => ({ doc: r.doc, text: r.text, score: relevance(r.text, topic) })).filter((r) => r.score > 0);
+      const extra = results.filter((r) => isLei(r.doc) || !isUnusable(r.text)).map((r) => ({ doc: r.doc, text: r.text, score: relevance(r.text, topic) })).filter((r) => r.score > 0);
       if (extra.length) usable = [...usable, ...extra].sort((a, b) => b.score - a.score);
     }
     const ranked: Trecho[] = montarPool(usable, POOL);
