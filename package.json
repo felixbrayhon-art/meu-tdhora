@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test:quality": "node scripts/test-question-quality.mjs",
-    "test:consenso": "node scripts/test-fontes-consenso.mjs"
+    "test:consenso": "node scripts/test-fontes-consenso.mjs",
+    "test:ink": "node scripts/test-ink.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",

@@ -5,6 +5,8 @@ import { PenLine, Trash2, Plus, X, Folder, FolderPlus, Check, ChevronLeft, MoreV
 import { HandwrittenNote, NoteFolder, NotePaperStyle, NotePenPreset } from '../types';
 import Folder3D from './Folder3D';
 import StudyBook3D from './StudyBook3D';
+import NotebookEditor from './notes/NotebookEditor';
+import { deleteNotebook } from '../services/ink/store';
 
 interface NotesViewProps {
   notes: HandwrittenNote[];
@@ -705,7 +707,9 @@ const NoteEditor: React.FC<{
   );
 };
 
-const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete, onCreateFolder, onUpdateFolderColor, onDeleteFolder, onRenameFolder, onBack }) => {
+const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete: onDeleteNote, onCreateFolder, onUpdateFolderColor, onDeleteFolder, onRenameFolder, onBack }) => {
+  // Cadernos novos guardam as páginas no IndexedDB; apagar a anotação apaga também as páginas.
+  const onDelete = (id: string) => { if (notes.find((n) => n.id === id)?.kind === 'notebook') deleteNotebook(id).catch(() => undefined); onDeleteNote(id); };
   const [editingNote, setEditingNote] = useState<HandwrittenNote | null>(null);
   const [editingCoverNote, setEditingCoverNote] = useState<HandwrittenNote | null>(null);
   const [coverTitle, setCoverTitle] = useState('');
@@ -742,6 +746,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
       id: Math.random().toString(36).slice(2, 10),
       title: '',
       folderId,
+      kind: 'notebook',
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -1092,14 +1097,20 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete,
         )}
       </div>
 
-      {editingNote && (
+      {editingNote && (editingNote.kind === 'notebook' ? (
+        <NotebookEditor
+          note={editingNote}
+          onSaveMeta={(saved) => { onSave(saved); setEditingNote((cur) => (cur && cur.id === saved.id ? { ...cur, ...saved } : cur)); }}
+          onClose={() => setEditingNote(null)}
+        />
+      ) : (
         <NoteEditor
           note={editingNote}
           folders={folders}
           onSave={onSave}
           onClose={() => setEditingNote(null)}
         />
-      )}
+      ))}
 
       {editingCoverNote && (
         <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 p-4" onPointerDown={e => { if (e.target === e.currentTarget) setEditingCoverNote(null); }}>
