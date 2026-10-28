@@ -16,11 +16,10 @@ export interface InkStroke {
   straight?: boolean;
 }
 
-export type PaperTemplate =
-  | 'blank' | 'lined' | 'lined-wide' | 'grid' | 'grid-large' | 'dots' | 'cornell' | 'music'
-  | 'storyboard' | 'planner-weekly' | 'planner-daily' | 'todo' | 'isometric' | 'graph' | 'handwriting';
-export type PaperColor = 'white' | 'cream' | 'yellow' | 'green' | 'blue' | 'pink' | 'grey' | 'dark' | 'black';
-export type PageSize = 'letter' | 'a4' | 'a5' | 'wide' | 'whiteboard';
+// Nomes e conjuntos iguais aos do OwlLuna (Paper.swift).
+export type PaperTemplate = 'blank' | 'narrowRuled' | 'wideRuled' | 'grid' | 'dotted' | 'cornell' | 'music' | 'engineering' | 'isometric' | 'checklist' | 'penmanship' | 'dayPlanner' | 'weekPlanner' | 'storyboard';
+export type PaperColor = 'white' | 'ivory' | 'yellow' | 'kraft' | 'sage' | 'blush' | 'gray' | 'charcoal' | 'chalkboard';
+export type PageSize = 'letter' | 'a4' | 'a5' | 'widescreen' | 'whiteboard';
 
 export interface InkPage {
   id: string;
