@@ -5,6 +5,7 @@ import { PenLine, Trash2, Plus, X, Folder, FolderPlus, Check, ChevronLeft, MoreV
 import { HandwrittenNote, NoteFolder, NotePaperStyle, NotePenPreset } from '../types';
 import Folder3D from './Folder3D';
 import StudyBook3D from './StudyBook3D';
+import OwlLunaCard from './notes/OwlLunaCard';
 import NotebookEditor from './notes/NotebookEditor';
 import { deleteNotebook } from '../services/ink/store';
 
@@ -873,6 +874,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete:
       </header>
 
       <div className="p-4 sm:p-6 xl:p-8 pb-24 w-full flex-1">
+        {openFolderId === null && <OwlLunaCard />}
         {creatingFolder && (
           <form onSubmit={e => { e.preventDefault(); confirmCreateFolder(); }} className="bg-[#fdfbf7] border border-[#eee6d6] rounded-2xl p-4 sm:p-5 mb-6 space-y-4">
             <div className="flex items-center justify-between gap-3">
