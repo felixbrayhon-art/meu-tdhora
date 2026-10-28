@@ -24,6 +24,14 @@ ok('clusterOf: arquivos "curso-NNN-aula-…" são as aulas (um voto), não um au
   assert.equal(clusterOf('Português · curso-223971-aula-00-feb2-completo'), clusterOf('Informática · curso-223975-aula-04-5cc5-completo'));
 });
 
+ok('clusterOf: todas as leis federais são UM voto ("Lei Federal"), à parte das aulas e dos resumos', () => {
+  const a = clusterOf('Legislação Federal · Lei Federal - Lei nº 8.213 de 24/07/1991 (lei)');
+  const b = clusterOf('Legislação Federal · Lei Federal - Código Civil (lei)');
+  assert.equal(a, b);
+  assert.equal(a, 'lei federal');
+  assert.notEqual(a, clusterOf('Direito Penal · Concurseiro Fora da Caixa - Direito Penal (resumo)'));
+});
+
 ok('clusterOf: aulas do mesmo curso são UM voto; autor diferente é outro', () => {
   assert.equal(clusterOf('Direito Administrativo · AULA 00'), clusterOf('Direito Administrativo · AULA 09'));
   assert.notEqual(clusterOf('Direito Administrativo · AULA 00'), clusterOf('Direito Administrativo · Concurseiro Fora da Caixa - Direito Administrativo (resumo)'));

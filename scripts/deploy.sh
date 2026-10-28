@@ -30,6 +30,15 @@ FREELLMAPI_BASE_URL=https://set-on-server.invalid FREELLMAPI_API_KEY=set-on-serv
 FREELLMAPI_ALLOWED_UIDS=set-on-server npx vite build >/tmp/tdhora-build.log 2>&1 \
   || { tail -20 /tmp/tdhora-build.log; echo "✗ build falhou"; exit 1; }
 
+# Catálogo de leis federais do Vade Mecum (ctresb/leis): fica fora do git (~150 MB). Gere com scripts/build-vademecum-leis.mjs em ~/fontes-todahora/leis-dist.
+LEIS="${TDHORA_LEIS_DIST:-$HOME/fontes-todahora/leis-dist}"
+if [[ -f "$LEIS/indice.json" ]]; then
+  mkdir -p dist/vademecum/leis && cp -R "$LEIS/." dist/vademecum/leis/
+  echo "+ catálogo de leis federais incluído ($(du -sh "$LEIS" | cut -f1))"
+else
+  echo "! catálogo de leis federais não encontrado em $LEIS; o app sai sem ele"
+fi
+
 OUT="$(npx wrangler@4 pages deploy dist --project-name meu-tdhora --branch main 2>&1)" \
   || { echo "$OUT" | tail -15; echo "✗ deploy falhou"; exit 1; }
 echo "✓ publicado $SHA → https://meu-tdhora.pages.dev ($(echo "$OUT" | grep -o 'https://[a-z0-9]*\.meu-tdhora.pages.dev' | tail -1))"

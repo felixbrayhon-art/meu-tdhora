@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Scale, Search, ChevronDown } from './icons';
-import { VadeMecumArticle, VADE_MECUM_LAWS } from '../types';
+import { LeiFederal, VadeMecumArticle, VADE_MECUM_LAWS } from '../types';
 import { getVadeMecumArticles, searchVadeMecumArticles } from '../services/vademecumService';
+import { fonteLei, getLeiArticles, loadLeisIndex, searchLeis, siglaLei, tituloLei } from '../services/leisFederaisService';
 import LoadingFish from './LoadingFish';
 
 interface VadeMecumViewProps {
@@ -18,6 +19,12 @@ const legalIndentClass = (part: string): string =>
 const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
   const bookTextSizes = [15, 17, 19, 21] as const;
   const [lawId, setLawId] = useState(VADE_MECUM_LAWS[0].id);
+  // Catálogo das demais leis federais vigentes; quando uma é aberta, `catalogLaw` manda sobre o seletor das leis principais.
+  const [catalogLaw, setCatalogLaw] = useState<LeiFederal | null>(null);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogIndex, setCatalogIndex] = useState<LeiFederal[] | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogQuery, setCatalogQuery] = useState('');
   const [articles, setArticles] = useState<VadeMecumArticle[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -76,10 +83,20 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
     setQuery('');
     setSpreadIndex(0);
     cancelPageTurn();
-    getVadeMecumArticles(lawId)
-      .then(setArticles)
-      .catch(() => setError('Não foi possível carregar essa legislação agora.'));
-  }, [lawId]);
+    let vivo = true;
+    (catalogLaw ? getLeiArticles(catalogLaw) : getVadeMecumArticles(lawId))
+      .then((list) => { if (vivo) setArticles(list); })
+      .catch(() => { if (vivo) setError('Não foi possível carregar essa legislação agora.'); });
+    return () => { vivo = false; };
+  }, [lawId, catalogLaw]);
+
+  useEffect(() => {
+    if (!catalogOpen || catalogIndex) return;
+    setCatalogError(null);
+    loadLeisIndex().then(setCatalogIndex).catch(() => setCatalogError('Não foi possível carregar o catálogo de leis agora.'));
+  }, [catalogOpen, catalogIndex]);
+
+  const catalogResults = useMemo(() => (catalogIndex ? searchLeis(catalogIndex, catalogQuery) : []), [catalogIndex, catalogQuery]);
 
   useEffect(() => {
     setSpreadIndex(0);
@@ -94,7 +111,8 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
     return searchVadeMecumArticles(articles, query);
   }, [articles, query]);
 
-  const currentLaw = VADE_MECUM_LAWS.find((law) => law.id === lawId) ?? VADE_MECUM_LAWS[0];
+  const mainLaw = VADE_MECUM_LAWS.find((law) => law.id === lawId) ?? VADE_MECUM_LAWS[0];
+  const currentLaw = catalogLaw ? { id: catalogLaw.id, name: tituloLei(catalogLaw), shortName: siglaLei(catalogLaw) } : mainLaw;
   const spreadCount = Math.ceil(filtered.length / 2);
   const currentSpread = filtered.slice(spreadIndex * 2, spreadIndex * 2 + 2);
   const previousSpread = filtered.slice(Math.max(0, spreadIndex - 1) * 2, Math.max(0, spreadIndex - 1) * 2 + 2);
@@ -166,10 +184,11 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
             Vade Mecum
           </h2>
           <select
-            value={lawId}
-            onChange={(e) => { cancelPageTurn(); setLawId(e.target.value); }}
+            value={catalogLaw ? '__catalogo__' : lawId}
+            onChange={(e) => { cancelPageTurn(); setCatalogLaw(null); setLawId(e.target.value); }}
             className="mt-1 max-w-full min-h-[44px] text-gray-500 font-medium tracking-wide uppercase text-sm bg-transparent border-none focus:outline-none cursor-pointer hover:text-gray-700 dark:text-[#c2baa0] dark:hover:text-white"
           >
+            {catalogLaw && <option value="__catalogo__" disabled>{currentLaw.name}</option>}
             {VADE_MECUM_LAWS.map((law) => (
               <option key={law.id} value={law.id}>{law.name}</option>
             ))}
@@ -182,6 +201,45 @@ const VadeMecumView: React.FC<VadeMecumViewProps> = ({ onBack }) => {
       </div>
 
       <div className="p-6 md:p-10 w-full max-w-6xl mx-auto space-y-6">
+        <div className="rounded-2xl border border-[#eadfce] bg-white p-3 dark:border-[#454438] dark:bg-[#292a23]">
+          <button type="button" aria-expanded={catalogOpen} onClick={() => setCatalogOpen((open) => !open)} className="flex min-h-[44px] w-full items-center justify-between gap-3 rounded-xl px-3 text-left font-bold text-[#473c33] dark:text-[#f4ebdd]">
+            <span>Outras leis federais vigentes{catalogIndex ? ` (${catalogIndex.length.toLocaleString('pt-BR')})` : ''}</span>
+            <ChevronDown className={`h-5 w-5 shrink-0 text-gray-400 transition-transform ${catalogOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {catalogOpen && (
+            <div className="space-y-3 px-1 pb-2 pt-3">
+              <input value={catalogQuery} onChange={(e) => setCatalogQuery(e.target.value)} placeholder="Número (ex.: 8.742, LC 101) ou palavras da ementa" aria-label="Buscar lei federal" className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-base font-medium focus:border-[#fdb887] focus:outline-none dark:border-white/10 dark:bg-[#20211c] dark:text-[#f4ebdd] dark:placeholder:text-[#aaa58e]" />
+              {catalogError && <p className="text-sm font-bold text-red-600">{catalogError}</p>}
+              {!catalogError && !catalogIndex && <p className="text-sm font-bold text-gray-400 dark:text-[#aaa58e]">Carregando o catálogo...</p>}
+              {catalogIndex && catalogResults.length === 0 && <p className="text-sm font-bold text-gray-400 dark:text-[#aaa58e]">Nenhuma lei encontrada.</p>}
+              {catalogIndex && catalogResults.length > 0 && (
+                <ul className="max-h-[360px] space-y-1 overflow-y-auto pr-1">
+                  {catalogResults.map((lei) => (
+                    <li key={lei.id}>
+                      <button type="button" onClick={() => { cancelPageTurn(); setCatalogLaw(lei); setCatalogOpen(false); }} className="w-full rounded-xl border border-gray-100 px-4 py-3 text-left transition hover:border-[#fed6ba] hover:bg-[#fff7f0] dark:border-white/[0.08] dark:hover:border-[#e96f34]/50 dark:hover:bg-white/5">
+                        <p className="flex flex-wrap items-center gap-2 font-black text-gray-900 dark:text-[#f4ebdd]">
+                          {tituloLei(lei)}
+                          {lei.versao === 'compilada' && <span className="rounded-full bg-[#e7efdc] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-[#3d5a1f] dark:bg-[#34392c] dark:text-[#b9d08a]">texto atualizado</span>}
+                        </p>
+                        {lei.ementa && <p className="mt-0.5 line-clamp-2 text-sm text-gray-500 dark:text-[#c2baa0]">{lei.ementa}</p>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        {catalogLaw && (
+          <div className={`rounded-2xl border p-4 text-sm font-medium ${catalogLaw.versao === 'compilada' ? 'border-[#cddcb6] bg-[#f3f8ea] text-[#3d5a1f] dark:border-[#4b5a35] dark:bg-[#2c3125] dark:text-[#c5d9a0]' : 'border-[#ecd29c] bg-[#fff7e6] text-[#7a5200] dark:border-[#6b5420] dark:bg-[#362d17] dark:text-[#f0cf8a]'}`}>
+            {catalogLaw.versao === 'compilada'
+              ? 'Texto compilado: já traz as alterações feitas depois da publicação.'
+              : 'Texto original da publicação. A lei pode ter sido alterada depois; confira a versão atualizada na fonte oficial antes de estudar ou citar.'}{' '}
+            <a href={fonteLei(catalogLaw)} target="_blank" rel="noreferrer" className="font-black underline underline-offset-2">Ver na fonte oficial</a>
+          </div>
+        )}
+
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input value={query} onChange={(e) => { cancelPageTurn(); setQuery(e.target.value); }} placeholder="Número do artigo ou palavra..." className="w-full bg-white border-2 border-gray-200 rounded-2xl pl-12 pr-4 py-4 text-base font-medium focus:outline-none focus:border-[#fdb887] transition-colors dark:bg-[#292a23] dark:border-white/10 dark:text-[#f4ebdd] dark:placeholder:text-[#aaa58e]" />
