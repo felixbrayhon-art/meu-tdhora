@@ -27,7 +27,14 @@ const run = async <T,>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjec
   });
 };
 
-export const loadNotebook = (id: string): Promise<InkNotebook | undefined> => run<InkNotebook | undefined>(STORE, 'readonly', (s) => s.get(id));
+// Cadernos salvos antes de os papéis seguirem o OwlLuna usavam outros nomes.
+const OLD_TEMPLATE: Record<string, PaperTemplate> = { lined: 'narrowRuled', 'lined-wide': 'wideRuled', 'grid-large': 'grid', dots: 'dotted', 'planner-weekly': 'weekPlanner', 'planner-daily': 'dayPlanner', todo: 'checklist', graph: 'engineering', handwriting: 'penmanship' };
+const OLD_PAPER: Record<string, PaperColor> = { cream: 'ivory', green: 'sage', blue: 'gray', pink: 'blush', grey: 'gray', dark: 'charcoal', black: 'charcoal' };
+const migrate = (nb: InkNotebook | undefined): InkNotebook | undefined => nb && ({
+  ...nb,
+  pages: nb.pages.map((p) => ({ ...p, template: OLD_TEMPLATE[p.template as string] ?? p.template, paper: OLD_PAPER[p.paper as string] ?? p.paper, size: ((p.size as string) === 'wide' ? 'widescreen' : p.size) as PageSize })),
+});
+export const loadNotebook = async (id: string): Promise<InkNotebook | undefined> => migrate(await run<InkNotebook | undefined>(STORE, 'readonly', (s) => s.get(id)));
 export const saveNotebook = (nb: InkNotebook): Promise<IDBValidKey> => run(STORE, 'readwrite', (s) => s.put(nb));
 export const deleteNotebook = (id: string): Promise<undefined> => run<undefined>(STORE, 'readwrite', (s) => s.delete(id));
 export const listNotebooks = (): Promise<InkNotebook[]> => run<InkNotebook[]>(STORE, 'readonly', (s) => s.getAll());
@@ -37,4 +44,4 @@ export const getBlob = (key: string): Promise<Blob | undefined> => run<Blob | un
 export const deleteBlob = (key: string): Promise<undefined> => run<undefined>(BLOBS, 'readwrite', (s) => s.delete(key));
 
 export const newPageId = () => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-export const newPage = (template: PaperTemplate = 'lined', paper: PaperColor = 'cream', size: PageSize = 'a4'): InkPage => ({ id: newPageId(), template, paper, size, strokes: [] });
+export const newPage = (template: PaperTemplate = 'narrowRuled', paper: PaperColor = 'ivory', size: PageSize = 'a4'): InkPage => ({ id: newPageId(), template, paper, size, strokes: [] });

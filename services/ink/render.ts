@@ -1,112 +1,40 @@
 import { getStroke } from 'perfect-freehand';
 import type { InkPage, InkStroke, PageSize, PaperColor, PaperTemplate, PenKind } from './types';
+import { PAPER_RGB, drawTemplate, isDarkPaper, paperCss } from './templates';
 
 // Desenho no canvas: papéis, canetas e traços. Sem estado; quem chama aplica a transformação de zoom/posição antes.
 
 export const PAGE_SIZES: Record<PageSize, { w: number; h: number; label: string }> = {
   letter: { w: 612, h: 792, label: 'Carta' },
-  a4: { w: 595, h: 842, label: 'A4' },
-  a5: { w: 420, h: 595, label: 'A5' },
-  wide: { w: 960, h: 540, label: 'Widescreen' },
+  a4: { w: 595.28, h: 841.89, label: 'A4' },
+  a5: { w: 419.53, h: 595.28, label: 'A5' },
+  widescreen: { w: 960, h: 540, label: 'Widescreen' },
   whiteboard: { w: 2600, h: 1800, label: 'Quadro branco' },
 };
 
-export const PAPERS: Record<PaperColor, { bg: string; line: string; dark: boolean; label: string }> = {
-  white: { bg: '#ffffff', line: '#cdd6e2', dark: false, label: 'Branco' },
-  cream: { bg: '#fbf4e4', line: '#d9ccb0', dark: false, label: 'Creme' },
-  yellow: { bg: '#fff6c8', line: '#e3d58f', dark: false, label: 'Amarelo' },
-  green: { bg: '#e6f4e1', line: '#b9d3b1', dark: false, label: 'Verde' },
-  blue: { bg: '#e3effb', line: '#b3cbe6', dark: false, label: 'Azul' },
-  pink: { bg: '#fde8ee', line: '#e8bccb', dark: false, label: 'Rosa' },
-  grey: { bg: '#e9e9ea', line: '#c1c1c4', dark: false, label: 'Cinza' },
-  dark: { bg: '#2b2520', line: '#4a4037', dark: true, label: 'Escuro' },
-  black: { bg: '#111111', line: '#303030', dark: true, label: 'Preto' },
+const PAPER_LABELS: Record<PaperColor, string> = {
+  white: 'Branco', ivory: 'Marfim', yellow: 'Bloco amarelo', kraft: 'Kraft', sage: 'Sálvia', blush: 'Rosado', gray: 'Cinza', charcoal: 'Carvão', chalkboard: 'Lousa',
 };
+export const PAPERS = Object.fromEntries((Object.keys(PAPER_RGB) as PaperColor[]).map((c) => [c, { bg: paperCss(c), dark: isDarkPaper(c), label: PAPER_LABELS[c] }])) as Record<PaperColor, { bg: string; dark: boolean; label: string }>;
 
-export const TEMPLATES: { id: PaperTemplate; label: string }[] = [
-  { id: 'blank', label: 'Em branco' }, { id: 'lined', label: 'Pautado' }, { id: 'lined-wide', label: 'Pautado largo' },
-  { id: 'grid', label: 'Quadriculado' }, { id: 'grid-large', label: 'Quadriculado grande' }, { id: 'dots', label: 'Pontilhado' },
-  { id: 'cornell', label: 'Cornell' }, { id: 'music', label: 'Partitura' }, { id: 'storyboard', label: 'Storyboard' },
-  { id: 'planner-weekly', label: 'Planejador semanal' }, { id: 'planner-daily', label: 'Planejador diário' }, { id: 'todo', label: 'Lista de tarefas' },
-  { id: 'isometric', label: 'Isométrico' }, { id: 'graph', label: 'Milimetrado' }, { id: 'handwriting', label: 'Caligrafia' },
+/** Modelos agrupados como no OwlLuna (PaperFamily). */
+export const TEMPLATE_FAMILIES: { label: string; items: { id: PaperTemplate; label: string }[] }[] = [
+  { label: 'Escrita', items: [{ id: 'blank', label: 'Em branco' }, { id: 'narrowRuled', label: 'Pautado estreito' }, { id: 'wideRuled', label: 'Pautado largo' }, { id: 'penmanship', label: 'Caligrafia' }, { id: 'checklist', label: 'Lista de tarefas' }] },
+  { label: 'Grades', items: [{ id: 'grid', label: 'Quadriculado' }, { id: 'engineering', label: 'Engenharia' }, { id: 'dotted', label: 'Pontilhado' }, { id: 'isometric', label: 'Isométrico' }] },
+  { label: 'Planejamento', items: [{ id: 'cornell', label: 'Cornell' }, { id: 'dayPlanner', label: 'Planejador diário' }, { id: 'weekPlanner', label: 'Planejador semanal' }] },
+  { label: 'Criativo', items: [{ id: 'music', label: 'Pauta de música' }, { id: 'storyboard', label: 'Storyboard' }] },
 ];
 
 export const PEN_LABELS: Record<PenKind, string> = {
   pen: 'Caneta', fineliner: 'Ponta fina', fountain: 'Tinteiro', calligraphy: 'Caligráfica', pencil: 'Lápis', highlighter: 'Marca-texto', crayon: 'Giz de cera', watercolour: 'Aquarela',
 };
 
-const line = (ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) => { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); };
-
-export const drawPaper = (ctx: CanvasRenderingContext2D, w: number, h: number, template: PaperTemplate, color: PaperColor) => {
-  const paper = PAPERS[color];
+export const drawPaper = (ctx: CanvasRenderingContext2D, w: number, h: number, template: PaperTemplate, color: PaperColor, board = false) => {
   ctx.save();
-  ctx.fillStyle = paper.bg;
+  ctx.fillStyle = paperCss(color);
   ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = paper.line; ctx.fillStyle = paper.line; ctx.lineWidth = 0.7;
-  ctx.beginPath();
-  const hLines = (step: number, top = 0, bottom = h, left = 0, right = w) => { for (let y = top; y <= bottom; y += step) line(ctx, left, y, right, y); };
-  const vLines = (step: number, left = 0, right = w, top = 0, bottom = h) => { for (let x = left; x <= right; x += step) line(ctx, x, top, x, bottom); };
-  switch (template) {
-    case 'lined': hLines(26, 70); break;
-    case 'lined-wide': hLines(34, 80); break;
-    case 'grid': hLines(20); vLines(20); break;
-    case 'grid-large': hLines(34); vLines(34); break;
-    case 'graph': { ctx.stroke(); ctx.beginPath(); ctx.lineWidth = 0.35; hLines(7.2); vLines(7.2); ctx.stroke(); ctx.beginPath(); ctx.lineWidth = 0.9; hLines(36); vLines(36); break; }
-    case 'dots': {
-      ctx.stroke(); ctx.beginPath();
-      for (let y = 30; y < h; y += 24) for (let x = 30; x < w; x += 24) { ctx.moveTo(x + 1.1, y); ctx.arc(x, y, 1.1, 0, Math.PI * 2); }
-      ctx.fill(); ctx.beginPath(); break;
-    }
-    case 'cornell': {
-      const cue = w * 0.28, summary = h * 0.82;
-      hLines(26, 70, summary - 6, cue, w); line(ctx, cue, 0, cue, summary); line(ctx, 0, summary, w, summary); line(ctx, 0, 60, w, 60);
-      break;
-    }
-    case 'music': {
-      for (let top = 70; top + 60 < h - 30; top += 100) for (let i = 0; i < 5; i++) line(ctx, 36, top + i * 11, w - 36, top + i * 11);
-      break;
-    }
-    case 'storyboard': {
-      const cols = w > h ? 3 : 2, rows = w > h ? 2 : 3, gx = 24, gy = 24;
-      const fw = (w - gx * (cols + 1)) / cols, fh = (h - gy * (rows + 1) - rows * 40) / rows;
-      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-        const x = gx + c * (fw + gx), y = gy + r * (fh + gy + 40);
-        ctx.rect(x, y, fw, fh); line(ctx, x, y + fh + 16, x + fw, y + fh + 16); line(ctx, x, y + fh + 32, x + fw, y + fh + 32);
-      }
-      break;
-    }
-    case 'planner-weekly': {
-      const top = 70, rowH = (h - top - 24) / 7;
-      for (let i = 0; i <= 7; i++) line(ctx, 24, top + i * rowH, w - 24, top + i * rowH);
-      line(ctx, 90, top, 90, h - 24);
-      break;
-    }
-    case 'planner-daily': {
-      const top = 70, rowH = 30;
-      for (let y = top, n = 0; y < h - 20 && n < 24; y += rowH, n++) line(ctx, 60, y, w - 24, y);
-      line(ctx, 60, top, 60, Math.min(h - 20, top + rowH * 24));
-      break;
-    }
-    case 'todo': {
-      for (let y = 70; y < h - 20; y += 34) { line(ctx, 62, y, w - 30, y); ctx.rect(30, y - 22, 18, 18); }
-      break;
-    }
-    case 'isometric': {
-      const s = 26, hh = s * Math.sqrt(3) / 2;
-      for (let y = 0; y <= h + hh; y += hh) line(ctx, 0, y, w, y);
-      for (let x = -h; x <= w + h; x += s) { line(ctx, x, 0, x + h / Math.tan(Math.PI / 3), h); line(ctx, x, 0, x - h / Math.tan(Math.PI / 3), h); }
-      break;
-    }
-    case 'handwriting': {
-      for (let y = 80; y + 60 < h - 20; y += 78) { line(ctx, 30, y, w - 30, y); line(ctx, 30, y + 40, w - 30, y + 40); line(ctx, 30, y + 60, w - 30, y + 60); }
-      ctx.stroke(); ctx.beginPath(); ctx.setLineDash([4, 4]);
-      for (let y = 80; y + 60 < h - 20; y += 78) line(ctx, 30, y + 20, w - 30, y + 20);
-      ctx.stroke(); ctx.setLineDash([]); ctx.beginPath();
-      break;
-    }
-    default: break;
-  }
-  ctx.stroke();
+  // O quadro branco é só "pautado" com as medidas de uma página Carta (unidade 1), sem margens.
+  drawTemplate(ctx, template, color, w, h, board ? 1 : undefined);
   ctx.restore();
 };
 
@@ -216,7 +144,7 @@ export const drawStroke = (ctx: CanvasRenderingContext2D, s: InkStroke, darkPape
 
 export const drawPage = (ctx: CanvasRenderingContext2D, page: InkPage, strokes: InkStroke[], bg?: CanvasImageSource | null) => {
   const { w, h } = PAGE_SIZES[page.size];
-  drawPaper(ctx, w, h, page.template, page.paper);
+  drawPaper(ctx, w, h, page.template, page.paper, page.size === 'whiteboard');
   if (bg) ctx.drawImage(bg, 0, 0, w, h);
   ctx.save();
   ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.clip();

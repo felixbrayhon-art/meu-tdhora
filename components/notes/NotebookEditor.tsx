@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import InkCanvas, { InkCanvasHandle, ShapeKind, ToolState } from './InkCanvas';
 import type { InkNotebook, InkPage, InkStroke, PageSize, PaperColor, PaperTemplate, PenKind } from '../../services/ink/types';
-import { PAGE_SIZES, PAPERS, PEN_LABELS, TEMPLATES, renderThumbnail } from '../../services/ink/render';
+import { PAGE_SIZES, PAPERS, PEN_LABELS, TEMPLATE_FAMILIES, renderThumbnail } from '../../services/ink/render';
 import { loadNotebook, newPage, newPageId, saveNotebook } from '../../services/ink/store';
 import { translateStroke, uid } from '../../services/ink/geometry';
 import type { HandwrittenNote } from '../../types';
@@ -231,8 +231,12 @@ const NotebookEditor: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
 
         {panel === 'paper' && (
           <aside className="ink-panel right" aria-label="Papel e tamanho">
-            <h3>Modelo</h3>
-            <div className="ink-chips">{TEMPLATES.map((t) => <button key={t.id} type="button" className={page.template === t.id ? 'on' : ''} onClick={() => setPageProps({ template: t.id as PaperTemplate })}>{t.label}</button>)}</div>
+            {TEMPLATE_FAMILIES.map((fam) => (
+              <React.Fragment key={fam.label}>
+                <h3>{fam.label}</h3>
+                <div className="ink-chips">{fam.items.map((t) => <button key={t.id} type="button" className={page.template === t.id ? 'on' : ''} onClick={() => setPageProps({ template: t.id as PaperTemplate })}>{t.label}</button>)}</div>
+              </React.Fragment>
+            ))}
             <h3>Cor do papel</h3>
             <div className="ink-swatches">{(Object.keys(PAPERS) as PaperColor[]).map((c) => <button key={c} type="button" title={PAPERS[c].label} aria-label={PAPERS[c].label} className={page.paper === c ? 'on' : ''} style={{ background: PAPERS[c].bg }} onClick={() => setPageProps({ paper: c })} />)}</div>
             <h3>Tamanho da página</h3>
