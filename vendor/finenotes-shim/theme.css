@@ -62,3 +62,9 @@ body button.mod-cta { background: var(--interactive-accent); color: var(--text-o
 .goodobsidian-note-settings .setting-item-heading:has(+ .goodobsidian-note-settings-intro),
 .goodobsidian-note-settings .goodobsidian-note-settings-intro,
 .goodobsidian-note-settings .goodobsidian-note-settings-intro ~ * { display: none; }
+/* Popovers do FineNotes são filhos do body com camadas baixas (feitas para o Obsidian); aqui o caderno ocupa a tela por cima do app. */
+body.fn-open > .goodobsidian-addpage,
+body.fn-open > .goodobsidian-cover-popover,
+body.fn-open > [class*="goodobsidian-"][class*="popover"],
+body.fn-open > .goodobsidian-morepanel,
+body.fn-open > .goodobsidian-menu { z-index: 1550; }

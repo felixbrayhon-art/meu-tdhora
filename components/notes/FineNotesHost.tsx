@@ -9,7 +9,12 @@ import { DEFAULT_SETTINGS } from '../../vendor/finenotes/src/settings-data';
 import { DEFAULT_NOTEBOOK_CHOICES, buildNewDocument } from '../../vendor/finenotes/src/model/new-notebook';
 import { DocumentEncoder, decodeDocument } from '../../vendor/finenotes/src/model/serialize';
 import { AddPage, RemovePage } from '../../vendor/finenotes/src/model/commands';
-import { ClearPage, MovePage, SetPageBookmark, duplicatePageAfter, pageToInsertAfter } from '../../vendor/finenotes/src/model/page-commands';
+import { ClearPage, MovePage, SetPageBookmark, SetPageTemplate, duplicatePageAfter, insertIndexFor, pageFromTemplate, pageToInsertAfter, type InsertPosition } from '../../vendor/finenotes/src/model/page-commands';
+import { type PageGeometry, type SyntheticBackdrop, isCoverRuling } from '../../vendor/finenotes/src/model/document';
+import { paperTemplateFor, parseRecent, pushRecent } from '../../vendor/finenotes/src/model/templates';
+import { changeCover } from '../../vendor/finenotes/src/model/notebook-commands';
+import { AddPagePopover, TemplatePickerModal } from '../../vendor/finenotes/src/view/template-picker';
+import { CoverPopover } from '../../vendor/finenotes/src/view/cover-picker';
 import { SetPageTitle } from '../../vendor/finenotes/src/model/contents';
 import { SetScrollDirection, scrollDirectionOf } from '../../vendor/finenotes/src/model/scroll-direction';
 import { SetAttachmentFolder } from '../../vendor/finenotes/src/model/attachment-folders';
@@ -127,6 +132,71 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
           surface!.goToPage(insert.index, animate);
           requestSave();
         };
+        // Tipos de página: o "+" da barra e o da barra lateral abrem o seletor do FineNotes; o último usado fica lembrado.
+        let addPop: { popover: AddPagePopover; anchor: HTMLElement } | null = null;
+        let coverPop: { popover: CoverPopover; anchor: HTMLElement } | null = null;
+        const RECENT = 'goodobsidian:recent-templates';
+        const recents = (): SyntheticBackdrop[] => { try { return parseRecent(JSON.parse(localStorage.getItem(RECENT) ?? '[]')); } catch { return []; } };
+        const remember = (b: SyntheticBackdrop) => { try { localStorage.setItem(RECENT, JSON.stringify(pushRecent(recents(), b))); } catch { /* sem armazenamento */ } };
+        const addTemplatePage = (backdrop: SyntheticBackdrop, geometry: PageGeometry, position: InsertPosition, ref: number) => {
+          if (!surface) return;
+          const index = insertIndexFor(position, ref, surface.document.pages.length);
+          const insert = pageFromTemplate(surface.document, index, backdrop, geometry);
+          surface.applyCommand(new AddPage(insert.index, insert.page));
+          surface.goToPage(insert.index, true);
+          remember(backdrop);
+          requestSave();
+        };
+        const openTemplatePicker = (mode: 'add' | 'change', ref: number, position: InsertPosition) => {
+          const page = surface?.document.pages[ref];
+          if (!surface || !page) return;
+          const reference = mode === 'add' ? paperTemplateFor(surface.document.pages, ref) : page.backdrop;
+          new TemplatePickerModal(app as never, {
+            mode,
+            initial: reference.kind === 'pdf' ? { kind: 'blank' } : reference,
+            geometry: page.geometry,
+            onApply: ({ backdrop, geometry }) => {
+              if (mode === 'add') { addTemplatePage(backdrop, geometry ?? page.geometry, position, ref); return; }
+              apply(new SetPageTemplate(page, backdrop, geometry ?? undefined));
+              remember(backdrop);
+            },
+          }).open();
+        };
+        const openAddPage = (anchor: HTMLElement, ref: number, position: InsertPosition) => {
+          const open = addPop; addPop = null;
+          if (open?.popover.isOpen) { open.popover.close(); if (open.anchor === anchor) return; }
+          const doc2 = surface?.document;
+          if (!doc2) return;
+          const at = Math.max(0, Math.min(doc2.pages.length - 1, ref));
+          const page = doc2.pages[at];
+          if (!page) return;
+          const popover = new AddPagePopover(anchor, {
+            current: paperTemplateFor(doc2.pages, at),
+            geometry: page.geometry,
+            recent: recents(),
+            position,
+            onPick: (backdrop, where) => addTemplatePage(backdrop, page.geometry, where, ref),
+            onMore: (where) => openTemplatePicker('add', ref, where),
+          });
+          addPop = { popover, anchor };
+        };
+        const openCoverPicker = (anchor: HTMLElement, index: number) => {
+          const open = coverPop; coverPop = null;
+          if (open?.popover.isOpen) { open.popover.close(); if (open.anchor === anchor) return; }
+          const page = surface?.document.pages[index];
+          if (!surface || !page || page.backdrop.kind === 'pdf' || !isCoverRuling(page.backdrop.kind)) return;
+          const popover = new CoverPopover(anchor, {
+            backdrop: page.backdrop,
+            geometry: page.geometry,
+            onPick: (backdrop) => {
+              const now = page.backdrop;
+              if (now.kind !== 'pdf' && now.kind === backdrop.kind && now.paperColor === backdrop.paperColor) return;
+              const command = changeCover(page, backdrop);
+              if (command) surface?.applyCommand(command);
+            },
+          });
+          coverPop = { popover, anchor };
+        };
         const toggleSidebar = () => {
           if (!sidebar) return;
           const before = surface?.pageClientRect() ?? null;
@@ -137,16 +207,14 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
           if (before) surface?.glideFrom(before, PANEL_SLIDE_MS);
         };
         const apply = (command: Command) => { surface?.applyCommand(command); requestSave(); };
-        const pageAction = (action: PageAction, index: number) => {
+        const pageAction = (action: PageAction, index: number, anchor: HTMLElement) => {
           const sf = surface; if (!sf) return;
           const doc2 = sf.document, page = doc2.pages[index];
           if (!page) return;
           switch (action) {
-            case 'add-before': case 'add-after': {
-              const at = action === 'add-before' ? index - 1 : index;
-              if (at < 0) { addPage(-1 as number, true); return; }
-              addPage(at, true); return;
-            }
+            case 'add-before': case 'add-after': openAddPage(anchor, index, action === 'add-before' ? 'before' : 'after'); return;
+            case 'change-template': openTemplatePicker('change', index, 'after'); return;
+            case 'change-cover': openCoverPicker(anchor, index); return;
             case 'bookmark': apply(new SetPageBookmark(page, page.bookmarked !== true)); return;
             case 'contents':
               new ContentsTitleModal(app as never, index, page.title, (title) => { if (sf.document.pages.includes(page)) apply(new SetPageTitle(page, title)); }).open();
@@ -198,7 +266,7 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
           onUndo: () => surface?.undo(),
           onRedo: () => surface?.redo(),
           onClear: () => { if (surface?.clearStrokes()) requestSave(); },
-          onAddPage: () => addPage(surface?.currentPage ?? 0),
+          onAddPage: (anchor) => openAddPage(anchor, surface?.currentPage ?? 0, 'after'),
           onPenTypeChange: () => toolbar?.syncActive(),
           onTextStyle: (patch) => surface?.applyTextStyle(patch),
           onTextList: (kind) => void surface?.applyTextList(kind),
@@ -210,8 +278,8 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
         thumbBackdrops.setDeviceScale(thumbnailRasterScale(window.devicePixelRatio || 1));
         sidebar = new PageSidebar(body, {
           onSelectPage: (index) => surface?.goToPage(index, true),
-          onPageAction: (action, index) => pageAction(action, index),
-          onAddPage: () => addPage(surface!.document.pages.length - 1, true),
+          onPageAction: (action, index, anchor) => pageAction(action, index, anchor),
+          onAddPage: (anchor) => openAddPage(anchor, surface!.document.pages.length - 1, 'last'),
           onClose: () => { if (sidebar?.isOpen) toggleSidebar(); },
         }, { painter: thumbBackdrops, paper: paperTheme(false), usePressure: toolState.pressureEnabled, highlighterAlpha: DEFAULT_SETTINGS.highlighterAlpha });
         sidebar.setDocument(doc);
