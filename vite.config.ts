@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { handleFreeLLMAPIRequest } from './api/freellmapi';
 import { handleAIRequest } from './api/ai';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,13 +56,37 @@ export default defineConfig(({ mode }) => {
       },
     };
 
+
+    // Modo offline: injeta no service worker a lista dos arquivos gerados pelo build.
+    const offlineManifest: Plugin = {
+      name: 'offline-manifest',
+      apply: 'build',
+      closeBundle() {
+        const dist = path.resolve(__dirname, 'dist');
+        const swPath = path.join(dist, 'sw.js');
+        if (!fs.existsSync(swPath)) return;
+        const files: string[] = [];
+        const walk = (dir: string) => {
+          for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, e.name);
+            if (e.isDirectory()) walk(full);
+            else if (/\.(js|css|woff2?)$/.test(e.name)) files.push('/' + path.relative(dist, full).split(path.sep).join('/'));
+          }
+        };
+        if (fs.existsSync(path.join(dist, 'assets'))) walk(path.join(dist, 'assets'));
+        const build = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
+        const sw = fs.readFileSync(swPath, 'utf8').replace('__PRECACHE__', JSON.stringify(files)).replace('__BUILD__', build);
+        fs.writeFileSync(swPath, sw);
+      },
+    };
+
     return {
       root: __dirname,
       server: {
         port: 3000,
         host: '127.0.0.1',
       },
-      plugins: [react(), tailwindcss(), freellmapiDevProxy, aiDevProxy],
+      plugins: [react(), tailwindcss(), freellmapiDevProxy, aiDevProxy, offlineManifest],
       define: {
         'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY),
         'process.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || env.GEMINI_API_KEY),
