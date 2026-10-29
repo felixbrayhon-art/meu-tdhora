@@ -21,9 +21,17 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "obsidian": [
+        "./vendor/finenotes-shim/obsidian.ts"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "vendor/finenotes"
+  ]
 }

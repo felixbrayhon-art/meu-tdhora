@@ -7,7 +7,8 @@ import Folder3D from './Folder3D';
 import StudyBook3D from './StudyBook3D';
 import OwlLunaCard from './notes/OwlLunaCard';
 import NotebookEditor from './notes/NotebookEditor';
-import { deleteNotebook } from '../services/ink/store';
+import FineNotesHost from './notes/FineNotesHost';
+import { deleteFnNotebook, deleteNotebook } from '../services/ink/store';
 
 interface NotesViewProps {
   notes: HandwrittenNote[];
@@ -710,7 +711,12 @@ const NoteEditor: React.FC<{
 
 const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete: onDeleteNote, onCreateFolder, onUpdateFolderColor, onDeleteFolder, onRenameFolder, onBack }) => {
   // Cadernos novos guardam as páginas no IndexedDB; apagar a anotação apaga também as páginas.
-  const onDelete = (id: string) => { if (notes.find((n) => n.id === id)?.kind === 'notebook') deleteNotebook(id).catch(() => undefined); onDeleteNote(id); };
+  const onDelete = (id: string) => {
+    const kind = notes.find((n) => n.id === id)?.kind;
+    if (kind === 'notebook') deleteNotebook(id).catch(() => undefined);
+    if (kind === 'finenotes') deleteFnNotebook(id).catch(() => undefined);
+    onDeleteNote(id);
+  };
   const [editingNote, setEditingNote] = useState<HandwrittenNote | null>(null);
   const [editingCoverNote, setEditingCoverNote] = useState<HandwrittenNote | null>(null);
   const [coverTitle, setCoverTitle] = useState('');
@@ -747,7 +753,7 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete:
       id: Math.random().toString(36).slice(2, 10),
       title: '',
       folderId,
-      kind: 'notebook',
+      kind: 'finenotes',
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -1099,7 +1105,13 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete:
         )}
       </div>
 
-      {editingNote && (editingNote.kind === 'notebook' ? (
+      {editingNote && (editingNote.kind === 'finenotes' ? (
+        <FineNotesHost
+          note={editingNote}
+          onSaveMeta={(saved) => { onSave(saved); setEditingNote((cur) => (cur && cur.id === saved.id ? { ...cur, ...saved } : cur)); }}
+          onClose={() => setEditingNote(null)}
+        />
+      ) : editingNote.kind === 'notebook' ? (
         <NotebookEditor
           note={editingNote}
           onSaveMeta={(saved) => { onSave(saved); setEditingNote((cur) => (cur && cur.id === saved.id ? { ...cur, ...saved } : cur)); }}
