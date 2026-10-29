@@ -1,0 +1,38 @@
+/* Variáveis e janelas que o Obsidian fornece e o styles.css do FineNotes espera. Valem só com um caderno aberto (body.fn-open). */
+body.fn-open {
+  --background-primary: #FBF7F0; --background-secondary: #F4EBDD; --background-modifier-border: rgba(74, 53, 42, 0.2);
+  --background-modifier-hover: rgba(74, 53, 42, 0.08); --text-normal: #4A352A; --text-muted: #725442; --text-faint: #9a8776;
+  --text-on-accent: #ffffff; --text-error: #A94432; --text-accent: #C96C4A; --interactive-accent: #C96C4A; --color-red: #A94432;
+  --color-base-100: #ffffff; --font-ui-small: 13px; --font-ui-smaller: 12px; --font-ui-medium: 15px; --font-semibold: 600;
+  --font-interface: 'Manrope', system-ui, sans-serif; --font-text: 'Manrope', system-ui, sans-serif;
+}
+html.dark body.fn-open {
+  --background-primary: #2E221B; --background-secondary: #241A14; --background-modifier-border: rgba(241, 230, 214, 0.2);
+  --background-modifier-hover: rgba(241, 230, 214, 0.1); --text-normal: #F1E6D6; --text-muted: #C9B49E; --text-faint: #8d7a68;
+  --text-on-accent: #2A1710; --text-error: #e07a66; --text-accent: #E07F5C; --interactive-accent: #E07F5C; --color-red: #e07a66; --color-base-100: #000000;
+}
+.fn-host { position: fixed; inset: 0; z-index: 1300; display: flex; flex-direction: column; background: var(--background-secondary, #F4EBDD); color: var(--text-normal, #4A352A); font-family: var(--font-interface, system-ui); }
+.fn-host .goodobsidian-view { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.fn-topbar { display: flex; align-items: center; gap: 10px; padding: 6px 12px; padding-top: max(6px, env(safe-area-inset-top)); border-bottom: 1px solid var(--background-modifier-border); background: var(--background-primary); }
+.fn-topbar button { min-height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--background-secondary); color: var(--text-normal); font: inherit; font-weight: 700; cursor: pointer; }
+.fn-title { flex: 1; min-width: 0; border: 0; background: transparent; outline: 0; font: inherit; font-weight: 700; font-size: 16px; padding: 6px 8px; border-radius: 10px; color: var(--text-normal); }
+.fn-title:focus { background: var(--background-secondary); }
+.fn-state { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+/* Janelas, menus e avisos que o Obsidian desenha (o FineNotes só cria os elementos). */
+body .modal-container { position: fixed; inset: 0; z-index: 1500; display: flex; align-items: center; justify-content: center; }
+body .modal-container .modal-bg { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.45); }
+body .modal-container .modal { position: relative; max-width: min(92vw, 560px); max-height: 88vh; overflow: auto; padding: 18px; border-radius: 16px; background: var(--background-primary); color: var(--text-normal); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); }
+body .modal-container .modal-close-button { position: absolute; top: 10px; right: 12px; width: 28px; height: 28px; cursor: pointer; }
+body .modal-container .modal-close-button::before { content: '×'; font-size: 22px; line-height: 28px; display: block; text-align: center; color: var(--text-muted); }
+body .modal-container .modal-title { font-weight: 800; font-size: 18px; margin-bottom: 10px; }
+body .menu { position: fixed; z-index: 1600; min-width: 180px; padding: 6px; border-radius: 12px; background: var(--background-primary); color: var(--text-normal); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); border: 1px solid var(--background-modifier-border); }
+body .menu .menu-item { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+body .menu .menu-item:hover { background: var(--background-modifier-hover); }
+body .menu .menu-item.is-disabled { opacity: 0.45; pointer-events: none; }
+body .menu .menu-item-icon svg { width: 16px; height: 16px; }
+body .menu .menu-separator { height: 1px; margin: 4px 6px; background: var(--background-modifier-border); }
+body .notice-container { position: fixed; z-index: 1700; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+body .notice-container .notice { padding: 10px 14px; border-radius: 12px; background: #2b2118; color: #fff; font-size: 14px; font-weight: 600; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); pointer-events: auto; max-width: min(92vw, 420px); }
+.svg-icon { width: 1em; height: 1em; }
+/* Botões do FineNotes que o ToDaHORA ainda não liga (IA, áudio, imagens, PDF, exportar, busca...): o próprio FineNotes os desativa, aqui ficam escondidos. */
+.fn-host .goodobsidian-tool[title$="not available yet"] { display: none; }

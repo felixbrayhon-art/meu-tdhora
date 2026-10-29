@@ -20,3 +20,13 @@ Texto da licença MIT:
 > The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 >
 > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## FineNotes (versão 1.5.0)
+
+O motor e a tela do caderno à mão (`vendor/finenotes`) são o código do **FineNotes 1.5.0**, publicado sob a **licença MIT**, sem alterações no código-fonte; só a camada `vendor/finenotes-shim` (que imita as poucas partes do Obsidian que ele usa) e o componente `components/notes/FineNotesHost.tsx` são deste projeto.
+
+- Projeto: https://github.com/Joost-8/FineNotes (tag `1.5.0`)
+- Licença: MIT, Copyright (c) 2026 Joost (FineNotes); texto em `vendor/finenotes/LICENSE`
+- **Atenção:** a partir da 2.0.0 o FineNotes passou para a GPL-3.0. Este projeto usa a 1.5.0 (MIT) de propósito; não atualize para 2.x sem decidir a licença do app.
+- Dependências do motor: `fflate` (MIT) e `pdf-lib` (MIT, Andrew Dillon; ver `vendor/finenotes/THIRD_PARTY_NOTICES.txt`).
+- Ícones: `lucide` (ISC).

@@ -4,13 +4,15 @@ import type { InkNotebook, InkPage, PageSize, PaperColor, PaperTemplate } from '
 const DB = 'todahora-ink';
 const STORE = 'notebooks';
 const BLOBS = 'blobs';
+const FN = 'fnotebooks';
 
 const open = (): Promise<IDBDatabase> => new Promise((resolve, reject) => {
-  const req = indexedDB.open(DB, 2);
+  const req = indexedDB.open(DB, 3);
   req.onupgradeneeded = () => {
     const db = req.result;
     if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
     if (!db.objectStoreNames.contains(BLOBS)) db.createObjectStore(BLOBS);
+    if (!db.objectStoreNames.contains(FN)) db.createObjectStore(FN, { keyPath: 'id' });
   };
   req.onsuccess = () => resolve(req.result);
   req.onerror = () => reject(req.error);
@@ -45,3 +47,9 @@ export const deleteBlob = (key: string): Promise<undefined> => run<undefined>(BL
 
 export const newPageId = () => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 export const newPage = (template: PaperTemplate = 'narrowRuled', paper: PaperColor = 'ivory', size: PageSize = 'a4'): InkPage => ({ id: newPageId(), template, paper, size, strokes: [] });
+
+// Cadernos do motor do FineNotes: o documento inteiro como texto comprimido (DocumentEncoder), uma linha por caderno.
+export interface FnRecord { id: string; payload: string; updatedAt: number }
+export const loadFnNotebook = (id: string): Promise<FnRecord | undefined> => run<FnRecord | undefined>(FN, 'readonly', (s) => s.get(id));
+export const saveFnNotebook = (rec: FnRecord): Promise<IDBValidKey> => run(FN, 'readwrite', (s) => s.put(rec));
+export const deleteFnNotebook = (id: string): Promise<undefined> => run<undefined>(FN, 'readwrite', (s) => s.delete(id));

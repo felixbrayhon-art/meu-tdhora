@@ -74,6 +74,8 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          // O motor do FineNotes (vendor/finenotes) importa "obsidian"; no navegador isso é a camada de compatibilidade abaixo.
+          obsidian: path.resolve(__dirname, 'vendor/finenotes-shim/obsidian.ts'),
         }
       }
     };

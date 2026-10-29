@@ -138,7 +138,7 @@ export interface HandwrittenNote {
   excalidrawFiles?: Record<string, unknown>;
   thumbnail?: string;
   /** 'notebook' = caderno com o motor de tinta próprio (páginas no IndexedDB, services/ink/store.ts); ausente = anotação antiga (Excalidraw). */
-  kind?: 'notebook';
+  kind?: 'notebook' | 'finenotes';
   pageCount?: number;
   createdAt: number;
   updatedAt: number;
