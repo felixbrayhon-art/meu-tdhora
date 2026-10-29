@@ -23,7 +23,7 @@ Texto da licença MIT:
 
 ## FineNotes (versão 1.5.0)
 
-O motor e a tela do caderno à mão (`vendor/finenotes`) são o código do **FineNotes 1.5.0**, publicado sob a **licença MIT**, sem alterações no código-fonte; só a camada `vendor/finenotes-shim` (que imita as poucas partes do Obsidian que ele usa) e o componente `components/notes/FineNotesHost.tsx` são deste projeto.
+O motor e a tela do caderno à mão (`vendor/finenotes`) são o código do **FineNotes 1.5.0**, publicado sob a **licença MIT**, sem alterações no código-fonte além de uma linha de tipos em `src/view/backdrop-renderer.ts` (o TypeScript do app é menos estrito que o do FineNotes); só a camada `vendor/finenotes-shim` (que imita as poucas partes do Obsidian que ele usa) e o componente `components/notes/FineNotesHost.tsx` são deste projeto.
 
 - Projeto: https://github.com/Joost-8/FineNotes (tag `1.5.0`)
 - Licença: MIT, Copyright (c) 2026 Joost (FineNotes); texto em `vendor/finenotes/LICENSE`
