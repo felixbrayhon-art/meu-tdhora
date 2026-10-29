@@ -19,12 +19,18 @@ if [[ "${1:-}" != "-y" ]]; then
 fi
 
 cd "$W"
+# Procura um node_modules que tenha TODAS as dependências do package.json (uma pasta antiga pode não ter as novas).
+completo() { (cd "$W" && NODE_PATH="$1" node -e 'const p=require("./package.json");const d={...p.dependencies,...p.devDependencies};const miss=Object.keys(d).filter(k=>{try{require.resolve(k+"/package.json")}catch(e){try{require.resolve(k)}catch(e2){return true}}return false});process.exit(miss.length?1:0)' >/dev/null 2>&1); }
 NM=""
 for wt in $(git -C "$REPO" worktree list --porcelain | awk '/^worktree /{print $2}'); do
-  [[ -d "$wt/node_modules/vite" ]] && { NM="$wt/node_modules"; break; }
+  [[ -d "$wt/node_modules/vite" ]] && completo "$wt/node_modules" && { NM="$wt/node_modules"; break; }
 done
-[[ -n "$NM" ]] || { echo "✗ nenhum worktree com node_modules (rode npm ci em um deles)"; exit 1; }
-ln -s "$NM" node_modules
+if [[ -z "$NM" ]]; then
+  echo "! nenhum node_modules completo nos worktrees; instalando as dependências aqui (leva um minuto)"
+  (cd "$W" && npm install --no-audit --no-fund >/tmp/tdhora-npm.log 2>&1) || { tail -10 /tmp/tdhora-npm.log; echo "✗ npm install falhou"; exit 1; }
+else
+  ln -s "$NM" node_modules
+fi
 GROQ_API_KEY=set-on-server OPENROUTER_API_KEY=set-on-server \
 FREELLMAPI_BASE_URL=https://set-on-server.invalid FREELLMAPI_API_KEY=set-on-server \
 FREELLMAPI_ALLOWED_UIDS=set-on-server npx vite build >/tmp/tdhora-build.log 2>&1 \
