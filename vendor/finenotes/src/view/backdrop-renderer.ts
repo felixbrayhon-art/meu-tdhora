@@ -195,7 +195,7 @@ export class VaultBackdropRenderer implements BackdropRenderer, BackdropPainter 
   private paintEntry(ctx: CanvasRenderingContext2D, entry: PdfEntry, geometry: PageGeometry): void {
     if (!entry.ok) {
       // The page still exists and the ink is still drawn over it.
-      drawMissingSource(ctx, geometry, this.theme, entry.reason);
+      drawMissingSource(ctx, geometry, this.theme, (entry as { reason: Parameters<typeof drawMissingSource>[3] }).reason);
       return;
     }
     fillPaper(ctx, geometry, this.theme);

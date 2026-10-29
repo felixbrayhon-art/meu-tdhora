@@ -36,3 +36,29 @@ body .notice-container .notice { padding: 10px 14px; border-radius: 12px; backgr
 .svg-icon { width: 1em; height: 1em; }
 /* Botões do FineNotes que o ToDaHORA ainda não liga (IA, áudio, imagens, PDF, exportar, busca...): o próprio FineNotes os desativa, aqui ficam escondidos. */
 .fn-host .goodobsidian-tool[title$="not available yet"] { display: none; }
+/* Formulários e buscas das janelas (Setting, SuggestModal). */
+body .setting-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--background-modifier-border); }
+body .setting-item:first-child { border-top: 0; }
+body .setting-item.setting-item-heading { font-weight: 800; border-top: 0; }
+body .setting-item-info { flex: 1; min-width: 0; }
+body .setting-item-name { font-weight: 600; }
+body .setting-item-description { font-size: 12px; color: var(--text-muted); }
+body .setting-item-control { display: flex; align-items: center; gap: 8px; }
+body .setting-item-control input[type='text'], body .setting-item-control select { min-height: 36px; border-radius: 8px; border: 1px solid var(--background-modifier-border); background: var(--background-secondary); color: var(--text-normal); padding: 0 10px; font: inherit; }
+body .checkbox-container { position: relative; width: 40px; height: 24px; border-radius: 12px; background: var(--background-modifier-border); cursor: pointer; transition: background 0.15s; }
+body .checkbox-container::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+body .checkbox-container.is-enabled { background: var(--interactive-accent); }
+body .checkbox-container.is-enabled::after { transform: translateX(16px); }
+body .clickable-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: var(--text-muted); }
+body .clickable-icon:hover { background: var(--background-modifier-hover); }
+body .modal.prompt { width: min(92vw, 560px); padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+body .prompt-input { width: 100%; box-sizing: border-box; border: 0; border-bottom: 1px solid var(--background-modifier-border); background: transparent; color: var(--text-normal); font: inherit; font-size: 16px; padding: 14px 16px; outline: 0; }
+body .prompt-results { max-height: 50vh; overflow: auto; padding: 6px; }
+body .prompt-empty { padding: 16px; color: var(--text-muted); text-align: center; }
+body .suggestion-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; }
+body .suggestion-item.is-selected, body .suggestion-item:hover { background: var(--background-modifier-hover); }
+body button.mod-cta { background: var(--interactive-accent); color: var(--text-on-accent); border: 0; border-radius: 8px; padding: 8px 14px; font: inherit; font-weight: 700; cursor: pointer; }
+/* Configurações do caderno: "onde salvar os arquivos" fala em pastas do Obsidian, que não existem aqui. */
+.goodobsidian-note-settings .setting-item-heading:has(+ .goodobsidian-note-settings-intro),
+.goodobsidian-note-settings .goodobsidian-note-settings-intro,
+.goodobsidian-note-settings .goodobsidian-note-settings-intro ~ * { display: none; }
