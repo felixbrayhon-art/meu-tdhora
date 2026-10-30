@@ -34,6 +34,7 @@ import { sanitizeTextStyle } from '../../vendor/finenotes/src/model/text-style';
 import { DEFAULT_SHAPE_COLOR, parseHexColor, recentColorsOf } from '../../vendor/finenotes/src/model/colors';
 import { loadFnNotebook, saveFnNotebook } from '../../services/ink/store';
 import type { HandwrittenNote } from '../../types';
+import { iniciaTraducao } from './finenotesPt';
 
 // Caderno à mão com o motor e a tela do FineNotes 1.5.0 (MIT, vendor/finenotes), montados dentro do app por uma camada que
 // imita a parte do Obsidian que eles usam (vendor/finenotes-shim). O que o FineNotes liga a arquivos, IA e áudio fica de fora por enquanto.
@@ -78,6 +79,8 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
   const metaRef = useRef(onSaveMeta);
   metaRef.current = onSaveMeta;
   const flushRef = useRef<() => Promise<void>>(async () => undefined);
+
+  useEffect(() => iniciaTraducao(), []);
 
   useEffect(() => {
     const host = hostRef.current;
