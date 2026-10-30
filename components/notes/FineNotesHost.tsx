@@ -62,7 +62,8 @@ const toolStateFrom = (s = DEFAULT_SETTINGS): ToolbarState => ({
   textPinned: s.textToolPinned === true,
   textDragSize: s.textDragSize === true,
   penAutoShape: s.penAutoShape === true,
-  penGestures: penGesturesOf(s.penGestures),
+  // "Rabiscar para apagar" começa desligado: riscar rápido de vai e volta (grifar, sombrear) apagava o traço de baixo. Dá para ligar nas configurações da caneta.
+  penGestures: { ...penGesturesOf(s.penGestures), scribbleErase: false },
   shapeColor: parseHexColor(s.shapeColor ?? '') ?? DEFAULT_SHAPE_COLOR,
   recentColors: recentColorsOf(s.recentColors),
 });
