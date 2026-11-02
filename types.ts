@@ -139,6 +139,8 @@ export interface HandwrittenNote {
   thumbnail?: string;
   /** 'notebook' = caderno com o motor de tinta próprio (páginas no IndexedDB, services/ink/store.ts); ausente = anotação antiga (Excalidraw). */
   kind?: 'notebook' | 'finenotes';
+  /** Tela infinita: uma página gigante, sem páginas nem miniaturas (kind 'finenotes'). */
+  canvas?: boolean;
   pageCount?: number;
   createdAt: number;
   updatedAt: number;

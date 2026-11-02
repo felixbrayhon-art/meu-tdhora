@@ -146,7 +146,7 @@ import {
   scribbleCoverage,
   scribbleMayErase,
 } from "../ink/scribble";
-import { ENDLESS_MAX_HEIGHT, contentBottom, endlessHeight, isEndless } from "../model/endless";
+import { ENDLESS_FIT_WIDTH, ENDLESS_MIN_ZOOM, contentCenter, isInfiniteDoc } from "../model/endless";
 import { gestureLoopOf, penGesturesOf } from "../ink/pen-gestures";
 import {
   type Pt,
@@ -808,9 +808,8 @@ export class InkSurface {
    * per layout because it depends on the pane's height. Also the default.
    */
   private minZoom = 1;
-  /** Tela infinita: growing a page re-lays-out the surface, which must not grow it again. */
-  private growing = false;
-  private endlessCapNoted = false;
+  /** Tela infinita: the canvas opens once on the middle of what is written. */
+  private infiniteOpened = false;
   /** Whether the first layout has set the default zoom yet. */
   private zoomInitialised = false;
   private paper: PaperTheme;
@@ -1442,7 +1441,6 @@ export class InkSurface {
     this.strokeIndex.rebuild(doc.pages);
     this.renderer?.invalidateAll();
     this.layout();
-    this.growEndlessPages(true);
     // Opening a note says where you are, page and zoom, then both fade.
     this.flashChrome(true);
     this.reportStatus();
@@ -1464,7 +1462,6 @@ export class InkSurface {
     this.strokeIndex.rebuild(this.doc.pages);
     this.renderer?.invalidateAll();
     this.layout();
-    this.growEndlessPages(true);
     this.changed();
   }
 
@@ -1950,7 +1947,10 @@ export class InkSurface {
     this.cssW = cssW;
     this.cssH = cssH;
 
-    const direction = scrollDirectionOf(this.doc);
+    // Tela infinita: one page, always a column, filling the pane, panned freely.
+    const infinite = isInfiniteDoc(this.doc);
+    this.scroller.freeAxes = infinite;
+    const direction = infinite ? "vertical" : scrollDirectionOf(this.doc);
     const turned = direction !== this.direction;
     // The page being read stays the page being read when the pages turn.
     const reading = this.pageIndex;
@@ -1962,7 +1962,7 @@ export class InkSurface {
     const priorAt = this.scroller.position;
     const anchored = this.zoomInitialised && !turned && direction === "vertical" && !this.pinch;
     this.direction = direction;
-    this.pageLayout = layoutPages(this.doc.pages, { direction });
+    this.pageLayout = layoutPages(this.doc.pages, infinite ? { direction, marginX: 0, marginY: 0 } : { direction });
     renderer.setLayout(this.pageLayout);
     // Fit the page stack to the available width, but never magnify past 1:1 —
     // on a wide desktop pane an upscaled page looks like a zoom bug, and the
@@ -1970,7 +1970,7 @@ export class InkSurface {
     // This scales the *view*; no stored coordinate is touched, which is the
     // point of the whole design.
     // A row fits one page (and its margins) to the pane, not the whole row.
-    const fit = this.pageLayout.fitWidth;
+    const fit = infinite ? ENDLESS_FIT_WIDTH : this.pageLayout.fitWidth;
     this.baseScale = fit > 0 ? Math.min(1, cssW / fit) : 1;
     this.updateZoomFloor(cssH);
     if (direction === "horizontal") {
@@ -1983,6 +1983,14 @@ export class InkSurface {
       renderer.setLayout(this.pageLayout);
     }
     this.ensurePaperSize();
+    if (infinite && !this.infiniteOpened) {
+      // Open on the middle of the writing (or of the empty page), at 100%.
+      this.infiniteOpened = true;
+      const box = this.pageLayout.boxes[0];
+      const centre = contentCenter(this.doc.pages[0]);
+      const at = this.scale;
+      if (box) this.scroller.setPosition((box.x + centre.x) * at - cssW / 2, (box.y + centre.y) * at - cssH / 2);
+    }
     const scale = this.scale;
     if (anchored && priorScale > 0 && Math.abs(scale / priorScale - 1) > 1e-6) {
       const ratio = scale / priorScale;
@@ -2023,13 +2031,16 @@ export class InkSurface {
    * shape (a rotation), and a view below the new floor is lifted onto it.
    */
   private updateZoomFloor(cssH: number): void {
-    let tallest = 0;
-    for (const box of this.pageLayout.boxes) {
-      // Tela infinita: a page that keeps growing must not drag the zoom floor down with it (it would shrink the view, grow the page, and so on to the cap).
-      const page = this.doc.pages[box.index];
-      const height = page && isEndless(page) ? Math.min(box.height, box.width * 1.5) : box.height;
-      tallest = Math.max(tallest, height);
+    if (isInfiniteDoc(this.doc)) {
+      // The canvas zooms out far, opens at 100%, and has no "whole page" floor.
+      this.minZoom = ENDLESS_MIN_ZOOM;
+      if (!this.zoomInitialised) this.userZoom = 1;
+      else if (!this.pinch && this.userZoom < ENDLESS_MIN_ZOOM) this.userZoom = ENDLESS_MIN_ZOOM;
+      this.zoomInitialised = true;
+      return;
     }
+    let tallest = 0;
+    for (const box of this.pageLayout.boxes) tallest = Math.max(tallest, box.height);
     const step = nextZoomFloor({
       zoom: this.userZoom,
       floor: this.minZoom,
@@ -2102,44 +2113,6 @@ export class InkSurface {
    * DOM is measured here: this runs every frame of a fling, and the scroll
    * position is state, not something read back from an element.
    */
-  /**
-   * Tela infinita: an endless page in view grows downward until it reaches a
-   * screen past what is visible (and past its own content, when `content`).
-   * Fixed pages, horizontal rows and PDF pages are never touched.
-   */
-  private growEndlessPages(content = false): void {
-    if (this.growing || this.direction === "horizontal" || !this.renderer) return;
-    const scale = this.unitScale;
-    if (!(scale > 0) || !(this.cssH > 0)) return;
-    const top = this.scroller.position.y / scale;
-    const viewH = this.cssH / scale;
-    let grew = false;
-    for (const box of this.pageLayout.boxes) {
-      const page = this.doc.pages[box.index];
-      if (!page || !isEndless(page)) continue;
-      let needed = 0;
-      if (box.y <= top + viewH && box.y + box.height >= top) needed = top + viewH - box.y + viewH;
-      if (content) needed = Math.max(needed, contentBottom(page) + viewH);
-      const next = endlessHeight(page.geometry.height, needed);
-      if (next === page.geometry.height) continue;
-      page.geometry = { ...page.geometry, height: next };
-      grew = true;
-      if (next >= ENDLESS_MAX_HEIGHT && !this.endlessCapNoted) {
-        this.endlessCapNoted = true;
-        new Notice("This infinite canvas reached its size limit. Add another page to keep going.");
-      }
-    }
-    if (!grew) return;
-    this.growing = true;
-    try {
-      this.renderer.invalidateAll();
-      this.layout();
-    } finally {
-      this.growing = false;
-    }
-    this.changed();
-  }
-
   private syncViewport(): void {
     if (!this.renderer) return;
     const scale = this.unitScale;
@@ -2155,7 +2128,6 @@ export class InkSurface {
     this.viewport = { scrollY: y / scale, scale, width: this.pageLayout.width };
     this.renderer.setViewport(this.viewport, this.offsetX, this.userZoom);
     this.updatePageIndicator();
-    this.growEndlessPages();
   }
 
   private updatePageIndicator(): void {

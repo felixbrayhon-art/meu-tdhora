@@ -169,9 +169,6 @@ const PT: Record<string, string> = {
 
   'Black & white': 'Preto e branco', 'Greyscale': 'Tons de cinza', 'A3': 'A3', 'A5': 'A5', 'A6': 'A6',
 
-  'Infinite canvas': 'Tela infinita', 'Make infinite canvas': 'Tornar tela infinita', 'Back to fixed size': 'Voltar ao tamanho fixo',
-  'This infinite canvas reached its size limit. Add another page to keep going.': 'Esta tela infinita chegou ao limite de tamanho. Adicione outra página para continuar.',
-
   // Meses (relógio e datas dos modelos)
   'Jan': 'Jan', 'Feb': 'Fev', 'Mar': 'Mar', 'Apr': 'Abr', 'May': 'Mai', 'Jun': 'Jun', 'Jul': 'Jul', 'Aug': 'Ago', 'Sep': 'Set', 'Oct': 'Out', 'Nov': 'Nov', 'Dec': 'Dez',
 };

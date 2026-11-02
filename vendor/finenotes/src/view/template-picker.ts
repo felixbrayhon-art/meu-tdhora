@@ -116,8 +116,6 @@ export interface AddPagePopoverOptions {
   position: InsertPosition;
   onPick: (backdrop: SyntheticBackdrop, position: InsertPosition) => void;
   onMore: (position: InsertPosition) => void;
-  /** Add an infinite canvas (ToDaHORA addition). Omitted: no such row. */
-  onEndless?: (position: InsertPosition) => void;
 }
 
 const POPOVER_WIDTH = 340;
@@ -209,15 +207,6 @@ export class AddPagePopover {
       this.close();
       this.options.onMore(this.position);
     });
-    if (this.options.onEndless) {
-      const endless = this.el.createEl("button", { cls: "goodobsidian-addpage-row clickable-icon" });
-      setIcon(endless.createSpan({ cls: "goodobsidian-addpage-row-icon" }), "infinity");
-      endless.createSpan({ text: "Infinite canvas" });
-      endless.addEventListener("click", () => {
-        this.close();
-        this.options.onEndless?.(this.position);
-      });
-    }
   }
 
   private syncSegments(): void {
