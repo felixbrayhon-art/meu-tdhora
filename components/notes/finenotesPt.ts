@@ -85,14 +85,14 @@ const PT: Record<string, string> = {
   'Vertical scrolls through the pages; horizontal turns them one at a time. ': 'Vertical rola pelas páginas; horizontal vira uma por vez. ',
 
   // Modelos, papéis e capas
-  'Change template': 'Mudar modelo', 'Change paper': 'Mudar papel', 'Current template': 'Modelo atual', 'Recent templates': 'Modelos recentes',
+  'Change template': 'Mudar modelo', 'Change paper': 'Mudar papel', 'Current template': 'Tipo atual', 'Recent templates': 'Tipos de página',
   'More from templates…': 'Mais modelos…', 'New notebook or page…': 'Novo caderno ou página…', 'Templates shown here keep the current page\'s size.': 'Os modelos aqui mantêm o tamanho da página atual.',
   'Blank': 'Em branco', 'White Paper': 'Papel branco', 'Yellow Paper': 'Papel amarelo', 'Dark Paper': 'Papel escuro',
   'Ruled Narrow': 'Pautado estreito', 'Ruled Wide': 'Pautado largo', 'Squared Paper': 'Quadriculado', 'Dotted Paper': 'Pontilhado',
   'Cornell': 'Cornell', 'Single Column': 'Coluna única', 'Single Column Mix': 'Coluna única mista', 'Three Column': 'Três colunas',
   'Title & Date': 'Título e data', 'Monthly Planner': 'Planejador mensal', 'Weekly Planner': 'Planejador semanal', 'Planner': 'Planejador',
   'Todos': 'Tarefas', 'Music Paper': 'Pauta musical', 'Guitar Tablature': 'Tablatura de violão', 'Music': 'Música', 'Accounting': 'Contabilidade',
-  'Physics': 'Física', 'Legal': 'Jurídico', 'Essentials': 'Essenciais', 'Writing papers': 'Papéis de escrita', 'Standard': 'Padrão',
+  'Physics': 'Física', 'Legal': 'Ofício', 'Legal pad': 'Bloco jurídico', 'Essentials': 'Essenciais', 'Writing papers': 'Papéis de escrita', 'Basics': 'Básicas', 'For studying': 'Para estudar', 'Planning': 'Planejamento', 'Other': 'Outras', 'Standard': 'Padrão',
   'Paper': 'Papel', 'Paper colour': 'Cor do papel', 'Paper width': 'Largura do papel', 'Page size': 'Tamanho da página', 'Current size': 'Tamanho atual',
   'Portrait': 'Retrato', 'Landscape': 'Paisagem', 'Letter': 'Carta', 'Tabloid': 'Tabloide', 'Position': 'Posição',
   'Cover': 'Capa', 'Change cover': 'Mudar capa', 'Cover colour': 'Cor da capa', 'No cover': 'Sem capa', 'Plain cover': 'Capa lisa',

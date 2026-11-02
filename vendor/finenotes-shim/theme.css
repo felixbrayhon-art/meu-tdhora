@@ -50,6 +50,22 @@ body .checkbox-container::after { content: ''; position: absolute; top: 3px; lef
 body .checkbox-container.is-enabled { background: var(--interactive-accent); }
 body .checkbox-container.is-enabled::after { transform: translateX(16px); }
 body .clickable-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: var(--text-muted); }
+/* Os botões do próprio caderno (cartões de modelo, itens do menu) têm tamanho próprio; o quadradinho de 32px do Obsidian os espremia. */
+body .clickable-icon[class*="goodobsidian-template-card"] { display: flex; width: 92px; height: auto; }
+body .clickable-icon.goodobsidian-template-card.is-large { width: 78px; padding: 6px 3px; }
+body .goodobsidian-template-card.is-large .goodobsidian-template-preview { width: 62px; }
+body .goodobsidian-templates-row { gap: 6px; }
+body .goodobsidian-template-card.is-large .goodobsidian-template-name { font-size: 10.5px; line-height: 1.2; overflow-wrap: normal; word-break: normal; hyphens: manual; }
+body .goodobsidian-newnb .clickable-icon.goodobsidian-template-card.is-large { width: 96px; }
+/* Modelos de página: quebram em linhas (sem rolar de lado) e a janela rola na vertical. */
+body .goodobsidian-templates-row { flex-wrap: wrap; overflow-x: visible; }
+/* Menu do "+": o tipo atual e os atalhos lado a lado. */
+body .goodobsidian-addpage-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; overflow: visible; }
+body .goodobsidian-addpage-cards .clickable-icon.goodobsidian-template-card { width: 70px; padding: 6px 1px; }
+body .goodobsidian-addpage-cards .goodobsidian-template-preview { width: 54px; }
+body .goodobsidian-addpage-cards .goodobsidian-template-name { font-size: 10px; letter-spacing: -0.2px; line-height: 1.2; text-align: center; white-space: nowrap; }
+body .goodobsidian-addpage-cards .goodobsidian-template-sub { display: none; }
+body .clickable-icon.goodobsidian-addpage-row { display: flex; width: 100%; height: auto; min-height: 44px; }
 body .clickable-icon:hover { background: var(--background-modifier-hover); }
 body .modal.prompt { width: min(92vw, 560px); padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 body .prompt-input { width: 100%; box-sizing: border-box; border: 0; border-bottom: 1px solid var(--background-modifier-border); background: transparent; color: var(--text-normal); font: inherit; font-size: 16px; padding: 14px 16px; outline: 0; }
