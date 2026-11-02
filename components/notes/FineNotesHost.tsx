@@ -140,8 +140,11 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
         let addPop: { popover: AddPagePopover; anchor: HTMLElement } | null = null;
         let coverPop: { popover: CoverPopover; anchor: HTMLElement } | null = null;
         const RECENT = 'goodobsidian:recent-templates';
-        const recents = (): SyntheticBackdrop[] => { try { return parseRecent(JSON.parse(localStorage.getItem(RECENT) ?? '[]')); } catch { return []; } };
-        const remember = (b: SyntheticBackdrop) => { try { localStorage.setItem(RECENT, JSON.stringify(pushRecent(recents(), b))); } catch { /* sem armazenamento */ } };
+        const stored = (): SyntheticBackdrop[] => { try { return parseRecent(JSON.parse(localStorage.getItem(RECENT) ?? '[]')); } catch { return []; } };
+        // Atalhos do menu "+": os últimos usados e, para completar, os tipos mais comuns (assim o menu nunca fica só com o modelo atual).
+        const COMUNS = (['squared', 'cornell', 'blank'] as const).map((kind) => ({ kind }) as SyntheticBackdrop);
+        const recents = (): SyntheticBackdrop[] => { const usados = stored(); return [...usados, ...COMUNS.filter((c) => !usados.some((u) => u.kind === c.kind))]; };
+        const remember = (b: SyntheticBackdrop) => { try { localStorage.setItem(RECENT, JSON.stringify(pushRecent(stored(), b))); } catch { /* sem armazenamento */ } };
         const addTemplatePage = (backdrop: SyntheticBackdrop, geometry: PageGeometry, position: InsertPosition, ref: number) => {
           if (!surface) return;
           const index = insertIndexFor(position, ref, surface.document.pages.length);
