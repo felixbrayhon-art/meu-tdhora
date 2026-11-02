@@ -146,6 +146,7 @@ import {
   scribbleCoverage,
   scribbleMayErase,
 } from "../ink/scribble";
+import { ENDLESS_MAX_HEIGHT, contentBottom, endlessHeight, isEndless } from "../model/endless";
 import { gestureLoopOf, penGesturesOf } from "../ink/pen-gestures";
 import {
   type Pt,
@@ -807,6 +808,9 @@ export class InkSurface {
    * per layout because it depends on the pane's height. Also the default.
    */
   private minZoom = 1;
+  /** Tela infinita: growing a page re-lays-out the surface, which must not grow it again. */
+  private growing = false;
+  private endlessCapNoted = false;
   /** Whether the first layout has set the default zoom yet. */
   private zoomInitialised = false;
   private paper: PaperTheme;
@@ -1438,6 +1442,7 @@ export class InkSurface {
     this.strokeIndex.rebuild(doc.pages);
     this.renderer?.invalidateAll();
     this.layout();
+    this.growEndlessPages(true);
     // Opening a note says where you are, page and zoom, then both fade.
     this.flashChrome(true);
     this.reportStatus();
@@ -1459,6 +1464,7 @@ export class InkSurface {
     this.strokeIndex.rebuild(this.doc.pages);
     this.renderer?.invalidateAll();
     this.layout();
+    this.growEndlessPages(true);
     this.changed();
   }
 
@@ -2018,7 +2024,12 @@ export class InkSurface {
    */
   private updateZoomFloor(cssH: number): void {
     let tallest = 0;
-    for (const box of this.pageLayout.boxes) tallest = Math.max(tallest, box.height);
+    for (const box of this.pageLayout.boxes) {
+      // Tela infinita: a page that keeps growing must not drag the zoom floor down with it (it would shrink the view, grow the page, and so on to the cap).
+      const page = this.doc.pages[box.index];
+      const height = page && isEndless(page) ? Math.min(box.height, box.width * 1.5) : box.height;
+      tallest = Math.max(tallest, height);
+    }
     const step = nextZoomFloor({
       zoom: this.userZoom,
       floor: this.minZoom,
@@ -2091,6 +2102,44 @@ export class InkSurface {
    * DOM is measured here: this runs every frame of a fling, and the scroll
    * position is state, not something read back from an element.
    */
+  /**
+   * Tela infinita: an endless page in view grows downward until it reaches a
+   * screen past what is visible (and past its own content, when `content`).
+   * Fixed pages, horizontal rows and PDF pages are never touched.
+   */
+  private growEndlessPages(content = false): void {
+    if (this.growing || this.direction === "horizontal" || !this.renderer) return;
+    const scale = this.unitScale;
+    if (!(scale > 0) || !(this.cssH > 0)) return;
+    const top = this.scroller.position.y / scale;
+    const viewH = this.cssH / scale;
+    let grew = false;
+    for (const box of this.pageLayout.boxes) {
+      const page = this.doc.pages[box.index];
+      if (!page || !isEndless(page)) continue;
+      let needed = 0;
+      if (box.y <= top + viewH && box.y + box.height >= top) needed = top + viewH - box.y + viewH;
+      if (content) needed = Math.max(needed, contentBottom(page) + viewH);
+      const next = endlessHeight(page.geometry.height, needed);
+      if (next === page.geometry.height) continue;
+      page.geometry = { ...page.geometry, height: next };
+      grew = true;
+      if (next >= ENDLESS_MAX_HEIGHT && !this.endlessCapNoted) {
+        this.endlessCapNoted = true;
+        new Notice("This infinite canvas reached its size limit. Add another page to keep going.");
+      }
+    }
+    if (!grew) return;
+    this.growing = true;
+    try {
+      this.renderer.invalidateAll();
+      this.layout();
+    } finally {
+      this.growing = false;
+    }
+    this.changed();
+  }
+
   private syncViewport(): void {
     if (!this.renderer) return;
     const scale = this.unitScale;
@@ -2106,6 +2155,7 @@ export class InkSurface {
     this.viewport = { scrollY: y / scale, scale, width: this.pageLayout.width };
     this.renderer.setViewport(this.viewport, this.offsetX, this.userZoom);
     this.updatePageIndicator();
+    this.growEndlessPages();
   }
 
   private updatePageIndicator(): void {

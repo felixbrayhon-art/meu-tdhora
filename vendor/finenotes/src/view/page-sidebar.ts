@@ -47,6 +47,8 @@ export type PageAction =
   | "add-before"
   | "add-after"
   | "change-template"
+  /** Tela infinita on or off for the page (ToDaHORA addition). */
+  | "toggle-endless"
   | "change-cover"
   | "duplicate"
   | "move-up"
@@ -678,6 +680,13 @@ export class PageSidebar {
     } else {
       menu.addItem((item) =>
         item.setTitle("Change template").setIcon("layout-template").onClick(act("change-template")),
+      );
+      const endless = !!backdrop && backdrop.kind !== "pdf" && backdrop.endless === true;
+      menu.addItem((item) =>
+        item
+          .setTitle(endless ? "Back to fixed size" : "Make infinite canvas")
+          .setIcon("infinity")
+          .onClick(act("toggle-endless")),
       );
     }
     if (!this.single) {

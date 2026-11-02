@@ -163,6 +163,11 @@ export interface SyntheticBackdrop {
    * Paper" from "Yellow Paper". Default white.
    */
   paperColor?: string;
+  /**
+   * Tela infinita (ToDaHORA addition): the page grows downward as it is read
+   * and written on. Absent or false: a fixed-size page, as ever.
+   */
+  endless?: boolean;
 }
 
 /** A page of a PDF in the vault. The source file is never modified. */

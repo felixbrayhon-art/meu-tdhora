@@ -9,7 +9,7 @@ import { DEFAULT_SETTINGS } from '../../vendor/finenotes/src/settings-data';
 import { DEFAULT_NOTEBOOK_CHOICES, buildNewDocument } from '../../vendor/finenotes/src/model/new-notebook';
 import { DocumentEncoder, decodeDocument } from '../../vendor/finenotes/src/model/serialize';
 import { AddPage, RemovePage } from '../../vendor/finenotes/src/model/commands';
-import { ClearPage, MovePage, SetPageBookmark, SetPageTemplate, duplicatePageAfter, insertIndexFor, pageFromTemplate, pageToInsertAfter, type InsertPosition } from '../../vendor/finenotes/src/model/page-commands';
+import { ClearPage, MovePage, SetPageBookmark, SetPageEndless, SetPageTemplate, duplicatePageAfter, insertIndexFor, pageFromTemplate, pageToInsertAfter, type InsertPosition } from '../../vendor/finenotes/src/model/page-commands';
 import { type PageGeometry, type SyntheticBackdrop, isCoverRuling } from '../../vendor/finenotes/src/model/document';
 import { paperTemplateFor, parseRecent, pushRecent } from '../../vendor/finenotes/src/model/templates';
 import { changeCover } from '../../vendor/finenotes/src/model/notebook-commands';
@@ -144,7 +144,7 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
         // Atalhos do menu "+": os últimos usados e, para completar, os tipos mais comuns (assim o menu nunca fica só com o modelo atual).
         const COMUNS = (['squared', 'cornell', 'blank'] as const).map((kind) => ({ kind }) as SyntheticBackdrop);
         const recents = (): SyntheticBackdrop[] => { const usados = stored(); return [...usados, ...COMUNS.filter((c) => !usados.some((u) => u.kind === c.kind))]; };
-        const remember = (b: SyntheticBackdrop) => { try { localStorage.setItem(RECENT, JSON.stringify(pushRecent(stored(), b))); } catch { /* sem armazenamento */ } };
+        const remember = (b: SyntheticBackdrop) => { try { const { endless: _marca, ...papel } = b; localStorage.setItem(RECENT, JSON.stringify(pushRecent(stored(), papel))); } catch { /* sem armazenamento */ } };
         const addTemplatePage = (backdrop: SyntheticBackdrop, geometry: PageGeometry, position: InsertPosition, ref: number) => {
           if (!surface) return;
           const index = insertIndexFor(position, ref, surface.document.pages.length);
@@ -164,7 +164,8 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
             geometry: page.geometry,
             onApply: ({ backdrop, geometry }) => {
               if (mode === 'add') { addTemplatePage(backdrop, geometry ?? page.geometry, position, ref); return; }
-              apply(new SetPageTemplate(page, backdrop, geometry ?? undefined));
+              const manter = page.backdrop.kind !== 'pdf' && page.backdrop.endless === true;
+              apply(new SetPageTemplate(page, manter ? { ...backdrop, endless: true } : backdrop, geometry ?? undefined));
               remember(backdrop);
             },
           }).open();
@@ -184,6 +185,8 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
             position,
             onPick: (backdrop, where) => addTemplatePage(backdrop, page.geometry, where, ref),
             onMore: (where) => openTemplatePicker('add', ref, where),
+            // Tela infinita: papel pontilhado, largura da página atual, cresce para baixo.
+            onEndless: (where) => addTemplatePage({ kind: 'dotted', endless: true }, { width: page.geometry.width, height: Math.round(page.geometry.width * 1.414) }, where, ref),
           });
           addPop = { popover, anchor };
         };
@@ -221,6 +224,7 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
           switch (action) {
             case 'add-before': case 'add-after': openAddPage(anchor, index, action === 'add-before' ? 'before' : 'after'); return;
             case 'change-template': openTemplatePicker('change', index, 'after'); return;
+            case 'toggle-endless': { const alvo = doc2.pages[index]; if (alvo && alvo.backdrop.kind !== 'pdf') apply(new SetPageEndless(alvo, alvo.backdrop.endless !== true)); return; }
             case 'change-cover': openCoverPicker(anchor, index); return;
             case 'bookmark': apply(new SetPageBookmark(page, page.bookmarked !== true)); return;
             case 'contents':

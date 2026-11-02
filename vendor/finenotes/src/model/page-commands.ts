@@ -555,3 +555,37 @@ export function pageFromTemplate(
     },
   };
 }
+
+/**
+ * Turn a page into a "Tela infinita" (it grows downward as it is written on),
+ * or back into a fixed-size page at the height it has reached. One undo step
+ * (ToDaHORA addition).
+ */
+export class SetPageEndless implements Command {
+  readonly label: string;
+  private previous: Backdrop | null = null;
+
+  constructor(
+    private readonly page: Page,
+    private readonly on: boolean,
+  ) {
+    this.label = on ? "Make infinite canvas" : "Back to fixed size";
+  }
+
+  get pageId(): string {
+    return this.page.id;
+  }
+
+  apply(doc: InkDocument): void {
+    if (!doc.pages.includes(this.page) || this.page.backdrop.kind === "pdf") return;
+    this.previous = this.page.backdrop;
+    const { endless: _was, ...rest } = this.page.backdrop;
+    this.page.backdrop = this.on ? { ...rest, endless: true } : rest;
+  }
+
+  invert(doc: InkDocument): void {
+    if (!this.previous || !doc.pages.includes(this.page)) return;
+    this.page.backdrop = this.previous;
+    this.previous = null;
+  }
+}
