@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
-import { PenLine, Trash2, Plus, X, Folder, FolderPlus, Check, ChevronLeft, MoreVertical, CheckSquare, Pencil } from './icons';
+import { PenLine, Trash2, Plus, X, Folder, FolderPlus, Check, ChevronLeft, MoreVertical, CheckSquare, Pencil, InfinityIcon } from './icons';
 import { HandwrittenNote, NoteFolder, NotePaperStyle, NotePenPreset } from '../types';
 import Folder3D from './Folder3D';
 import StudyBook3D from './StudyBook3D';
@@ -748,12 +748,13 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete:
     };
   }, [rowMenuId]);
 
-  const createNote = (folderId?: string) => {
+  const createNote = (folderId?: string, canvas = false) => {
     const note: HandwrittenNote = {
       id: Math.random().toString(36).slice(2, 10),
       title: '',
       folderId,
       kind: 'finenotes',
+      ...(canvas ? { canvas: true } : {}),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -870,6 +871,9 @@ const NotesView: React.FC<NotesViewProps> = ({ notes, folders, onSave, onDelete:
                     <FolderPlus className="w-4 h-4" /> Nova pasta
                   </button>
                 )}
+                <button onClick={() => createNote(activeFolderId, true)} className="min-h-11 px-4 py-2.5 rounded-xl border border-[#eee6d6] hover:bg-[#f4ebdd] transition-colors font-bold text-sm flex items-center gap-2 touch-manipulation" title="Uma página que não acaba: arraste para qualquer lado e escreva um resumo inteiro nela">
+                  <InfinityIcon className="w-4 h-4" /> Nova tela infinita
+                </button>
                 <button onClick={() => createNote(activeFolderId)} className="min-h-11 px-4 py-2.5 rounded-xl bg-[#ff832a] text-white hover:bg-[#ec6300] transition-colors font-bold text-sm flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ec6300] touch-manipulation">
                   <Plus className="w-4 h-4" /> Nova anotação
                 </button>

@@ -234,9 +234,32 @@ export const RULINGS: Record<Ruling, { spacing: number; draw: RulingPainter }> =
   dotted: {
     spacing: 40,
     draw: (ctx, c) => {
-      for (let y = c.spacing; y < c.geometry.height; y += c.spacing) {
-        for (let x = c.spacing; x < c.geometry.width; x += c.spacing) {
-          const r = DOT_RADIUS * c.weight;
+      const r = DOT_RADIUS * c.weight;
+      let x0 = c.spacing;
+      let x1 = c.geometry.width;
+      let y0 = c.spacing;
+      let y1 = c.geometry.height;
+      // ToDaHORA: on a huge page (the infinite canvas) paint only the dots the canvas can show.
+      const t = typeof ctx.getTransform === "function" ? ctx.getTransform() : null;
+      if (t && Number.isFinite(t.a) && Number.isFinite(t.d)) {
+        const scale = Math.hypot(t.a, t.b) || 1;
+        if (scale * c.spacing < 3) return "painted"; // finer than a few pixels: no dots to see
+        const inv = t.inverse();
+        const w = ctx.canvas.width;
+        const h = ctx.canvas.height;
+        const corners = [inv.transformPoint({ x: 0, y: 0 }), inv.transformPoint({ x: w, y: 0 }), inv.transformPoint({ x: 0, y: h }), inv.transformPoint({ x: w, y: h })];
+        const pad = c.spacing + r;
+        const minX = Math.min(...corners.map((p) => p.x)) - pad;
+        const maxX = Math.max(...corners.map((p) => p.x)) + pad;
+        const minY = Math.min(...corners.map((p) => p.y)) - pad;
+        const maxY = Math.max(...corners.map((p) => p.y)) + pad;
+        x0 = Math.max(x0, Math.ceil(minX / c.spacing) * c.spacing);
+        y0 = Math.max(y0, Math.ceil(minY / c.spacing) * c.spacing);
+        x1 = Math.min(x1, maxX);
+        y1 = Math.min(y1, maxY);
+      }
+      for (let y = y0; y < y1; y += c.spacing) {
+        for (let x = x0; x < x1; x += c.spacing) {
           ctx.moveTo(x + r, y);
           ctx.arc(x, y, r, 0, Math.PI * 2);
         }

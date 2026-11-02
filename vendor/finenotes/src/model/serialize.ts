@@ -385,6 +385,7 @@ function normalizeBackdrop(raw: unknown): Backdrop {
       ...(typeof b.spacing === "number" && b.spacing > 0 ? { spacing: b.spacing } : {}),
       ...(typeof b.color === "string" ? { color: b.color } : {}),
       ...(typeof b.paperColor === "string" ? { paperColor: b.paperColor } : {}),
+      ...(b.endless === true ? { endless: true } : {}),
     };
   }
   // Unknown ruling from a newer build: keep the page, lose only the paper.

@@ -8,6 +8,7 @@ import { PALETTE, SIZES } from '../../vendor/finenotes/src/constants';
 import { DEFAULT_SETTINGS } from '../../vendor/finenotes/src/settings-data';
 import { DEFAULT_NOTEBOOK_CHOICES, buildNewDocument } from '../../vendor/finenotes/src/model/new-notebook';
 import { DocumentEncoder, decodeDocument } from '../../vendor/finenotes/src/model/serialize';
+import { newInfiniteDocument } from '../../vendor/finenotes/src/model/endless';
 import { AddPage, RemovePage } from '../../vendor/finenotes/src/model/commands';
 import { ClearPage, MovePage, SetPageBookmark, SetPageTemplate, duplicatePageAfter, insertIndexFor, pageFromTemplate, pageToInsertAfter, type InsertPosition } from '../../vendor/finenotes/src/model/page-commands';
 import { type PageGeometry, type SyntheticBackdrop, isCoverRuling } from '../../vendor/finenotes/src/model/document';
@@ -124,7 +125,9 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
         if (cancelled) return;
         const doc = rec
           ? decodeDocument(rec.payload)
-          : buildNewDocument({ ...DEFAULT_NOTEBOOK_CHOICES, ruling: 'ruled-narrow', cover: 'none', type: 'notebook' }, titleRef.current || 'Sem título');
+          : noteRef.current.canvas
+            ? newInfiniteDocument(titleRef.current || 'Sem título')
+            : buildNewDocument({ ...DEFAULT_NOTEBOOK_CHOICES, ruling: 'ruled-narrow', cover: 'none', type: 'notebook' }, titleRef.current || 'Sem título');
         const toolState = toolStateFrom();
         const palette = [...PALETTE];
         host.replaceChildren();
@@ -340,7 +343,7 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
   const close = async () => { await flushRef.current(); onClose(); };
 
   return (
-    <div className="fn-host" role="dialog" aria-label="Caderno">
+    <div className={`fn-host${note.canvas ? " fn-canvas" : ""}`} role="dialog" aria-label={note.canvas ? "Tela infinita" : "Caderno"}>
       <div className="fn-topbar">
         <button type="button" onClick={close}>Voltar</button>
         <input className="fn-title" value={title} onChange={(e) => { setTitle(e.target.value); }} onBlur={() => metaRef.current({ ...noteRef.current, title: titleRef.current, kind: 'finenotes', updatedAt: Date.now() })} aria-label="Título do caderno" placeholder="Sem título" />

@@ -36,6 +36,10 @@ body .notice-container .notice { padding: 10px 14px; border-radius: 12px; backgr
 .svg-icon { width: 1em; height: 1em; }
 /* Botões do FineNotes que o ToDaHORA ainda não liga (IA, áudio, imagens, PDF, exportar, busca...): o próprio FineNotes os desativa, aqui ficam escondidos. */
 .fn-host .goodobsidian-tool[title$="not available yet"] { display: none; }
+/* Tela infinita: uma página só, sem miniaturas, sem "nova página" e sem indicador de página. */
+.fn-canvas [aria-label="Page thumbnails"], .fn-canvas [aria-label="Miniaturas das páginas"],
+.fn-canvas [aria-label="Add page"], .fn-canvas [aria-label="Nova página"],
+.fn-canvas .goodobsidian-pageindicator { display: none !important; }
 /* Formulários e buscas das janelas (Setting, SuggestModal). */
 body .setting-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--background-modifier-border); }
 body .setting-item:first-child { border-top: 0; }
