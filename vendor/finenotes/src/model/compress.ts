@@ -9,7 +9,7 @@
  * present in every Obsidian webview and in Node, so tests run the same code.
  */
 
-import { Inflate, deflateSync, strFromU8, strToU8 } from "fflate";
+import { Inflate, deflate, deflateSync, strFromU8, strToU8 } from "fflate";
 
 /**
  * The most a payload may unpack to (64 MB). A real notebook's JSON is a few
@@ -33,6 +33,20 @@ export function deflateToBase64(text: string, level?: 1): string {
   // `btoa` wants one character per byte; fflate's latin1 mode builds that
   // string in slices, so a large note never overflows the argument limit.
   return btoa(strFromU8(packed, true));
+}
+
+/**
+ * {@link deflateToBase64} with the compressing done in a worker, so a big
+ * note's save does not freeze the page. Same bytes out as the sync version.
+ * (ToDaHORA addition; not in FineNotes 1.5.0.)
+ */
+export function deflateToBase64Async(text: string, level?: 1): Promise<string> {
+  return new Promise((resolve, reject) => {
+    deflate(strToU8(text), level === undefined ? {} : { level }, (error, packed) => {
+      if (error) reject(error);
+      else resolve(btoa(strFromU8(packed, true)));
+    });
+  });
 }
 
 /**

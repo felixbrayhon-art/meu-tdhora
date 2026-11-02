@@ -99,14 +99,18 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
     const bodyClasses = ['fn-open', dark ? 'theme-dark' : 'theme-light', ...(Platform.isMobile ? ['is-mobile'] : []), ...(Platform.isPhone ? ['is-phone'] : []), ...(Platform.isTablet ? ['is-tablet'] : [])];
     document.body.classList.add(...bodyClasses);
 
-    const save = async () => {
+    // Uma gravação por vez: o caderno é compactado fora da tela principal, e uma gravação mais antiga nunca pode terminar depois de uma mais nova.
+    let saving: Promise<void> | null = null;
+    const save = async (): Promise<void> => {
       window.clearTimeout(saveTimer);
+      if (saving) { await saving; if (dirty) return save(); return; }
       if (!surface || !dirty) return;
+      saving = (async () => {
       dirty = false;
       setStatus('salvando');
       try {
         const doc = surface.document;
-        await saveFnNotebook({ id: noteRef.current.id, payload: encoder.encode(doc), updatedAt: Date.now() });
+        await saveFnNotebook({ id: noteRef.current.id, payload: await encoder.encodeAsync(doc), updatedAt: Date.now() });
         metaRef.current({ ...noteRef.current, title: titleRef.current, kind: 'finenotes', pageCount: doc.pages.length, updatedAt: Date.now() });
         setStatus('salvo');
       } catch (e) {
@@ -114,9 +118,16 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
         setStatus('erro');
         console.error('[anotações] falha ao salvar', e);
       }
+      })();
+      try { await saving; } finally { saving = null; }
     };
     flushRef.current = save;
-    const requestSave = () => { dirty = true; window.clearTimeout(saveTimer); saveTimer = window.setTimeout(() => void save(), 800); };
+    // Cadernos grandes esperam um pouco mais antes de gravar, para não pegar a caneta no meio de uma palavra.
+    const requestSave = () => { dirty = true; window.clearTimeout(saveTimer); const n = surface?.document.pages.reduce((t, p) => t + p.strokes.length, 0) ?? 0; saveTimer = window.setTimeout(() => void save(), Math.min(3000, 800 + n)); };
+    // Fechar a aba ou trocar de app grava na hora, sem esperar a pausa.
+    const flushNow = () => { if (document.visibilityState === 'hidden') void save(); };
+    document.addEventListener('visibilitychange', flushNow);
+    window.addEventListener('pagehide', flushNow);
 
     (async () => {
       try {
@@ -327,6 +338,8 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       ro.disconnect();
+      document.removeEventListener('visibilitychange', flushNow);
+      window.removeEventListener('pagehide', flushNow);
       void save();
       try { surface?.destroy(); toolbar?.destroy(); } catch { /* a tela já foi desmontada */ }
       host.replaceChildren();

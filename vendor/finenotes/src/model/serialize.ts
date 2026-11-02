@@ -31,7 +31,7 @@ import {
 } from "../constants";
 import { normalizeAttachmentFolders } from "./attachment-folders";
 import { normalizePageTitle } from "./contents";
-import { SAVE_LEVEL, deflateToBase64, inflateFromBase64 } from "./compress";
+import { SAVE_LEVEL, deflateToBase64, deflateToBase64Async, inflateFromBase64 } from "./compress";
 import {
   type AttachmentFolders,
   type Backdrop,
@@ -250,6 +250,19 @@ export class DocumentEncoder {
     this.reused = this.known !== null && this.known.json === json;
     if (this.known && this.reused) return this.known.payload;
     const payload = `v${SCHEMA_VERSION}:${deflateToBase64(json, SAVE_LEVEL)}`;
+    this.known = { json, payload };
+    return payload;
+  }
+
+  /**
+   * {@link encode} with the compression off the main thread (ToDaHORA
+   * addition). The JSON is taken now, so later edits cannot leak into it.
+   */
+  async encodeAsync(doc: InkDocument): Promise<string> {
+    const json = JSON.stringify(storeDocument(doc));
+    if (this.known !== null && this.known.json === json) { this.reused = true; return this.known.payload; }
+    this.reused = false;
+    const payload = `v${SCHEMA_VERSION}:${await deflateToBase64Async(json, SAVE_LEVEL)}`;
     this.known = { json, payload };
     return payload;
   }
