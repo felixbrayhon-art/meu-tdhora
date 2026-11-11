@@ -3,6 +3,7 @@ const VERSION = '__BUILD__';
 const APP = 'tdh-app-' + VERSION;
 const DADOS = 'tdh-dados';
 const PRECACHE = __PRECACHE__;
+const RESTO = __RESTO__;
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -20,6 +21,21 @@ self.addEventListener('activate', (event) => {
     await self.clients.claim();
   })());
 });
+
+// O resto do app (telas e bibliotecas pesadas) é guardado em segundo plano, um arquivo por vez,
+// a partir de cada abertura de página: não segura a instalação nem disputa a rede com o uso.
+let enchendo = null;
+function guardaResto() {
+  if (enchendo) return enchendo;
+  enchendo = (async () => {
+    const cache = await caches.open(APP);
+    for (const url of RESTO) {
+      if (await cache.match(url)) continue;
+      try { const res = await fetch(url); if (res.ok) await cache.put(url, res); } catch (e) { break; }
+    }
+  })().finally(() => { enchendo = null; });
+  return enchendo;
+}
 
 async function redeDepoisCache(request, nomeCache, fallbackUrl) {
   const cache = await caches.open(nomeCache);
@@ -58,6 +74,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(redeDepoisCache(request, APP, '/'));
+    event.waitUntil(new Promise((r) => setTimeout(r, 4000)).then(guardaResto));
   } else if (url.pathname.startsWith('/assets/')) {
     // Nomes com hash: nunca mudam, então o cache vale para sempre.
     event.respondWith(cacheDepoisRede(request, APP));
