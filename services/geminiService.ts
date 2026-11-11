@@ -1,14 +1,23 @@
 
-import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
+import type { GoogleGenAI } from "@google/genai";
 import { applySourceGuard, TopicSource } from './topicSource';
 import { gatherSources, sourcesPromptBlock, fetchLegalSourceForQuestions } from './lessonSources';
 import { buildVerifiedQuestions, gatherQuestionSources, questionGenerationRules, doctrineNotes } from './questionQuality';
 import { StudyProfile, EditalConfig, StudySubject, DaySchedule, QuizQuestion, ExplanationStyle, IllustratedLesson, ConsensoFontes } from "../types";
 import { auth } from "../src/lib/firebase";
 
-const ai = new GoogleGenAI({ 
-  apiKey: process.env.GEMINI_API_KEY || ''
-});
+// The Gemini SDK is heavy (hundreds of kB): it is loaded on the first AI call, not with the app.
+// `Type` mirrors the SDK's enum (plain strings), so the response schemas below need no SDK at load time.
+const Type = { STRING: 'STRING', NUMBER: 'NUMBER', INTEGER: 'INTEGER', BOOLEAN: 'BOOLEAN', ARRAY: 'ARRAY', OBJECT: 'OBJECT' } as any;
+let aiPromise: Promise<GoogleGenAI> | null = null;
+const getAI = (): Promise<GoogleGenAI> => {
+  if (!aiPromise) {
+    aiPromise = import("@google/genai")
+      .then(({ GoogleGenAI }) => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' }))
+      .catch((error) => { aiPromise = null; throw error; });
+  }
+  return aiPromise;
+};
 
 const DEFAULT_MODEL = 'gemini-3.8-flash'; // GA flash model: best balance of quality/cost for rich content generation
 const LITE_MODEL = 'gemini-3.5-flash-lite'; // Cheapest/fastest: trivial, low-latency calls (counting, short greetings)
@@ -146,7 +155,7 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
 
   for (let i = 0; i < maxRetries; i++) {
     try {
-      return await ai.models.generateContent(params);
+      return await (await getAI()).models.generateContent(params);
     } catch (error: any) {
       lastError = error;
 

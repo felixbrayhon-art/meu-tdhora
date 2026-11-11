@@ -75,7 +75,11 @@ export default defineConfig(({ mode }) => {
         };
         if (fs.existsSync(path.join(dist, 'assets'))) walk(path.join(dist, 'assets'));
         const build = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
-        const sw = fs.readFileSync(swPath, 'utf8').replace('__PRECACHE__', JSON.stringify(files)).replace('__BUILD__', build);
+        // Na instalação entra só o que a tela inicial pede (o que o index.html referencia); o resto é guardado depois, em segundo plano.
+        const html = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
+        const core = files.filter((f) => html.includes(f) || /\.woff2?$/.test(f));
+        const rest = files.filter((f) => !core.includes(f));
+        const sw = fs.readFileSync(swPath, 'utf8').replace('__PRECACHE__', JSON.stringify(core)).replace('__RESTO__', JSON.stringify(rest)).replace('__BUILD__', build);
         fs.writeFileSync(swPath, sw);
       },
     };
