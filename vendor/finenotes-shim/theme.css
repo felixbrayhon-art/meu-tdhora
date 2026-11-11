@@ -36,6 +36,10 @@ body .notice-container .notice { padding: 10px 14px; border-radius: 12px; backgr
 .svg-icon { width: 1em; height: 1em; }
 /* Botões do FineNotes que o ToDaHORA ainda não liga (IA, áudio, imagens, PDF, exportar, busca...): o próprio FineNotes os desativa, aqui ficam escondidos. */
 .fn-host .goodobsidian-tool[title$="not available yet"] { display: none; }
+/* Tela infinita: uma página só, sem miniaturas, sem "nova página" e sem indicador de página. */
+.fn-canvas [aria-label="Page thumbnails"], .fn-canvas [aria-label="Miniaturas das páginas"],
+.fn-canvas [aria-label="Add page"], .fn-canvas [aria-label="Nova página"],
+.fn-canvas .goodobsidian-pageindicator { display: none !important; }
 /* Formulários e buscas das janelas (Setting, SuggestModal). */
 body .setting-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--background-modifier-border); }
 body .setting-item:first-child { border-top: 0; }
@@ -49,7 +53,23 @@ body .checkbox-container { position: relative; width: 40px; height: 24px; border
 body .checkbox-container::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
 body .checkbox-container.is-enabled { background: var(--interactive-accent); }
 body .checkbox-container.is-enabled::after { transform: translateX(16px); }
-body .clickable-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: var(--text-muted); }
+/* O quadradinho de 32px é só para ícones soltos do Obsidian; os botões do próprio caderno (classe goodobsidian-*) têm tamanho próprio. */
+body .clickable-icon:not([class*="goodobsidian-"]) { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: var(--text-muted); }
+body .clickable-icon[class*="goodobsidian-"] { cursor: pointer; }
+/* Os botões do próprio caderno (cartões de modelo, itens do menu) têm tamanho próprio; o quadradinho de 32px do Obsidian os espremia. */
+body .clickable-icon.goodobsidian-template-card.is-large { width: 78px; padding: 6px 3px; }
+body .goodobsidian-template-card.is-large .goodobsidian-template-preview { width: 62px; }
+body .goodobsidian-templates-row { gap: 6px; }
+body .goodobsidian-template-card.is-large .goodobsidian-template-name { font-size: 10.5px; line-height: 1.2; overflow-wrap: normal; word-break: normal; hyphens: manual; }
+body .goodobsidian-newnb .clickable-icon.goodobsidian-template-card.is-large { width: 96px; }
+/* Modelos de página: quebram em linhas (sem rolar de lado) e a janela rola na vertical. */
+body .goodobsidian-templates-row { flex-wrap: wrap; overflow-x: visible; }
+/* Menu do "+": o tipo atual e os atalhos lado a lado. */
+body .goodobsidian-addpage-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; overflow: visible; }
+body .goodobsidian-addpage-cards .clickable-icon.goodobsidian-template-card { width: 70px; padding: 6px 1px; }
+body .goodobsidian-addpage-cards .goodobsidian-template-preview { width: 54px; }
+body .goodobsidian-addpage-cards .goodobsidian-template-name { font-size: 10px; letter-spacing: -0.2px; line-height: 1.2; text-align: center; white-space: nowrap; }
+body .goodobsidian-addpage-cards .goodobsidian-template-sub { display: none; }
 body .clickable-icon:hover { background: var(--background-modifier-hover); }
 body .modal.prompt { width: min(92vw, 560px); padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 body .prompt-input { width: 100%; box-sizing: border-box; border: 0; border-bottom: 1px solid var(--background-modifier-border); background: transparent; color: var(--text-normal); font: inherit; font-size: 16px; padding: 14px 16px; outline: 0; }

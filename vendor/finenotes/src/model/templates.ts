@@ -32,8 +32,9 @@ export interface TemplateSection {
 
 /** The picker's sections, in GoodNotes' order. Aliases (`lined`, `grid`) are not offered. */
 export const TEMPLATE_SECTIONS: readonly TemplateSection[] = [
+  // ToDaHORA: seções reagrupadas por uso (no FineNotes 1.5.0 eram Essentials, Writing papers, Planner e Music).
   {
-    title: "Essentials",
+    title: "Basics",
     templates: [
       { ruling: "blank", name: "Blank" },
       { ruling: "dotted", name: "Dotted Paper" },
@@ -43,28 +44,28 @@ export const TEMPLATE_SECTIONS: readonly TemplateSection[] = [
     ],
   },
   {
-    title: "Writing papers",
+    title: "For studying",
     templates: [
       { ruling: "cornell", name: "Cornell" },
-      { ruling: "legal", name: "Legal" },
       { ruling: "single-column", name: "Single Column" },
       { ruling: "single-column-mix", name: "Single Column Mix" },
       { ruling: "three-column", name: "Three Column" },
       { ruling: "title-date", name: "Title & Date" },
+      { ruling: "legal", name: "Legal pad" },
     ],
   },
   {
-    title: "Planner",
+    title: "Planning",
     templates: [
       { ruling: "todos", name: "Todos" },
       { ruling: "weekly-planner", name: "Weekly Planner" },
       { ruling: "monthly-planner", name: "Monthly Planner" },
-      { ruling: "accounting", name: "Accounting" },
     ],
   },
   {
-    title: "Music",
+    title: "Other",
     templates: [
+      { ruling: "accounting", name: "Accounting" },
       { ruling: "music", name: "Music Paper" },
       { ruling: "guitar-tab", name: "Guitar Tablature" },
     ],

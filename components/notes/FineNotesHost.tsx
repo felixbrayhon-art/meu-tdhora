@@ -8,6 +8,7 @@ import { PALETTE, SIZES } from '../../vendor/finenotes/src/constants';
 import { DEFAULT_SETTINGS } from '../../vendor/finenotes/src/settings-data';
 import { DEFAULT_NOTEBOOK_CHOICES, buildNewDocument } from '../../vendor/finenotes/src/model/new-notebook';
 import { DocumentEncoder, decodeDocument } from '../../vendor/finenotes/src/model/serialize';
+import { newInfiniteDocument } from '../../vendor/finenotes/src/model/endless';
 import { AddPage, RemovePage } from '../../vendor/finenotes/src/model/commands';
 import { ClearPage, MovePage, SetPageBookmark, SetPageTemplate, duplicatePageAfter, insertIndexFor, pageFromTemplate, pageToInsertAfter, type InsertPosition } from '../../vendor/finenotes/src/model/page-commands';
 import { type PageGeometry, type SyntheticBackdrop, isCoverRuling } from '../../vendor/finenotes/src/model/document';
@@ -135,7 +136,9 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
         if (cancelled) return;
         const doc = rec
           ? decodeDocument(rec.payload)
-          : buildNewDocument({ ...DEFAULT_NOTEBOOK_CHOICES, ruling: 'ruled-narrow', cover: 'none', type: 'notebook' }, titleRef.current || 'Sem título');
+          : noteRef.current.canvas
+            ? newInfiniteDocument(titleRef.current || 'Sem título')
+            : buildNewDocument({ ...DEFAULT_NOTEBOOK_CHOICES, ruling: 'ruled-narrow', cover: 'none', type: 'notebook' }, titleRef.current || 'Sem título');
         const toolState = toolStateFrom();
         const palette = [...PALETTE];
         host.replaceChildren();
@@ -151,8 +154,11 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
         let addPop: { popover: AddPagePopover; anchor: HTMLElement } | null = null;
         let coverPop: { popover: CoverPopover; anchor: HTMLElement } | null = null;
         const RECENT = 'goodobsidian:recent-templates';
-        const recents = (): SyntheticBackdrop[] => { try { return parseRecent(JSON.parse(localStorage.getItem(RECENT) ?? '[]')); } catch { return []; } };
-        const remember = (b: SyntheticBackdrop) => { try { localStorage.setItem(RECENT, JSON.stringify(pushRecent(recents(), b))); } catch { /* sem armazenamento */ } };
+        const stored = (): SyntheticBackdrop[] => { try { return parseRecent(JSON.parse(localStorage.getItem(RECENT) ?? '[]')); } catch { return []; } };
+        // Atalhos do menu "+": os últimos usados e, para completar, os tipos mais comuns (assim o menu nunca fica só com o modelo atual).
+        const COMUNS = (['squared', 'cornell', 'blank'] as const).map((kind) => ({ kind }) as SyntheticBackdrop);
+        const recents = (): SyntheticBackdrop[] => { const usados = stored(); return [...usados, ...COMUNS.filter((c) => !usados.some((u) => u.kind === c.kind))]; };
+        const remember = (b: SyntheticBackdrop) => { try { localStorage.setItem(RECENT, JSON.stringify(pushRecent(stored(), b))); } catch { /* sem armazenamento */ } };
         const addTemplatePage = (backdrop: SyntheticBackdrop, geometry: PageGeometry, position: InsertPosition, ref: number) => {
           if (!surface) return;
           const index = insertIndexFor(position, ref, surface.document.pages.length);
@@ -350,7 +356,7 @@ const FineNotesHost: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
   const close = async () => { await flushRef.current(); onClose(); };
 
   return (
-    <div className="fn-host" role="dialog" aria-label="Caderno">
+    <div className={`fn-host${note.canvas ? " fn-canvas" : ""}`} role="dialog" aria-label={note.canvas ? "Tela infinita" : "Caderno"}>
       <div className="fn-topbar">
         <button type="button" onClick={close}>Voltar</button>
         <input className="fn-title" value={title} onChange={(e) => { setTitle(e.target.value); }} onBlur={() => metaRef.current({ ...noteRef.current, title: titleRef.current, kind: 'finenotes', updatedAt: Date.now() })} aria-label="Título do caderno" placeholder="Sem título" />

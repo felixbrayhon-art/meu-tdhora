@@ -397,6 +397,9 @@ export class KineticScroller {
     this.tracker.add(t, fingerX, fingerY);
   }
 
+  /** Pan in every direction at once, with no axis snapping (an infinite canvas; ToDaHORA addition). */
+  freeAxes = false;
+
   dragMove(fingerX: number, fingerY: number, t: number): void {
     const drag = this.drag;
     if (!drag) return;
@@ -404,7 +407,7 @@ export class KineticScroller {
     const dx = drag.originX - fingerX;
     const dy = drag.originY - fingerY;
     if (drag.lock === "undecided" && Math.hypot(dx, dy) >= AXIS_LOCK_DISTANCE) {
-      drag.lock = decideLock(dx, dy, this.bounceX);
+      drag.lock = this.freeAxes && this.bounceX ? "free" : decideLock(dx, dy, this.bounceX);
     }
     const useX = drag.lock === "x" || drag.lock === "free" || drag.lock === "undecided";
     const useY = drag.lock !== "x";

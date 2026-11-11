@@ -146,6 +146,7 @@ import {
   scribbleCoverage,
   scribbleMayErase,
 } from "../ink/scribble";
+import { ENDLESS_FIT_WIDTH, ENDLESS_MIN_ZOOM, contentCenter, isInfiniteDoc } from "../model/endless";
 import { gestureLoopOf, penGesturesOf } from "../ink/pen-gestures";
 import {
   type Pt,
@@ -807,6 +808,8 @@ export class InkSurface {
    * per layout because it depends on the pane's height. Also the default.
    */
   private minZoom = 1;
+  /** Tela infinita: the canvas opens once on the middle of what is written. */
+  private infiniteOpened = false;
   /** Whether the first layout has set the default zoom yet. */
   private zoomInitialised = false;
   private paper: PaperTheme;
@@ -1944,7 +1947,10 @@ export class InkSurface {
     this.cssW = cssW;
     this.cssH = cssH;
 
-    const direction = scrollDirectionOf(this.doc);
+    // Tela infinita: one page, always a column, filling the pane, panned freely.
+    const infinite = isInfiniteDoc(this.doc);
+    this.scroller.freeAxes = infinite;
+    const direction = infinite ? "vertical" : scrollDirectionOf(this.doc);
     const turned = direction !== this.direction;
     // The page being read stays the page being read when the pages turn.
     const reading = this.pageIndex;
@@ -1956,7 +1962,7 @@ export class InkSurface {
     const priorAt = this.scroller.position;
     const anchored = this.zoomInitialised && !turned && direction === "vertical" && !this.pinch;
     this.direction = direction;
-    this.pageLayout = layoutPages(this.doc.pages, { direction });
+    this.pageLayout = layoutPages(this.doc.pages, infinite ? { direction, marginX: 0, marginY: 0 } : { direction });
     renderer.setLayout(this.pageLayout);
     // Fit the page stack to the available width, but never magnify past 1:1 —
     // on a wide desktop pane an upscaled page looks like a zoom bug, and the
@@ -1964,7 +1970,7 @@ export class InkSurface {
     // This scales the *view*; no stored coordinate is touched, which is the
     // point of the whole design.
     // A row fits one page (and its margins) to the pane, not the whole row.
-    const fit = this.pageLayout.fitWidth;
+    const fit = infinite ? ENDLESS_FIT_WIDTH : this.pageLayout.fitWidth;
     this.baseScale = fit > 0 ? Math.min(1, cssW / fit) : 1;
     this.updateZoomFloor(cssH);
     if (direction === "horizontal") {
@@ -1977,6 +1983,14 @@ export class InkSurface {
       renderer.setLayout(this.pageLayout);
     }
     this.ensurePaperSize();
+    if (infinite && !this.infiniteOpened) {
+      // Open on the middle of the writing (or of the empty page), at 100%.
+      this.infiniteOpened = true;
+      const box = this.pageLayout.boxes[0];
+      const centre = contentCenter(this.doc.pages[0]);
+      const at = this.scale;
+      if (box) this.scroller.setPosition((box.x + centre.x) * at - cssW / 2, (box.y + centre.y) * at - cssH / 2);
+    }
     const scale = this.scale;
     if (anchored && priorScale > 0 && Math.abs(scale / priorScale - 1) > 1e-6) {
       const ratio = scale / priorScale;
@@ -2017,6 +2031,14 @@ export class InkSurface {
    * shape (a rotation), and a view below the new floor is lifted onto it.
    */
   private updateZoomFloor(cssH: number): void {
+    if (isInfiniteDoc(this.doc)) {
+      // The canvas zooms out far, opens at 100%, and has no "whole page" floor.
+      this.minZoom = ENDLESS_MIN_ZOOM;
+      if (!this.zoomInitialised) this.userZoom = 1;
+      else if (!this.pinch && this.userZoom < ENDLESS_MIN_ZOOM) this.userZoom = ENDLESS_MIN_ZOOM;
+      this.zoomInitialised = true;
+      return;
+    }
     let tallest = 0;
     for (const box of this.pageLayout.boxes) tallest = Math.max(tallest, box.height);
     const step = nextZoomFloor({
