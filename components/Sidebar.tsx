@@ -24,6 +24,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, flashcardFolders, stats, onSelectNotebook, onSelectFlashcardFolder, questionSession = false, isDarkMode = false, onToggleDarkMode, drawer = false, onClose }) => {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => { try { return JSON.parse(localStorage.getItem('focus_sidebar_groups') || '{}'); } catch { return {}; } });
   const [questionNavigationOpen, setQuestionNavigationOpen] = useState(false);
   const [navTip, setNavTip] = useState<{ label: string; top: number; left: number } | null>(null);
 
@@ -76,24 +77,44 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
     setExpandedFolders((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const navItems = [
-    { id: 'HUB' as AppView, label: 'Painel Principal', icon: Home },
-    { id: 'TIMER' as AppView, label: 'Timer Pomodoro', icon: Timer },
-    { id: 'MATERIALS' as AppView, label: 'Meus Materiais', icon: BookOpen },
-    { id: 'FLASHCARDS' as AppView, label: 'Flashcards', icon: Layers },
-    { id: 'VADE_MECUM' as AppView, label: 'Vade Mecum', icon: Scale },
-    { id: 'DRIVE_READER' as AppView, label: 'Biblioteca Drive', icon: Folder },
-    { id: 'NOTES' as AppView, label: 'Anotações', icon: PenLine },
-    { id: 'DIGITAL_NOTEBOOK' as AppView, label: 'Caderno Digital', icon: BookOpen },
-    { id: 'TDH_QUESTOES' as AppView, label: 'TDHQuestões', icon: FileText },
-    { id: 'AI_DIRECT' as AppView, label: 'Aula Direta', icon: Zap },
-    { id: 'GUIDED_LESSON' as AppView, label: 'Aula Guiada', icon: BookOpen },
-    { id: 'SAVED_GUIDED_LESSONS' as AppView, label: 'Aulas Salvas', icon: Bookmark },
-    { id: 'DYNAMIC_TIMER' as AppView, label: 'Bloco Imutável', icon: Clock },
-    { id: 'SMART_REVISION' as AppView, label: 'Revisão IA', icon: Brain },
-    { id: 'PERFORMANCE' as AppView, label: 'Desempenho', icon: BarChart3 },
-    { id: 'SOCIAL_MODULE' as AppView, label: 'Social', icon: Users },
+  // Funções agrupadas por uso: o menu mostra poucos blocos em vez de uma lista de 16 itens.
+  const navGroups: { id: string; label: string; items: { id: AppView; label: string; icon: typeof Home }[] }[] = [
+    { id: 'estudar', label: 'Estudar', items: [
+      { id: 'TDH_QUESTOES', label: 'TDHQuestões', icon: FileText },
+      { id: 'FLASHCARDS', label: 'Flashcards', icon: Layers },
+      { id: 'MATERIALS', label: 'Meus Materiais', icon: BookOpen },
+      { id: 'VADE_MECUM', label: 'Vade Mecum', icon: Scale },
+      { id: 'DRIVE_READER', label: 'Biblioteca Drive', icon: Folder },
+    ] },
+    { id: 'aulas', label: 'Aulas com IA', items: [
+      { id: 'AI_DIRECT', label: 'Aula Direta', icon: Zap },
+      { id: 'GUIDED_LESSON', label: 'Aula Guiada', icon: BookOpen },
+      { id: 'SAVED_GUIDED_LESSONS', label: 'Aulas Salvas', icon: Bookmark },
+      { id: 'SMART_REVISION', label: 'Revisão IA', icon: Brain },
+    ] },
+    { id: 'escrever', label: 'Escrever', items: [
+      { id: 'NOTES', label: 'Anotações', icon: PenLine },
+      { id: 'DIGITAL_NOTEBOOK', label: 'Caderno Digital', icon: BookOpen },
+    ] },
+    { id: 'organizar', label: 'Organizar', items: [
+      { id: 'TIMER', label: 'Timer Pomodoro', icon: Timer },
+      { id: 'DYNAMIC_TIMER', label: 'Bloco Imutável', icon: Clock },
+      { id: 'PERFORMANCE', label: 'Desempenho', icon: BarChart3 },
+      { id: 'SOCIAL_MODULE', label: 'Social', icon: Users },
+    ] },
   ];
+  const isGroupOpen = (id: string) => openGroups[id] ?? (id === 'estudar' || navGroups.find((g) => g.id === id)?.items.some((i) => i.id === currentView) === true);
+  const toggleGroup = (id: string) => setOpenGroups((prev) => {
+    const next = { ...prev, [id]: !isGroupOpen(id) };
+    try { localStorage.setItem('focus_sidebar_groups', JSON.stringify(next)); } catch { /* sem armazenamento */ }
+    return next;
+  });
+  const navButton = (item: { id: AppView; label: string; icon: typeof Home }) => (
+    <button key={item.id} aria-label={item.label} aria-current={currentView === item.id ? 'page' : undefined} onMouseEnter={(e) => showTip(e, item.label)} onFocus={(e) => showTip(e, item.label)} onMouseLeave={hideTip} onBlur={hideTip} onClick={() => { hideTip(); setView(item.id); }} className={`sidebar-nav-item w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${collapsed ? 'justify-center' : ''} ${currentView === item.id ? 'sidebar-nav-item-active' : 'text-[#725442] dark:text-[#a89680] hover:bg-[#f4ebdd] dark:hover:bg-[#272019]'}`}>
+      <item.icon className={`w-5 h-5 shrink-0 ${currentView === item.id ? '' : 'text-[#a79c8e] dark:text-[#7d6f5c]'}`} />
+      {!collapsed && <span>{item.label}</span>}
+    </button>
+  );
 
   const rank = getFishRank(stats.totalDaysStudied);
 
@@ -170,12 +191,20 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-8 custom-scrollbar">
         {/* Main Nav */}
         <div className="space-y-1">
-          {!collapsed && <p className="px-4 text-[9px] font-black text-[#a79c8e] dark:text-[#7d6f5c] uppercase tracking-[0.3em] mb-4">Funções</p>}
-          {navItems.map((item) => (
-            <button key={item.id} aria-label={item.label} aria-current={currentView === item.id ? 'page' : undefined} onMouseEnter={(e) => showTip(e, item.label)} onFocus={(e) => showTip(e, item.label)} onMouseLeave={hideTip} onBlur={hideTip} onClick={() => { hideTip(); setView(item.id); }} className={`sidebar-nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs transition-all ${collapsed ? 'justify-center' : ''} ${currentView === item.id ? 'sidebar-nav-item-active' : 'text-[#725442] dark:text-[#a89680] hover:bg-[#f4ebdd] dark:hover:bg-[#272019]'}`}>
-              <item.icon className={`w-5 h-5 shrink-0 ${currentView === item.id ? '' : 'text-[#a79c8e] dark:text-[#7d6f5c]'}`} />
-              {!collapsed && <span>{item.label}</span>}
-            </button>
+          {navButton({ id: 'HUB', label: 'Painel Principal', icon: Home })}
+          {navGroups.map((group) => collapsed ? (
+            <div key={group.id} className="space-y-1 border-t border-[#eee6d6] pt-1 dark:border-white/[0.06]">{group.items.map(navButton)}</div>
+          ) : (
+            <div key={group.id}>
+              <button type="button" onClick={() => toggleGroup(group.id)} aria-expanded={isGroupOpen(group.id)} className="mt-2 flex min-h-9 w-full items-center justify-between rounded-lg px-4 text-[9px] font-black uppercase tracking-[0.3em] text-[#a79c8e] transition-colors hover:text-[#473c33] focus-visible:outline-2 focus-visible:outline-[#ec6300] dark:text-[#7d6f5c] dark:hover:text-[#f4ebdd]">
+                <span>{group.label}</span>
+                <span className="flex items-center gap-2">
+                  {!isGroupOpen(group.id) && <span className="tracking-normal text-[10px] font-bold normal-case">{group.items.length}</span>}
+                  {isGroupOpen(group.id) ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                </span>
+              </button>
+              {isGroupOpen(group.id) && <div className="space-y-0.5">{group.items.map(navButton)}</div>}
+            </div>
           ))}
         </div>
 

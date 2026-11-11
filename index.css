@@ -1518,16 +1518,6 @@ html:not(.dark) .section-strip { --strip-color: #7a8f5f; opacity: 0.8; }
     container-name: hub-layout;
     container-type: inline-size;
 }
-@container hub-layout (max-width: 1023px) {
-    .hub-module-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-@container hub-layout (max-width: 560px) {
-    .hub-module-grid {
-        grid-template-columns: minmax(0, 1fr);
-    }
-}
 
 .hub-module-grid > * {
     isolation: isolate;
@@ -1609,6 +1599,88 @@ html:not(.dark) .section-strip { --strip-color: #7a8f5f; opacity: 0.8; }
 .dark .hub-module-grid > * [class~="w-12"][class~="h-12"] {
     border-color: rgba(233, 111, 52, 0.22);
     box-shadow: 0 5px 12px rgba(0, 0, 0, 0.14);
+}
+/* Painel compacto: cada função é um cartão baixo (ícone à esquerda, nome e descrição à direita), várias por linha. */
+.hub-module-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+    min-height: 0;
+    align-items: stretch;
+}
+.hub-module-grid > * { grid-column: span 2; }
+.hub-module-grid > div:not(.hub-section-label) { grid-column: span 3; }
+.hub-module-grid > [class*="col-span"],
+.hub-module-grid > .hub-section-label { grid-column: 1 / -1; }
+.hub-module-grid > div:only-child { grid-column: 1 / -1; }
+/* Aulas com IA: primeiro os atalhos de um toque, depois os dois formulários lado a lado. */
+.hub-module-grid > .hub-section-label ~ .hub-section-label ~ button { order: 1; }
+.hub-module-grid > .hub-section-label ~ .hub-section-label ~ div:not(.hub-section-label) { order: 2; }
+.hub-module-grid > button:has(> [class~="w-12"][class~="h-12"]) > p { margin-bottom: 0; }
+@container hub-layout (min-width: 1240px) {
+    .hub-module-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .hub-module-grid > * { grid-column: span 3; }
+    .hub-module-grid > div:not(.hub-section-label) { grid-column: span 6; }
+    .hub-module-grid > [class*="col-span"],
+    .hub-module-grid > .hub-section-label { grid-column: 1 / -1; }
+}
+@container hub-layout (max-width: 760px) {
+    .hub-module-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hub-module-grid > * { grid-column: span 1; }
+    .hub-module-grid > div:not(.hub-section-label),
+    .hub-module-grid > [class*="col-span"],
+    .hub-module-grid > .hub-section-label { grid-column: 1 / -1; }
+}
+@container hub-layout (max-width: 430px) {
+    .hub-module-grid { grid-template-columns: minmax(0, 1fr); }
+}
+.hub-module-grid > button:has(> [class~="w-12"][class~="h-12"]) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 14px;
+    align-content: center;
+    padding: 14px 16px;
+    border-radius: 20px;
+    min-height: 76px;
+}
+.hub-module-grid > button:has(> [class~="w-12"][class~="h-12"])::before {
+    left: 16px;
+    width: 28px;
+}
+.hub-module-grid > button > [class~="w-12"][class~="h-12"] {
+    grid-row: 1 / span 2;
+    align-self: center;
+    width: 44px;
+    height: 44px;
+    margin-bottom: 0;
+    border-radius: 14px;
+}
+.hub-module-grid > button > [class~="w-12"][class~="h-12"] svg {
+    width: 22px;
+    height: 22px;
+}
+.hub-module-grid > button:has(> [class~="w-12"][class~="h-12"]) > h2,
+.hub-module-grid[data-section="ESTUDO"] > button:has(> [class~="w-12"][class~="h-12"]) > h2 {
+    grid-column: 2;
+    align-self: end;
+    margin: 0;
+    min-height: 0;
+    font-size: 1.02rem;
+    line-height: 1.15;
+}
+.hub-module-grid > button:has(> [class~="w-12"][class~="h-12"]) > p,
+.hub-module-grid[data-section="ESTUDO"] > button:has(> [class~="w-12"][class~="h-12"]) > p {
+    grid-column: 2;
+    align-self: start;
+    margin: 3px 0 0;
+    min-height: 0;
+    font-size: 0.625rem;
+    line-height: 1.35;
+    letter-spacing: 0.08em;
+}
+.hub-module-grid > button > .absolute[class*="bg-red-500"] {
+    top: 8px;
+    right: 10px;
+    animation: none;
 }
 @media (prefers-reduced-motion: reduce) {
     .hub-module-grid > *,
