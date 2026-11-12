@@ -4,6 +4,7 @@ import { Scissors, Trash2, ChevronLeft, ChevronRight, Brain, FileText, Maximize2
 import QuestionInkLayer, { InkTool, QuestionInkLayerHandle } from './QuestionInkLayer';
 import { QuizFolder, Notebook, QuizQuestion, ExplanationStyle } from '../types';
 import MarkdownContent from './MarkdownContent';
+import QuestionExplanation from './QuestionExplanation';
 import VerificationBadge from './VerificationBadge';
 import ConsensoBadge from './ConsensoBadge';
 import { RichTextEditor } from './RichTextEditor';
@@ -1021,7 +1022,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                 <div className="flex items-center justify-between gap-3 mb-6">
                   <div className="flex items-center gap-3">
                     <div aria-hidden="true" className="w-8 h-8 bg-[#fff0e5] text-[#e96f34] dark:bg-[#35362e] rounded-lg flex items-center justify-center font-black text-sm">A</div>
-                    <h4 className="font-logo text-sm uppercase tracking-wide text-[#e96f34]">Mapeamento da lógica da questão</h4>
+                    <h4 className="font-logo text-sm uppercase tracking-wide text-[#e96f34]">Explicação passo a passo</h4>
                   </div>
                   {canEditExplanation && !editingExplanation && (
                     <button onClick={handleStartEditExplanation} className="flex items-center gap-2 px-3 py-2 bg-[#473c33]/5 hover:bg-[#473c33]/10 text-[#473c33] rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">
@@ -1068,7 +1069,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ folder, notebook, folders, onBa
                   <>
                     <VerificationBadge verification={currentQ.verification} />
                     <ConsensoBadge consenso={currentQ.consenso} />
-                    <MarkdownContent content={currentQ.explanation} />
+                    <QuestionExplanation explanation={currentQ.explanation} options={currentQ.options} correctAnswer={currentQ.correctAnswer} />
                   </>
                 )}
 
