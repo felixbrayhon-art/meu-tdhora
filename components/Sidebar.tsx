@@ -119,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
   const rank = getFishRank(stats.totalDaysStudied);
 
   return (
-    <div className={`${collapsed ? 'w-20' : drawer ? 'w-72 max-w-[85vw]' : 'w-72'} h-full bg-[#FDFBF7] dark:bg-[#1c1712] text-[#473c33] dark:text-[#f4ebdd] flex flex-col border-r border-[#eee6d6] dark:border-white/[0.06] relative ${questionSession ? 'z-50' : 'z-[1000]'} overflow-hidden transition-all duration-300 ease-in-out`}>
+    <div data-sidebar={collapsed ? 'mini' : 'wide'} className={`${collapsed ? 'w-20' : drawer ? 'w-72 max-w-[85vw]' : 'w-72'} h-full bg-[#FDFBF7] dark:bg-[#1c1712] text-[#473c33] dark:text-[#f4ebdd] flex flex-col border-r border-[#eee6d6] dark:border-white/[0.06] relative ${questionSession ? 'z-50' : 'z-[1000]'} overflow-hidden transition-all duration-300 ease-in-out`}>
       {collapsed && navTip && (
         <div role="tooltip" className="pointer-events-none fixed z-[2000] -translate-y-1/2 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold shadow-lg" style={{ top: navTip.top, left: navTip.left, background: '#2b1d16', color: '#fdf5e6', border: '1px solid rgba(253,245,230,0.28)' }}>
           {navTip.label}

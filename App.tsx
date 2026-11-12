@@ -1275,7 +1275,7 @@ const App: React.FC = () => {
     <CharacterProvider characterId={stats.characterId}>
       <div className="min-h-screen w-screen bg-[#E8DDCC] dark:bg-[#141110] flex">
       <div className="flex w-full h-[100dvh] bg-[#FDFBF7] dark:bg-[#1c1712] text-[#473c33] dark:text-[#f4ebdd] overflow-hidden">
-        <div className="hidden lg:block shrink-0">
+        <div className="app-sidebar-slot hidden lg:block shrink-0">
           <Sidebar {...sidebarProps} />
         </div>
         {isMenuOpen && (
@@ -1328,7 +1328,7 @@ const App: React.FC = () => {
               </button>
             )}
             {showMiniBar && !isQuestionSession && (!isFocusLesson || lessonDockOpen) && (
-              <div className="fixed left-1/2 -translate-x-1/2 z-[90] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500" style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
+              <div className="global-minibar fixed left-1/2 -translate-x-1/2 z-[90] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500" style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
                 {isStorageFull && !user && <div className="bg-red-500 text-white text-[10px] font-black uppercase tracking-widest py-1 px-4 rounded-t-xl mb-[-10px] mx-auto w-fit shadow-lg animate-bounce">⚠️ Memória do Navegador Cheia! Entre com o Google para salvar na nuvem</div>}
                 <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl rounded-[35px] p-2 flex items-center justify-between gap-3 relative">
                   <button onClick={handleCloseGlobalBar} className="absolute -top-3 -right-3 w-8 h-8 bg-white shadow-md border border-gray-100 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 transition-all hover:scale-110 z-20" title="Parar atividades e fechar">
