@@ -7,6 +7,8 @@
 import { handleAIRequest } from '../../api/ai';
 import { runNodeHandler } from '../_lib/nodeAdapter';
 
+import { matchWrongReasons } from '../_lib/flashcardExplanation';
+
 interface D1Like {
   prepare: (sql: string) => { bind: (...values: unknown[]) => { all: <T>() => Promise<{ results: T[] }> } };
 }
@@ -53,7 +55,7 @@ Para cada item, escreva QUATRO alternativas ERRADAS para a mesma pergunta:
 - mesmo tamanho, estilo e tom da correta, plausíveis para quem estudou pouco;
 - cada uma deve ser FALSA segundo a explicação do item (troque o conceito, inverta a regra, confunda institutos parecidos, generalize ou restrinja indevidamente);
 - nunca "todas as anteriores", "nenhuma das anteriores", nem alternativas que digam o mesmo que a correta com outras palavras.
-Para cada errada, escreva também uma frase curta dizendo por que está errada, com base na explicação.
+Para cada errada, escreva na mesma ordem uma frase curta que identifique o erro específico e explique a regra correta com base apenas na explicação fornecida. Evite frases genéricas como "contraria a regra" e não invente fatos ou fontes.
 Reescreva também a alternativa CORRETA em "correta_curta": o mesmo conteúdo, sem acrescentar, tirar ou mudar nenhuma regra, em uma frase de 100 a 150 caracteres.
 Tamanho das ERRADAS: cada uma com 120 a 170 caracteres, e pelo menos duas MAIS LONGAS que a correta_curta. O tamanho nunca pode denunciar a resposta.
 Responda só JSON: {"itens":[{"id":"<id do item>","correta_curta":"...","erradas":["...","...","...","..."],"por_que":["...","...","...","..."]}]}`;
@@ -61,7 +63,7 @@ Responda só JSON: {"itens":[{"id":"<id do item>","correta_curta":"...","erradas
 // Second pass, only for items whose right option still came out clearly the longest.
 const LENGTHEN = `Você é examinador de concursos. Em cada item abaixo a alternativa CORRETA ficou mais longa que as ERRADAS, o que denuncia a resposta.
 Reescreva as quatro ERRADAS de cada item com o TAMANHO-ALVO indicado (mais ou menos 15 caracteres), acrescentando detalhes plausíveis, mas mantendo cada uma FALSA segundo a explicação do item e diferente da correta.
-Para cada errada, uma frase curta dizendo por que está errada.
+Para cada errada, na mesma ordem, uma frase curta que identifique o erro específico e apresente a correção com base na explicação fornecida.
 Responda só JSON: {"itens":[{"id":"<id do item>","erradas":["...","...","...","..."],"por_que":["...","...","...","..."]}]}`;
 
 const MODELS: Array<['groq' | 'openrouter', string]> = [
@@ -127,8 +129,10 @@ export const onRequestPost = async (context: Context) => {
   }
 
   const byId = new Map((result.itens ?? []).map((i) => [String(i.id), i]));
-  const wrongOf = (item: typeof items[number], ai: any): string[] => (ai?.erradas ?? []).map((w: unknown) => String(w).trim())
-    .filter((w: string) => w && normalize(w) !== normalize(item.correta) && normalize(w) !== normalize(String(ai?.correta_curta ?? ''))).slice(0, 4);
+  // Filter the option and its reason together: filtering only the options shifts
+  // the reason indices and can attribute an explanation to the wrong answer.
+  const wrongWithReasons = (item: typeof items[number], ai: any) => matchWrongReasons(item.correta, ai?.correta_curta, ai?.erradas, ai?.por_que);
+  const wrongOf = (item: typeof items[number], ai: any): string[] => wrongWithReasons(item, ai).map(({ text }) => text);
   // The card's own answer is often much longer than the wrong options and gives the key away: use the AI's short
   // restatement when it exists and is not itself much longer than them. The explanation keeps the full answer.
   const correctOf = (item: typeof items[number], ai: any, wrong: string[]) => {
@@ -161,17 +165,18 @@ export const onRequestPost = async (context: Context) => {
     const ai = byId.get(item.id);
     const wrong = wrongOf(item, ai);
     if (wrong.length < 4) return [];
-    const why = ai?.por_que ?? [];
+    const reasons = wrongWithReasons(item, ai);
     const correct = correctOf(item, ai, wrong);
     const options = [{ text: correct, ok: true }, ...wrong.map((text) => ({ text, ok: false }))]
       .map((o) => ({ o, r: Math.random() })).sort((a, b) => a.r - b.r).map((x) => x.o);
     const card = cards[index];
     // The app may shuffle the options again: the explanation names options by their content, never by letter.
     const explanation = [
-      card.resposta.trim(),
+      `**Regra:** ${card.resposta.trim()}`,
       card.comentario ? card.comentario.trim() : '',
-      'Por que as outras alternativas estão erradas:',
-      ...wrong.map((w, i) => `• "${w.length > 140 ? `${w.slice(0, 137)}…` : w}" — ${String(why[i] ?? 'contraria a regra acima.').trim()}`),
+      `**Resposta correta:** ${correct}`,
+      '**Alternativas incorretas:**',
+      ...reasons.map(({ text, reason }) => `- "${text}" — ${reason || 'O comentário disponível não detalha o erro desta alternativa.'}`),
     ].filter(Boolean).join('\n\n');
     return [{
       id: `fc-${card.fc}`,

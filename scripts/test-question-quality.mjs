@@ -19,6 +19,12 @@ require.extensions['.ts'] = (module, filename) => {
 };
 
 const { auditQuestion, buildVerifiedQuestions, explanationContradictsKey, findInSource } = require('../services/questionQuality.ts');
+const { matchWrongReasons } = require('../functions/_lib/flashcardExplanation.ts');
+assert.deepEqual(
+  matchWrongReasons('Correta', '', ['Correta', 'Errada A', 'errada a', 'Errada B'], ['descartar', 'motivo A', 'duplicada', 'motivo B']),
+  [{ text: 'Errada A', reason: 'motivo A' }, { text: 'Errada B', reason: 'motivo B' }],
+  'keeps each reason attached to its option when correct or duplicate entries are filtered',
+);
 
   const sources = [{
     kind: 'lei',
@@ -47,6 +53,9 @@ const { auditQuestion, buildVerifiedQuestions, explanationContradictsKey, findIn
   const validAudit = auditQuestion(validQuestion, sources, 4);
   assert.deepEqual(validAudit.problems, [], 'accepts a complete question with a source-supported citation');
   assert.deepEqual(validAudit.violations, [], 'keeps an explanation supported by the retrieved law');
+  const formattedExplanation = '**Regra:** O art. 155 descreve a subtração de coisa alheia móvel.\n\n**Resposta correta:** A conduta indicada corresponde à regra.\n\n**Alternativas incorretas:** As demais descrevem outras condutas.';
+  const formattedAudit = auditQuestion({ ...validQuestion, explanation: formattedExplanation }, sources, 4);
+  assert.equal(formattedAudit.fixedExplanation, formattedExplanation, 'preserves paragraph and step formatting when no explanation sentence is removed');
 
   const duplicateOptions = auditQuestion({
     ...validQuestion,

@@ -306,11 +306,12 @@ export const auditQuestion = (q: RawQuestion, sources: TopicSource[], optionCoun
   violations.push(...checkText('options', options.join('. '), sources, index, stem));
   const explanationSentences = splitSentences(q.explanation ?? '');
   const kept: string[] = [];
+  let explanationChanged = false;
   for (const sentence of explanationSentences) {
     const issues = checkText('explanation', sentence, sources, index, stem);
-    if (issues.length === 0) kept.push(sentence); else violations.push(...issues);
+    if (issues.length === 0) kept.push(sentence); else { explanationChanged = true; violations.push(...issues); }
   }
-  return { problems, violations, fixedExplanation: kept.join(' ').trim() };
+  return { problems, violations, fixedExplanation: explanationChanged ? kept.join(' ').trim() : (q.explanation ?? '').trim() };
 };
 
 // ---------------------------------------------------------------- independent judge
