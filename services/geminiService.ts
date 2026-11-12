@@ -960,7 +960,7 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
   const examQuestionsPrompt = `${getTimeContext()}
       Gere um simulado de exatamente ${numQuestions} questões ${profileStyle} sobre "${topic}".${bancaInstruction} As questões devem ser de múltipla escolha (A a E).
       ${profileInstruction}
-      Não use emojis. Seja extremamente objetivo e rápido na resposta.
+      Não use emojis. Seja claro e direto, sem omitir etapas necessárias ao entendimento.
       ${extraInstructions}
 
       INSTRUÇÃO PARA O MAPEAMENTO DA LÓGICA DAS QUESTÕES ("explanation"):
@@ -968,14 +968,15 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
 
       Produza uma explicação didática em Markdown, seguindo o estilo escolhido:
       - Divida o campo explanation em três partes, nesta ordem, usando exatamente os marcadores **Regra:**, **Resposta correta:** e **Alternativas incorretas:**. Escreva o conteúdo após cada marcador.
-      - Comece pela regra ou conceito que resolve a questão e aplique-o ao enunciado para justificar a resposta correta.
-      - Explique o erro específico de cada alternativa incorreta, agrupando apenas quando compartilharem o mesmo erro. Use o conteúdo das alternativas para identificá-las, nunca letras ou posições.
-      - Quando útil, termine com uma distinção curta que ajude a evitar a confusão cobrada. Use frases curtas e linguagem clara; não repita o enunciado inteiro.
+      - Na regra, explique em linguagem simples o conceito necessário e, quando relevante, seu limite ou condição. Evite apenas repetir a alternativa correta.
+      - Na resposta correta, conecte um detalhe do enunciado à regra e mostre como isso leva à resposta; em cálculos, mostre os passos e as unidades essenciais.
+      - Para cada alternativa incorreta, identifique-a por uma expressão do seu conteúdo e explique qual detalhe está errado e qual seria a regra correta. Agrupe apenas erros realmente iguais. Nunca use letras ou posições, pois as opções podem ser embaralhadas.
+      - Use frases curtas, termos acessíveis e parágrafos ou listas breves. Defina termos técnicos indispensáveis. Quando útil e sustentado pela fonte, destaque uma confusão comum ou um exemplo simples; não invente fatos para preencher a explicação.
       - Seja fiel às fontes fornecidas. Não invente fundamento legal, citações ou fatos; se algo não puder ser sustentado, não o afirme.
 
       A Dica de Memorização ("memoryHint") DEVE ser um "Bizu de Elite" para TDAH:
       - Use gatilhos visuais, mnemônicos absurdos ou analogias impactantes.
-      - Ensine uma regra de ouro definitiva para nunca mais esquecer ou confundir este tema.`;
+      - Resuma a ideia central sem substituir a explicação nem apresentar uma regra com exceções como absoluta.`;
 
   const examQuestionsJsonSchema = {
     type: 'object',
