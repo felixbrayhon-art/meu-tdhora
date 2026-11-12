@@ -86,15 +86,15 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
       { id: 'VADE_MECUM', label: 'Vade Mecum', icon: Scale },
       { id: 'DRIVE_READER', label: 'Biblioteca Drive', icon: Folder },
     ] },
+    { id: 'escrever', label: 'Escrever', items: [
+      { id: 'NOTES', label: 'Anotações', icon: PenLine },
+      { id: 'DIGITAL_NOTEBOOK', label: 'Caderno Digital', icon: BookOpen },
+    ] },
     { id: 'aulas', label: 'Aulas com IA', items: [
       { id: 'AI_DIRECT', label: 'Aula Direta', icon: Zap },
       { id: 'GUIDED_LESSON', label: 'Aula Guiada', icon: BookOpen },
       { id: 'SAVED_GUIDED_LESSONS', label: 'Aulas Salvas', icon: Bookmark },
       { id: 'SMART_REVISION', label: 'Revisão IA', icon: Brain },
-    ] },
-    { id: 'escrever', label: 'Escrever', items: [
-      { id: 'NOTES', label: 'Anotações', icon: PenLine },
-      { id: 'DIGITAL_NOTEBOOK', label: 'Caderno Digital', icon: BookOpen },
     ] },
     { id: 'organizar', label: 'Organizar', items: [
       { id: 'TIMER', label: 'Timer Pomodoro', icon: Timer },
