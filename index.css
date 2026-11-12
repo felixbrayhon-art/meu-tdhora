@@ -1612,9 +1612,6 @@ html:not(.dark) .section-strip { --strip-color: #7a8f5f; opacity: 0.8; }
 .hub-module-grid > [class*="col-span"],
 .hub-module-grid > .hub-section-label { grid-column: 1 / -1; }
 .hub-module-grid > div:only-child { grid-column: 1 / -1; }
-/* Aulas com IA: primeiro os atalhos de um toque, depois os dois formulários lado a lado. */
-.hub-module-grid > .hub-section-label ~ .hub-section-label ~ button { order: 1; }
-.hub-module-grid > .hub-section-label ~ .hub-section-label ~ div:not(.hub-section-label) { order: 2; }
 .hub-module-grid > button:has(> [class~="w-12"][class~="h-12"]) > p { margin-bottom: 0; }
 @container hub-layout (min-width: 1240px) {
     .hub-module-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
