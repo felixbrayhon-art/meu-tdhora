@@ -2620,3 +2620,9 @@ html[style*="--font-scale"] .text-\[9px\] { font-size: calc(9px * var(--font-sca
 html[style*="--font-scale"] .text-\[10px\] { font-size: calc(10px * var(--font-scale)); }
 html[style*="--font-scale"] .text-\[11px\] { font-size: calc(11px * var(--font-scale)); }
 html[style*="--font-scale"] .text-\[12px\] { font-size: calc(12px * var(--font-scale)); }
+
+/* Barra flutuante do Pomodoro: centralizada na área de conteúdo (ao lado da barra lateral), não na janela inteira. */
+@media (min-width: 1024px) {
+    body:has(.app-sidebar-slot > [data-sidebar="wide"]) .global-minibar { left: calc(50% + 9rem); width: min(42rem, calc(95% - 18rem)); }
+    body:has(.app-sidebar-slot > [data-sidebar="mini"]) .global-minibar { left: calc(50% + 2.5rem); width: min(42rem, calc(95% - 5rem)); }
+}
