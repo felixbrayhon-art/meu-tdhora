@@ -118,7 +118,7 @@ export const questionGenerationRules = (sources: TopicSource[], avoid: string[],
       ${hasLaw ? '- Direito: cite artigo, parágrafo e inciso exatamente como aparecem no texto da lei acima; copie penas e prazos de lá. Não cite números de outras leis, súmulas, jurisprudência nem classificações (como "crime hediondo") que não estejam no texto.' : '- Não invente números de leis, artigos, súmulas ou jurisprudência. Se citar, só o que for notoriamente correto.'}
       - O enunciado deve pedir exatamente o que as alternativas respondem (se elas trazem faixas de pena, pergunte "qual a pena prevista", não "a pena mínima").
       - Prefira os mesmos termos centrais da fonte na alternativa correta; evite paráfrases que dependam de inferência para serem ligadas ao texto de apoio.
-      - Escreva a explicação em 2 a 5 frases curtas e verificáveis: explique por que a correta está certa e por que as demais estão erradas, sem afirmações que as fontes não sustentem. Cada frase deve apresentar uma ideia clara.
+      - Escreva uma explicação concisa e verificável: apresente a regra, aplique-a à resposta correta e explique o erro específico de cada alternativa incorreta, agrupando erros iguais quando fizer sentido. Use frases curtas e apenas afirmações sustentadas pelas fontes.
       - Não use aspas para inventar citações. Datas, nomes e números devem ser reais.${avoid.length ? `\n      - NÃO repita nem reformule estas questões já geradas: ${avoid.map((a) => `"${a.slice(0, 80)}"`).join(' | ')}` : ''}`;
 };
 
