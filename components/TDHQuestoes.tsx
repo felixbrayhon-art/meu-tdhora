@@ -9,6 +9,7 @@ import LoadingFish from './LoadingFish';
 import ExamFilterBoard from './ExamFilterBoard';
 import SaveToFolderModal from './SaveToFolderModal';
 import MarkdownContent from './MarkdownContent';
+import QuestionExplanation from './QuestionExplanation';
 import VerificationBadge from './VerificationBadge';
 import ConsensoBadge from './ConsensoBadge';
 import { RichTextEditor } from './RichTextEditor';
@@ -1357,17 +1358,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
 
                     <VerificationBadge verification={currentQ.verification} />
                     <ConsensoBadge consenso={currentQ.consenso} />
-                    {currentQ.options[currentQ.correctAnswer]?.trim() && (
-                      <div className="mb-6 rounded-2xl bg-white/70 border border-[#abc270]/40 p-5 text-slate-700">
-                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-[#596b2a]">Resposta correta</p>
-                        <p className="text-sm font-bold leading-relaxed">{String.fromCharCode(65 + currentQ.correctAnswer)}. {currentQ.options[currentQ.correctAnswer]}</p>
-                      </div>
-                    )}
-                    {currentQ.explanation?.trim() ? (
-                      <MarkdownContent content={currentQ.explanation} fontSizeMultiplier={fontSizeMultiplier} />
-                    ) : (
-                      <p className="text-sm text-slate-600">Esta questão ainda não tem uma explicação disponível.</p>
-                    )}
+                    <QuestionExplanation explanation={currentQ.explanation} options={currentQ.options} correctAnswer={currentQ.correctAnswer} fontSizeMultiplier={fontSizeMultiplier} />
 
                     {/* Imagens Adicionais do Usuário */}
                     {currentQ.explanationImages && currentQ.explanationImages.length > 0 && (

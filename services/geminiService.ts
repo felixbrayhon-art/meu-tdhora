@@ -967,6 +967,7 @@ const requestExamQuestions = async (topic: string, numQuestions: number, profile
       ${explanationStyle}
 
       Produza uma explicação didática em Markdown, seguindo o estilo escolhido:
+      - Divida o campo explanation em três partes, nesta ordem, usando exatamente os marcadores **Regra:**, **Resposta correta:** e **Alternativas incorretas:**. Escreva o conteúdo após cada marcador.
       - Comece pela regra ou conceito que resolve a questão e aplique-o ao enunciado para justificar a resposta correta.
       - Explique o erro específico de cada alternativa incorreta, agrupando apenas quando compartilharem o mesmo erro. Use o conteúdo das alternativas para identificá-las, nunca letras ou posições.
       - Quando útil, termine com uma distinção curta que ajude a evitar a confusão cobrada. Use frases curtas e linguagem clara; não repita o enunciado inteiro.
@@ -1396,7 +1397,7 @@ export const parsePastedQuestions = async (pastedText: string, profile: StudyPro
       - correctAnswer: Index 0-4 (0=A, 1=B, etc). USE O GABARITO DO TEXTO SE DISPONÍVEL.
       - explanation: A EXPLICAÇÃO FORNECIDA NO TEXTO (se disponível no texto colado logo após a questão ou no fim da lista). Se o texto original não tiver comentário, use a seguinte instrução para gerar você mesmo uma explicação técnica e estruturada rica em markdown:
       ${explanationStyle}
-      Ao gerar um comentário ausente, explique a regra aplicável, por que a resposta está correta e o erro específico das demais alternativas. Identifique as alternativas pelo conteúdo, em frases curtas, sem inventar fontes ou citações. Preserve integralmente qualquer comentário fornecido pelo usuário.
+      Ao gerar um comentário ausente, use exatamente os marcadores **Regra:**, **Resposta correta:** e **Alternativas incorretas:**, nessa ordem. Explique a regra aplicável, por que a resposta está correta e o erro específico das demais alternativas. Identifique as alternativas pelo conteúdo, em frases curtas, sem inventar fontes ou citações. Preserve integralmente qualquer comentário fornecido pelo usuário.
 
       - memoryHint: Gatilho mental TDAH (mnemônico ou analogia visual) para nunca mais esquecer o conceito.
 
