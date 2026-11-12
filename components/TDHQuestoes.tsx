@@ -1337,7 +1337,7 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
 
                     <div className="flex items-center gap-3 mb-6 font-black text-[#fec868]">
                       <span className="w-8 h-8 bg-[#fec868]/10 rounded-lg flex items-center justify-center text-sm shadow-sm">A</span>
-                      <h4 className="text-[10px] uppercase tracking-widest">MAPEAMENTO DA LÓGICA</h4>
+                      <h4 className="text-[10px] uppercase tracking-widest">EXPLICAÇÃO DA RESPOSTA</h4>
                     </div>
 
                     {onTriggerGuidedLesson && (
@@ -1357,7 +1357,17 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
 
                     <VerificationBadge verification={currentQ.verification} />
                     <ConsensoBadge consenso={currentQ.consenso} />
-                    <MarkdownContent content={currentQ.explanation} fontSizeMultiplier={fontSizeMultiplier} />
+                    {currentQ.options[currentQ.correctAnswer]?.trim() && (
+                      <div className="mb-6 rounded-2xl bg-white/70 border border-[#abc270]/40 p-5 text-slate-700">
+                        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-[#596b2a]">Resposta correta</p>
+                        <p className="text-sm font-bold leading-relaxed">{String.fromCharCode(65 + currentQ.correctAnswer)}. {currentQ.options[currentQ.correctAnswer]}</p>
+                      </div>
+                    )}
+                    {currentQ.explanation?.trim() ? (
+                      <MarkdownContent content={currentQ.explanation} fontSizeMultiplier={fontSizeMultiplier} />
+                    ) : (
+                      <p className="text-sm text-slate-600">Esta questão ainda não tem uma explicação disponível.</p>
+                    )}
 
                     {/* Imagens Adicionais do Usuário */}
                     {currentQ.explanationImages && currentQ.explanationImages.length > 0 && (
