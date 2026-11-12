@@ -35,7 +35,7 @@ for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.json'))) {
     total++;
     const letters = Object.keys(q.alternativas ?? {});
     const ok = letters.join('') === 'ABCDE' && letters.includes(q.gabarito) && q.enunciado?.length >= 25 && q.comentario?.length >= 20
-      && !PERSONAL.test(`${q.enunciado} ${Object.values(q.alternativas).join(' ')} ${q.comentario}`);
+      && !q.suspeita && !PERSONAL.test(`${q.enunciado} ${Object.values(q.alternativas).join(' ')} ${q.comentario}`);
     if (!ok) { dropped++; continue; }
     kept.push({ ...q, enunciado: semCaveira(q.enunciado), comentario: semCaveira(q.comentario), fonte: fonteOf(data.arquivo ?? file), disciplina: classify(q) });
   }
