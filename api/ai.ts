@@ -108,8 +108,11 @@ const guestHits = new Map<string, { count: number; resetAt: number }>();
 
 // Cota diária persistente (tabela ia_cota no D1). Sem ela o limitador acima zerava a cada
 // instância nova do Worker, o que deixava a cota de IA aberta para quem insistisse.
-const COTA_VISITANTE = 8;    // quem chega pelo link e ainda não tem conta
-const COTA_CONTA = 200;      // quem está logado
+// O login no app é opcional: dá para estudar inteiro sem conta, e é o que quase todo mundo faz
+// (inclusive o dono). Por isso a cota de "visitante" não pode ser de degustação — ela é a cota
+// normal de um aluno de verdade. O que ela corta é quem automatiza centenas de chamadas.
+const COTA_VISITANTE = 50;   // quem usa sem conta: um dia de estudo pesado cabe aqui
+const COTA_CONTA = 200;      // quem entrou com a conta Google
 const COTA_GLOBAL = 1500;    // teto do app inteiro, para um pico não queimar a cota do dia
 
 type D1Like = {
@@ -167,7 +170,7 @@ const estourouCota = async (
       : null;
   }
   return uso > COTA_VISITANTE
-    ? { tipo: 'visitante', mensagem: `Você usou suas ${COTA_VISITANTE} explicações gratuitas de hoje. Entre na sua conta para continuar estudando.` }
+    ? { tipo: 'visitante', mensagem: `Você usou seus ${COTA_VISITANTE} pedidos de IA de hoje. Entre com sua conta Google para continuar estudando.` }
     : null;
 };
 
