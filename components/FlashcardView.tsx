@@ -151,7 +151,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
     if (!finalTopic.trim()) return;
     setIsGeneratingAI(true);
     try {
-      const content = await generateStudyContent(finalTopic, 'Flashcards', 5, studyProfile);
+      const content = await generateStudyContent(finalTopic, 'Flashcards', 0, studyProfile);
       const newFlashcards: Flashcard[] = content.flashcards.map((f: any) => ({
         id: Math.random().toString(36).substr(2, 9),
         type: 'SIMPLE',

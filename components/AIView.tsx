@@ -17,9 +17,11 @@ interface AIViewProps {
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
   explanationStyle?: ExplanationStyle;
+  /** Leva o tema da aula para o TDHQuestões, onde as questões são conferidas. */
+  onPracticeTopic?: (topic: string) => void;
 }
 
-const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, explanationStyle: initialStyle }) => {
+const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, explanationStyle: initialStyle, onPracticeTopic }) => {
   const [topic, setTopic] = useState(prefill?.topic || '');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
@@ -27,7 +29,6 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
   const [result, setResult] = useState<any>(null);
   const [saved, setSaved] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const [numQuestions, setNumQuestions] = useState(5);
   const [explanationStyle, setExplanationStyle] = useState<ExplanationStyle>(initialStyle || 'TECNICA');
   const [generatingCards, setGeneratingCards] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -62,7 +63,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
 
     try {
       const content = await Promise.race([
-        generateStudyContent(finalTopic, 'Dossiê Expandido', numQuestions, studyProfile, explanationStyle),
+        generateStudyContent(finalTopic, 'Dossiê Expandido', 0, studyProfile, explanationStyle),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('__TIMEOUT__')), 45000)),
       ]);
       if (requestId !== requestIdRef.current) return; // resposta atrasada de uma tentativa já abandonada
@@ -96,7 +97,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
       // Actually generate a fresh batch of study content for the current topic
       // and take only the new flashcards from it (geminiService has no more
       // targeted "flashcards only" export, so we reuse generateStudyContent).
-      const freshContent = await generateStudyContent(topic, 'Dossiê Expandido', numQuestions, studyProfile, explanationStyle);
+      const freshContent = await generateStudyContent(topic, 'Dossiê Expandido', 0, studyProfile, explanationStyle);
       setResult((prev: any) => (prev ? { ...prev, flashcards: freshContent.flashcards } : prev));
       onNewContent({ ...freshContent, quiz: [] }); // Only send flashcards
       alert('Flashcards gerados e adicionados à sua revisão!');
@@ -126,7 +127,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
           <BookLoader className="scale-[2.4] sm:scale-[3]" />
           <div className="text-center px-6 mt-4">
             <p className="text-white font-black text-xl tracking-tight drop-shadow-md">Preparando seu material...</p>
-            <p className="text-white/70 text-[10px] font-bold uppercase tracking-[0.22em] leading-relaxed mt-2">A IA está organizando a explicação, os exemplos e as questões.</p>
+            <p className="text-white/70 text-[10px] font-bold uppercase tracking-[0.22em] leading-relaxed mt-2">A IA está organizando a explicação e os exemplos.</p>
           </div>
           <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-4 p-4 sm:p-5 bg-[#473c33]/55 backdrop-blur-md border-b border-white/10">
             <button onClick={onBack} className="shrink-0 p-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all" aria-label="Voltar ao painel" title="Voltar">
@@ -172,7 +173,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                   </div>
                   <p className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-[#596b2a]">Material de estudo</p>
                   <h1 className="mt-3 max-w-md text-3xl font-black uppercase leading-[0.98] tracking-tight text-[#473c33] sm:text-4xl">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Estudo pela grade' : 'Estudo pelo edital') : 'Estudo por tema'}</h1>
-                  <p className="mt-5 max-w-md text-sm font-semibold leading-relaxed text-[#473c33]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Escolha uma disciplina da sua grade e um assunto para montar o material.' : 'Escolha uma matéria do seu edital e um assunto para montar o material.') : `Informe um tema para criar um material de estudo para ${studyProfile.toLowerCase()}, com resumo, exemplos e questões.`}</p>
+                  <p className="mt-5 max-w-md text-sm font-semibold leading-relaxed text-[#473c33]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Escolha uma disciplina da sua grade e um assunto para montar o material.' : 'Escolha uma matéria do seu edital e um assunto para montar o material.') : `Informe um tema para criar um material de estudo para ${studyProfile.toLowerCase()}, com resumo, análise e bizu de memória.`}</p>
                   <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                     <div className="rounded-2xl border border-[#f4f7ec]/70 bg-[#f4f7ec]/35 p-4">
                       <p className="text-[10px] font-black uppercase tracking-widest text-[#596b2a]">01</p>
@@ -182,7 +183,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                     <div className="rounded-2xl border border-[#f4f7ec]/70 bg-[#f4f7ec]/35 p-4">
                       <p className="text-[10px] font-black uppercase tracking-widest text-[#596b2a]">02</p>
                       <p className="mt-2 text-sm font-black text-[#473c33]">Crie seu material</p>
-                      <p className="mt-1 text-xs font-medium text-[#596b2a]">Receba um resumo, exemplos e questões.</p>
+                      <p className="mt-1 text-xs font-medium text-[#596b2a]">Receba resumo, análise e bizu de memória.</p>
                     </div>
                   </div>
                 </div>
@@ -191,7 +192,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                   <div className="mb-7">
                     <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#a79c8e]">Vamos começar</p>
                     <h2 className="mt-2 text-2xl font-black tracking-tight text-[#473c33]">Escolha o que vai estudar</h2>
-                    <p className="mt-2 text-sm font-medium leading-relaxed text-[#8f8375]">Ajuste o tema, a quantidade de questões e o estilo da explicação.</p>
+                    <p className="mt-2 text-sm font-medium leading-relaxed text-[#8f8375]">Ajuste o tema e o estilo da explicação.</p>
                   </div>
 
                   {loadError && (
@@ -232,14 +233,6 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                     </label>
                   )}
 
-                  <div className="mt-5 rounded-2xl border border-[#eee6d6] bg-[#fdfbf7] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-[#725442]">Questões no caderno</label>
-                      <span className="rounded-full bg-[#fff6e8] px-3 py-1 text-sm font-black text-[#8f5614] dark:text-[#f5a46f]">{numQuestions}</span>
-                    </div>
-                    <input type="range" min="3" max="15" value={numQuestions} onChange={(e) => setNumQuestions(Number(e.target.value))} className="mt-4 h-2 w-full cursor-pointer rounded-full accent-[#e5a83e]" />
-                    <div className="mt-2 flex justify-between text-[9px] font-bold uppercase tracking-wider text-[#b7ac9e]"><span>3 questões</span><span>15 questões</span></div>
-                  </div>
 
                   <label className="group mt-5 block">
                     <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Estilo da explicação</span>
@@ -274,13 +267,6 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                 </button>
               </div>
             </div>
-
-            {result.quizVerificationNotice && (
-              <div role="status" className={isDark ? "mb-8 flex items-start gap-3 rounded-2xl border px-5 py-4 text-sm font-medium leading-relaxed border-amber-300/20 bg-amber-200/10 text-amber-100" : "mb-8 flex items-start gap-3 rounded-2xl border border-amber-300/60 bg-amber-100 px-5 py-4 text-sm font-medium leading-relaxed text-amber-900"}>
-                <span aria-hidden="true" className={isDark ? "mt-0.5 shrink-0 text-[#fecc73]" : "mt-0.5 shrink-0 text-[#bd5628]"}>●</span>
-                <p><strong className="font-black">Questões não exibidas:</strong> {result.quizVerificationNotice}</p>
-              </div>
-            )}
 
             <div className="grid grid-cols-1 2xl:grid-cols-12 gap-12 items-start pb-32">
               <div className="2xl:col-span-8 space-y-12">
@@ -370,31 +356,20 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                   </div>
                 </div>
 
-                {/* SALVAR E PRATICAR */}
-                <div className="bg-[#fec868] rounded-[50px] p-12 text-[#473c33] shadow-[0_35px_60px_-15px_rgba(37,99,235,0.3)] relative overflow-hidden group">
+                {/* PRATICAR O TEMA */}
+                <div className="bg-[#fec868] rounded-[32px] sm:rounded-[50px] p-6 sm:p-12 text-[#473c33] shadow-[0_35px_60px_-15px_rgba(37,99,235,0.3)] relative overflow-hidden group">
                   <div className="absolute -top-32 -right-32 w-80 h-80 bg-white/10 blur-[80px] rounded-full group-hover:scale-110 transition-transform duration-1000"></div>
                   <div className="relative z-10">
-                    <h3 className="text-3xl font-black mb-6 leading-none uppercase tracking-tighter break-words">
-                      Fixar <span className="text-[#8a4b00]">conhecimento</span>
+                    <h3 className="text-2xl sm:text-3xl font-black mb-4 sm:mb-6 leading-none uppercase tracking-tighter break-words">
+                      Praticar <span className="text-[#8a4b00]">este tema</span>
                     </h3>
-                    <p className="text-[#473c33] text-sm mb-12 font-bold leading-relaxed uppercase tracking-widest text-[10px] opacity-80">Converta o dossier em cadernos de treino prático imediato</p>
+                    <p className="text-[#473c33] text-sm mb-8 sm:mb-12 font-bold leading-relaxed uppercase tracking-widest text-[10px] opacity-80">Leve o tema para o TDHQuestões e treine com questões conferidas</p>
 
-                    <button onClick={() => setShowSaveModal(true)} disabled={saved} className={`w-full py-8 rounded-[35px] font-black text-lg flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-95 ${saved ? 'bg-[#b1c77b] text-[#473c33]' : 'bg-stone-800 text-stone-50 hover:bg-stone-700'}`}>
-                      {saved ? (
-                        <>
-                          CONDOMÍNIO SALVO
-                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                          </svg>
-                        </>
-                      ) : (
-                        <>
-                          SALVAR CADERNO
-                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
-                          </svg>
-                        </>
-                      )}
+                    <button onClick={() => onPracticeTopic?.(topic)} className="w-full py-6 sm:py-8 rounded-[28px] sm:rounded-[35px] font-black text-base sm:text-lg flex items-center justify-center gap-4 transition-all shadow-xl bg-[#473c33] text-[#fdfbf7] hover:bg-[#2f2720]">
+                      IR PARA AS QUESTÕES
+                      <svg className="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7-7 7M3 12h18" />
+                      </svg>
                     </button>
                   </div>
                 </div>

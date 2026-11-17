@@ -1444,6 +1444,10 @@ const App: React.FC = () => {
                       onSaveToNotebook={handleSaveToNotebook}
                       studyProfile={stats.studyProfile!}
                       explanationStyle={stats.explanationStyle}
+                      onPracticeTopic={(temaDaAula) => {
+                        setPrefillQuiz(temaDaAula);
+                        setCurrentView('TDH_QUESTOES');
+                      }}
                       onNewContent={(c) => {
                         const cards = c.flashcards.map((f: any) => ({
                           id: Math.random().toString(36).substr(2, 9),
