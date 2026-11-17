@@ -25,9 +25,24 @@
     font-display: swap;
 }
 
+/* A classe `font-sans` do Tailwind embrulha a área principal inteira e vencia a regra
+   do body, então 81% do texto do app caía na pilha de fontes do sistema operacional:
+   SF Pro no Mac, Segoe UI no Windows. Duas tipografias diferentes, larguras de letra
+   diferentes, e peso 900 virando negrito falso onde o Segoe UI não tem esse peso.
+   Apontando `--font-sans` para a Atkinson, o app fica igual nos dois sistemas.
+
+   Não é a Gilroy aqui de propósito: ela só tem Light 300 e ExtraBold 800 de verdade,
+   e a maior parte do texto da interface está em peso 500 — viraria Light, fino demais
+   para ler, ainda mais no Windows, que renderiza mais magro que o Mac. A Atkinson foi
+   desenhada para legibilidade e tem 400 real. A Gilroy continua nos títulos e no logo,
+   em 800, que é onde ela aparece e funciona. */
+@theme {
+    --font-sans: 'Atkinson Hyperlegible', 'Plus Jakarta Sans', sans-serif;
+}
+
 body {
-    font-family: 'Gilroy', 'Atkinson Hyperlegible', 'Plus Jakarta Sans', sans-serif;
-    font-weight: 300;
+    font-family: 'Atkinson Hyperlegible', 'Plus Jakarta Sans', sans-serif;
+    font-weight: 400;
     background-color: #FDFBF7;
     color: #0A0F1E;
 }
