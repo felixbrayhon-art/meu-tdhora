@@ -7,8 +7,10 @@ import firebaseConfig from '../firebase-applet-config.json' with { type: 'json' 
 // be signed in, or be a visitor using the app from its own origin within a rate limit;
 // on a local dev machine (non-production, loopback host) both checks are skipped.
 
-type ApiRequest = IncomingMessage & { body?: unknown };
-type Provider = 'groq' | 'openrouter';
+// Bindings do Cloudflare (objetos, não strings) chegam aqui pelo adaptador de
+// functions/: é assim que a IA da própria Cloudflare é usada sem nenhuma chave.
+type ApiRequest = IncomingMessage & { body?: unknown; bindings?: Record<string, unknown> };
+type Provider = 'groq' | 'openrouter' | 'cloudflare' | 'gemini';
 
 const MAX_BODY_BYTES = 1_000_000;
 const REQUEST_TIMEOUT_MS = 55_000;
@@ -31,6 +33,24 @@ const PROVIDERS: Record<Provider, { url: string; envKey: string; allowModel: (mo
     // Free models only, so a caller can never pick a paid model on the owner's account.
     allowModel: (model) => /^[\w.-]+\/[\w.:-]+:free$/.test(model) && model.length <= 80,
   },
+  // A IA da própria Cloudflare: não usa URL nem chave, e sim o binding AI
+  // (wrangler.toml). Cota separada do Groq e da OpenRouter, e por ser interna
+  // não existe chave que possa vazar.
+  cloudflare: {
+    url: '',
+    envKey: '',
+    allowModel: (model) => /^@cf\/[\w.-]+\/[\w.:-]+$/.test(model) && model.length <= 80,
+  },
+  gemini: {
+    url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    envKey: 'GOOGLE_AI_API_KEY',
+    allowModel: (model) => /^gemini-[\w.-]+$/.test(model) && model.length <= 60,
+  },
+};
+
+const aiBinding = (request: ApiRequest): { run: (model: string, input: unknown) => Promise<any> } | null => {
+  const binding = request.bindings?.AI as { run?: unknown } | undefined;
+  return binding && typeof binding.run === 'function' ? (binding as any) : null;
 };
 
 const sendJson = (response: ServerResponse, status: number, body: Record<string, unknown>) => {
@@ -117,16 +137,19 @@ const isSameOrigin = (request: ApiRequest): boolean => {
   }
 };
 
+const PROVIDER_NAMES: Provider[] = ['groq', 'openrouter', 'cloudflare', 'gemini'];
+
 const providerFromUrl = (request: ApiRequest): Provider | null => {
   try {
     const value = new URL(request.url || '', 'http://localhost').searchParams.get('provider');
-    return value === 'groq' || value === 'openrouter' ? value : null;
+    return PROVIDER_NAMES.includes(value as Provider) ? (value as Provider) : null;
   } catch {
     return null;
   }
 };
 
-const isConfigured = (provider: Provider): boolean => !!process.env[PROVIDERS[provider].envKey]?.trim();
+const isConfigured = (provider: Provider, request?: ApiRequest): boolean =>
+  provider === 'cloudflare' ? !!(request && aiBinding(request)) : !!process.env[PROVIDERS[provider].envKey]?.trim();
 
 const normalizeRequest = (provider: Provider, input: unknown): Record<string, unknown> | null => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
@@ -169,7 +192,12 @@ const normalizeRequest = (provider: Provider, input: unknown): Record<string, un
 export const handleAIRequest = async (request: ApiRequest, response: ServerResponse) => {
   if (request.method === 'GET') {
     // Which providers are set up on the server (no secrets, just booleans).
-    return sendJson(response, 200, { groq: isConfigured('groq'), openrouter: isConfigured('openrouter') });
+    return sendJson(response, 200, {
+      groq: isConfigured('groq'),
+      openrouter: isConfigured('openrouter'),
+      cloudflare: isConfigured('cloudflare', request),
+      gemini: isConfigured('gemini'),
+    });
   }
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'GET, POST');
@@ -178,8 +206,11 @@ export const handleAIRequest = async (request: ApiRequest, response: ServerRespo
 
   const provider = providerFromUrl(request);
   if (!provider) return sendJson(response, 400, { error: 'Provedor inválido.' });
-  const apiKey = process.env[PROVIDERS[provider].envKey]?.trim();
-  if (!apiKey) return sendJson(response, 503, { error: 'Este provedor de IA ainda não foi configurado no servidor.' });
+  const binding = provider === 'cloudflare' ? aiBinding(request) : null;
+  const apiKey = provider === 'cloudflare' ? undefined : process.env[PROVIDERS[provider].envKey]?.trim();
+  if (provider === 'cloudflare' ? !binding : !apiKey) {
+    return sendJson(response, 503, { error: 'Este provedor de IA ainda não foi configurado no servidor.' });
+  }
 
   if (!isLocalDev(request)) {
     const idToken = getAuthorizationToken(request);
@@ -228,6 +259,23 @@ export const handleAIRequest = async (request: ApiRequest, response: ServerRespo
   response.once('close', onResponseClose);
 
   try {
+    if (binding) {
+      // O binding devolve { response: "..." } em vez do formato da OpenAI que o
+      // app espera; traduzimos aqui para o resto do código não precisar saber.
+      const { model, ...rest } = body as Record<string, unknown>;
+      const saida: any = await binding.run(String(model), rest);
+      const conteudo = typeof saida?.response === 'string'
+        ? saida.response
+        : typeof saida?.choices?.[0]?.message?.content === 'string'
+          ? saida.choices[0].message.content
+          : '';
+      response.statusCode = 200;
+      response.setHeader('Content-Type', 'application/json; charset=utf-8');
+      response.setHeader('Cache-Control', 'no-store');
+      return response.end(JSON.stringify(
+        saida?.choices ? saida : { choices: [{ message: { role: 'assistant', content: conteudo }, finish_reason: 'stop' }] },
+      ));
+    }
     const upstream = await fetchWithOptions(PROVIDERS[provider].url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'application/json' },

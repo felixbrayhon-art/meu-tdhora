@@ -15,3 +15,8 @@ id = "6ed1474877cd455b8780de6724b4e614"
 binding = "FONTES"
 database_name = "todahora-fontes"
 database_id = "f5dc2d0a-cbcc-4ff1-8b8f-acfb1648330c"
+
+# IA da própria Cloudflare (10 mil neurônios/dia grátis). Cota separada do Groq e
+# da OpenRouter, e sem chave: o acesso é pelo binding, não por token.
+[ai]
+binding = "AI"
