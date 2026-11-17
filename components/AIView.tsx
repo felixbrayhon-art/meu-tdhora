@@ -285,17 +285,17 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
             <div className="grid grid-cols-1 2xl:grid-cols-12 gap-12 items-start pb-32">
               <div className="2xl:col-span-8 space-y-12">
                 {/* RESUMO EXPANDIDO */}
-                <div className={isDark ? "rounded-[60px] p-12 md:p-20 border relative overflow-hidden backdrop-blur-2xl shadow-3xl bg-white/5 border-white/10" : "bg-white rounded-[60px] p-12 md:p-20 border border-[#e9e0d4] relative overflow-hidden backdrop-blur-2xl shadow-3xl"}>
+                <div className={isDark ? "rounded-[32px] sm:rounded-[60px] p-6 sm:p-12 md:p-20 border relative overflow-hidden backdrop-blur-2xl shadow-3xl bg-white/5 border-white/10" : "bg-white rounded-[32px] sm:rounded-[60px] p-6 sm:p-12 md:p-20 border border-[#e9e0d4] relative overflow-hidden backdrop-blur-2xl shadow-3xl"}>
                   <div className="absolute top-0 left-0 w-3 h-full bg-[#fec868] opacity-50"></div>
-                  <div className="flex items-center gap-6 mb-16">
-                    <div className="w-16 h-16 bg-[#fecc73] text-[#473c33] rounded-[25px] flex items-center justify-center shadow-lg">
+                  <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-16">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-[#fecc73] text-[#473c33] rounded-[18px] sm:rounded-[25px] flex items-center justify-center shadow-lg">
                       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                       </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h2 className={isDark ? "font-black uppercase text-[10px] tracking-[0.4em] mb-2 text-[#fecc73]" : "text-[#bd5628] font-black uppercase text-[10px] tracking-[0.4em] mb-2"}>Resumo Executivo Expandido</h2>
-                      <h3 className={isDark ? "text-5xl font-black tracking-tighter uppercase leading-none text-white" : "text-5xl font-black tracking-tighter uppercase text-[#473c33] leading-none"}>{topic}</h3>
+                      <h3 className={isDark ? "text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase leading-none text-white break-words" : "text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase text-[#473c33] leading-none break-words"}>{topic}</h3>
                     </div>
                   </div>
 
