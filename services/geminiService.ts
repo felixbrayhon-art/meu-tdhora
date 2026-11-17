@@ -820,7 +820,9 @@ const requestStudyContent = async (topic: string, technique: string, numQuestion
     : "Foco em ENEM e grandes vestibulares. Linguagem didática.";
 
   const studyContentPrompt = `${getTimeContext()}
-      Gere um simulado de estudo sobre "${topic}". Especialmente, gere exatamente ${numQuestions} questões no quiz.
+      ${numQuestions > 0
+        ? `Gere um simulado de estudo sobre "${topic}". Especialmente, gere exatamente ${numQuestions} questões no quiz.`
+        : `Gere um material de estudo sobre "${topic}". NÃO gere questões: o campo "quiz" deve vir como lista vazia.`}
       ${profileContext}
       Técnica de Estudo: ${technique}.
 
@@ -830,7 +832,7 @@ const requestStudyContent = async (topic: string, technique: string, numQuestion
       1. executiveSummary: Uma síntese estruturada do tema.
       2. deepDive: Uma análise técnica sobre o ponto central do tema.
       3. explorationMenu: 3 tópicos específicos para o usuário escolher explorar depois.
-      4. quiz: Em cada questão, no campo "explanation", siga o estilo acima.
+      ${numQuestions > 0 ? '4. quiz: Em cada questão, no campo "explanation", siga o estilo acima.' : '4. quiz: deixe vazio ([]).'}
 
       5. memoryHint (BIZU DE MEMÓRIA): Gatilho de IMPACTO MÁXIMO para TDAH.
          - Use mnemônicos inesquecíveis ou analogias visuais absurdas.
@@ -894,7 +896,7 @@ const requestStudyContent = async (topic: string, technique: string, numQuestion
       quiz: {
         type: Type.ARRAY,
         minItems: numQuestions,
-        maxItems: numQuestions,
+        maxItems: numQuestions || 0,
         items: {
           type: Type.OBJECT,
           properties: {
@@ -1081,6 +1083,9 @@ const judgeJson = async (prompt: string, schema: any, name: string): Promise<any
 // "Estudar com IA": the lesson stays available if quiz validation fails, but unverified quiz items are removed.
 const generateStudyContentBase = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Explique de forma técnica e objetiva com mapeamento lógico passo a passo.') => {
   const content = await requestStudyContent(topic, technique, numQuestions, profile, explanationStyle);
+  // numQuestions 0 = aula só de teoria. A IA às vezes manda questões mesmo
+  // instruída a não mandar; descartamos aqui, antes de qualquer conferência.
+  if (numQuestions <= 0) return { ...content, quiz: [], quizVerificationNotice: undefined };
   if (!Array.isArray(content?.quiz) || content.quiz.length === 0) return content;
   try {
     const lengths = content.quiz.map((q: any) => (Array.isArray(q?.options) ? q.options.length : 0));
