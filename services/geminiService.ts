@@ -137,6 +137,8 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
     try {
       if (providerId === 'groq') return await generateGroqContent(params);
       if (providerId === 'openrouter') return await generateOpenRouterContent(params);
+      if (providerId === 'cloudflare') return await generateProxyContent('cloudflare', CLOUDFLARE_MODELS, params);
+      if (providerId === 'google') return await generateProxyContent('google', GOOGLE_MODELS, params);
       return await generateFreeLLMAPIContent(params);
     } catch (error) {
       lastProviderError = error;
@@ -224,7 +226,11 @@ const OPENROUTER_PER_MODEL_TIMEOUT_MS = 20000;
 // model behind it. Racing a few at once — first success wins — fixes that:
 // a hung model just loses the race instead of blocking it. Batched rather
 // than all 6 at once, to avoid hammering the whole free pool per call.
-const OPENROUTER_RACE_BATCH_SIZE = 3;
+// Cada tentativa, mesmo falha, consome uma requisicao do limite diario da
+// OpenRouter (50/dia em conta sem credito, 1000 com). Correr 3 modelos de
+// saida gastava 3 por resposta. Agora comecamos com 1 e so alargamos se ele
+// falhar ou travar, entao o caso comum custa um terco do que custava.
+const OPENROUTER_RACE_SCHEDULE = [1, 2, 3];
 
 // Groq runs its own LPU hardware rather than aggregating third-party free
 // endpoints like OpenRouter's ":free" pool does, so it doesn't share that
@@ -280,11 +286,11 @@ const attachFontes = (body: string): string => {
   }
 };
 
-const aiProxyFetch = async (provider: 'groq' | 'openrouter', init: { body: string; signal?: AbortSignal }): Promise<Response> => {
+const aiProxyFetch = async (provider: 'groq' | 'openrouter' | 'cloudflare' | 'google', init: { body: string; signal?: AbortSignal }): Promise<Response> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const token = await auth?.currentUser?.getIdToken().catch(() => null);
   if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`/api/ai?provider=${provider}`, { method: 'POST', headers, body: attachFontes(init.body), signal: init.signal });
+  const response = await fetch(`/api/ai?provider=${provider === 'google' ? 'gemini' : provider}`, { method: 'POST', headers, body: attachFontes(init.body), signal: init.signal });
   readConsenso(response);
   return response;
 };
@@ -406,8 +412,11 @@ const callFreeLLMAPIText = async (
 // as the provider returns 429 so one exhausted quota does not trigger more calls.
 const raceOpenRouterModels = async <T,>(attempt: (model: string, signal: AbortSignal) => Promise<T>): Promise<T> => {
   let lastError: any;
-  for (let i = 0; i < OPENROUTER_FALLBACK_MODELS.length; i += OPENROUTER_RACE_BATCH_SIZE) {
-    const batch = OPENROUTER_FALLBACK_MODELS.slice(i, i + OPENROUTER_RACE_BATCH_SIZE);
+  let inicio = 0;
+  for (let rodada = 0; inicio < OPENROUTER_FALLBACK_MODELS.length; rodada++) {
+    const tamanho = OPENROUTER_RACE_SCHEDULE[Math.min(rodada, OPENROUTER_RACE_SCHEDULE.length - 1)];
+    const batch = OPENROUTER_FALLBACK_MODELS.slice(inicio, inicio + tamanho);
+    inicio += tamanho;
     const controller = new AbortController();
     let rejectOnRateLimit: (error: any) => void = () => {};
     const rateLimit = new Promise<never>((_, reject) => { rejectOnRateLimit = reject; });
@@ -462,16 +471,30 @@ const toJsonSchema = (googleSchema: any): any => {
   return out;
 };
 
-type AIProviderId = 'groq' | 'openrouter' | 'freellmapi' | 'gemini';
+type AIProviderId = 'groq' | 'cloudflare' | 'openrouter' | 'freellmapi' | 'google' | 'gemini';
+
+// IA da propria Cloudflare, onde o app ja esta hospedado: cota separada das
+// outras, sem chave nenhuma (o servidor usa o binding AI).
+const CLOUDFLARE_MODELS = [
+  '@cf/openai/gpt-oss-120b',
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+  '@cf/qwen/qwen3-30b-a3b-fp8',
+];
+
+// Gemini pela camada compativel com OpenAI, sempre via nosso servidor: a chave
+// fica so no servidor (GOOGLE_AI_API_KEY) e nunca entra no pacote do navegador.
+const GOOGLE_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 
 // Prefer the working user-managed gateway before OpenRouter's currently rate-limited free pool.
-const DEFAULT_PROVIDER_ORDER: AIProviderId[] = ['groq', 'freellmapi', 'openrouter', 'gemini'];
+// A OpenRouter vem depois da Cloudflare porque e a cota mais escassa (50/dia
+// sem credito comprado); a da Cloudflare e nossa e nao depende de terceiros.
+const DEFAULT_PROVIDER_ORDER: AIProviderId[] = ['groq', 'cloudflare', 'freellmapi', 'openrouter', 'google', 'gemini'];
 
 const getPreferredAIProvider = (): AIProviderId | 'auto' => {
   try {
     const stats = JSON.parse(localStorage.getItem('focus_stats') || '{}');
     const provider = stats?.aiProvider;
-    return provider === 'groq' || provider === 'openrouter' || provider === 'freellmapi' || provider === 'gemini' ? provider : 'auto';
+    return DEFAULT_PROVIDER_ORDER.includes(provider) ? provider : 'auto';
   } catch {
     return 'auto';
   }
@@ -538,6 +561,28 @@ async function generateFreeLLMAPIContent(params: any): Promise<{ text: string }>
   const text = readFreeLLMAPIText(data);
   if (!text) throw new Error('FreeLLMAPI retornou uma resposta vazia.');
   console.info(`[ai] Resposta gerada pelo FreeLLMAPI${data.routedVia ? ` via ${data.routedVia}` : ''}.`);
+  return { text };
+}
+
+// Mesma forma de generateGroqContent, para a IA da Cloudflare e o Gemini.
+async function generateProxyContent(provider: 'cloudflare' | 'google', models: string[], params: any): Promise<{ text: string }> {
+  const config = params?.config || {};
+  const systemInstruction = typeof config.systemInstruction === 'string' ? config.systemInstruction : undefined;
+  const messages = [
+    ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+    ...contentToMessages(params?.contents),
+  ];
+  if (messages.length === 0) throw new Error('A solicitação não contém texto compatível.');
+  const schema = config.responseSchema ? toJsonSchema(config.responseSchema) : undefined;
+  const wantsJson = config.responseMimeType === 'application/json' && schema;
+  const pedidos = Number(config.maxOutputTokens);
+  const text = await callProxyModels(provider, models, (model) => ({
+    model,
+    messages: wantsJson ? addJsonSchemaInstructions(messages, schema, 'todahora_response') : messages,
+    ...(wantsJson ? { response_format: { type: 'json_object' } } : {}),
+    temperature: typeof config.temperature === 'number' ? config.temperature : 0.6,
+    max_tokens: Math.min(Math.max(Number.isFinite(pedidos) ? pedidos : 8000, 256), 24000),
+  }), 45000);
   return { text };
 }
 
@@ -775,12 +820,83 @@ const callGroqText = async (systemInstruction: string | undefined, messages: { r
 // Used when Gemini failed (or returned unusable output): every configured
 // provider except Gemini is tried in priority order (chosen one first, then
 // Groq → OpenRouter → FreeLLMAPI).
+// Um provedor simples que fala o formato da OpenAI pelo nosso /api/ai: serve
+// tanto para a IA da Cloudflare quanto para o Gemini. Percorre os modelos em
+// ordem e para no primeiro que responder.
+const callProxyModels = async (
+  provider: 'cloudflare' | 'google',
+  models: string[],
+  corpo: (model: string) => Record<string, any>,
+  timeoutMs: number,
+): Promise<string> => {
+  let lastError: any;
+  for (const model of models) {
+    try {
+      const res = await aiProxyFetch(provider, {
+        body: JSON.stringify(corpo(model)),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!res.ok) throw new Error(`${provider} (${model}) HTTP ${res.status}`);
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (!text) throw new Error(`${provider} (${model}) retornou vazio`);
+      return text;
+    } catch (e: any) {
+      console.warn(`[${provider}] ${model} falhou: ${e?.name || ''} ${e?.message || e}`);
+      lastError = e;
+      // 503 = provedor nem configurado no servidor; nao adianta tentar os outros modelos.
+      if (/HTTP 503/.test(String(e?.message)) || isRateLimitError(e)) break;
+    }
+  }
+  throw lastError || new Error(`${provider} indisponivel.`);
+};
+
+const callProxyJson = async (
+  provider: 'cloudflare' | 'google',
+  models: string[],
+  systemInstruction: string | undefined,
+  userPrompt: string,
+  schema: any,
+  schemaName: string,
+  validate?: (parsed: any) => boolean,
+  maxTokens = 24000,
+): Promise<any> => {
+  const text = await callProxyModels(provider, models, (model) => ({
+    model,
+    messages: addJsonSchemaInstructions([
+      ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+      { role: 'user', content: userPrompt },
+    ], schema, schemaName),
+    response_format: { type: 'json_object' },
+    temperature: 0.3,
+    max_tokens: Math.min(Math.max(maxTokens, 256), 24000),
+  }), 30000);
+  const parsed = safeAIJsonParse(text);
+  if (validate && !validate(parsed)) throw new Error(`${provider} retornou conteudo incompleto`);
+  return parsed;
+};
+
+const callProxyText = async (
+  provider: 'cloudflare' | 'google',
+  models: string[],
+  systemInstruction: string | undefined,
+  messages: { role: string, content: string }[],
+  temperature = 0.6,
+): Promise<string> => callProxyModels(provider, models, (model) => ({
+  model,
+  messages: [...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []), ...messages],
+  temperature,
+  max_tokens: 8000,
+}), 30000);
+
 const tryJsonFallbacks = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean, maxTokens = 24000): Promise<any> => {
   let lastError: any;
   for (const providerId of getProviderOrder()) {
     if (providerId === 'gemini' || !isProviderConfigured(providerId)) continue;
     try {
       if (providerId === 'groq') return await callGroqJson(systemInstruction, userPrompt, schema, schemaName, validate, maxTokens);
+      if (providerId === 'cloudflare') return await callProxyJson('cloudflare', CLOUDFLARE_MODELS, systemInstruction, userPrompt, schema, schemaName, validate, maxTokens);
+      if (providerId === 'google') return await callProxyJson('google', GOOGLE_MODELS, systemInstruction, userPrompt, schema, schemaName, validate, maxTokens);
       if (providerId === 'openrouter') return await callOpenRouterJson(systemInstruction, userPrompt, schema, schemaName, validate, maxTokens);
       return await callFreeLLMAPIJson(systemInstruction, userPrompt, schema, schemaName, validate, maxTokens);
     } catch (e) {
@@ -798,6 +914,8 @@ const tryTextFallbacks = async (systemInstruction: string | undefined, messages:
     if (providerId === 'gemini' || !isProviderConfigured(providerId)) continue;
     try {
       if (providerId === 'groq') return await callGroqText(systemInstruction, messages, temperature);
+      if (providerId === 'cloudflare') return await callProxyText('cloudflare', CLOUDFLARE_MODELS, systemInstruction, messages, temperature);
+      if (providerId === 'google') return await callProxyText('google', GOOGLE_MODELS, systemInstruction, messages, temperature);
       if (providerId === 'openrouter') return await callOpenRouterText(systemInstruction, messages, temperature);
       return await callFreeLLMAPIText(systemInstruction, messages, temperature);
     } catch (e) {

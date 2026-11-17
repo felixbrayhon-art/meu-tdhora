@@ -67,6 +67,9 @@ export const runNodeHandler = async (handler: NodeHandler, context: PagesContext
     ? new Uint8Array()
     : new Uint8Array(await context.request.arrayBuffer());
   const request = new AdaptedRequest(context.request, raw);
+  // Bindings (D1, KV, AI) não são strings, então não cabem em process.env.
+  // Ficam acessíveis aqui para quem precisa deles, como a IA da Cloudflare.
+  (request as any).bindings = context.env;
   const response = new AdaptedResponse();
   try {
     await handler(request, response);
