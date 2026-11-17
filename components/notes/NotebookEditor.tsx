@@ -305,7 +305,7 @@ const NotebookEditor: React.FC<Props> = ({ note, onSaveMeta, onClose }) => {
 
 const CSS = `
 .ink-root{--i-bg:#F4EBDD;--i-card:#FBF7F0;--i-sand:#E8DDCC;--i-ink:#4A352A;--i-ink2:#725442;--i-terra:#C96C4A;--i-on:#fff;--i-olive:#446B4E;--i-line:rgba(74,53,42,.18);--i-stage:#d9cdb8;
-  position:fixed;inset:0;z-index:1300;display:flex;flex-direction:column;background:var(--i-bg);color:var(--i-ink);font-family:'Manrope',system-ui,sans-serif;font-size:14px;overscroll-behavior:none}
+  position:fixed;inset:0;z-index:1300;display:flex;flex-direction:column;background:var(--i-bg);color:var(--i-ink);font-family:'Gilroy',system-ui,sans-serif;font-size:14px;overscroll-behavior:none}
 .ink-root[data-dark="true"]{--i-bg:#241A14;--i-card:#2E221B;--i-sand:#3A2C23;--i-ink:#F1E6D6;--i-ink2:#C9B49E;--i-terra:#E07F5C;--i-on:#2A1710;--i-olive:#8FB596;--i-line:rgba(241,230,214,.18);--i-stage:#16110d}
 .ink-root *{box-sizing:border-box}
 .ink-root button,.ink-root input{font:inherit;color:inherit}

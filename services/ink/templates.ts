@@ -76,7 +76,7 @@ export const plannerLabels = () => {
 };
 
 const text = (ctx: CanvasRenderingContext2D, s: string, size: number, color: Rgba, x: number, y: number, align: 'left' | 'right') => {
-  ctx.save(); ctx.fillStyle = css(color); ctx.font = `${size}px Manrope, system-ui, sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, x, y); ctx.restore();
+  ctx.save(); ctx.fillStyle = css(color); ctx.font = `${size}px Gilroy, system-ui, sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, x, y); ctx.restore();
 };
 
 /** Desenha o modelo de papel na página (w × h pontos). `unitOverride` fixa a unidade (quadro branco usa 1). */

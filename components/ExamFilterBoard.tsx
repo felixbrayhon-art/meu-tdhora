@@ -249,10 +249,10 @@ const ExamFilterBoard: React.FC<Props> = ({ loading, error, onGenerate }) => {
 };
 
 const CSS = `
-.efb{--c-bg:#F4EBDD;--c-pat:#4A352A;--c-card:#FBF7F0;--c-sand:#E8DDCC;--c-ink:#4A352A;--c-ink2:#725442;--c-terra:#C96C4A;--c-on:#FFFFFF;--c-olive:#446B4E;--c-gold:#D8A53A;--c-line:rgba(74,53,42,.16);--c-chip:#F0E3D0;--c-field:#F4EBDD;background:var(--c-bg);color:var(--c-ink);text-align:left;font-size:14px;line-height:1.45;font-family:'Manrope',system-ui,sans-serif;position:relative;overflow:hidden;border-radius:26px;padding:22px;isolation:isolate;container-type:inline-size}
+.efb{--c-bg:#F4EBDD;--c-pat:#4A352A;--c-card:#FBF7F0;--c-sand:#E8DDCC;--c-ink:#4A352A;--c-ink2:#725442;--c-terra:#C96C4A;--c-on:#FFFFFF;--c-olive:#446B4E;--c-gold:#D8A53A;--c-line:rgba(74,53,42,.16);--c-chip:#F0E3D0;--c-field:#F4EBDD;background:var(--c-bg);color:var(--c-ink);text-align:left;font-size:14px;line-height:1.45;font-family:'Gilroy',system-ui,sans-serif;position:relative;overflow:hidden;border-radius:26px;padding:22px;isolation:isolate;container-type:inline-size}
 .efb::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--c-pat);opacity:.015;-webkit-mask:url(/padrao-fundo.png) 0 0/420px auto repeat;mask:url(/padrao-fundo.png) 0 0/420px auto repeat}
 .efb-kicker{margin:0;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink2)}
-.efb-titulo{font-family:'Righteous','Trebuchet MS',sans-serif;font-weight:400;font-size:28px;margin:2px 0 16px;text-wrap:balance;color:var(--c-ink)}
+.efb-titulo{font-family:'Gilroy','Trebuchet MS',sans-serif;font-weight:800;font-size:28px;margin:2px 0 16px;text-wrap:balance;color:var(--c-ink)}
 html.dark .efb{--c-bg:#241A14;--c-pat:#F1E6D6;--c-card:#2E221B;--c-sand:#3A2C23;--c-ink:#F1E6D6;--c-ink2:#C9B49E;--c-terra:#E07F5C;--c-on:#2A1710;--c-olive:#8FB596;--c-gold:#E4B955;--c-line:rgba(241,230,214,.16);--c-chip:#40312A;--c-field:#241A14}
 .efb *{box-sizing:border-box}
 .efb button,.efb input{font:inherit;color:inherit}
@@ -293,7 +293,7 @@ html.dark .efb-erro{background:#4A2A20;color:#F3C2B2}
 .efb-link:disabled{opacity:.4;cursor:default}
 .efb-total{border-top:1px solid var(--c-line);padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--c-sand)}
 .efb-num{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.efb-num b{font-family:'Righteous','Trebuchet MS',sans-serif;font-size:40px;line-height:1;font-weight:400;font-variant-numeric:tabular-nums}
+.efb-num b{font-family:'Gilroy','Trebuchet MS',sans-serif;font-size:40px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums}
 .efb-num span{color:var(--c-ink2);font-weight:600}
 .efb-barra{height:6px;border-radius:3px;background:var(--c-line);overflow:hidden}
 .efb-barra i{display:block;height:100%;background:var(--c-olive);border-radius:3px;transition:width .25s}
