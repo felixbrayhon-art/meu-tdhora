@@ -205,10 +205,13 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
 // These flags only tell the client whether the server has the provider configured.
 const OPENROUTER_ENABLED = Boolean(process.env.OPENROUTER_ENABLED);
 const OPENROUTER_FALLBACK_MODELS = [
-  'nvidia/nemotron-3-super-120b-a12b:free',
+  // Conferido ao vivo em 2026-11-17: nvidia/nemotron-3-super-120b-a12b:free e
+  // qwen/qwen3.8-27b:free sairam do plano gratuito e devolvem 404 ("This model
+  // is unavailable for free") em toda chamada. Como a corrida leva 3 modelos
+  // por vez, o super-120b queimava uma das tres vagas da primeira rodada.
+  // Re-checar esta lista de tempos em tempos: o catalogo gratuito muda.
   'nvidia/nemotron-3.5-lightning:free',
   'nvidia/nemotron-3-ultra-550b-a55b:free',
-  'qwen/qwen3.8-27b:free',
   'google/gemma-4-31b-it:free',
   'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
 ];
@@ -1105,7 +1108,12 @@ const generateStudyContentBase = async (topic: string, technique: string, numQue
           quiz: [],
           quizVerificationNotice: report.sources.length === 0
             ? 'As questões foram omitidas porque não encontrei uma fonte confiável para conferir esse assunto. Tente especificar melhor o tema.'
-            : 'As questões foram omitidas porque o gabarito e a explicação não passaram pela conferência. Tente novamente ou escolha outro tema.',
+            : report.judgeAvailable === false
+              // A conferência independente não respondeu: o problema é nossa
+              // verificação, não as questões. Dizer que o gabarito foi reprovado
+              // manda o estudante trocar de tema sem motivo.
+              ? 'As questões ficaram de fora porque a conferência independente não respondeu agora. O resumo acima está completo; toque em "Nova pesquisa" para tentar as questões de novo.'
+              : 'As questões foram omitidas porque o gabarito e a explicação não passaram pela conferência. Tente novamente ou escolha outro tema.',
         };
   } catch (error) {
     console.warn('[quiz] verificação indisponível; questões não exibidas.', error);
