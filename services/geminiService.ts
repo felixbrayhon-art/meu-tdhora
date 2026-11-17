@@ -143,6 +143,7 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
   // Providers ranked ahead of Gemini are tried in order; if all of them fail
   // the Gemini loop below runs and the callers' fallbacks cover what remains.
   let lastProviderError: unknown;
+  await carregarStatusDosProvedores();
   for (const providerId of getProviderOrder()) {
     if (providerId === 'gemini') break;
     if (!isProviderConfigured(providerId)) continue;
@@ -532,11 +533,38 @@ const getProviderOrder = (): AIProviderId[] => {
     : [preferred, ...DEFAULT_PROVIDER_ORDER.filter((id) => id !== preferred)];
 };
 
+// Quem sabe mesmo quais provedores existem é o servidor: as chaves ficam lá. As flags
+// GROQ_ENABLED/OPENROUTER_ENABLED são decididas na hora do build, pelo .env da máquina que
+// publicou — e uma máquina sem .env gerava um app que ignorava Groq e OpenRouter em silêncio,
+// mesmo com as chaves certinhas na Cloudflare. Por isso o app pergunta ao /api/ai.
+let statusDoServidor: Record<string, boolean> | null = null;
+let buscaDoStatus: Promise<void> | null = null;
+
+const carregarStatusDosProvedores = (): Promise<void> => {
+  if (statusDoServidor) return Promise.resolve();
+  if (!buscaDoStatus) {
+    buscaDoStatus = fetch('/api/ai', { signal: AbortSignal.timeout(8_000) })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((dados) => {
+        if (dados && typeof dados === 'object') statusDoServidor = dados as Record<string, boolean>;
+      })
+      .catch(() => { /* servidor mudo: segue com as flags do build */ })
+      .finally(() => { buscaDoStatus = null; });
+  }
+  return buscaDoStatus;
+};
+
 const isProviderConfigured = (id: AIProviderId): boolean => {
   if (isProviderCoolingDown(id)) return false;
+  if (id === 'freellmapi') return FREELLMAPI_ENABLED && canUseAIProxy();
+  if (statusDoServidor) {
+    if (id === 'groq') return statusDoServidor.groq === true;
+    if (id === 'openrouter') return statusDoServidor.openrouter === true;
+    if (id === 'cloudflare') return statusDoServidor.cloudflare === true;
+    if (id === 'google') return statusDoServidor.gemini === true;
+  }
   if (id === 'groq') return GROQ_ENABLED;
   if (id === 'openrouter') return OPENROUTER_ENABLED;
-  if (id === 'freellmapi') return FREELLMAPI_ENABLED && canUseAIProxy();
   return true;
 };
 
@@ -915,6 +943,7 @@ const callProxyText = async (
 
 const tryJsonFallbacks = async (systemInstruction: string | undefined, userPrompt: string, schema: any, schemaName: string, validate?: (parsed: any) => boolean, maxTokens = 24000): Promise<any> => {
   let lastError: any;
+  await carregarStatusDosProvedores();
   for (const providerId of getProviderOrder()) {
     if (providerId === 'gemini' || !isProviderConfigured(providerId)) continue;
     try {
@@ -935,6 +964,7 @@ const tryJsonFallbacks = async (systemInstruction: string | undefined, userPromp
 
 const tryTextFallbacks = async (systemInstruction: string | undefined, messages: { role: string, content: string }[], temperature = 0.6): Promise<string> => {
   let lastError: any;
+  await carregarStatusDosProvedores();
   for (const providerId of getProviderOrder()) {
     if (providerId === 'gemini' || !isProviderConfigured(providerId)) continue;
     try {
