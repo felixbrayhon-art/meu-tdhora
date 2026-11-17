@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.todahora.app",
+      "sha256_cert_fingerprints": [
+        "5D:09:0E:6A:33:74:05:82:AB:83:56:24:0E:7A:43:6A:EC:D1:9A:04:CE:C4:AC:60:28:75:68:45:D5:CD:AD:A9"
+      ]
+    }
+  }
+]
