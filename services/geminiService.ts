@@ -31,9 +31,21 @@ export class AIError extends Error {
   }
 }
 
+// Cota diária do próprio app (api/ai.ts), e não limite de um provedor: a mensagem já vem
+// pronta do servidor e deve chegar ao aluno como está, sem virar "tente outro provedor".
+export class CotaDoAppError extends Error {
+  constructor(message: string, public precisaEntrar = false) {
+    super(message);
+    this.name = 'CotaDoAppError';
+  }
+}
+
 const handleAIError = (error: any) => {
+  if (error instanceof CotaDoAppError) {
+    throw new AIError(error.message, 429, error.precisaEntrar ? 'COTA_VISITANTE' : 'COTA_DIARIA');
+  }
   console.error("AI Error raw:", error);
-  
+
   // Extract error info from different formats the SDK might throw
   const errorObj = error?.error || error;
   const nestedMessages = Array.isArray(error?.errors)
@@ -141,6 +153,7 @@ const generateContentWithRetry = async (params: any, maxRetries = 2) => {
       if (providerId === 'google') return await generateProxyContent('google', GOOGLE_MODELS, params);
       return await generateFreeLLMAPIContent(params);
     } catch (error) {
+      if (error instanceof CotaDoAppError) throw error; // cota do app: trocar de provedor não adianta
       lastProviderError = error;
       coolDownProviderAfterFailure(providerId, error);
       console.warn(`[ai] ${providerId} indisponível; tentando o próximo provedor:`, error);
@@ -292,6 +305,15 @@ const aiProxyFetch = async (provider: 'groq' | 'openrouter' | 'cloudflare' | 'go
   if (token) headers.Authorization = `Bearer ${token}`;
   const response = await fetch(`/api/ai?provider=${provider === 'google' ? 'gemini' : provider}`, { method: 'POST', headers, body: attachFontes(init.body), signal: init.signal });
   readConsenso(response);
+  // Cota diária do app esgotada: é decisão do nosso servidor, não falta de cota do provedor.
+  // Para a cadeia aqui, senão todos os provedores seriam tentados e punidos à toa.
+  if (response.status === 429 && response.headers.get('X-Cota-Esgotada')) {
+    const corpo = await response.clone().json().catch(() => ({} as any));
+    throw new CotaDoAppError(
+      typeof corpo?.error === 'string' ? corpo.error : 'Você atingiu o limite de uso da IA de hoje.',
+      corpo?.precisaEntrar === true,
+    );
+  }
   return response;
 };
 
@@ -331,7 +353,9 @@ const isProviderCoolingDown = (providerId: string): boolean => (providerCooldown
 // Every failed AI generation should try the next configured provider, including
 // network/timeout errors and malformed or incomplete model output.
 const shouldTryProviderFallbacks = (error: any): boolean =>
-  error?.name !== 'AbortError' && error?.name !== 'CanceledError';
+  error?.name !== 'AbortError' && error?.name !== 'CanceledError' &&
+  // A cota é do app inteiro: trocar de provedor não resolve e só gasta requisição.
+  !(error instanceof CotaDoAppError);
 
 const requestFreeLLMAPI = async (body: Record<string, unknown>): Promise<any> => {
   if (!FREELLMAPI_ENABLED) throw new Error('FreeLLMAPI não foi configurado neste app.');
@@ -900,6 +924,7 @@ const tryJsonFallbacks = async (systemInstruction: string | undefined, userPromp
       if (providerId === 'openrouter') return await callOpenRouterJson(systemInstruction, userPrompt, schema, schemaName, validate, maxTokens);
       return await callFreeLLMAPIJson(systemInstruction, userPrompt, schema, schemaName, validate, maxTokens);
     } catch (e) {
+      if (e instanceof CotaDoAppError) throw e; // cota do app: trocar de provedor não adianta
       coolDownProviderAfterFailure(providerId, e);
       lastError = e;
       console.warn(`[fallback] ${providerId} falhou, tentando o próximo provedor:`, e);
@@ -919,6 +944,7 @@ const tryTextFallbacks = async (systemInstruction: string | undefined, messages:
       if (providerId === 'openrouter') return await callOpenRouterText(systemInstruction, messages, temperature);
       return await callFreeLLMAPIText(systemInstruction, messages, temperature);
     } catch (e) {
+      if (e instanceof CotaDoAppError) throw e; // cota do app: trocar de provedor não adianta
       coolDownProviderAfterFailure(providerId, e);
       lastError = e;
       console.warn(`[fallback] ${providerId} falhou, tentando o próximo provedor:`, e);

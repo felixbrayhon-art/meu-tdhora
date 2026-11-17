@@ -100,11 +100,76 @@ const isLocalDev = (request: ApiRequest): boolean => {
 };
 
 
-// Best-effort guardrails for visitors. A serverless instance keeps this in memory, so it is a speed bump
-// rather than a hard quota: signed-in users are the fully protected path.
+// Primeiro portão, contra rajadas: fica na memória da instância, então é só um quebra-molas.
+// A cota de verdade é a do D1, logo abaixo, que sobrevive entre requisições e entre instâncias.
 const GUEST_WINDOW_MS = 10 * 60 * 1000;
 const GUEST_MAX_REQUESTS = 60;
 const guestHits = new Map<string, { count: number; resetAt: number }>();
+
+// Cota diária persistente (tabela ia_cota no D1). Sem ela o limitador acima zerava a cada
+// instância nova do Worker, o que deixava a cota de IA aberta para quem insistisse.
+const COTA_VISITANTE = 8;    // quem chega pelo link e ainda não tem conta
+const COTA_CONTA = 200;      // quem está logado
+const COTA_GLOBAL = 1500;    // teto do app inteiro, para um pico não queimar a cota do dia
+
+type D1Like = {
+  prepare: (sql: string) => { bind: (...values: unknown[]) => { first: <T>(column?: string) => Promise<T | null> } };
+};
+
+const SQL_CONTAR = `INSERT INTO ia_cota (chave, dia, contagem) VALUES (?1, ?2, 1)
+  ON CONFLICT(chave) DO UPDATE SET
+    contagem = CASE WHEN ia_cota.dia = ?2 THEN ia_cota.contagem + 1 ELSE 1 END,
+    dia = ?2
+  RETURNING contagem`;
+
+const diaDeHoje = () => new Date().toISOString().slice(0, 10);
+
+// O IP é dado pessoal, então nunca é gravado: vai só o resumo SHA-256 dele junto com a data.
+// Como a data entra no cálculo, o identificador muda sozinho todo dia.
+const resumir = async (valor: string, dia: string): Promise<string> => {
+  const bytes = new TextEncoder().encode(`${dia}:${valor}`);
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
+};
+
+const contar = async (db: D1Like, chave: string, dia: string): Promise<number | null> => {
+  try {
+    const total = await db.prepare(SQL_CONTAR).bind(chave, dia).first<number>('contagem');
+    return typeof total === 'number' ? total : null;
+  } catch {
+    return null; // banco indisponível: deixa passar em vez de derrubar a IA do app
+  }
+};
+
+type Recusa = { tipo: 'global' | 'conta' | 'visitante'; mensagem: string };
+
+// Devolve a recusa, ou null quando a chamada está dentro da cota.
+const estourouCota = async (
+  request: ApiRequest,
+  identidade: { logado: boolean; id: string },
+): Promise<Recusa | null> => {
+  const db = request.bindings?.FONTES as D1Like | undefined;
+  if (!db || typeof db.prepare !== 'function') return null; // sem D1 (Vercel, dev): só o portão em memória
+
+  const dia = diaDeHoje();
+  const usoGlobal = await contar(db, 'global', dia);
+  if (usoGlobal !== null && usoGlobal > COTA_GLOBAL) {
+    // Teto do app inteiro: entrar na conta não adianta, então a mensagem não pede login.
+    return { tipo: 'global', mensagem: 'A IA do app bateu o limite de uso de hoje. Tente de novo mais tarde.' };
+  }
+
+  const chave = identidade.logado ? `c:${identidade.id}` : `v:${await resumir(identidade.id, dia)}`;
+  const uso = await contar(db, chave, dia);
+  if (uso === null) return null;
+  if (identidade.logado) {
+    return uso > COTA_CONTA
+      ? { tipo: 'conta', mensagem: `Você usou seus ${COTA_CONTA} pedidos de IA de hoje. O limite volta amanhã.` }
+      : null;
+  }
+  return uso > COTA_VISITANTE
+    ? { tipo: 'visitante', mensagem: `Você usou suas ${COTA_VISITANTE} explicações gratuitas de hoje. Entre na sua conta para continuar estudando.` }
+    : null;
+};
 
 const clientIp = (request: ApiRequest): string => {
   const forwarded = request.headers['x-forwarded-for'];
@@ -214,15 +279,17 @@ export const handleAIRequest = async (request: ApiRequest, response: ServerRespo
 
   if (!isLocalDev(request)) {
     const idToken = getAuthorizationToken(request);
+    let identidade: { logado: boolean; id: string };
     if (idToken) {
       // Signed-in users: the Firebase token must be valid.
+      let uid: string | null;
       try {
-        if (!(await verifyFirebaseToken(idToken))) {
-          return sendJson(response, 401, { error: 'Sua sessão expirou. Entre novamente para continuar.' });
-        }
+        uid = await verifyFirebaseToken(idToken);
       } catch {
         return sendJson(response, 503, { error: 'Não foi possível validar sua sessão agora.' });
       }
+      if (!uid) return sendJson(response, 401, { error: 'Sua sessão expirou. Entre novamente para continuar.' });
+      identidade = { logado: true, id: uid };
     } else {
       // Visitors (no login) can still use the app, as before, but only from the app itself and within a rate limit.
       if (!isSameOrigin(request)) return sendJson(response, 403, { error: 'Origem não permitida.' });
@@ -230,6 +297,17 @@ export const handleAIRequest = async (request: ApiRequest, response: ServerRespo
         response.setHeader('Retry-After', String(Math.ceil(GUEST_WINDOW_MS / 1000)));
         return sendJson(response, 429, { error: 'Muitos pedidos em pouco tempo. Tente de novo em alguns minutos.' });
       }
+      identidade = { logado: false, id: clientIp(request) };
+    }
+
+    // Falha no controle de cota nunca pode derrubar a IA do app: no pior caso, deixa passar.
+    const recusa = await estourouCota(request, identidade).catch(() => null);
+    if (recusa) {
+      response.setHeader('Retry-After', '3600');
+      // Cabeçalho próprio: sem ele o app leria este 429 como "provedor sem cota" e sairia
+      // tentando todos os outros provedores, colocando cada um de castigo por engano.
+      response.setHeader('X-Cota-Esgotada', recusa.tipo);
+      return sendJson(response, 429, { error: recusa.mensagem, precisaEntrar: recusa.tipo === 'visitante' });
     }
   }
 
