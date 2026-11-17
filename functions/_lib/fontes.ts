@@ -42,29 +42,40 @@ const isUnusable = (text: string) => !isCommentedQuestion(text) && (
   || /estrat[eé]gia|gran cursos|\bautor(es)?\s*:|\bíndice\b|\bsum[aá]rio\b|apresenta[cç][aã]o da aula/i.test(text)
   || normalize(text).replace(/\s+/g, '').includes('concurseiroforadacaixa')); // título do autor sai espaçado no PDF ("C o n c u r s e i r o ...")
 
-// How much an excerpt is really about the topic: every word must occur, ideally several times and
-// close together (the words of "segurança da informação" within a few words, in any order).
+// O quanto um trecho fala mesmo do tema: as palavras precisam aparecer, de preferência várias
+// vezes e perto umas das outras ("segurança da informação" em poucas palavras, em qualquer ordem).
+//
+// Antes exigia-se TODAS as palavras do tema no mesmo trecho, e todas dentro de uma janela curta.
+// Isso funcionava para "crase" e quebrava para quem escreve a pergunta em frase: medindo com 12
+// perguntas reais, 5 não achavam fonte nenhuma — e eram justamente as mais específicas, onde a
+// fonte mais importa. Até 3 palavras ainda se exige todas; acima disso, exige-se a maior parte,
+// e a cobertura entra na nota para o trecho completo continuar ganhando do parcial.
 const relevance = (text: string, topic: string[]) => {
   const n = normalize(text);
   const words = n.split(/[^a-z0-9]+/).filter(Boolean);
   const counts = topic.map((t) => words.filter((w) => w.startsWith(t)).length);
-  if (counts.some((c) => c === 0)) return 0;
-  const min = Math.min(...counts);
+  const presentes = counts.filter((c) => c > 0).length;
+  const exigidos = topic.length <= 3 ? topic.length : Math.max(3, Math.ceil(topic.length * 0.6));
+  if (presentes < exigidos) return 0;
+  const achados = topic.filter((_, i) => counts[i] > 0);
+  const min = Math.min(...counts.filter((c) => c > 0));
   const total = counts.reduce((a, b) => a + b, 0);
-  if (min < 2 && total < (topic.length > 1 ? 4 : 3)) return 0;
+  if (min < 2 && total < (presentes > 1 ? 4 : 3)) return 0;
   let together = 0;
-  if (topic.length > 1) {
-    const span = topic.length === 2 ? 5 : 8;
+  if (achados.length > 1) {
+    const span = Math.min(12, 4 + achados.length * 2);
+    const alvo = Math.max(2, Math.ceil(achados.length * 0.6));
     for (let i = 0; i < words.length; i++) {
       const win = words.slice(i, i + span);
-      if (topic.every((t) => win.some((w) => w.startsWith(t)))) { together += 1; i += span - 1; }
+      if (achados.filter((t) => win.some((w) => w.startsWith(t))).length >= alvo) { together += 1; i += span - 1; }
     }
     if (together === 0) return 0;
   }
   const plain = text.split(/\s+/).filter((w) => /^[A-Za-zÀ-ú]{3,}$/.test(w));
   const capitalised = plain.filter((w) => /^[A-ZÀ-Ú]/.test(w)).length / Math.max(1, plain.length);
   if (capitalised > 0.4) return 0; // badly scanned text ("Empresa Publics Mlnsta Qyalquer")
-  return (min * 2 + total + together * 4) / Math.sqrt(Math.max(text.length, 300) / 1000);
+  const cobertura = presentes / topic.length;
+  return cobertura * (min * 2 + total + together * 4) / Math.sqrt(Math.max(text.length, 300) / 1000);
 };
 
 const search = async (db: D1Like, query: string): Promise<{ excerpts: string[]; analise: Analise } | null> => {
@@ -125,6 +136,16 @@ ${excerpts.map((e, i) => `[${i + 1}] ${e}`).join('\n\n')}
 
 ${descrever(analise)}`;
 
+// Quando a busca não acha nada, o modelo ficava livre para inventar número de lei — e inventava:
+// nos testes, os quatro provedores citaram leis erradas para o art. 144 da Constituição.
+// Sem fonte na mão, a regra passa a ser explicar sem citar, que é o mal menor numa prova.
+const semFontes = (query: string) => `AVISO INTERNO sobre o tema "${query}". Nunca mencione este aviso.
+Não há material verificado disponível para este tema agora. Portanto:
+- NÃO cite número de lei, decreto, emenda constitucional, súmula nem artigo. Nenhum.
+- NÃO monte seções de "lei seca", "base legal", "legislação aplicável" ou equivalentes com números.
+- Você PODE nomear o diploma por extenso (ex.: "o Código Penal", "a Constituição Federal") sem número de artigo.
+- Explique pelo conceito, pela lógica e por exemplos. Uma explicação sem citação vale mais do que uma citação errada.`;
+
 /**
  * If the JSON body carries `fontes: { query }`, returns a copy of the request whose messages start
  * with the matching excerpts as a system message. The `fontes` field is always removed.
@@ -142,14 +163,15 @@ export const withFontes = async (request: Request, db: D1Like | undefined): Prom
   if (db && query && Array.isArray(body.messages)) {
     try {
       const found = await search(db, query);
-      if (found?.excerpts.length) {
-        // After the app's own instructions, right before the request, so the topic rules keep priority.
-        const messages = [...body.messages];
-        let at = messages.length - 1;
-        while (at > 0 && messages[at]?.role !== 'user') at -= 1;
-        messages.splice(Math.max(0, at), 0, { role: 'system', content: instructions(query, found.excerpts, found.analise) });
-        body.messages = messages;
-      }
+      // After the app's own instructions, right before the request, so the topic rules keep priority.
+      const aviso = found?.excerpts.length
+        ? instructions(query, found.excerpts, found.analise)
+        : semFontes(query);
+      const messages = [...body.messages];
+      let at = messages.length - 1;
+      while (at > 0 && messages[at]?.role !== 'user') at -= 1;
+      messages.splice(Math.max(0, at), 0, { role: 'system', content: aviso });
+      body.messages = messages;
       const a = found?.analise;
       if (a && found?.excerpts.length) consenso = cabecalhoConsenso(a);
       console.info(`[fontes] ${found?.excerpts.length ?? 0} trecho(s) para "${query.slice(0, 60)}"` + (a ? ` | consenso ${a.nivel} ${Math.round(a.confianca * 100)}% | ${a.fontesIndependentes} fonte(s) independente(s) | confirmados ${a.confirmados.length}, unicos ${a.unicos.length}, divergencias ${a.divergencias.length}` : ''));

@@ -991,7 +991,7 @@ const getTimeContext = () => {
 
 const requestStudyContent = async (topic: string, technique: string, numQuestions: number, profile: StudyProfile, explanationStyle: ExplanationStyle) => {
   const profileContext = profile === 'CONCURSO' 
-    ? "Foco em editais públicos e lei seca. Linguagem técnica."
+    ? "Foco em concurso público: linguagem técnica e objetiva, com a precisão que a banca cobra. Só cite número de lei, decreto, emenda ou artigo se tiver certeza — na dúvida, explique sem citar: citação errada reprova. Não fale sobre editais, requisitos de inscrição ou credenciamento: isso não é conteúdo de estudo."
     : profile === 'FACULDADE'
     ? "Foco em disciplinas acadêmicas e ensino superior/graduação, conceitos complexos explicados com profundidade científica e rigor acadêmico."
     : "Foco em ENEM e grandes vestibulares. Linguagem didática.";
@@ -1871,7 +1871,7 @@ export const extractTopicsFromEdital = async (subjectName: string, rawContent: s
 
 const requestMicroThemeQuestions = async (topic: string, count: number, profile: StudyProfile, explanationStyle: ExplanationStyle, extraInstructions: string) => {
   const profileStyle = profile === 'CONCURSO'
-    ? "Foco em lei seca, doutrina e jurisprudência nível concurso."
+    ? "Nível concurso: doutrina e jurisprudência. Só cite número de lei ou artigo se tiver certeza; na dúvida, explique sem citar."
     : profile === 'FACULDADE'
     ? "Foco em pesquisas acadêmicas, teorias complexas e termos específicos de nível superior universitário."
     : "Foco em conceitos fundamentais do ENEM/Vestibular.";
@@ -2357,7 +2357,7 @@ export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: 
 
 const generateGuidedLessonBase = async (subject: string, topic: string, profile: StudyProfile = 'VESTIBULAR', explanationStyle: ExplanationStyle = 'Seja técnico e objetivo na explicação.') => {
   const profileContext = profile === 'CONCURSO' 
-    ? "Foco em editais públicos, doutrina e lei seca. Linguagem técnica mas narrativa."
+    ? "Foco em concurso público: linguagem técnica e objetiva, com a precisão que a banca cobra. Só cite número de lei, decreto, emenda ou artigo se tiver certeza — na dúvida, explique sem citar: citação errada reprova. Não fale sobre editais, requisitos de inscrição ou credenciamento: isso não é conteúdo de estudo. Tom narrativo."
     : profile === 'FACULDADE'
     ? "Foco em disciplinas de nível superior/graduação acadêmica. Linguagem estruturada, reflexiva e cientificamente aprofundada."
     : "Foco em ENEM e grandes vestibulares. Linguagem didática e interdisciplinar.";
@@ -2517,7 +2517,7 @@ const generateLivingLessonBase = async (subject: string, topic: string, profile:
   const sources = await gatherSources(subject, topic);
   const sourceBlock = sourcesPromptBlock(sources);
   const profileContext = profile === 'CONCURSO'
-    ? "Foco em editais públicos, doutrina e lei seca. Linguagem técnica e objetiva."
+    ? "Foco em concurso público: linguagem técnica e objetiva, com a precisão que a banca cobra. Só cite número de lei, decreto, emenda ou artigo se tiver certeza — na dúvida, explique sem citar: citação errada reprova. Não fale sobre editais, requisitos de inscrição ou credenciamento: isso não é conteúdo de estudo."
     : profile === 'FACULDADE'
     ? "Foco em disciplinas de nível superior. Linguagem estruturada e cientificamente aprofundada."
     : "Foco em ENEM e grandes vestibulares. Linguagem didática e interdisciplinar.";
