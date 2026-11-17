@@ -141,28 +141,33 @@ const contar = async (db: D1Like, chave: string, dia: string): Promise<number | 
   }
 };
 
-// Devolve a mensagem de recusa, ou null quando a chamada está dentro da cota.
+type Recusa = { tipo: 'global' | 'conta' | 'visitante'; mensagem: string };
+
+// Devolve a recusa, ou null quando a chamada está dentro da cota.
 const estourouCota = async (
   request: ApiRequest,
   identidade: { logado: boolean; id: string },
-): Promise<string | null> => {
+): Promise<Recusa | null> => {
   const db = request.bindings?.FONTES as D1Like | undefined;
   if (!db || typeof db.prepare !== 'function') return null; // sem D1 (Vercel, dev): só o portão em memória
 
   const dia = diaDeHoje();
   const usoGlobal = await contar(db, 'global', dia);
   if (usoGlobal !== null && usoGlobal > COTA_GLOBAL) {
-    return 'A IA do app bateu o limite de uso de hoje. Tente de novo mais tarde.';
+    // Teto do app inteiro: entrar na conta não adianta, então a mensagem não pede login.
+    return { tipo: 'global', mensagem: 'A IA do app bateu o limite de uso de hoje. Tente de novo mais tarde.' };
   }
 
   const chave = identidade.logado ? `c:${identidade.id}` : `v:${await resumir(identidade.id, dia)}`;
   const uso = await contar(db, chave, dia);
   if (uso === null) return null;
   if (identidade.logado) {
-    return uso > COTA_CONTA ? `Você usou seus ${COTA_CONTA} pedidos de IA de hoje. O limite volta amanhã.` : null;
+    return uso > COTA_CONTA
+      ? { tipo: 'conta', mensagem: `Você usou seus ${COTA_CONTA} pedidos de IA de hoje. O limite volta amanhã.` }
+      : null;
   }
   return uso > COTA_VISITANTE
-    ? `Você usou suas ${COTA_VISITANTE} explicações gratuitas de hoje. Entre na sua conta para continuar estudando.`
+    ? { tipo: 'visitante', mensagem: `Você usou suas ${COTA_VISITANTE} explicações gratuitas de hoje. Entre na sua conta para continuar estudando.` }
     : null;
 };
 
@@ -301,8 +306,8 @@ export const handleAIRequest = async (request: ApiRequest, response: ServerRespo
       response.setHeader('Retry-After', '3600');
       // Cabeçalho próprio: sem ele o app leria este 429 como "provedor sem cota" e sairia
       // tentando todos os outros provedores, colocando cada um de castigo por engano.
-      response.setHeader('X-Cota-Esgotada', identidade.logado ? 'conta' : 'visitante');
-      return sendJson(response, 429, { error: recusa, precisaEntrar: !identidade.logado });
+      response.setHeader('X-Cota-Esgotada', recusa.tipo);
+      return sendJson(response, 429, { error: recusa.mensagem, precisaEntrar: recusa.tipo === 'visitante' });
     }
   }
 
