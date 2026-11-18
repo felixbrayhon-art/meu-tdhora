@@ -3,6 +3,8 @@ import { chatWithFish } from '../services/geminiService';
 import { StudyProfile } from '../types';
 import { getCharacterSrc, getCharacter } from '../services/avatarService';
 import AvatarDisplay from './AvatarDisplay';
+import VoxelAvatar from './VoxelAvatar';
+import { getVoxelConfig } from '../services/voxelCharacters';
 
 interface FishCompanionProps {
   studyProfile?: StudyProfile;
@@ -14,6 +16,8 @@ interface FishCompanionProps {
 const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
+  // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
+  const temVoxel = !!getVoxelConfig(characterId);
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
@@ -136,8 +140,14 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+      ) : characterId && temVoxel ? (
+        // O personagem inteiro, montado em cubos CSS. Fundo transparente e silhueta
+        // estreita: ocupa menos que a arte 2D de corpo inteiro, que cobria botões.
+        <button onClick={() => setIsOpen(true)} aria-label={`Pergunte ao ${companionName}`} title={`Pergunte ao ${companionName}`} className="relative group transition-transform duration-300 hover:scale-105 active:scale-95">
+          <VoxelAvatar characterId={characterId} altura={132} />
+          <div className="absolute top-1 right-0 w-4 h-4 bg-[#fff1e8] border-2 border-white rounded-full animate-pulse"></div>
+        </button>
       ) : characterId ? (
-        // Só o rosto do personagem (mesmo recorte do avatar do perfil): o corpo inteiro cobria botões e textos.
         <button onClick={() => setIsOpen(true)} aria-label={`Pergunte ao ${companionName}`} title={`Pergunte ao ${companionName}`} className="relative group h-14 w-14 lg:h-16 lg:w-16 rounded-full bg-[#fed386] shadow-xl border-2 border-white transition-transform duration-300 hover:scale-110 active:scale-95">
           <AvatarDisplay characterId={characterId} className="h-full w-full rounded-full" />
           <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#fff1e8] border-2 border-white rounded-full animate-pulse"></div>
