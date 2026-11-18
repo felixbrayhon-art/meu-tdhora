@@ -11,6 +11,7 @@ import AvatarBuilder from './components/AvatarBuilder';
 import ProfileSelection from './components/ProfileSelection';
 import { checkIsAdmin } from './services/questionBankService';
 import Sidebar from './components/Sidebar';
+import ToolTabs from './components/ToolTabs';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
 const TimerView = lazyWithRetry(() => import('./components/TimerView'));
@@ -1300,6 +1301,17 @@ const App: React.FC = () => {
           {!isQuestionSession && <header className="shrink-0 z-50">
             <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} compact={isFocusLesson} onMenuClick={() => setIsMenuOpen(true)} />
           </header>}
+          {/* Fora da área de rolagem de propósito: a barra fica à vista enquanto a ferramenta rola. */}
+          {!isQuestionSession && !isFocusLesson && (
+            <div className="shrink-0 z-40">
+              <ToolTabs
+                currentView={currentView}
+                setView={setCurrentView}
+                pendingRevisions={pendingRevisionCount}
+                pendingFlashcards={dueFlashcardsCount}
+              />
+            </div>
+          )}
 
           <div ref={scrollAreaRef} data-main-scroll className={`flex-1 overflow-y-auto custom-scrollbar relative ${showMiniBar && !isQuestionSession && !isFocusLesson ? 'pb-28' : ''}`}>
             <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop preload="none" />
