@@ -20,7 +20,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const temVoxel = !!getVoxelConfig(characterId);
   const [menuAberto, setMenuAberto] = useState(false);
   // 'aqui' -> 'despedindo' -> 'andando' -> 'fora'. Não guardamos em disco: recarregar traz ele de volta.
-  const [presenca, setPresenca] = useState<'aqui' | 'despedindo' | 'andando' | 'fora'>('aqui');
+  const [presenca, setPresenca] = useState<'aqui' | 'despedindo' | 'andando' | 'fora' | 'chegando'>('aqui');
   const [cochilando, setCochilando] = useState(false);
   // A animação que o aluno escolheu. Enquanto for a padrão, o cochilo automático
   // ainda vale; a partir do momento em que ele escolhe algo, a escolha manda.
@@ -177,7 +177,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
         // estreita: ocupa menos que a arte 2D de corpo inteiro, que cobria botões.
         presenca === 'fora' ? (
           <button
-            onClick={() => setPresenca('aqui')}
+            onClick={() => setPresenca('chegando')}
             aria-label={`Chamar ${companionName} de volta`}
             title={`Chamar ${companionName} de volta`}
             className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#fed386] text-lg shadow-lg transition-transform hover:scale-110 active:scale-95"
@@ -236,8 +236,9 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
               <VoxelAvatar
                 characterId={characterId}
                 altura={132}
-                pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : cochilando ? 'dormindo' : animacao}
+                pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : presenca === 'chegando' ? 'voltando' : cochilando ? 'dormindo' : animacao}
                 onSaiuDaTela={() => setPresenca('fora')}
+                onChegou={() => setPresenca('aqui')}
               />
             </button>
           </div>

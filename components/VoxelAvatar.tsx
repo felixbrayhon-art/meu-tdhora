@@ -224,7 +224,7 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo };
 };
 
-export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'festejando';
+export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando';
 
 /** As animações que dá para escolher na tela. 'andando' fica de fora: é a saída. */
 export const POSES_ESCOLHIVEIS: { pose: VoxelPose; rotulo: string }[] = [
@@ -242,15 +242,19 @@ interface VoxelAvatarProps {
   pose?: VoxelPose;
   /** Chamado uma vez quando ele termina de andar para fora da tela. */
   onSaiuDaTela?: () => void;
+  /** Chamado uma vez quando ele termina de andar de volta para o lugar. */
+  onChegou?: () => void;
   className?: string;
 }
 
-const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', onSaiuDaTela, className = '' }) => {
+const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', onSaiuDaTela, onChegou, className = '' }) => {
   const palcoRef = useRef<HTMLDivElement>(null);
   const poseRef = useRef(pose);
   poseRef.current = pose;
   const saidaRef = useRef(onSaiuDaTela);
   saidaRef.current = onSaiuDaTela;
+  const chegadaRef = useRef(onChegou);
+  chegadaRef.current = onChegou;
 
   useEffect(() => {
     const cfg = getVoxelConfig(characterId);
@@ -274,6 +278,8 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     let anterior = 0;
     let desloc = 0;
     let avisou = false;
+    let poseAnterior: VoxelPose | null = null;
+    const PERCURSO = 280;
 
     const desenhar = (ms: number) => {
       if (!inicio) inicio = ms;
@@ -285,22 +291,33 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       anterior = ms;
       const pose = poseRef.current;
       const andando = pose === 'andando';
+      const voltando = pose === 'voltando';
+      const caminhando = andando || voltando;
       const dormindo = pose === 'dormindo';
       const tchau = pose === 'tchau';
       const estudando = pose === 'estudando';
       const festa = pose === 'festejando';
 
-      // Girar o tempo todo atrapalha quando ele está se despedindo ou indo embora:
-      // nessas horas ele vira de frente (ou de perfil, para andar) e fica assim.
-      const alvo = andando ? 76 : tchau || dormindo ? 0 : null;
+      if (pose !== poseAnterior) {
+        // Sair começa no lugar e vai embora; voltar começa fora e vem andando.
+        if (voltando) desloc = PERCURSO;
+        if (andando) desloc = 0;
+        avisou = false;
+        poseAnterior = pose;
+      }
+
+      // Girar o tempo todo atrapalha quando ele está se despedindo ou andando:
+      // nessas horas ele vira de frente, ou de perfil para o lado em que caminha.
+      const alvo = andando ? 76 : voltando ? -76 : tchau || dormindo ? 0 : null;
       if (alvo === null) { if (!menosMovimento) ry += 13 * dt; }
       else ry += (alvo - ry) * (1 - Math.exp(-7.5 * dt));
 
       const salto = festa ? Math.abs(Math.sin(t * 3)) : 0;
-      const passo = andando ? Math.sin(t * 7.5) : 0;
-      const sobe = salto * 26 + (andando ? Math.abs(passo) * 5 : 0);
-      const balanco = festa || andando ? 0 : Math.sin(t * (dormindo ? 0.9 : 2)) * (dormindo ? 4.5 : 2.5);
-      const perna = andando ? passo * 30 : -salto * 22;
+      const passo = caminhando ? Math.sin(t * 7.5) : 0;
+      const sobe = salto * 26 + (caminhando ? Math.abs(passo) * 5 : 0);
+      const balanco = festa || caminhando ? 0 : Math.sin(t * (dormindo ? 0.9 : 2)) * (dormindo ? 4.5 : 2.5);
+      // Deitado, as pernas ficam encolhidas; em pé elas só andam ou dobram no pulo.
+      const perna = caminhando ? passo * 30 : dormindo ? -22 : -salto * 22;
 
       let zE = 6;
       let zD = -6;
@@ -311,16 +328,19 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       if (cfg.dir === 'prancheta') bD = 22;
       if (cfg.dir === 'rifle') bD = 30;
       if (cfg.esq === 'vara') { zE = 9; bE = 4; }
-      if (andando) { bE += passo * 22; bD -= passo * 22; }
+      if (caminhando) { bE += passo * 22; bD -= passo * 22; }
       if (tchau) { zD = -150 + Math.sin(t * 9) * 22; bD = 0; }
+      if (dormindo) { bE = -14; bD = -14; zE = 10; zD = -10; }
       zE -= salto * 12;
       zD += salto * 12;
 
-      const inclinaCabeca = dormindo ? 26 : estudando ? 16 : -salto * 6;
-      const tombaCabeca = dormindo ? 12 : 0;
-      const olhaEmVolta = dormindo || estudando || andando ? 0 : Math.sin(t * 0.7) * 9;
+      const inclinaCabeca = dormindo ? 10 : estudando ? 16 : -salto * 6;
+      const tombaCabeca = dormindo ? 14 : 0;
+      const olhaEmVolta = dormindo || estudando || caminhando ? 0 : Math.sin(t * 0.7) * 9;
 
-      p.raiz.style.transform = `translate3d(0,${-sobe}px,0)`;
+      // Dormindo ele deita: o corpo inteiro tomba 82° e desce até o chão. A sombra
+      // fica fora da raiz, então continua deitada no lugar certo.
+      p.raiz.style.transform = `translate3d(0,${-sobe + (dormindo ? 26 : 0)}px,0) rotateZ(${dormindo ? -82 : 0}deg)`;
       p.corpo.style.transform = `translate3d(0,${-balanco}px,0) rotateX(${estudando ? 6 : 0}deg)`;
       p.cabeca.style.transform = `translate3d(0,-52px,0) rotateY(${olhaEmVolta}deg) rotateX(${inclinaCabeca}deg) rotateZ(${tombaCabeca}deg)`;
       p.bracoE.style.transform = `translate3d(-34px,-48px,0) rotateZ(${zE}deg) rotateX(${bE}deg)`;
@@ -330,10 +350,16 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       if (p.rabo) p.rabo.style.transform = `translate3d(0,-12px,-19px) rotateY(${Math.sin(t * 1.6) * 14}deg)`;
       pivot.style.transform = `scale(${escala}) rotateX(-10deg) rotateY(${ry}deg)`;
 
-      if (andando) {
-        desloc += (menosMovimento ? 700 : 200) * dt;
+      if (caminhando) {
+        const passoPx = (menosMovimento ? 700 : 200) * dt;
+        if (andando) {
+          desloc += passoPx;
+          if (desloc > PERCURSO && !avisou) { avisou = true; saidaRef.current?.(); }
+        } else {
+          desloc = Math.max(0, desloc - passoPx);
+          if (desloc === 0 && !avisou) { avisou = true; chegadaRef.current?.(); }
+        }
         palco.style.transform = `translateX(${desloc}px)`;
-        if (desloc > 260 && !avisou) { avisou = true; saidaRef.current?.(); }
       } else if (desloc !== 0) {
         desloc = 0;
         palco.style.transform = '';
