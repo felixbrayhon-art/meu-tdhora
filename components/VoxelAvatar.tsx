@@ -225,14 +225,14 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
 
 export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'festejando';
 
-// O balãozinho que aparece sobre a cabeça em cada pose. Fica fora do 3D de
-// propósito: emoji em cubos ficaria ilegível no tamanho do mascote.
-const EMOJI: Partial<Record<VoxelPose, { simbolo: string; rotulo: string; animacao: string }>> = {
-  estudando: { simbolo: '📖', rotulo: 'estudando', animacao: 'animate-pulse' },
-  tchau: { simbolo: '👋', rotulo: 'dando tchau', animacao: 'animate-bounce' },
-  dormindo: { simbolo: '💤', rotulo: 'dormindo', animacao: 'animate-pulse' },
-  festejando: { simbolo: '🎉', rotulo: 'comemorando', animacao: 'animate-bounce' },
-};
+/** As animações que dá para escolher na tela. 'andando' fica de fora: é a saída. */
+export const POSES_ESCOLHIVEIS: { pose: VoxelPose; rotulo: string }[] = [
+  { pose: 'estudando', rotulo: 'Estudando' },
+  { pose: 'parado', rotulo: 'De boa' },
+  { pose: 'tchau', rotulo: 'Acenando' },
+  { pose: 'festejando', rotulo: 'Comemorando' },
+  { pose: 'dormindo', rotulo: 'Dormindo' },
+];
 
 interface VoxelAvatarProps {
   characterId?: string;
@@ -250,7 +250,6 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
   poseRef.current = pose;
   const saidaRef = useRef(onSaiuDaTela);
   saidaRef.current = onSaiuDaTela;
-  const balao = EMOJI[pose];
 
   useEffect(() => {
     const cfg = getVoxelConfig(characterId);
@@ -346,18 +345,12 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
 
   if (!getVoxelConfig(characterId)) return null;
   return (
-    <div className={`relative ${className}`} style={{ height: altura, width: altura * 0.78 }}>
-      {balao && (
-        <span
-          className={`pointer-events-none absolute -top-1 right-0 z-10 select-none text-xl leading-none ${balao.animacao}`}
-          role="img"
-          aria-label={balao.rotulo}
-        >
-          {balao.simbolo}
-        </span>
-      )}
-      <div ref={palcoRef} aria-hidden="true" className="h-full w-full" style={{ perspective: 900 }} />
-    </div>
+    <div
+      ref={palcoRef}
+      aria-hidden="true"
+      className={className}
+      style={{ height: altura, width: altura * 0.78, perspective: 900 }}
+    />
   );
 };
 

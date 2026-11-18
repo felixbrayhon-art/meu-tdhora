@@ -3,7 +3,7 @@ import { chatWithFish } from '../services/geminiService';
 import { StudyProfile } from '../types';
 import { getCharacterSrc, getCharacter } from '../services/avatarService';
 import AvatarDisplay from './AvatarDisplay';
-import VoxelAvatar from './VoxelAvatar';
+import VoxelAvatar, { POSES_ESCOLHIVEIS, VoxelPose } from './VoxelAvatar';
 import { getVoxelConfig } from '../services/voxelCharacters';
 
 interface FishCompanionProps {
@@ -22,6 +22,9 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   // 'aqui' -> 'despedindo' -> 'andando' -> 'fora'. Não guardamos em disco: recarregar traz ele de volta.
   const [presenca, setPresenca] = useState<'aqui' | 'despedindo' | 'andando' | 'fora'>('aqui');
   const [cochilando, setCochilando] = useState(false);
+  // A animação que o aluno escolheu. Enquanto for a padrão, o cochilo automático
+  // ainda vale; a partir do momento em que ele escolhe algo, a escolha manda.
+  const [animacao, setAnimacao] = useState<VoxelPose>('estudando');
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
@@ -43,7 +46,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
 
   // Depois de um tempo sem ninguém mexer, ele cochila. Qualquer toque acorda.
   useEffect(() => {
-    if (presenca !== 'aqui' || isOpen) { setCochilando(false); return; }
+    if (presenca !== 'aqui' || isOpen || animacao !== 'estudando') { setCochilando(false); return; }
     let t = 0;
     const reiniciar = () => {
       setCochilando(false);
@@ -57,7 +60,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       clearTimeout(t);
       eventos.forEach((e) => window.removeEventListener(e, reiniciar));
     };
-  }, [presenca, isOpen]);
+  }, [presenca, isOpen, animacao]);
 
   const handleSend = async () => {
     if (!message.trim() || isTyping) return;
@@ -193,6 +196,26 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 >
                   Falar com {companionName}
                 </button>
+                <div className="border-t border-[#eee6d6] px-3 pb-2 pt-3 dark:border-white/10">
+                  <p className="mb-2 px-1 text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Animação</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {POSES_ESCOLHIVEIS.map(({ pose, rotulo }) => (
+                      <button
+                        key={pose}
+                        role="menuitemradio"
+                        aria-checked={animacao === pose}
+                        onClick={() => setAnimacao(pose)}
+                        className={`min-h-[36px] rounded-xl px-2 text-[10px] font-black uppercase tracking-wide transition-colors ${
+                          animacao === pose
+                            ? 'bg-[#473c33] text-white dark:bg-[#d9772b]'
+                            : 'bg-[#f7f3ed] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
+                        }`}
+                      >
+                        {rotulo}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <button
                   role="menuitem"
                   onClick={() => { setMenuAberto(false); setPresenca('despedindo'); }}
@@ -213,7 +236,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
               <VoxelAvatar
                 characterId={characterId}
                 altura={132}
-                pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : cochilando ? 'dormindo' : 'estudando'}
+                pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : cochilando ? 'dormindo' : animacao}
                 onSaiuDaTela={() => setPresenca('fora')}
               />
             </button>
