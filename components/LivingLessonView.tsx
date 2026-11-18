@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw } from './icons';
+import { ChevronLeft, ChevronRight, RotateCcw, ScrollText } from './icons';
 import { IllustratedLesson, IllustratedLessonBox, IllustratedLessonPage, StudyProfile, ExplanationStyle } from '../types';
 import { generateLivingLesson } from '../services/geminiService';
 import BookLoader from './BookLoader';
@@ -320,6 +320,7 @@ interface LivingLessonViewProps {
   profile?: StudyProfile;
   explanationStyle?: ExplanationStyle;
   onBack: () => void;
+  onStart?: (subject: string, topic: string) => void;
 }
 
 // One generation per request: React dev mode runs effects twice, and without
@@ -340,7 +341,9 @@ const RATE_LIMIT_RE = /\b429\b|rate[ _-]?limit|quota|limite de/i;
 const RATE_LIMIT_WAIT_MS = 20000;
 const MAX_AUTO_RETRIES = 3;
 
-const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, profile = 'VESTIBULAR', explanationStyle, onBack }) => {
+const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, profile = 'VESTIBULAR', explanationStyle, onBack, onStart }) => {
+  const [materiaDigitada, setMateriaDigitada] = useState('');
+  const [assuntoDigitado, setAssuntoDigitado] = useState('');
   const [lesson, setLesson] = useState<IllustratedLesson | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -383,12 +386,103 @@ const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, pro
     };
   }, [subject, topic, profile, explanationStyle, attempt, missingRequest]);
 
+  // A Aula Viva so era alcancavel pela grade de atalhos do painel, que saiu quando a
+  // navegacao virou uma barra unica. Sem formulario proprio, abrir pela barra caia num
+  // aviso mandando usar um painel que nao existe mais. Agora ela pergunta aqui mesmo.
   if (missingRequest) {
+    const pronto = materiaDigitada.trim().length > 1 && assuntoDigitado.trim().length > 1;
+    const comecar = () => { if (pronto && onStart) onStart(materiaDigitada.trim(), assuntoDigitado.trim()); };
+    // Mesmo molde da Aula Direta e da Aula Guiada: cartao de duas colunas, com a faixa de
+    // identidade a esquerda e o formulario a direita, para as tres telas de pesquisa
+    // parecerem a mesma familia.
     return (
-      <div className={`mx-auto flex w-full max-w-xl flex-col items-center gap-4 rounded-[28px] p-8 text-center ${PAPER}`}>
-        <h2 className={`font-logo text-2xl ${INK}`}>Escolha a matéria e o assunto</h2>
-        <p className={`text-sm leading-relaxed ${MUTED}`}>Abra a Aula Viva pelo painel, informando matéria e assunto, para montarmos a aula.</p>
-        <button type="button" onClick={onBack} className="rounded-full bg-[#bf4f1b] px-5 py-2 text-xs font-black uppercase tracking-wide text-white">Voltar ao painel</button>
+      <div className="mx-auto flex min-h-full w-full max-w-5xl items-center justify-center p-1 sm:p-4">
+        <section className={`w-full overflow-hidden rounded-[32px] border shadow-[0_18px_48px_rgba(71,60,51,0.14)] ${RULE} ${CARD}`}>
+          <header className={`flex flex-wrap items-center justify-between gap-4 border-b px-5 py-4 sm:px-7 ${RULE}`}>
+            <button onClick={onBack} className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition-colors hover:bg-[#f7f3ed] dark:hover:bg-white/5 ${MUTED}`}>
+              <ChevronLeft className="h-4 w-4" />
+              Voltar
+            </button>
+            <div className="flex items-center gap-2 rounded-full bg-[#fff6e8] px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#b4531d] dark:bg-[#3a2f22] dark:text-[#f5a46f]">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#f5b84b]" />
+              Aula viva
+            </div>
+          </header>
+
+          <div className="grid lg:grid-cols-[1.02fr_0.98fr]">
+            <div className="bg-[#e96f34] px-6 py-8 text-white sm:px-10 sm:py-12">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fecc73] text-[#473c33] shadow-lg shadow-black/10">
+                <ScrollText className="h-6 w-6" />
+              </div>
+              <p className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-[#ffe6cd]">Aula ilustrada</p>
+              <h1 className="mt-3 max-w-md text-3xl font-black uppercase leading-[0.98] tracking-tight sm:text-4xl">Sobre o que vamos aprender?</h1>
+              <p className="mt-5 max-w-md text-sm font-medium leading-relaxed text-[#ffeada]">Escolha uma matéria e um assunto. A IA monta uma aula de três páginas, com quadros da lei, linha do tempo e revisão.</p>
+              <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#ffe6cd]">01</p>
+                  <p className="mt-2 text-sm font-bold text-white">Defina o tema</p>
+                  <p className="mt-1 text-xs text-[#ffeada]">Comece pelo conteúdo que quer entender.</p>
+                </div>
+                <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#ffe6cd]">02</p>
+                  <p className="mt-2 text-sm font-bold text-white">Folheie a aula</p>
+                  <p className="mt-1 text-xs text-[#ffeada]">Três páginas para virar no seu ritmo.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-8 sm:px-10 sm:py-12">
+              <div className="mb-8">
+                <p className={`text-[10px] font-black uppercase tracking-[0.24em] ${MUTED}`}>Vamos começar</p>
+                <h2 className={`mt-2 text-2xl font-black tracking-tight ${INK}`}>Escolha a matéria e o assunto</h2>
+                <p className={`mt-2 text-sm font-medium leading-relaxed ${MUTED}`}>Use termos específicos para a aula achar o material certo no seu acervo.</p>
+              </div>
+
+              {onStart ? (
+                <>
+                  <div className="space-y-5">
+                    <label className="block">
+                      <span className={`mb-2 block text-[10px] font-black uppercase tracking-widest ${MUTED}`}>Matéria</span>
+                      <input
+                        value={materiaDigitada}
+                        onChange={(e) => setMateriaDigitada(e.target.value)}
+                        placeholder="Ex.: Direito Constitucional"
+                        autoFocus
+                        className={`w-full rounded-2xl border bg-[#fdfbf7] px-4 py-4 text-sm font-semibold outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15 dark:bg-[#24251f] ${RULE} ${INK}`}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className={`mb-2 block text-[10px] font-black uppercase tracking-widest ${MUTED}`}>Assunto</span>
+                      <input
+                        value={assuntoDigitado}
+                        onChange={(e) => setAssuntoDigitado(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') comecar(); }}
+                        placeholder="Ex.: Legítima defesa"
+                        className={`w-full rounded-2xl border bg-[#fdfbf7] px-4 py-4 text-sm font-semibold outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15 dark:bg-[#24251f] ${RULE} ${INK}`}
+                      />
+                    </label>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={comecar}
+                    disabled={!pronto}
+                    className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#473c33] px-5 py-4 text-xs font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_20px_rgba(71,60,51,0.18)] transition-all hover:bg-[#5a493f] disabled:cursor-not-allowed disabled:bg-[#d9d0c4] disabled:text-[#a79c8e] disabled:shadow-none"
+                  >
+                    Montar a aula
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <p className={`mt-4 text-center text-[10px] font-bold uppercase tracking-wider ${MUTED}`}>{pronto ? 'Pressione Enter no assunto para continuar' : 'Preencha a matéria e o assunto para liberar o botão'}</p>
+                </>
+              ) : (
+                <>
+                  <p className={`text-sm leading-relaxed ${MUTED}`}>Informe matéria e assunto para montarmos a aula.</p>
+                  <button type="button" onClick={onBack} className="mt-6 flex w-full items-center justify-center rounded-2xl bg-[#473c33] px-5 py-4 text-xs font-black uppercase tracking-[0.18em] text-white">Voltar</button>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
     );
   }

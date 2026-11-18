@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { AppView, TimerMode, Flashcard, FlashcardFolder, UserStats, QuizFolder, Notebook, QuizAttempt, StudyPlan, DailyHistory, StudySubject, StudySession, Activity, QuizQuestion, StudyProfile, FocusSettings, EditalConfig, SmartRevisionSystem, SmartRevisionItem, ErrorVaultItem, SocialState, StudyCycle, StudyCycleStep, HandwrittenNote, NoteFolder } from './types';
+import { AppView, HubCategory, TimerMode, Flashcard, FlashcardFolder, UserStats, QuizFolder, Notebook, QuizAttempt, StudyPlan, DailyHistory, StudySubject, StudySession, Activity, QuizQuestion, StudyProfile, FocusSettings, EditalConfig, SmartRevisionSystem, SmartRevisionItem, ErrorVaultItem, SocialState, StudyCycle, StudyCycleStep, HandwrittenNote, NoteFolder } from './types';
 import Header from './components/Header';
 import Hub from './components/Hub';
 import LoginModal from './components/LoginModal';
@@ -11,6 +11,7 @@ import AvatarBuilder from './components/AvatarBuilder';
 import ProfileSelection from './components/ProfileSelection';
 import { checkIsAdmin } from './services/questionBankService';
 import Sidebar from './components/Sidebar';
+import ToolTabs from './components/ToolTabs';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
 const TimerView = lazyWithRetry(() => import('./components/TimerView'));
@@ -59,7 +60,8 @@ const STUDY_VIEWS: AppView[] = [
 
 const readViewFromUrl = (): AppView => {
   const value = new URLSearchParams(window.location.search).get('view');
-  return APP_VIEW_IDS.includes(value as AppView) ? (value as AppView) : 'HUB';
+  // O app abre na Aula Direta: a antiga tela inicial era so um cardapio de atalhos.
+  return APP_VIEW_IDS.includes(value as AppView) ? (value as AppView) : 'AI_DIRECT';
 };
 
 import { auth, googleProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, db, handleFirestoreError, OperationType, FirebaseUser, cleanData } from './src/lib/firebase';
@@ -352,6 +354,9 @@ const App: React.FC = () => {
     return () => { root.style.fontSize = ''; root.style.removeProperty('--font-scale'); };
   }, [fontScale]);
 
+  // Categoria do painel (Edital, Organizacao, Relaxe, Motivacao): mora aqui porque quem
+  // troca e a barra unica do topo. 'ESTUDO' saiu da barra — era a grade de atalhos repetidos.
+  const [hubCategory, setHubCategory] = useState<HubCategory>('EDITAL');
   const pendingRevisionCount = getPendingRevisionsCount();
   const showRevisionNotice = STUDY_VIEWS.includes(currentView) && pendingRevisionCount > 0 && !isRevisionNoticeDismissed;
 
@@ -1298,8 +1303,21 @@ const App: React.FC = () => {
             </div>
           )}
           {!isQuestionSession && <header className="shrink-0 z-50">
-            <Header stats={stats} onLogoClick={() => setCurrentView('HUB')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} compact={isFocusLesson} onMenuClick={() => setIsMenuOpen(true)} />
+            <Header stats={stats} onLogoClick={() => setCurrentView('AI_DIRECT')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} compact={isFocusLesson} onMenuClick={() => setIsMenuOpen(true)} />
           </header>}
+          {/* Fora da área de rolagem de propósito: a barra fica à vista enquanto a ferramenta rola. */}
+          {!isQuestionSession && (
+            <div className="shrink-0 z-40">
+              <ToolTabs
+                currentView={currentView}
+                setView={setCurrentView}
+                hubCategory={hubCategory}
+                setHubCategory={setHubCategory}
+                pendingRevisions={pendingRevisionCount}
+                pendingFlashcards={dueFlashcardsCount}
+              />
+            </div>
+          )}
 
           <div ref={scrollAreaRef} data-main-scroll className={`flex-1 overflow-y-auto custom-scrollbar relative ${showMiniBar && !isQuestionSession && !isFocusLesson ? 'pb-28' : ''}`}>
             <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop preload="none" />
@@ -1399,6 +1417,8 @@ const App: React.FC = () => {
                 <Suspense fallback={<div role="status" className="flex min-h-[45vh] flex-col items-center justify-center gap-3 text-sm font-bold text-[#725442] dark:text-[#c2b6a6]"><span className="h-8 w-8 animate-spin rounded-full border-4 border-[#e96f34]/20 border-t-[#e96f34]" aria-hidden="true" />Carregando ferramenta…</div>}>
                   {currentView === 'HUB' && (
                     <Hub
+                      category={hubCategory}
+                      onCategoryChange={setHubCategory}
                       onReactivateEdital={() => { setEditalConfig({ ...editalConfig, isActive: true }); setCurrentView('EDITAL_VIEW'); }}
                       setView={setCurrentView}
                       setTimerMode={(mode) => {
@@ -1821,7 +1841,8 @@ const App: React.FC = () => {
                       topic={livingLessonData?.topic || ''}
                       profile={stats.studyProfile || 'VESTIBULAR'}
                       explanationStyle={stats.explanationStyle}
-                      onBack={() => setCurrentView('HUB')}
+                      onStart={(subject, topic) => setLivingLessonData({ subject, topic })}
+                      onBack={() => setCurrentView('AI_DIRECT')}
                     />
                   )}
 

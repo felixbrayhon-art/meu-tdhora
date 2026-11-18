@@ -32,10 +32,15 @@ interface HubProps {
   smartSystem: SmartRevisionSystem;
   isAdmin?: boolean;
   onReactivateEdital?: () => void;
+  category: HubCategory;
+  onCategoryChange: (c: HubCategory) => void;
 }
 
-const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats, activeChannel, setActiveChannel, isPlayingRain, setIsPlayingRain, editalConfig, setStrategicMode, setGuidedLessonData, setLivingLessonData, smartRevisionItems, isAIEnabled, isSyncing, attempts, folders, smartSystem, isAdmin, onReactivateEdital }) => {
-  const [activeTab, setActiveTab] = useState<HubCategory>('ESTUDO');
+const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats, activeChannel, setActiveChannel, isPlayingRain, setIsPlayingRain, editalConfig, setStrategicMode, setGuidedLessonData, setLivingLessonData, smartRevisionItems, isAIEnabled, isSyncing, attempts, folders, smartSystem, isAdmin, onReactivateEdital, category, onCategoryChange }) => {
+  // A barra de secoes subiu para a barra unica do topo (components/ToolTabs.tsx),
+  // entao quem manda na categoria agora e o App, nao este componente.
+  const activeTab = category;
+  const setActiveTab = onCategoryChange;
   const [copyFeedback, setCopyFeedback] = useState(false);
 
   // Guided Lesson Input States
@@ -79,54 +84,6 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
 
   return (
     <div className="hub-main-layout space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-28">
-      <div className="sticky top-0 z-20 flex items-center gap-2 rounded-[20px] border border-[#e9e0d4] bg-white p-2 shadow-sm dark:border-white/[0.06] dark:bg-[#272019] md:hidden">
-        <label htmlFor="hub-section" className="sr-only">Seção do painel</label>
-        <select id="hub-section" value={activeTab} onChange={(event) => setActiveTab(event.target.value as HubCategory)} className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#e9e0d4] bg-[#fdfbf7] px-3 text-xs font-black uppercase tracking-wide text-[#473c33] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e96f34] dark:border-white/10 dark:bg-[#1c1712] dark:text-[#f4ebdd]">
-          <option value="ESTUDO">Estudo</option>
-          <option value="EDITAL">{stats.studyProfile === 'FACULDADE' ? 'Grade curricular' : 'Edital'}</option>
-          <option value="ORGANIZACAO">Organização</option>
-          <option value="RELAXE">Relaxe</option>
-          <option value="REVISAO">Revisão IA</option>
-          <option value="MOTIVACAO">Motivação</option>
-        </select>
-        <button onClick={() => setView('PERFORMANCE')} className="min-h-11 rounded-xl bg-[#473c33] px-4 text-[10px] font-black uppercase tracking-wide text-white transition hover:bg-[#5a4b3f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e96f34] dark:bg-[#d9772b] dark:hover:bg-[#c96a25]">
-          Desempenho
-        </button>
-      </div>
-
-      <nav aria-label="Navegação do painel" className="sticky top-0 z-20 hidden w-full max-w-full items-center justify-start gap-2 overflow-x-auto rounded-[24px] border border-[#e9e0d4] bg-white p-2 shadow-[0_8px_22px_rgba(71,60,51,0.07)] no-scrollbar scroll-smooth dark:border-white/[0.06] dark:bg-[#272019] dark:shadow-none md:flex xl:justify-center">
-        <div role="tablist" aria-label="Seções do painel" onKeyDown={handleHubTabKeyDown} className="flex shrink-0 items-center gap-1">
-        <button role="tab" tabIndex={activeTab === 'ESTUDO' ? 0 : -1} aria-selected={activeTab === 'ESTUDO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('ESTUDO')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'ESTUDO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <BookOpen className="w-4 h-4" />
-          Estudo
-        </button>
-        <button role="tab" tabIndex={activeTab === 'EDITAL' ? 0 : -1} aria-selected={activeTab === 'EDITAL'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('EDITAL')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'EDITAL' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <FileText className="w-4 h-4" />
-          {stats.studyProfile === 'FACULDADE' ? 'Grade' : 'Edital'}
-        </button>
-        <button role="tab" tabIndex={activeTab === 'ORGANIZACAO' ? 0 : -1} aria-selected={activeTab === 'ORGANIZACAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('ORGANIZACAO')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'ORGANIZACAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <ClipboardList className="w-4 h-4" />
-          Organização
-        </button>
-        <button role="tab" tabIndex={activeTab === 'RELAXE' ? 0 : -1} aria-selected={activeTab === 'RELAXE'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('RELAXE')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'RELAXE' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <Smile className="w-4 h-4" />
-          Relaxe
-        </button>
-        <button role="tab" tabIndex={activeTab === 'REVISAO' ? 0 : -1} aria-selected={activeTab === 'REVISAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('REVISAO')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'REVISAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <Zap className="w-4 h-4" />
-          Revisão IA
-        </button>
-        <button role="tab" tabIndex={activeTab === 'MOTIVACAO' ? 0 : -1} aria-selected={activeTab === 'MOTIVACAO'} aria-controls="hub-tabpanel" onClick={() => setActiveTab('MOTIVACAO')} className={`shrink-0 whitespace-nowrap rounded-xl min-h-[44px] px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs transition-all ${activeTab === 'MOTIVACAO' ? 'bg-[#473c33] dark:bg-[#d9772b] text-white shadow-md dark:shadow-none' : 'text-[#8f8375] dark:text-[#a89680] hover:bg-[#f7f3ed] dark:hover:bg-[#3a2f22] hover:text-[#473c33] dark:hover:text-[#f4ebdd]'}`}>
-          <Heart className="w-4 h-4" />
-          Motivação
-        </button>
-        </div>
-        <div aria-hidden="true" className="h-8 w-px shrink-0 bg-[#e9e0d4] dark:bg-white/10" />
-        <button onClick={() => setView('PERFORMANCE')} className="min-h-[44px] shrink-0 whitespace-nowrap rounded-xl px-3 py-3 flex items-center justify-center gap-2 font-bold text-xs text-[#8f8375] transition-all hover:bg-[#f7f3ed] hover:text-[#473c33] dark:text-[#c2baa0] dark:hover:bg-[#3a2f22] dark:hover:text-[#f4ebdd]">
-          <BarChart3 className="w-4 h-4" />
-          Desempenho
-        </button>
-      </nav>
 
       <section aria-labelledby="hub-section-title" className="hub-section-heading px-1">
         <p className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-[#b65f2e] dark:text-[#e8894a]">

@@ -23,6 +23,19 @@ interface AIViewProps {
 
 const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, explanationStyle: initialStyle, onPracticeTopic }) => {
   const [topic, setTopic] = useState(prefill?.topic || '');
+  // Matéria separada do assunto. Além de ficar mais claro para o aluno, a busca de
+  // fontes (functions/_lib/fontes.ts) separa no dois-pontos e usa a parte depois dele
+  // como o tema específico — então "Direito Penal: legítima defesa" procura melhor do
+  // que a frase inteira. A matéria é opcional: só o assunto já gera.
+  const [subject, setSubject] = useState('');
+  // O que de fato foi gerado, que nem sempre e o que esta digitado: no modo estrategico
+  // vem do edital, e numa prefill vem de outra tela. O titulo e o salvar usam isto.
+  const [temaGerado, setTemaGerado] = useState(prefill?.topic || '');
+  const temaComposto = () => {
+    const m = subject.trim();
+    const a = topic.trim();
+    return m && a ? `${m}: ${a}` : a;
+  };
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -52,7 +65,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
   }, [prefill]);
 
   const handleGenerate = async (targetTopic?: string) => {
-    const finalTopic = targetTopic || (strategicMode ? (selectedTopic ? `${selectedSubject}: ${selectedTopic}` : '') : topic);
+    const finalTopic = targetTopic || (strategicMode ? (selectedTopic ? `${selectedSubject}: ${selectedTopic}` : '') : temaComposto());
     if (!finalTopic.trim()) return;
 
     setLoading(true);
@@ -75,7 +88,8 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
 
       const contentWithoutAutoCards = { ...content, flashcards: [] };
       setResult(content); // Keep them in state but maybe don't "activate" them yet
-      if (!targetTopic) setTopic(finalTopic);
+      setTemaGerado(finalTopic);
+      if (targetTopic) setTopic(targetTopic);
       onNewContent(contentWithoutAutoCards);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
@@ -227,10 +241,17 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                       </label>
                     </div>
                   ) : (
-                    <label className="block">
-                      <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Tema</span>
-                      <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Ex.: Responsabilidade civil" className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" onKeyDown={(e) => e.key === 'Enter' && canGenerate && handleGenerate()} />
-                    </label>
+                    <div className="space-y-4">
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Matéria <span className="font-bold normal-case tracking-normal text-[#a79c8e]">(opcional)</span></span>
+                        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ex.: Direito Penal" className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" onKeyDown={(e) => e.key === 'Enter' && canGenerate && handleGenerate()} />
+                      </label>
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Assunto</span>
+                        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Ex.: Legítima defesa" className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" onKeyDown={(e) => e.key === 'Enter' && canGenerate && handleGenerate()} />
+                        <span className="mt-2 block text-[10px] font-medium text-[#a79c8e]">A matéria ajuda a IA a achar o material certo no seu acervo.</span>
+                      </label>
+                    </div>
                   )}
 
 
@@ -260,7 +281,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
               <div className="flex items-center gap-6">
                 <div className="hidden md:flex flex-col items-end">
                   <span className={isDark ? "text-[10px] font-black tracking-[0.4em] uppercase mb-1 text-[#fecc73]" : "text-[#bd5628] text-[10px] font-black tracking-[0.4em] uppercase mb-1"}>Material pronto</span>
-                  <span className={isDark ? "font-black tracking-tighter uppercase text-white" : "text-[#473c33] font-black tracking-tighter uppercase"}>{topic}</span>
+                  <span className={isDark ? "font-black tracking-tighter uppercase text-white" : "text-[#473c33] font-black tracking-tighter uppercase"}>{temaGerado || topic}</span>
                 </div>
                 <button onClick={onBack} className={isDark ? "min-h-[44px] hover:text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-[0.4em] uppercase hover:bg-red-500 transition-all active:scale-95 bg-white/10 text-white" : "min-h-[44px] bg-stone-200 text-[#473c33] hover:text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-[0.4em] uppercase hover:bg-red-500 transition-all active:scale-95"}>
                   SAIR
@@ -281,7 +302,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                     </div>
                     <div className="min-w-0">
                       <h2 className={isDark ? "font-black uppercase text-[10px] tracking-[0.4em] mb-2 text-[#fecc73]" : "text-[#bd5628] font-black uppercase text-[10px] tracking-[0.4em] mb-2"}>Resumo Executivo Expandido</h2>
-                      <h3 className={isDark ? "text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase leading-none text-white break-words" : "text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase text-[#473c33] leading-none break-words"}>{topic}</h3>
+                      <h3 className={isDark ? "text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase leading-none text-white break-words" : "text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase text-[#473c33] leading-none break-words"}>{temaGerado || topic}</h3>
                     </div>
                   </div>
 
@@ -365,7 +386,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                     </h3>
                     <p className="text-[#473c33] text-sm mb-8 sm:mb-12 font-bold leading-relaxed uppercase tracking-widest text-[10px] opacity-80">Leve o tema para o TDHQuestões e treine com questões conferidas</p>
 
-                    <button onClick={() => onPracticeTopic?.(topic)} className="w-full py-6 sm:py-8 rounded-[28px] sm:rounded-[35px] font-black text-base sm:text-lg flex items-center justify-center gap-4 transition-all shadow-xl bg-[#473c33] text-[#fdfbf7] hover:bg-[#2f2720]">
+                    <button onClick={() => onPracticeTopic?.(temaGerado || topic)} className="w-full py-6 sm:py-8 rounded-[28px] sm:rounded-[35px] font-black text-base sm:text-lg flex items-center justify-center gap-4 transition-all shadow-xl bg-[#473c33] text-[#fdfbf7] hover:bg-[#2f2720]">
                       IR PARA AS QUESTÕES
                       <svg className="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7-7 7M3 12h18" />
@@ -399,7 +420,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
         )}
       </div>
 
-      {showSaveModal && <SaveToFolderModal folders={folders} suggestedName={topic} onConfirm={handleConfirmSave} onClose={() => setShowSaveModal(false)} />}
+      {showSaveModal && <SaveToFolderModal folders={folders} suggestedName={temaGerado || topic} onConfirm={handleConfirmSave} onClose={() => setShowSaveModal(false)} />}
     </div>
   );
 };
