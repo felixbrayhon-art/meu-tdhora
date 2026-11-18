@@ -30,12 +30,31 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const mascoteRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [chatHistory, isTyping]);
+
+  // Fecha o menu pelo Esc ou clicando fora dele. O clique no próprio boneco já
+  // alterna, então ele fica de fora para não abrir e fechar na mesma batida.
+  useEffect(() => {
+    if (!menuAberto) return;
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuAberto(false); };
+    const fora = (e: PointerEvent) => {
+      const alvo = e.target as Node;
+      if (!menuRef.current?.contains(alvo) && !mascoteRef.current?.contains(alvo)) setMenuAberto(false);
+    };
+    window.addEventListener('keydown', tecla);
+    window.addEventListener('pointerdown', fora);
+    return () => {
+      window.removeEventListener('keydown', tecla);
+      window.removeEventListener('pointerdown', fora);
+    };
+  }, [menuAberto]);
 
   // Acena primeiro, depois sai andando. Sem a pausa a despedida não se lê.
   useEffect(() => {
@@ -188,10 +207,24 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
           <div className="relative flex flex-col items-end gap-2">
             {menuAberto && presenca === 'aqui' && (
               /* z-20: o boneco vem depois no DOM e pintava por cima do menu. */
-              <div role="menu" className="relative z-20 flex flex-col overflow-hidden rounded-2xl border border-[#e9e0d4] bg-white shadow-xl dark:border-white/10 dark:bg-[#2d2e27]">
+              <div ref={menuRef} role="menu" className="relative z-20 flex flex-col overflow-hidden rounded-2xl border border-[#e9e0d4] bg-white shadow-xl dark:border-white/10 dark:bg-[#2d2e27]">
+                <div className="flex items-center justify-between gap-2 pl-4 pr-1 pt-1">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Companheiro</span>
+                  <button
+                    type="button"
+                    onClick={() => setMenuAberto(false)}
+                    aria-label="Fechar as opções"
+                    title="Fechar"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33] dark:text-[#a89680] dark:hover:bg-white/5"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
                 {/* A conversa é o motivo de o mascote existir: vem como botão cheio,
                     não como mais um item de lista do mesmo peso dos outros. */}
-                <div className="p-2 pb-1">
+                <div className="px-2 pb-1">
                   <button
                     role="menuitem"
                     onClick={() => { setMenuAberto(false); setIsOpen(true); }}
@@ -236,6 +269,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
               </div>
             )}
             <button
+              ref={mascoteRef}
               onClick={() => { if (presenca === 'aqui') setMenuAberto((v) => !v); }}
               aria-label={`Opções de ${companionName}`}
               aria-expanded={menuAberto}

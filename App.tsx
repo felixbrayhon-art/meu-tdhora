@@ -1240,8 +1240,10 @@ const App: React.FC = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Na tela do Timer o relógio já aparece grande: a mini-barra só duplicaria e cobriria os botões.
-  const showMiniBar = showGlobalBar && currentView !== 'TIMER';
+  // Na tela do Timer o relógio já aparece grande: a mini-barra só duplicaria e cobriria
+  // os botões. Na tela inicial (Aula Direta) ela some: é onde o aluno escolhe o que
+  // estudar, e um cronômetro correndo ali apressa antes mesmo de ter o que estudar.
+  const showMiniBar = showGlobalBar && currentView !== 'TIMER' && currentView !== 'AI_DIRECT';
   const sidebarProps = {
     currentView,
     questionSession: isQuestionSession,
