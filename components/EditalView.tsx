@@ -137,7 +137,7 @@ const EditalView: React.FC<EditalViewProps> = ({ studyProfile = 'VESTIBULAR', co
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
             </svg>
-            Voltar ao Hub
+            Voltar
           </button>
           <div className="flex items-center gap-4">
             {studyProfile === 'FACULDADE' ? (

@@ -196,7 +196,7 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
         </h2>
         <p className="text-gray-400 font-bold max-w-sm">Você concluiu o bloco, respondeu às questões e revisou os erros.</p>
         <button onClick={onBack} className="min-h-[44px] bg-[#473c33] text-white px-10 py-5 rounded-[25px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
-          Voltar ao Hub
+          Voltar
         </button>
       </div>
     );

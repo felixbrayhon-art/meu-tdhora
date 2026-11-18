@@ -303,7 +303,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
               </button>
               <div className="flex items-center gap-2 rounded-full bg-[#fff6e8] px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#d88b2f]">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-[#f5b84b]" />
-                Aula direta
+                Aula guiada
               </div>
             </header>
 

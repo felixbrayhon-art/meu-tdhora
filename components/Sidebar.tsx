@@ -191,7 +191,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-8 custom-scrollbar">
         {/* Main Nav */}
         <div className="space-y-1">
-          {navButton({ id: 'HUB', label: 'Painel Principal', icon: Home })}
+          {/* Desde que a navegacao virou uma barra unica, a tela inicial e a Aula Direta e
+              o Hub virou so as secoes (Edital, Organizacao, Relaxe, Motivacao). Chamar de
+              "Painel Principal" prometia uma tela inicial que nao existe mais. */}
+          {navButton({ id: 'HUB', label: 'Painel', icon: Home })}
           {navGroups.map((group) => collapsed ? (
             <div key={group.id} className="space-y-1 border-t border-[#eee6d6] pt-1 dark:border-white/[0.06]">{group.items.map(navButton)}</div>
           ) : (

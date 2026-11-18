@@ -1448,16 +1448,16 @@ const App: React.FC = () => {
                     />
                   )}
 
-                  {currentView === 'ADMIN_QUESTION_REVIEW' && user && <AdminQuestionReview uid={user.uid} onBack={() => setCurrentView('HUB')} />}
+                  {currentView === 'ADMIN_QUESTION_REVIEW' && user && <AdminQuestionReview uid={user.uid} onBack={() => setCurrentView('AI_DIRECT')} />}
 
-                  {currentView === 'VR_METHOD' && <VRMethodView uid={user?.uid ?? null} onBack={() => setCurrentView('HUB')} />}
+                  {currentView === 'VR_METHOD' && <VRMethodView uid={user?.uid ?? null} onBack={() => setCurrentView('AI_DIRECT')} />}
 
-                  {currentView === 'TIMER' && <TimerView isActive={globalTimerActive} setIsActive={setGlobalTimerActive} seconds={globalTimerSeconds} setSeconds={setGlobalTimerSeconds} mode={timerMode} onBack={() => setCurrentView('HUB')} onComplete={() => logStudyMinutes(timerMode === TimerMode.EMERGENCY ? 5 : 25)} />}
+                  {currentView === 'TIMER' && <TimerView isActive={globalTimerActive} setIsActive={setGlobalTimerActive} seconds={globalTimerSeconds} setSeconds={setGlobalTimerSeconds} mode={timerMode} onBack={() => setCurrentView('AI_DIRECT')} onComplete={() => logStudyMinutes(timerMode === TimerMode.EMERGENCY ? 5 : 25)} />}
 
                   {currentView === 'AI_DIRECT' && (
                     <AIView
                       onBack={() => {
-                        setCurrentView('HUB');
+                        setCurrentView('AI_DIRECT');
                         setStrategicMode(false);
                       }}
                       folders={folders}
@@ -1497,7 +1497,7 @@ const App: React.FC = () => {
                       folders={flashcardFolders}
                       setFolders={setFlashcardFolders}
                       onBack={() => {
-                        setCurrentView('HUB');
+                        setCurrentView('AI_DIRECT');
                         setStrategicMode(false);
                       }}
                       studyProfile={stats.studyProfile!}
@@ -1520,7 +1520,7 @@ const App: React.FC = () => {
                       onQuestionSessionChange={setTDHQuestionSession}
                       onQuestionsReady={handleStartFilteredQuiz}
                       onBack={() => {
-                        setCurrentView('HUB');
+                        setCurrentView('AI_DIRECT');
                         setStrategicMode(false);
                       }}
                       folders={folders}
@@ -1612,7 +1612,7 @@ const App: React.FC = () => {
                         )
                       }
                       onBack={() => {
-                        setCurrentView('HUB');
+                        setCurrentView('AI_DIRECT');
                         setStrategicMode(false);
                       }}
                       onPlayQuiz={(fid, nid) => {
@@ -1669,7 +1669,7 @@ const App: React.FC = () => {
                   )}
                   {currentView === 'STUDY_PLAN' && (
                     <StudyPlanView
-                      onBack={() => setCurrentView('HUB')}
+                      onBack={() => setCurrentView('AI_DIRECT')}
                       plan={studyPlan}
                       history={history}
                       onUpdatePlan={setStudyPlan}
@@ -1690,17 +1690,17 @@ const App: React.FC = () => {
                       }}
                     />
                   )}
-                  {currentView === 'FOCUS_MODE' && <FocusModeView settings={focusSettings} onUpdate={setFocusSettings} onBack={() => setCurrentView('HUB')} />}
+                  {currentView === 'FOCUS_MODE' && <FocusModeView settings={focusSettings} onUpdate={setFocusSettings} onBack={() => setCurrentView('AI_DIRECT')} />}
                   {currentView === 'DYNAMIC_TIMER' && (
                     <DynamicTimer
                       studyProfile={stats.studyProfile!}
                       onBack={() => {
-                        setCurrentView('HUB');
+                        setCurrentView('AI_DIRECT');
                         setStrategicMode(false);
                       }}
                       onComplete={(mins) => {
                         logStudyMinutes(mins);
-                        setCurrentView('HUB');
+                        setCurrentView('AI_DIRECT');
                         setStrategicMode(false);
                       }}
                       strategicMode={strategicMode}
@@ -1715,7 +1715,7 @@ const App: React.FC = () => {
                         setEditalConfig(c);
                         setCurrentView('EDITAL_VIEW');
                       }}
-                      onBack={() => setCurrentView('HUB')}
+                      onBack={() => setCurrentView('AI_DIRECT')}
                     />
                   )}
 
@@ -1724,10 +1724,10 @@ const App: React.FC = () => {
                       studyProfile={stats.studyProfile!}
                       config={editalConfig}
                       onUpdate={setEditalConfig}
-                      onBack={() => setCurrentView('HUB')}
+                      onBack={() => setCurrentView('AI_DIRECT')}
                       onDisable={() => {
                         setEditalConfig({ ...editalConfig, isActive: false });
-                        setCurrentView('HUB');
+                        setCurrentView('AI_DIRECT');
                       }}
                       onTopicComplete={(topic, subject, isCompleted) => {
                         if (isCompleted) {
@@ -1756,11 +1756,11 @@ const App: React.FC = () => {
                     />
                   )}
 
-                  {currentView === 'SMART_REVISION' && <SmartRevisionView items={smartSystem.queue} vault={smartSystem.vault} profile={stats.studyProfile!} plan={studyPlan} onBack={() => setCurrentView('HUB')} onComplete={handleSmartComplete} onResolveVault={resolveVault} />}
+                  {currentView === 'SMART_REVISION' && <SmartRevisionView items={smartSystem.queue} vault={smartSystem.vault} profile={stats.studyProfile!} plan={studyPlan} onBack={() => setCurrentView('AI_DIRECT')} onComplete={handleSmartComplete} onResolveVault={resolveVault} />}
 
                   {currentView === 'STUDY_CYCLE' && (
                     <StudyCycleView
-                      onBack={() => setCurrentView('HUB')}
+                      onBack={() => setCurrentView('AI_DIRECT')}
                       edital={editalConfig}
                       currentCycle={studyCycle}
                       onUpdateCycle={setStudyCycle}
@@ -1776,12 +1776,12 @@ const App: React.FC = () => {
                     />
                   )}
 
-                  {currentView === 'SOCIAL_MODULE' && <SocialModule myUid={user?.uid} myStats={stats} isLoggedIn={!!user} onLogin={handleLogin} isStudyMode={globalTimerActive} onBack={() => setCurrentView('HUB')} />}
+                  {currentView === 'SOCIAL_MODULE' && <SocialModule myUid={user?.uid} myStats={stats} isLoggedIn={!!user} onLogin={handleLogin} isStudyMode={globalTimerActive} onBack={() => setCurrentView('AI_DIRECT')} />}
 
-                  {currentView === 'PROFILE' && <ProfileView stats={stats} onUpdate={setStats} onBack={() => setCurrentView('HUB')} onOpenCatalog={() => setCurrentView('FISH_CATALOG')} myId={socialState.myId} isAIEnabled={isAIEnabled} setIsAIEnabled={setIsAIEnabled} onLogout={handleLogout} onLogin={handleLogin} isLoggedIn={!!user} onNotify={setToast} />}
-                  {currentView === 'COMMUNITY' && <CommunityView activities={activities} onBack={() => setCurrentView('HUB')} onPostManual={handleManualPost} />}
-                  {currentView === 'FISH_CATALOG' && <FishCatalog onBack={() => setCurrentView('HUB')} />}
-                  {currentView === 'VADE_MECUM' && <VadeMecumView onBack={() => setCurrentView('HUB')} />}
+                  {currentView === 'PROFILE' && <ProfileView stats={stats} onUpdate={setStats} onBack={() => setCurrentView('AI_DIRECT')} onOpenCatalog={() => setCurrentView('FISH_CATALOG')} myId={socialState.myId} isAIEnabled={isAIEnabled} setIsAIEnabled={setIsAIEnabled} onLogout={handleLogout} onLogin={handleLogin} isLoggedIn={!!user} onNotify={setToast} />}
+                  {currentView === 'COMMUNITY' && <CommunityView activities={activities} onBack={() => setCurrentView('AI_DIRECT')} onPostManual={handleManualPost} />}
+                  {currentView === 'FISH_CATALOG' && <FishCatalog onBack={() => setCurrentView('AI_DIRECT')} />}
+                  {currentView === 'VADE_MECUM' && <VadeMecumView onBack={() => setCurrentView('AI_DIRECT')} />}
                   {currentView === 'NOTES' && (
                     <NotesView
                       notes={notes}
@@ -1810,10 +1810,10 @@ const App: React.FC = () => {
                       }}
                       onRenameFolder={(id, name) => setNoteFolders((prev) => prev.map((f) => (f.id === id ? { ...f, name } : f)))}
                       onUpdateFolderColor={(id, color) => setNoteFolders((prev) => prev.map((f) => (f.id === id ? { ...f, color } : f)))}
-                      onBack={() => setCurrentView('HUB')}
+                      onBack={() => setCurrentView('AI_DIRECT')}
                     />
                   )}
-                  {currentView === 'PERFORMANCE' && <PerformanceView attempts={attempts} folders={folders} smartSystem={smartSystem} stats={stats} onBack={() => setCurrentView('HUB')} />}
+                  {currentView === 'PERFORMANCE' && <PerformanceView attempts={attempts} folders={folders} smartSystem={smartSystem} stats={stats} onBack={() => setCurrentView('AI_DIRECT')} />}
                   {currentView === 'GUIDED_LESSON' && (
                     <GuidedLessonView
                       subject={guidedLessonData?.subject || ''}
@@ -1825,13 +1825,13 @@ const App: React.FC = () => {
                         if (guidedLessonData?.initialLesson) {
                           setCurrentView('SAVED_GUIDED_LESSONS');
                         } else {
-                          setCurrentView('HUB');
+                          setCurrentView('AI_DIRECT');
                         }
                       }}
                       onComplete={(score) => {
                         addCoins(score * 10);
                         addXP(score * 20);
-                        setCurrentView('HUB');
+                        setCurrentView('AI_DIRECT');
                       }}
                     />
                   )}
@@ -1858,8 +1858,8 @@ const App: React.FC = () => {
                       }}
                     />
                   )}
-                  {currentView === 'DRIVE_READER' && <DriveReader onBack={() => setCurrentView('HUB')} studyProfile={stats.studyProfile} activeChannel={activeChannel} setActiveChannel={setActiveChannel} isPlayingRain={isPlayingRain} setIsPlayingRain={setIsPlayingRain} audioVolume={audioVolume} setAudioVolume={setAudioVolume} />}
-                  {currentView === 'DIGITAL_NOTEBOOK' && <DigitalNotebookView key={user?.uid || 'guest'} owner={user?.uid || 'guest'} onBack={() => setCurrentView('HUB')} />}
+                  {currentView === 'DRIVE_READER' && <DriveReader onBack={() => setCurrentView('AI_DIRECT')} studyProfile={stats.studyProfile} activeChannel={activeChannel} setActiveChannel={setActiveChannel} isPlayingRain={isPlayingRain} setIsPlayingRain={setIsPlayingRain} audioVolume={audioVolume} setAudioVolume={setAudioVolume} />}
+                  {currentView === 'DIGITAL_NOTEBOOK' && <DigitalNotebookView key={user?.uid || 'guest'} owner={user?.uid || 'guest'} onBack={() => setCurrentView('AI_DIRECT')} />}
                 </Suspense>
                 </>
               {currentView !== 'LIVING_LESSON' && !isQuestionSession && (
