@@ -25,7 +25,8 @@ const B = (p: Pai, w: number, h: number, d: number, x: number, y: number, z: num
   b.style.cssText = 'position:absolute;transform-style:preserve-3d';
   b.style.transform = `translate3d(${x}px,${y}px,${z}px)${rot}`;
   b.appendChild(criarFace(w, h, `translateZ(${d / 2}px)`, cor, op));
-  b.appendChild(criarFace(w, h, `rotateY(180deg) translateZ(${d / 2}px)`, tom(cor, 0.8), op));
+  // Sem a face de trás: o boneco não gira mais, e nas poses extremas (de perfil,
+  // andando) ele chega a 76°, ainda abaixo dos 90° em que as costas apareceriam.
   b.appendChild(criarFace(d, h, `rotateY(90deg) translateZ(${w / 2}px)`, tom(cor, 0.88), op));
   b.appendChild(criarFace(d, h, `rotateY(-90deg) translateZ(${w / 2}px)`, tom(cor, 0.72), op));
   b.appendChild(criarFace(w, d, `rotateX(90deg) translateZ(${h / 2}px)`, tom(cor, 1.16), op));
@@ -272,7 +273,10 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
 
     const menosMovimento = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const escala = altura / 212;
-    let ry = -18;
+    // Parado ele fica de três quartos, virado para quem lê. Não gira: girar sem
+    // parar puxava o olho do aluno e obrigava a desenhar as costas de cada cubo.
+    const DESCANSO = -20;
+    let ry = DESCANSO;
     let quadro = 0;
     let inicio = 0;
     let anterior = 0;
@@ -306,11 +310,10 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
         poseAnterior = pose;
       }
 
-      // Girar o tempo todo atrapalha quando ele está se despedindo ou andando:
-      // nessas horas ele vira de frente, ou de perfil para o lado em que caminha.
-      const alvo = andando ? 76 : voltando ? -76 : tchau || dormindo ? 0 : null;
-      if (alvo === null) { if (!menosMovimento) ry += 13 * dt; }
-      else ry += (alvo - ry) * (1 - Math.exp(-7.5 * dt));
+      // Andando ele vira de perfil para o lado em que caminha; acenando e dormindo,
+      // de frente; no resto do tempo volta para o descanso de três quartos.
+      const alvo = andando ? 76 : voltando ? -76 : tchau || dormindo ? 0 : DESCANSO;
+      ry += (alvo - ry) * (1 - Math.exp(-7.5 * dt));
 
       const salto = festa ? Math.abs(Math.sin(t * 3)) : 0;
       const passo = caminhando ? Math.sin(t * 7.5) : 0;

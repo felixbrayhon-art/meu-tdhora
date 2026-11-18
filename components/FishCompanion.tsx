@@ -189,14 +189,21 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
             {menuAberto && presenca === 'aqui' && (
               /* z-20: o boneco vem depois no DOM e pintava por cima do menu. */
               <div role="menu" className="relative z-20 flex flex-col overflow-hidden rounded-2xl border border-[#e9e0d4] bg-white shadow-xl dark:border-white/10 dark:bg-[#2d2e27]">
-                <button
-                  role="menuitem"
-                  onClick={() => { setMenuAberto(false); setIsOpen(true); }}
-                  className="min-h-[44px] px-4 text-left text-xs font-black uppercase tracking-wide text-[#473c33] transition-colors hover:bg-[#f7f3ed] dark:text-[#f2efd2] dark:hover:bg-white/5"
-                >
-                  Falar com {companionName}
-                </button>
-                <div className="border-t border-[#eee6d6] px-3 pb-2 pt-3 dark:border-white/10">
+                {/* A conversa é o motivo de o mascote existir: vem como botão cheio,
+                    não como mais um item de lista do mesmo peso dos outros. */}
+                <div className="p-2 pb-1">
+                  <button
+                    role="menuitem"
+                    onClick={() => { setMenuAberto(false); setIsOpen(true); }}
+                    className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#e96f34] px-4 text-xs font-black uppercase tracking-wide text-white shadow-[0_6px_14px_rgba(233,111,52,0.3)] transition-all hover:bg-[#d55f27] active:scale-95"
+                  >
+                    <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.9 9.9 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    Falar com {companionName}
+                  </button>
+                </div>
+                <div className="px-3 pb-2 pt-1">
                   <p className="mb-2 px-1 text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Animação</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {POSES_ESCOLHIVEIS.map(({ pose, rotulo }) => (
@@ -206,8 +213,11 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                         aria-checked={animacao === pose}
                         onClick={() => setAnimacao(pose)}
                         className={`min-h-[36px] rounded-xl px-2 text-[10px] font-black uppercase tracking-wide transition-colors ${
+                          // Sem dark:bg-[#d9772b] aqui: index.css força essa classe para
+                          // o laranja forte nos dois temas, e o chip competia com o botão
+                          // de conversar, que é a ação principal do menu.
                           animacao === pose
-                            ? 'bg-[#473c33] text-white dark:bg-[#d9772b]'
+                            ? 'bg-[#473c33] text-white'
                             : 'bg-[#f7f3ed] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
                         }`}
                       >
