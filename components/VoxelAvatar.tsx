@@ -29,7 +29,8 @@ const B = (p: Pai, w: number, h: number, d: number, x: number, y: number, z: num
   b.appendChild(criarFace(d, h, `rotateY(90deg) translateZ(${w / 2}px)`, tom(cor, 0.88), op));
   b.appendChild(criarFace(d, h, `rotateY(-90deg) translateZ(${w / 2}px)`, tom(cor, 0.72), op));
   b.appendChild(criarFace(w, d, `rotateX(90deg) translateZ(${h / 2}px)`, tom(cor, 1.16), op));
-  b.appendChild(criarFace(w, d, `rotateX(-90deg) translateZ(${h / 2}px)`, tom(cor, 0.58), op));
+  // A face de baixo não entra: a câmera olha de cima (rotateX(-10deg)), então ela
+  // nunca aparece, e são 54 elementos a menos para o navegador reprojetar por quadro.
   p.appendChild(b);
   return b;
 };
@@ -345,10 +346,12 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
 
   if (!getVoxelConfig(characterId)) return null;
   return (
+    // O flex centraliza o ponto de origem do 3D. Sem ele o boneco é desenhado a
+    // partir do canto de cima e sobe para fora da caixa, por cima do que estiver ali.
     <div
       ref={palcoRef}
       aria-hidden="true"
-      className={className}
+      className={`flex items-center justify-center ${className}`}
       style={{ height: altura, width: altura * 0.78, perspective: 900 }}
     />
   );
