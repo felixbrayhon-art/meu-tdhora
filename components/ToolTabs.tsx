@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { AppView, HubCategory } from '../types';
-import { FileText, Layers, Zap, Brain, Scale, BookOpen, BarChart3, ClipboardList, Clock, Smile, Heart } from './icons';
+import { FileText, Layers, Zap, Brain, Scale, BookOpen, BarChart3, ClipboardList, Clock, Smile, Heart, ScrollText } from './icons';
 
 // Barra de ferramentas que fica sempre visível, logo abaixo do cabeçalho. Antes a tela
 // inicial era um cardápio de cards que só levavam para telas que a barra lateral já abria;
@@ -15,11 +15,13 @@ type Aba = { chave: string; label: string; icon: typeof Zap; view: AppView; cate
 // repetia a barra lateral. A primeira aba e a Aula Direta: e onde o app abre.
 const TABS: Aba[] = [
   { chave: 'AI_DIRECT', label: 'Aula Direta', icon: Zap, view: 'AI_DIRECT' },
+  { chave: 'GUIDED_LESSON', label: 'Aula Guiada', icon: BookOpen, view: 'GUIDED_LESSON' },
+  { chave: 'LIVING_LESSON', label: 'Aula Viva', icon: ScrollText, view: 'LIVING_LESSON' },
   { chave: 'TDH_QUESTOES', label: 'TDHQuestões', icon: FileText, view: 'TDH_QUESTOES' },
   { chave: 'FLASHCARDS', label: 'Flashcards', icon: Layers, view: 'FLASHCARDS' },
   { chave: 'SMART_REVISION', label: 'Revisão IA', icon: Brain, view: 'SMART_REVISION' },
   { chave: 'VADE_MECUM', label: 'Vade Mecum', icon: Scale, view: 'VADE_MECUM' },
-  { chave: 'MATERIALS', label: 'Materiais', icon: BookOpen, view: 'MATERIALS' },
+  { chave: 'MATERIALS', label: 'Materiais', icon: ClipboardList, view: 'MATERIALS' },
   { chave: 'HUB_EDITAL', label: 'Edital', icon: ClipboardList, view: 'HUB', categoria: 'EDITAL' },
   { chave: 'HUB_ORGANIZACAO', label: 'Organização', icon: Clock, view: 'HUB', categoria: 'ORGANIZACAO' },
   { chave: 'HUB_RELAXE', label: 'Relaxe', icon: Smile, view: 'HUB', categoria: 'RELAXE' },

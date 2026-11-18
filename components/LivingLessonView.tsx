@@ -320,6 +320,7 @@ interface LivingLessonViewProps {
   profile?: StudyProfile;
   explanationStyle?: ExplanationStyle;
   onBack: () => void;
+  onStart?: (subject: string, topic: string) => void;
 }
 
 // One generation per request: React dev mode runs effects twice, and without
@@ -340,7 +341,9 @@ const RATE_LIMIT_RE = /\b429\b|rate[ _-]?limit|quota|limite de/i;
 const RATE_LIMIT_WAIT_MS = 20000;
 const MAX_AUTO_RETRIES = 3;
 
-const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, profile = 'VESTIBULAR', explanationStyle, onBack }) => {
+const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, profile = 'VESTIBULAR', explanationStyle, onBack, onStart }) => {
+  const [materiaDigitada, setMateriaDigitada] = useState('');
+  const [assuntoDigitado, setAssuntoDigitado] = useState('');
   const [lesson, setLesson] = useState<IllustratedLesson | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -383,13 +386,52 @@ const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, pro
     };
   }, [subject, topic, profile, explanationStyle, attempt, missingRequest]);
 
+  // A Aula Viva so era alcancavel pela grade de atalhos do painel, que saiu quando a
+  // navegacao virou uma barra unica. Sem formulario proprio, abrir pela barra caia num
+  // aviso mandando usar um painel que nao existe mais. Agora ela pergunta aqui mesmo.
   if (missingRequest) {
+    const pronto = materiaDigitada.trim().length > 1 && assuntoDigitado.trim().length > 1;
     return (
-      <div className={`mx-auto flex w-full max-w-xl flex-col items-center gap-4 rounded-[28px] p-8 text-center ${PAPER}`}>
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (pronto && onStart) onStart(materiaDigitada.trim(), assuntoDigitado.trim()); }}
+        className={`mx-auto flex w-full max-w-xl flex-col gap-4 rounded-[28px] p-8 ${PAPER}`}
+      >
         <h2 className={`font-logo text-2xl ${INK}`}>Escolha a matéria e o assunto</h2>
-        <p className={`text-sm leading-relaxed ${MUTED}`}>Abra a Aula Viva pelo painel, informando matéria e assunto, para montarmos a aula.</p>
-        <button type="button" onClick={onBack} className="rounded-full bg-[#bf4f1b] px-5 py-2 text-xs font-black uppercase tracking-wide text-white">Voltar ao painel</button>
-      </div>
+        {onStart ? (
+          <>
+            <label className="flex flex-col gap-1 text-left">
+              <span className={`text-[11px] font-black uppercase tracking-widest ${MUTED}`}>Matéria</span>
+              <input
+                value={materiaDigitada}
+                onChange={(e) => setMateriaDigitada(e.target.value)}
+                placeholder="Ex.: Direito Constitucional"
+                className={`w-full rounded-2xl border px-4 py-4 text-sm font-semibold outline-none transition-all focus:ring-4 focus:ring-[#bf4f1b]/15 ${RULE} ${CARD} ${INK}`}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-left">
+              <span className={`text-[11px] font-black uppercase tracking-widest ${MUTED}`}>Assunto</span>
+              <input
+                value={assuntoDigitado}
+                onChange={(e) => setAssuntoDigitado(e.target.value)}
+                placeholder="Ex.: Legítima defesa"
+                className={`w-full rounded-2xl border px-4 py-4 text-sm font-semibold outline-none transition-all focus:ring-4 focus:ring-[#bf4f1b]/15 ${RULE} ${CARD} ${INK}`}
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={!pronto}
+              className="rounded-full bg-[#bf4f1b] px-5 py-3 text-xs font-black uppercase tracking-wide text-white transition disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Montar a aula
+            </button>
+          </>
+        ) : (
+          <>
+            <p className={`text-sm leading-relaxed ${MUTED}`}>Informe matéria e assunto para montarmos a aula.</p>
+            <button type="button" onClick={onBack} className="rounded-full bg-[#bf4f1b] px-5 py-2 text-xs font-black uppercase tracking-wide text-white">Voltar</button>
+          </>
+        )}
+      </form>
     );
   }
 

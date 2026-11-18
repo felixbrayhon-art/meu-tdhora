@@ -1306,7 +1306,7 @@ const App: React.FC = () => {
             <Header stats={stats} onLogoClick={() => setCurrentView('AI_DIRECT')} isAIEnabled={isAIEnabled} isDarkMode={isDarkMode} compact={isFocusLesson} onMenuClick={() => setIsMenuOpen(true)} />
           </header>}
           {/* Fora da área de rolagem de propósito: a barra fica à vista enquanto a ferramenta rola. */}
-          {!isQuestionSession && !isFocusLesson && (
+          {!isQuestionSession && (
             <div className="shrink-0 z-40">
               <ToolTabs
                 currentView={currentView}
@@ -1841,7 +1841,8 @@ const App: React.FC = () => {
                       topic={livingLessonData?.topic || ''}
                       profile={stats.studyProfile || 'VESTIBULAR'}
                       explanationStyle={stats.explanationStyle}
-                      onBack={() => setCurrentView('HUB')}
+                      onStart={(subject, topic) => setLivingLessonData({ subject, topic })}
+                      onBack={() => setCurrentView('AI_DIRECT')}
                     />
                   )}
 
