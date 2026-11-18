@@ -138,7 +138,7 @@ const PerformanceView: React.FC<PerformanceViewProps> = ({ attempts, folders, sm
           </div>
           <button onClick={onBack} className="min-h-[44px] flex items-center gap-2 text-[#725442] hover:text-[#473c33] transition-colors font-black uppercase text-[10px] tracking-[0.16em] bg-white px-4 py-3 rounded-2xl border border-[#e9e0d4] shadow-[0_6px_18px_rgba(71,60,51,0.06)]">
             <ChevronLeft className="w-5 h-5" />
-            Voltar ao Hub
+            Voltar
           </button>
         </div>
 

@@ -172,7 +172,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
               <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#eee6d6] px-5 py-4 sm:px-7">
                 <button onClick={onBack} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
-                  Voltar ao Hub
+                  Voltar
                 </button>
                 <div className="flex items-center gap-2 rounded-full bg-[#fff6e8] px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#8f5614] dark:text-[#f5a46f]">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-[#f5b84b]" />
