@@ -18,6 +18,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
   const temVoxel = !!getVoxelConfig(characterId);
+  const [menuAberto, setMenuAberto] = useState(false);
+  // 'aqui' -> 'despedindo' -> 'andando' -> 'fora'. Não guardamos em disco: recarregar traz ele de volta.
+  const [presenca, setPresenca] = useState<'aqui' | 'despedindo' | 'andando' | 'fora'>('aqui');
+  const [cochilando, setCochilando] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
@@ -29,6 +33,31 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [chatHistory, isTyping]);
+
+  // Acena primeiro, depois sai andando. Sem a pausa a despedida não se lê.
+  useEffect(() => {
+    if (presenca !== 'despedindo') return;
+    const t = setTimeout(() => setPresenca('andando'), 1500);
+    return () => clearTimeout(t);
+  }, [presenca]);
+
+  // Depois de um tempo sem ninguém mexer, ele cochila. Qualquer toque acorda.
+  useEffect(() => {
+    if (presenca !== 'aqui' || isOpen) { setCochilando(false); return; }
+    let t = 0;
+    const reiniciar = () => {
+      setCochilando(false);
+      clearTimeout(t);
+      t = window.setTimeout(() => setCochilando(true), 90_000);
+    };
+    reiniciar();
+    const eventos: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'wheel'];
+    eventos.forEach((e) => window.addEventListener(e, reiniciar, { passive: true }));
+    return () => {
+      clearTimeout(t);
+      eventos.forEach((e) => window.removeEventListener(e, reiniciar));
+    };
+  }, [presenca, isOpen]);
 
   const handleSend = async () => {
     if (!message.trim() || isTyping) return;
@@ -122,7 +151,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
           {/* Input do Chat */}
           <div className="p-4 bg-white border-t border-gray-100">
             <div className="relative flex items-center bg-gray-50 rounded-[25px] p-1 pr-2">
-              <input value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSend()} placeholder={`Pergunte ao ${companionName}...`} className="flex-1 bg-transparent px-4 py-3 text-sm focus:outline-none font-medium" />
+              <input value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSend()} placeholder={`Falar com ${companionName}...`} className="flex-1 bg-transparent px-4 py-3 text-sm focus:outline-none font-medium" />
               <button onClick={handleSend} disabled={!message.trim() || isTyping} className="bg-[#fed386] text-white p-2.5 rounded-2xl hover:bg-[#fecc73] transition-all disabled:opacity-30 disabled:grayscale">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 12h14M12 5l7 7-7 7" />
@@ -143,19 +172,62 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       ) : characterId && temVoxel ? (
         // O personagem inteiro, montado em cubos CSS. Fundo transparente e silhueta
         // estreita: ocupa menos que a arte 2D de corpo inteiro, que cobria botões.
-        <button onClick={() => setIsOpen(true)} aria-label={`Pergunte ao ${companionName}`} title={`Pergunte ao ${companionName}`} className="relative group transition-transform duration-300 hover:scale-105 active:scale-95">
-          <VoxelAvatar characterId={characterId} altura={132} />
-          <div className="absolute top-1 right-0 w-4 h-4 bg-[#fff1e8] border-2 border-white rounded-full animate-pulse"></div>
-        </button>
+        presenca === 'fora' ? (
+          <button
+            onClick={() => setPresenca('aqui')}
+            aria-label={`Chamar ${companionName} de volta`}
+            title={`Chamar ${companionName} de volta`}
+            className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#fed386] text-lg shadow-lg transition-transform hover:scale-110 active:scale-95"
+          >
+            <span aria-hidden="true">🫱</span>
+          </button>
+        ) : (
+          <div className="relative flex flex-col items-end gap-2">
+            {menuAberto && presenca === 'aqui' && (
+              /* z-20: o boneco vem depois no DOM e pintava por cima do menu. */
+              <div role="menu" className="relative z-20 flex flex-col overflow-hidden rounded-2xl border border-[#e9e0d4] bg-white shadow-xl dark:border-white/10 dark:bg-[#2d2e27]">
+                <button
+                  role="menuitem"
+                  onClick={() => { setMenuAberto(false); setIsOpen(true); }}
+                  className="min-h-[44px] px-4 text-left text-xs font-black uppercase tracking-wide text-[#473c33] transition-colors hover:bg-[#f7f3ed] dark:text-[#f2efd2] dark:hover:bg-white/5"
+                >
+                  Falar com {companionName}
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => { setMenuAberto(false); setPresenca('despedindo'); }}
+                  className="min-h-[44px] border-t border-[#eee6d6] px-4 text-left text-xs font-black uppercase tracking-wide text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33] dark:border-white/10 dark:text-[#a89680] dark:hover:bg-white/5"
+                >
+                  Pedir para sair da tela
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => { if (presenca === 'aqui') setMenuAberto((v) => !v); }}
+              aria-label={`Opções de ${companionName}`}
+              aria-expanded={menuAberto}
+              aria-haspopup="menu"
+              title={companionName}
+              className="relative transition-transform duration-300 hover:scale-105 active:scale-95"
+            >
+              <VoxelAvatar
+                characterId={characterId}
+                altura={132}
+                pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : cochilando ? 'dormindo' : 'estudando'}
+                onSaiuDaTela={() => setPresenca('fora')}
+              />
+            </button>
+          </div>
+        )
       ) : characterId ? (
-        <button onClick={() => setIsOpen(true)} aria-label={`Pergunte ao ${companionName}`} title={`Pergunte ao ${companionName}`} className="relative group h-14 w-14 lg:h-16 lg:w-16 rounded-full bg-[#fed386] shadow-xl border-2 border-white transition-transform duration-300 hover:scale-110 active:scale-95">
+        <button onClick={() => setIsOpen(true)} aria-label={`Falar com ${companionName}`} title={`Falar com ${companionName}`} className="relative group h-14 w-14 lg:h-16 lg:w-16 rounded-full bg-[#fed386] shadow-xl border-2 border-white transition-transform duration-300 hover:scale-110 active:scale-95">
           <AvatarDisplay characterId={characterId} className="h-full w-full rounded-full" />
           <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#fff1e8] border-2 border-white rounded-full animate-pulse"></div>
         </button>
       ) : (
         <button onClick={() => setIsOpen(true)} className="w-20 h-20 rounded-[30px] shadow-2xl flex items-center justify-center transition-all duration-500 hover:scale-110 active:scale-95 group overflow-hidden bg-[#fed386] hover:bg-[#fecc73]">
           <div className="relative flex items-center justify-center w-full h-full">
-            <img src={companionIconSrc} alt={`Pergunte ao ${companionName}`} className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-300" />
+            <img src={companionIconSrc} alt={`Falar com ${companionName}`} className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-300" />
             <div className="absolute top-1 right-1 w-4 h-4 bg-[#fff1e8] border-2 border-white rounded-full animate-pulse"></div>
           </div>
         </button>

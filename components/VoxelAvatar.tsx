@@ -223,19 +223,34 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo };
 };
 
+export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'festejando';
+
+// O balãozinho que aparece sobre a cabeça em cada pose. Fica fora do 3D de
+// propósito: emoji em cubos ficaria ilegível no tamanho do mascote.
+const EMOJI: Partial<Record<VoxelPose, { simbolo: string; rotulo: string; animacao: string }>> = {
+  estudando: { simbolo: '📖', rotulo: 'estudando', animacao: 'animate-pulse' },
+  tchau: { simbolo: '👋', rotulo: 'dando tchau', animacao: 'animate-bounce' },
+  dormindo: { simbolo: '💤', rotulo: 'dormindo', animacao: 'animate-pulse' },
+  festejando: { simbolo: '🎉', rotulo: 'comemorando', animacao: 'animate-bounce' },
+};
+
 interface VoxelAvatarProps {
   characterId?: string;
   /** Altura do palco em px. O boneco é escalado para caber nela. */
   altura?: number;
-  /** Comemorar: pula em vez de só respirar. */
-  festejando?: boolean;
+  pose?: VoxelPose;
+  /** Chamado uma vez quando ele termina de andar para fora da tela. */
+  onSaiuDaTela?: () => void;
   className?: string;
 }
 
-const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, festejando = false, className = '' }) => {
+const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', onSaiuDaTela, className = '' }) => {
   const palcoRef = useRef<HTMLDivElement>(null);
-  const festaRef = useRef(festejando);
-  festaRef.current = festejando;
+  const poseRef = useRef(pose);
+  poseRef.current = pose;
+  const saidaRef = useRef(onSaiuDaTela);
+  saidaRef.current = onSaiuDaTela;
+  const balao = EMOJI[pose];
 
   useEffect(() => {
     const cfg = getVoxelConfig(characterId);
@@ -251,22 +266,42 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, fe
     cena.appendChild(sombra);
     const p = montar(cfg, cena);
 
-    const parado = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const menosMovimento = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const escala = altura / 212;
     let ry = -18;
     let quadro = 0;
     let inicio = 0;
+    let anterior = 0;
+    let desloc = 0;
+    let avisou = false;
 
     const desenhar = (ms: number) => {
       if (!inicio) inicio = ms;
       const t = (ms - inicio) / 1000;
-      if (!parado) ry += 0.22;
-      const festa = festaRef.current;
+      // Tudo que avança (giro e caminhada) anda por segundo, não por quadro: em aba
+      // de fundo ou aparelho fraco o navegador entrega menos quadros, e por quadro
+      // a despedida levaria meio minuto.
+      const dt = anterior ? Math.min((ms - anterior) / 1000, 0.05) : 0.016;
+      anterior = ms;
+      const pose = poseRef.current;
+      const andando = pose === 'andando';
+      const dormindo = pose === 'dormindo';
+      const tchau = pose === 'tchau';
+      const estudando = pose === 'estudando';
+      const festa = pose === 'festejando';
+
+      // Girar o tempo todo atrapalha quando ele está se despedindo ou indo embora:
+      // nessas horas ele vira de frente (ou de perfil, para andar) e fica assim.
+      const alvo = andando ? 76 : tchau || dormindo ? 0 : null;
+      if (alvo === null) { if (!menosMovimento) ry += 13 * dt; }
+      else ry += (alvo - ry) * (1 - Math.exp(-7.5 * dt));
+
       const salto = festa ? Math.abs(Math.sin(t * 3)) : 0;
-      const sobe = salto * 26;
-      const balanco = festa ? 0 : Math.sin(t * 2) * 2.5;
-      const giroCabeca = Math.sin(t * 0.7) * 9;
-      const perna = -salto * 22;
+      const passo = andando ? Math.sin(t * 7.5) : 0;
+      const sobe = salto * 26 + (andando ? Math.abs(passo) * 5 : 0);
+      const balanco = festa || andando ? 0 : Math.sin(t * (dormindo ? 0.9 : 2)) * (dormindo ? 4.5 : 2.5);
+      const perna = andando ? passo * 30 : -salto * 22;
+
       let zE = 6;
       let zD = -6;
       let bE = 6;
@@ -276,31 +311,53 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, fe
       if (cfg.dir === 'prancheta') bD = 22;
       if (cfg.dir === 'rifle') bD = 30;
       if (cfg.esq === 'vara') { zE = 9; bE = 4; }
+      if (andando) { bE += passo * 22; bD -= passo * 22; }
+      if (tchau) { zD = -150 + Math.sin(t * 9) * 22; bD = 0; }
       zE -= salto * 12;
       zD += salto * 12;
+
+      const inclinaCabeca = dormindo ? 26 : estudando ? 16 : -salto * 6;
+      const tombaCabeca = dormindo ? 12 : 0;
+      const olhaEmVolta = dormindo || estudando || andando ? 0 : Math.sin(t * 0.7) * 9;
+
       p.raiz.style.transform = `translate3d(0,${-sobe}px,0)`;
-      p.corpo.style.transform = `translate3d(0,${-balanco}px,0)`;
-      p.cabeca.style.transform = `translate3d(0,-52px,0) rotateY(${giroCabeca}deg) rotateX(${-salto * 6}deg)`;
+      p.corpo.style.transform = `translate3d(0,${-balanco}px,0) rotateX(${estudando ? 6 : 0}deg)`;
+      p.cabeca.style.transform = `translate3d(0,-52px,0) rotateY(${olhaEmVolta}deg) rotateX(${inclinaCabeca}deg) rotateZ(${tombaCabeca}deg)`;
       p.bracoE.style.transform = `translate3d(-34px,-48px,0) rotateZ(${zE}deg) rotateX(${bE}deg)`;
       p.bracoD.style.transform = `translate3d(34px,-48px,0) rotateZ(${zD}deg) rotateX(${bD}deg)`;
       p.pernaE.style.transform = `translate3d(-13px,-4px,0) rotateX(${perna}deg)`;
-      p.pernaD.style.transform = `translate3d(13px,-4px,0) rotateX(${perna}deg)`;
+      p.pernaD.style.transform = `translate3d(13px,-4px,0) rotateX(${-perna}deg)`;
       if (p.rabo) p.rabo.style.transform = `translate3d(0,-12px,-19px) rotateY(${Math.sin(t * 1.6) * 14}deg)`;
       pivot.style.transform = `scale(${escala}) rotateX(-10deg) rotateY(${ry}deg)`;
+
+      if (andando) {
+        desloc += (menosMovimento ? 700 : 200) * dt;
+        palco.style.transform = `translateX(${desloc}px)`;
+        if (desloc > 260 && !avisou) { avisou = true; saidaRef.current?.(); }
+      } else if (desloc !== 0) {
+        desloc = 0;
+        palco.style.transform = '';
+      }
       quadro = requestAnimationFrame(desenhar);
     };
     quadro = requestAnimationFrame(desenhar);
-    return () => { cancelAnimationFrame(quadro); palco.textContent = ''; };
+    return () => { cancelAnimationFrame(quadro); palco.textContent = ''; palco.style.transform = ''; };
   }, [characterId, altura]);
 
   if (!getVoxelConfig(characterId)) return null;
   return (
-    <div
-      ref={palcoRef}
-      aria-hidden="true"
-      className={`flex items-center justify-center ${className}`}
-      style={{ height: altura, width: altura * 0.78, perspective: 900 }}
-    />
+    <div className={`relative ${className}`} style={{ height: altura, width: altura * 0.78 }}>
+      {balao && (
+        <span
+          className={`pointer-events-none absolute -top-1 right-0 z-10 select-none text-xl leading-none ${balao.animacao}`}
+          role="img"
+          aria-label={balao.rotulo}
+        >
+          {balao.simbolo}
+        </span>
+      )}
+      <div ref={palcoRef} aria-hidden="true" className="h-full w-full" style={{ perspective: 900 }} />
+    </div>
   );
 };
 
