@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { AppView } from '../types';
-import { Home, FileText, Layers, Zap, Brain, Scale, BookOpen, BarChart3 } from './icons';
+import { AppView, HubCategory } from '../types';
+import { FileText, Layers, Zap, Brain, Scale, BookOpen, BarChart3, ClipboardList, Clock, Smile, Heart } from './icons';
 
 // Barra de ferramentas que fica sempre visível, logo abaixo do cabeçalho. Antes a tela
 // inicial era um cardápio de cards que só levavam para telas que a barra lateral já abria;
@@ -8,25 +8,35 @@ import { Home, FileText, Layers, Zap, Brain, Scale, BookOpen, BarChart3 } from '
 //
 // A lista é rolável de propósito: são mais de quinze ferramentas no app e só cabem umas
 // sete na largura de um celular. Aqui ficam as de uso diário; o resto continua na lateral.
-const TABS: { id: AppView; label: string; icon: typeof Home }[] = [
-  { id: 'HUB', label: 'Início', icon: Home },
-  { id: 'TDH_QUESTOES', label: 'TDHQuestões', icon: FileText },
-  { id: 'FLASHCARDS', label: 'Flashcards', icon: Layers },
-  { id: 'AI_DIRECT', label: 'Aula Direta', icon: Zap },
-  { id: 'SMART_REVISION', label: 'Revisão IA', icon: Brain },
-  { id: 'VADE_MECUM', label: 'Vade Mecum', icon: Scale },
-  { id: 'MATERIALS', label: 'Materiais', icon: BookOpen },
-  { id: 'PERFORMANCE', label: 'Desempenho', icon: BarChart3 },
+type Aba = { chave: string; label: string; icon: typeof Zap; view: AppView; categoria?: HubCategory };
+
+// Barra unica: as ferramentas e as secoes do painel ficam lado a lado aqui. Antes havia duas
+// barras empilhadas — esta e a de categorias dentro do Hub — e uma grade de cards que so
+// repetia a barra lateral. A primeira aba e a Aula Direta: e onde o app abre.
+const TABS: Aba[] = [
+  { chave: 'AI_DIRECT', label: 'Aula Direta', icon: Zap, view: 'AI_DIRECT' },
+  { chave: 'TDH_QUESTOES', label: 'TDHQuestões', icon: FileText, view: 'TDH_QUESTOES' },
+  { chave: 'FLASHCARDS', label: 'Flashcards', icon: Layers, view: 'FLASHCARDS' },
+  { chave: 'SMART_REVISION', label: 'Revisão IA', icon: Brain, view: 'SMART_REVISION' },
+  { chave: 'VADE_MECUM', label: 'Vade Mecum', icon: Scale, view: 'VADE_MECUM' },
+  { chave: 'MATERIALS', label: 'Materiais', icon: BookOpen, view: 'MATERIALS' },
+  { chave: 'HUB_EDITAL', label: 'Edital', icon: ClipboardList, view: 'HUB', categoria: 'EDITAL' },
+  { chave: 'HUB_ORGANIZACAO', label: 'Organização', icon: Clock, view: 'HUB', categoria: 'ORGANIZACAO' },
+  { chave: 'HUB_RELAXE', label: 'Relaxe', icon: Smile, view: 'HUB', categoria: 'RELAXE' },
+  { chave: 'HUB_MOTIVACAO', label: 'Motivação', icon: Heart, view: 'HUB', categoria: 'MOTIVACAO' },
+  { chave: 'PERFORMANCE', label: 'Desempenho', icon: BarChart3, view: 'PERFORMANCE' },
 ];
 
 interface ToolTabsProps {
   currentView: AppView;
   setView: (view: AppView) => void;
+  hubCategory: HubCategory;
+  setHubCategory: (c: HubCategory) => void;
   pendingRevisions?: number;
   pendingFlashcards?: number;
 }
 
-const ToolTabs: React.FC<ToolTabsProps> = ({ currentView, setView, pendingRevisions = 0, pendingFlashcards = 0 }) => {
+const ToolTabs: React.FC<ToolTabsProps> = ({ currentView, setView, hubCategory, setHubCategory, pendingRevisions = 0, pendingFlashcards = 0 }) => {
   const barra = useRef<HTMLDivElement>(null);
 
   // Numa tela estreita a aba ativa pode estar fora de vista depois de uma troca pela
@@ -34,10 +44,10 @@ const ToolTabs: React.FC<ToolTabsProps> = ({ currentView, setView, pendingRevisi
   useEffect(() => {
     const ativo = barra.current?.querySelector('[data-ativo="sim"]') as HTMLElement | null;
     ativo?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
-  }, [currentView]);
+  }, [currentView, hubCategory]);
 
-  const contagem = (id: AppView) =>
-    id === 'SMART_REVISION' ? pendingRevisions : id === 'FLASHCARDS' ? pendingFlashcards : 0;
+  const contagem = (aba: Aba) =>
+    aba.view === 'SMART_REVISION' ? pendingRevisions : aba.view === 'FLASHCARDS' ? pendingFlashcards : 0;
 
   return (
     <nav aria-label="Ferramentas" className="border-b border-[#e9e0d4] bg-[#fdfbf7] dark:border-white/10 dark:bg-[#1c1712]">
@@ -45,16 +55,17 @@ const ToolTabs: React.FC<ToolTabsProps> = ({ currentView, setView, pendingRevisi
         ref={barra}
         className="mx-auto flex max-w-[1760px] gap-1 overflow-x-auto px-3 py-2 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {TABS.map(({ id, label, icon: Icone }) => {
-          const ativo = currentView === id;
-          const pendentes = contagem(id);
+        {TABS.map((aba) => {
+          const { chave, label, icon: Icone, view, categoria } = aba;
+          const ativo = currentView === view && (!categoria || hubCategory === categoria);
+          const pendentes = contagem(aba);
           return (
             <button
-              key={id}
+              key={chave}
               type="button"
               data-ativo={ativo ? 'sim' : 'nao'}
               aria-current={ativo ? 'page' : undefined}
-              onClick={() => setView(id)}
+              onClick={() => { if (categoria) setHubCategory(categoria); setView(view); }}
               className={`relative flex min-h-[44px] shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e96f34] ${
                 ativo
                   ? 'bg-[#473c33] text-white shadow-md dark:bg-[#d9772b] dark:shadow-none'
