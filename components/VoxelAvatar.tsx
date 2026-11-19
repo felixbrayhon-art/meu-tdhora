@@ -91,9 +91,14 @@ const ADERECO: Record<string, (a: Pai, cor?: string) => void> = {
     B(g, 18, 18, 6, 0, -6, 10, '#5a3a1f', 1, ' rotateZ(14deg)'); B(g, 12, 70, 9, 22, -74, 0, '#6b4529', 1, ' rotateZ(14deg)');
   },
   guitarra: (a) => {
-    const g = J(a, 0, 46, -16);
-    B(g, 40, 54, 14, 0, 0, 0, '#8a2be2', 1, ' rotateZ(-20deg)'); B(g, 11, 72, 8, -20, -62, 0, '#2a1f2e', 1, ' rotateZ(-20deg)');
-    B(g, 16, 14, 6, 4, -10, 9, '#b9bec4', 1, ' rotateZ(-20deg)');
+    const g = J(a, 0, 46, 18);
+    B(g, 40, 54, 14, 0, 0, 0, '#8a2be2', 1, ' rotateZ(-20deg)');
+    B(g, 26, 22, 14, -4, -28, 0, '#8a2be2', 1, ' rotateZ(-20deg)');
+    B(g, 11, 72, 8, -20, -62, 0, '#4c302f', 1, ' rotateZ(-20deg)');
+    B(g, 18, 14, 9, -34, -96, 0, '#5b3a35', 1, ' rotateZ(-20deg)');
+    B(g, 16, 14, 6, 4, -10, 9, '#e5dfd4', 1, ' rotateZ(-20deg)');
+    B(g, 3, 74, 3, -17, -46, 10, '#e8d7b4', 1, ' rotateZ(-20deg)');
+    B(g, 10, 4, 4, 3, 8, 10, '#b9bec4', 1, ' rotateZ(-20deg)');
   },
   rifle: (a) => { B(a, 10, 78, 12, 0, 46, 14, '#2e2e33', 1, ' rotateX(72deg)'); B(a, 9, 24, 10, 0, 34, 6, '#3f3228'); },
   chave: (a) => { B(a, 8, 34, 8, 0, 52, 2, '#b9bec4'); B(a, 18, 12, 9, 0, 70, 2, '#b9bec4'); },
@@ -103,18 +108,41 @@ const ADERECO: Record<string, (a: Pai, cor?: string) => void> = {
     const p = J(a, 0, 44, 8);
     B(p, 20, 30, 16, 0, -18, 0, '#2f6fd0'); B(p, 15, 15, 15, 0, -38, 2, '#2f6fd0'); B(p, 9, 7, 9, 0, -38, 12, '#2a2a2e');
     B(p, 12, 26, 8, 0, 4, -6, '#e9b949'); B(p, 10, 14, 6, -11, -20, 0, '#e9b949'); B(p, 10, 14, 6, 11, -20, 0, '#e9b949');
+    B(p, 6, 6, 4, -4, -40, 10, '#fffaf2'); B(p, 3, 3, 3, -4, -40, 13, '#252525');
+    B(p, 7, 10, 5, -12, -17, 4, '#6da5e0'); B(p, 7, 10, 5, 12, -17, 4, '#6da5e0');
   },
   nada: () => { },
 };
 
 interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement; fone: HTMLElement; adEsq: HTMLElement; adDir: HTMLElement; aquario?: HTMLElement; olhos?: HTMLElement; cronometro: HTMLElement }
 
-const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
+const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, varianteNutricionista: 1 | 2 | 3 = 1, variantePolicial: 1 | 2 | 3 = 1, varianteRegata: 1 | 2 | 3 = 1, varianteRaposa: 1 | 2 | 3 = 1, varianteRoqueiro: 1 | 2 | 3 = 1, varianteSenhor: 1 | 2 | 3 = 1, varianteSurfista: 1 | 2 | 3 = 1, varianteNativo: 1 | 2 | 3 = 1, varianteCaramelo: 1 | 2 | 3 = 1): Partes => {
   const alturaPerna = cfg.curto ? 20 : 28;
+  const pescador = cfg.nome === 'Guaxinim Pescador';
+  const regataOriginal = cfg.nome === 'Rapaz de Regata' && varianteRegata === 1;
+  const raposaOriginal = cfg.nome === 'Raposa Estilosa' && varianteRaposa === 1;
+  const roqueiroOriginal = cfg.nome === 'Roqueiro' && varianteRoqueiro === 1;
+  const senhorOriginal = cfg.nome === 'Senhor de Boné' && varianteSenhor === 1;
+  const surfistaOriginal = cfg.nome === 'Surfista' && varianteSurfista === 1;
+  const nativoOriginal = cfg.nome === 'Nativo' && varianteNativo === 1;
+  const carameloOriginal = cfg.nome === 'Vira-Lata Caramelo' && varianteCaramelo === 1;
   if (cfg.pranchaLado) {
-    B(cena, 30, 132, 13, 56, -28, -6, '#f3ece0');
-    B(cena, 17, 78, 5, 56, -40, 2, '#e96f34'); B(cena, 11, 40, 5, 56, 6, 2, '#f5b84b');
-    B(cena, 30, 13, 13, 56, 32, -6, '#e0d6c4');
+    if (surfistaOriginal) {
+      // Degraus em cubos afinam o bico e a rabeta da prancha.
+      B(cena, 28, 101, 13, 56, -27, -6, '#f3ece0');
+      B(cena, 22, 12, 13, 56, -83, -6, '#f3ece0');
+      B(cena, 14, 9, 13, 56, -93, -6, '#f3ece0');
+      B(cena, 22, 12, 13, 56, 29, -6, '#e0d6c4');
+      B(cena, 8, 88, 4, 56, -24, 2, '#e96f34');
+      B(cena, 22, 6, 4, 56, -72, 2, '#4a9ea7');
+      B(cena, 27, 6, 4, 56, -61, 2, '#4a9ea7');
+      B(cena, 25, 6, 4, 56, 12, 2, '#4a9ea7');
+      B(cena, 15, 5, 4, 56, 24, 2, '#4a9ea7');
+    } else {
+      B(cena, 30, 132, 13, 56, -28, -6, '#f3ece0');
+      B(cena, 17, 78, 5, 56, -40, 2, '#e96f34'); B(cena, 11, 40, 5, 56, 6, 2, '#f5b84b');
+      B(cena, 30, 13, 13, 56, 32, -6, '#e0d6c4');
+    }
   }
   const raiz = J(cena, 0, 0, 0);
   const pernaE = J(raiz, -13, -4, 0);
@@ -127,28 +155,123 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
     const yPe = alturaPerna + (cfg.bainha ? 12 : cfg.bermuda ? 10 : 6);
     if (cfg.descalco) B(L, 21, 10, 28, 0, yPe, 4, cfg.skin);
     else B(L, 23, 12, 30, 0, yPe, 4, cfg.sapato);
+    if (regataOriginal) {
+      B(L, 20, 4, 21, 0, 15, 0, '#ca7081');
+      B(L, 24, 4, 31, 0, yPe + 5, 4, '#eee4d4');
+      B(L, 12, 3, 3, 0, yPe - 1, 20, '#eee4d4');
+    }
+    if (roqueiroOriginal) {
+      B(L, 24, 4, 31, 0, yPe + 5, 4, '#e4d8c8');
+      B(L, 12, 3, 3, 0, yPe - 1, 20, '#d7cbbb');
+    }
+    if (surfistaOriginal) {
+      B(L, 20, 4, 21, 0, 13, 0, '#9470a2');
+      B(L, 5, 11, 3, 6, 7, 11, '#e1c7de');
+      B(L, 19, 3, 22, 0, 0, 0, '#432157');
+    }
   });
   const corpo = J(raiz, 0, 0, 0);
   if (cfg.estilo === 'longo') {
     B(corpo, 86, 44, 18, 0, -38, -28, cfg.cabelo); B(corpo, 66, 26, 18, 0, -8, -28, tom(cfg.cabelo, 1.14));
     B(corpo, 18, 34, 16, -40, -34, -18, tom(cfg.cabelo, 1.14)); B(corpo, 18, 34, 16, 40, -34, -18, tom(cfg.cabelo, 1.14));
   }
-  if (cfg.semCamisa) { B(corpo, 52, 50, 38, 0, -28, 0, cfg.skin); B(corpo, 22, 20, 8, 0, -20, 19, tom(cfg.skin, 0.92)); }
+  if (cfg.semCamisa) {
+    B(corpo, 52, 50, 38, 0, -28, 0, cfg.skin);
+    if (!surfistaOriginal) B(corpo, 22, 20, 8, 0, -20, 19, tom(cfg.skin, 0.92));
+  }
   else if (cfg.regata) {
     B(corpo, 52, 50, 38, 0, -28, 0, cfg.skin);
     B(corpo, 16, 50, 40, -15, -28, 0, cfg.torso); B(corpo, 16, 50, 40, 15, -28, 0, cfg.torso); B(corpo, 52, 50, 12, 0, -28, -14, cfg.torso);
   } else B(corpo, 54, 50, 40, 0, -28, 0, cfg.torso);
+  if (regataOriginal) {
+    B(corpo, 52, 35, 4, 0, -22, 21, cfg.torso);
+    B(corpo, 28, 5, 4, 0, -35, 21, '#69605a');
+    B(corpo, 52, 4, 42, 0, -5, 0, '#282d2e');
+    B(corpo, 10, 11, 3, -15, -22, 22, '#505554');
+    B(corpo, 10, 3, 4, -15, -27, 23, '#777873');
+  }
+  if (raposaOriginal) {
+    B(corpo, 5, 46, 4, 0, -27, 22, '#4b2c23');
+    B(corpo, 14, 12, 5, -17, -20, 22, '#8d5637'); B(corpo, 14, 12, 5, 17, -20, 22, '#8d5637');
+    B(corpo, 15, 4, 5, -17, -26, 25, '#ad7048'); B(corpo, 15, 4, 5, 17, -26, 25, '#ad7048');
+  }
+  if (roqueiroOriginal) {
+    B(corpo, 14, 47, 5, -15, -28, 22, '#30649c'); B(corpo, 14, 47, 5, 15, -28, 22, '#30649c');
+    B(corpo, 13, 16, 5, -15, -43, 25, '#72a0c5', 1, ' rotateZ(-18deg)');
+    B(corpo, 13, 16, 5, 15, -43, 25, '#72a0c5', 1, ' rotateZ(18deg)');
+    B(corpo, 4, 46, 5, 0, -28, 23, '#d9c5a8');
+    B(corpo, 12, 11, 5, -16, -20, 25, '#275482'); B(corpo, 12, 11, 5, 16, -20, 25, '#275482');
+    B(corpo, 12, 3, 5, -16, -25, 27, '#8db3cf'); B(corpo, 12, 3, 5, 16, -25, 27, '#8db3cf');
+  }
+  if (senhorOriginal) {
+    B(corpo, 16, 13, 4, -15, -23, 21, '#ddc9b2');
+    B(corpo, 17, 4, 5, -15, -29, 23, '#cdb69d');
+    B(corpo, 4, 42, 4, 0, -25, 22, '#ddc9b2');
+    B(corpo, 3, 3, 3, 0, -35, 25, '#9e8874'); B(corpo, 3, 3, 3, 0, -22, 25, '#9e8874');
+    B(corpo, 15, 12, 4, -8, -47, 22, '#e9d7bf', 1, ' rotateZ(-16deg)');
+    B(corpo, 15, 12, 4, 8, -47, 22, '#e9d7bf', 1, ' rotateZ(16deg)');
+  }
+  if (surfistaOriginal) {
+    B(corpo, 26, 3, 3, 0, -47, 21, '#e8d5ad');
+    B(corpo, 3, 7, 3, 0, -43, 21, '#e8d5ad');
+    B(corpo, 5, 6, 3, 0, -39, 22, '#c49c5d');
+  }
   if (cfg.listrasT) { B(corpo, 55, 5, 41, 0, -42, 0, cfg.listrasT); B(corpo, 55, 5, 41, 0, -30, 0, cfg.listrasT); B(corpo, 55, 5, 41, 0, -18, 0, cfg.listrasT); }
   if (cfg.listra) { B(corpo, 56, 6, 42, 0, -36, 0, cfg.listra); B(corpo, 56, 6, 42, 0, -16, 0, cfg.listra); }
   if (cfg.faixa && !cfg.regata && !cfg.semCamisa) B(corpo, 22, 50, 7, 0, -28, 20, cfg.faixa);
   if (cfg.jaleco) B(corpo, 13, 10, 5, 0, -48, 22, cfg.skin);
   if (cfg.lapela) { B(corpo, 14, 44, 8, -16, -30, 20, cfg.lapela); B(corpo, 14, 44, 8, 16, -30, 20, cfg.lapela); }
+  if (nativoOriginal) {
+    B(corpo, 12, 15, 5, -16, -21, 26, '#b8956e'); B(corpo, 12, 15, 5, 16, -21, 26, '#b8956e');
+    B(corpo, 13, 4, 5, -16, -28, 28, '#e1caa4'); B(corpo, 13, 4, 5, 16, -28, 28, '#e1caa4');
+    B(corpo, 4, 41, 4, 0, -27, 24, '#8a6a4f');
+    B(corpo, 3, 3, 3, 0, -38, 27, '#e7d4ae'); B(corpo, 3, 3, 3, 0, -26, 27, '#e7d4ae');
+  }
+  if (carameloOriginal) {
+    B(corpo, 14, 12, 4, -16, -22, 21, '#a8bfdf');
+    B(corpo, 15, 4, 4, -16, -28, 23, '#dbe7f4');
+    B(corpo, 5, 5, 3, -16, -23, 24, '#7c9ac1');
+    B(corpo, 54, 4, 41, 0, -4, 0, '#8ba8d1');
+  }
   if (cfg.gravata) { B(corpo, 9, 28, 5, 0, -28, 24, cfg.gravata); B(corpo, 11, 9, 6, 0, -46, 24, cfg.gravata); }
   if (cfg.toga) { B(corpo, 58, 16, 44, 0, -50, 0, '#2a2a2a'); B(corpo, 14, 26, 7, -8, -46, 21, '#f3ece0'); B(corpo, 14, 26, 7, 8, -46, 21, '#f3ece0'); }
   if (cfg.colete) { B(corpo, 17, 50, 42, -18, -28, 0, cfg.colete); B(corpo, 17, 50, 42, 18, -28, 0, cfg.colete); B(corpo, 54, 50, 10, 0, -28, -16, cfg.colete); }
+  if (cfg.nome === 'Policial' && variantePolicial === 1) {
+    B(corpo, 35, 37, 6, 0, -29, 22, '#2e3542');
+    B(corpo, 13, 14, 7, -12, -20, 26, '#465161'); B(corpo, 13, 14, 7, 12, -20, 26, '#465161');
+    B(corpo, 14, 4, 8, -12, -26, 27, '#697685'); B(corpo, 14, 4, 8, 12, -26, 27, '#697685');
+    B(corpo, 10, 12, 4, -12, -41, 26, '#cba75b'); B(corpo, 5, 6, 4, -12, -41, 29, '#f1d88d');
+    B(corpo, 56, 8, 43, 0, -3, 0, '#20252a'); B(corpo, 11, 7, 5, 0, -3, 23, '#b9bec4');
+  }
+  if (cfg.nome === 'Militar' && cfg.mascara && cfg.colete) {
+    // Placa central, alças e bolsos em camadas sobre o uniforme.
+    B(corpo, 35, 37, 7, 0, -29, 21, '#35462d');
+    B(corpo, 11, 24, 6, -18, -39, 24, '#536344');
+    B(corpo, 11, 24, 6, 18, -39, 24, '#536344');
+    B(corpo, 12, 14, 8, -12, -20, 27, '#61724c');
+    B(corpo, 12, 14, 8, 12, -20, 27, '#61724c');
+    B(corpo, 13, 4, 9, -12, -26, 28, '#78865d');
+    B(corpo, 13, 4, 9, 12, -26, 28, '#78865d');
+    B(corpo, 5, 4, 4, -12, -23, 32, '#34412b');
+    B(corpo, 5, 4, 4, 12, -23, 32, '#34412b');
+    B(corpo, 23, 5, 5, 0, -41, 27, '#6f7f58');
+    B(corpo, 56, 8, 43, 0, -3, 0, '#303b29');
+    B(corpo, 11, 8, 5, 0, -3, 23, '#93906c');
+  }
   if (cfg.bolsosColete && cfg.colete) {
     B(corpo, 13, 12, 5, -18, -22, 22, tom(cfg.colete, 0.86)); B(corpo, 13, 12, 5, 18, -22, 22, tom(cfg.colete, 0.86));
     B(corpo, 13, 12, 5, -18, -40, 22, tom(cfg.colete, 0.86)); B(corpo, 13, 12, 5, 18, -40, 22, tom(cfg.colete, 0.86));
+    if (pescador && variantePescador === 3) {
+      for (const x of [-18, 18]) {
+        B(corpo, 15, 4, 6, x, -27, 25, '#8b934e');
+        B(corpo, 15, 4, 6, x, -45, 25, '#8b934e');
+        B(corpo, 3, 3, 3, x, -25, 29, '#d3ae60');
+        B(corpo, 3, 3, 3, x, -43, 29, '#d3ae60');
+      }
+      B(corpo, 4, 45, 4, 0, -27, 22, '#3c4b31');
+      B(corpo, 9, 10, 7, -9, -12, 27, '#f0e5ca');
+      B(corpo, 10, 4, 8, -9, -12, 28, '#bd5940');
+    }
   }
   if (cfg.bolso) { B(corpo, 16, 13, 6, -16, -6, 21, '#e4e0d8'); B(corpo, 16, 13, 6, 16, -6, 21, '#e4e0d8'); }
   if (cfg.estetoscopio) {
@@ -159,8 +282,8 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   if (cfg.dragona) B(corpo, 58, 10, 44, 0, -50, 0, cfg.dragona);
   let rabo: HTMLElement | undefined;
   if (cfg.bicho?.rabo) {
-    rabo = J(corpo, 0, -12, -19);
-    const esc = [24, 22, 20, 18];
+    rabo = J(corpo, raposaOriginal ? 32 : carameloOriginal ? 25 : 0, -12, -19);
+    const esc = raposaOriginal ? [27, 34, 36, 32] : pescador ? (variantePescador === 2 ? [36, 38, 35, 30] : [30, 32, 30, 26]) : [24, 22, 20, 18];
     cfg.bicho.rabo.forEach((cor, i) => B(rabo as Pai, esc[i], esc[i], esc[i] + 2, 0, 2 - i * 13, -14 - i * 17, cor));
   }
   const manga = cfg.regata || cfg.semCamisa ? cfg.skin : cfg.torso;
@@ -179,7 +302,18 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
     naMao.push(g);
   });
   const [adEsq, adDir] = naMao;
+  if (cfg.nome === 'Militar' && cfg.mascara) {
+    B(bracoE, 17, 11, 18, 0, 13, 0, '#657351');
+    B(bracoD, 17, 11, 18, 0, 13, 0, '#657351');
+    B(bracoE, 12, 8, 4, 0, 13, 10, '#39492f');
+    B(bracoD, 12, 8, 4, 0, 13, 10, '#39492f');
+  }
   if (cfg.relogio) B(bracoD, 19, 8, 19, 0, 30, 0, cfg.relogio);
+  if (carameloOriginal) {
+    B(bracoD, 11, 10, 4, 0, 30, 10, '#d4a83b');
+    B(bracoD, 7, 6, 3, 0, 30, 13, '#f4efe4');
+    B(bracoD, 2, 4, 2, 0, 29, 15, '#4b4a46');
+  }
   let aquario: HTMLElement | undefined;
   if (cfg.aquario) {
     aquario = J(corpo, 0, -14, 36);
@@ -203,33 +337,147 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   let olhos: HTMLElement | undefined;
   B(cabeca, 92, 88, 92, 0, -44, 0, cfg.skin);
   if (cfg.bicho) {
-    B(cabeca, 27, 27, 19, -33, -99, -4, cfg.bicho.orelha); B(cabeca, 27, 27, 19, 33, -99, -4, cfg.bicho.orelha);
-    B(cabeca, 15, 15, 11, -33, -97, 4, cfg.bicho.dentro); B(cabeca, 15, 15, 11, 33, -97, 4, cfg.bicho.dentro);
+    const orelhaX = raposaOriginal ? 45 : pescador ? (variantePescador === 2 ? 50 : 46) : 33;
+    const larguraOrelha = raposaOriginal ? 25 : pescador && variantePescador === 2 ? 38 : pescador ? 30 : 27;
+    const alturaOrelha = raposaOriginal ? 45 : pescador && variantePescador === 2 ? 42 : pescador ? 34 : 27;
+    const dentroOrelha = pescador && variantePescador === 2 ? 23 : pescador ? 17 : 15;
+    if (!carameloOriginal) {
+      B(cabeca, larguraOrelha, alturaOrelha, 19, -orelhaX, -99, -4, cfg.bicho.orelha); B(cabeca, larguraOrelha, alturaOrelha, 19, orelhaX, -99, -4, cfg.bicho.orelha);
+      B(cabeca, dentroOrelha, dentroOrelha, 11, -orelhaX, -97, 4, cfg.bicho.dentro); B(cabeca, dentroOrelha, dentroOrelha, 11, orelhaX, -97, 4, cfg.bicho.dentro);
+    }
+    if (raposaOriginal) {
+      B(cabeca, 15, 8, 20, -orelhaX, -120, -4, '#9c421e'); B(cabeca, 15, 8, 20, orelhaX, -120, -4, '#9c421e');
+      B(cabeca, 13, 25, 10, -orelhaX, -101, 5, cfg.bicho.dentro); B(cabeca, 13, 25, 10, orelhaX, -101, 5, cfg.bicho.dentro);
+      B(cabeca, 21, 15, 6, -31, -16, 46, cfg.bicho.focinho); B(cabeca, 21, 15, 6, 31, -16, 46, cfg.bicho.focinho);
+      B(cabeca, 15, 8, 6, -33, -25, 46, cfg.bicho.focinho); B(cabeca, 15, 8, 6, 33, -25, 46, cfg.bicho.focinho);
+    }
+    if (carameloOriginal) {
+      B(cabeca, 22, 47, 20, -43, -53, 38, cfg.bicho.orelha, 1, ' rotateZ(-8deg)');
+      B(cabeca, 22, 47, 20, 43, -53, 38, cfg.bicho.orelha, 1, ' rotateZ(8deg)');
+      B(cabeca, 16, 12, 19, -45, -27, 37, tom(cfg.bicho.orelha, 0.9));
+      B(cabeca, 16, 12, 19, 45, -27, 37, tom(cfg.bicho.orelha, 0.9));
+      B(cabeca, 20, 13, 5, -26, -17, 47, cfg.bicho.focinho);
+      B(cabeca, 20, 13, 5, 26, -17, 47, cfg.bicho.focinho);
+    }
     if (cfg.bicho.mascara) {
       B(cabeca, 94, 28, 10, 0, -46, 44, cfg.bicho.mascara);
       B(cabeca, 30, 20, 8, -21, -62, 45, cfg.bicho.mascara); B(cabeca, 30, 20, 8, 21, -62, 45, cfg.bicho.mascara);
+      if (pescador) {
+        B(cabeca, 25, 5, 7, -22, -63, 49, '#eee0ca', 1, ' rotateZ(-5deg)');
+        B(cabeca, 25, 5, 7, 22, -63, 49, '#eee0ca', 1, ' rotateZ(5deg)');
+      }
     }
   } else {
     CABELO[cfg.estilo](cabeca, cfg.cabelo);
+    if (regataOriginal) {
+      B(cabeca, 24, 14, 22, -27, -87, 30, tom(cfg.cabelo, 1.15));
+      B(cabeca, 22, 12, 20, 2, -92, 28, tom(cfg.cabelo, 1.12));
+      B(cabeca, 20, 13, 22, 28, -87, 28, tom(cfg.cabelo, 1.18));
+    }
+    if (surfistaOriginal) {
+      B(cabeca, 20, 12, 18, -30, -83, 35, '#f2d57f');
+      B(cabeca, 20, 11, 18, -4, -87, 37, '#e9c46a');
+      B(cabeca, 21, 13, 18, 23, -83, 35, '#f2d57f');
+    }
+    if (nativoOriginal) {
+      B(cabeca, 22, 8, 18, -29, -84, 36, '#38271e');
+      B(cabeca, 22, 8, 18, 0, -87, 36, '#38271e');
+      B(cabeca, 22, 8, 18, 29, -84, 36, '#38271e');
+    }
+    if (roqueiroOriginal) {
+      B(cabeca, 26, 18, 28, -39, -89, 24, '#392722');
+      B(cabeca, 26, 19, 28, -12, -99, 25, '#3d2924');
+      B(cabeca, 26, 17, 28, 16, -99, 25, '#392722');
+      B(cabeca, 26, 18, 28, 40, -88, 20, '#3d2924');
+      B(cabeca, 22, 16, 26, -30, -99, -12, '#392722');
+      B(cabeca, 24, 16, 25, 27, -100, -12, '#392722');
+    }
     B(cabeca, 13, 20, 10, -46, -38, 4, cfg.skin); B(cabeca, 13, 20, 10, 46, -38, 4, cfg.skin);
   }
-  if (cfg.bone) { B(cabeca, 96, 26, 96, 0, -80, 0, cfg.bone); B(cabeca, 90, 11, 38, 0, -70, 60, cfg.boneAba || tom(cfg.bone, 0.78)); }
-  if (cfg.balde) { B(cabeca, 96, 26, 96, 0, -80, 0, cfg.balde); B(cabeca, 116, 10, 116, 0, -66, 0, tom(cfg.balde, 0.92)); }
-  if (cfg.quepe) { B(cabeca, 94, 24, 94, 0, -82, 0, cfg.quepe); B(cabeca, 96, 10, 96, 0, -69, 0, '#2a2a30'); B(cabeca, 88, 8, 36, 0, -64, 58, '#2a2a30'); }
-  if (cfg.capacete) { B(cabeca, 100, 40, 100, 0, -72, 0, cfg.capacete); B(cabeca, 106, 10, 106, 0, -54, 0, tom(cfg.capacete, 0.82)); }
+  if (cfg.bone) {
+    if (pescador) {
+      B(cabeca, 80, variantePescador === 2 ? 19 : 24, 82, 0, -84, 0, cfg.bone);
+      B(cabeca, 68, 9, 70, 0, variantePescador === 2 ? -96 : -99, -2, tom(cfg.bone, 1.12));
+      B(cabeca, 80, 5, 83, 0, -76, 0, tom(cfg.bone, 0.72));
+      B(cabeca, variantePescador === 1 ? 84 : 74, 7, variantePescador === 1 ? 36 : 26, 0, -73, 49, tom(cfg.bone, 0.78));
+      if (variantePescador !== 1) {
+        B(cabeca, 28, 14, 4, 0, -87, 42, '#d8bd87');
+        B(cabeca, 16, 5, 3, 0, -87, 45, '#78512e');
+        B(cabeca, 7, 7, 3, 7, -87, 45, '#78512e');
+      }
+    } else if (raposaOriginal) {
+      B(cabeca, 76, 22, 78, 0, -99, 0, cfg.bone);
+      B(cabeca, 70, 7, 24, 0, -88, 48, tom(cfg.bone, 0.78));
+      B(cabeca, 22, 10, 4, 0, -100, 40, '#d9c395');
+    } else if (senhorOriginal) {
+      B(cabeca, 84, 22, 84, 0, -98, 0, cfg.bone);
+      B(cabeca, 78, 7, 27, 0, -87, 50, cfg.boneAba || tom(cfg.bone, 0.78));
+      B(cabeca, 28, 10, 3, 0, -99, 43, '#c8b5a0');
+    } else if (surfistaOriginal) {
+      B(cabeca, 84, 22, 84, 0, -98, 0, cfg.bone);
+      B(cabeca, 76, 7, 27, 0, -87, 50, tom(cfg.bone, 0.78));
+      B(cabeca, 22, 9, 4, 0, -99, 43, '#b9dce2');
+    } else {
+      B(cabeca, 96, 26, 96, 0, -80, 0, cfg.bone);
+      B(cabeca, 90, 11, 38, 0, -70, 60, cfg.boneAba || tom(cfg.bone, 0.78));
+    }
+  }
+  if (cfg.balde) {
+    if (carameloOriginal) {
+      B(cabeca, 80, 22, 82, 0, -98, 0, cfg.balde);
+      B(cabeca, 94, 6, 94, 0, -87, 0, tom(cfg.balde, 0.92));
+      B(cabeca, 80, 4, 83, 0, -91, 0, '#9bb4cf');
+    } else { B(cabeca, 96, 26, 96, 0, -80, 0, cfg.balde); B(cabeca, 116, 10, 116, 0, -66, 0, tom(cfg.balde, 0.92)); }
+  }
+  if (cfg.quepe) {
+    B(cabeca, 94, 24, 94, 0, -82, 0, cfg.quepe); B(cabeca, 96, 10, 96, 0, -69, 0, '#2a2a30'); B(cabeca, 88, 8, 36, 0, -64, 58, '#2a2a30');
+    if (cfg.nome === 'Policial' && variantePolicial === 1) {
+      B(cabeca, 18, 15, 4, 0, -82, 48, '#d8b663');
+      B(cabeca, 10, 8, 3, 0, -82, 51, '#f5df9c');
+    }
+  }
+  if (cfg.capacete) {
+    if (cfg.nome === 'Militar' && cfg.mascara) {
+      B(cabeca, 98, 30, 98, 0, -79, 0, cfg.capacete);
+      B(cabeca, 103, 7, 103, 0, -64, 0, tom(cfg.capacete, 0.82));
+      B(cabeca, 28, 10, 4, 0, -80, 50, '#586846');
+      B(cabeca, 18, 4, 3, 0, -80, 53, '#899675');
+    } else {
+      B(cabeca, 100, 40, 100, 0, -72, 0, cfg.capacete);
+      B(cabeca, 106, 10, 106, 0, -54, 0, tom(cfg.capacete, 0.82));
+    }
+  }
   if (cfg.mascara) {
-    B(cabeca, 93, 44, 93, 0, -28, 0, cfg.mascara);
-    B(cabeca, 96, 24, 10, 0, -47, 45, tom(cfg.mascara, 0.7));
-    B(cabeca, 30, 17, 6, -21, -47, 50, '#8aa6b8'); B(cabeca, 30, 17, 6, 21, -47, 50, '#8aa6b8');
-    B(cabeca, 12, 6, 5, 0, -47, 50, tom(cfg.mascara, 0.5));
-    B(cabeca, 10, 6, 26, -44, -47, 34, tom(cfg.mascara, 0.5)); B(cabeca, 10, 6, 26, 44, -47, 34, tom(cfg.mascara, 0.5));
+    // Abertura contínua para os olhos; as peças laterais e a faixa inferior
+    // formam a balaclava sem cobrir a face inteira com um bloco opaco.
+    B(cabeca, 94, 27, 94, 0, -14, 0, cfg.mascara);
+    B(cabeca, 94, 10, 94, 0, -62, 0, cfg.mascara);
+    B(cabeca, 15, 25, 94, -39, -45, 0, cfg.mascara); B(cabeca, 15, 25, 94, 39, -45, 0, cfg.mascara);
+    B(cabeca, 64, 20, 5, 0, -46, 46, cfg.skin);
+    B(cabeca, 20, 13, 5, -20, -46, 50, '#f2e9da'); B(cabeca, 20, 13, 5, 20, -46, 50, '#f2e9da');
+    B(cabeca, 9, 10, 4, -20, -45, 54, '#342c25'); B(cabeca, 9, 10, 4, 20, -45, 54, '#342c25');
+    B(cabeca, 3, 3, 3, -22, -48, 57, '#fffaf2'); B(cabeca, 3, 3, 3, 18, -48, 57, '#fffaf2');
+    B(cabeca, 20, 3, 5, -20, -56, 50, '#39362f'); B(cabeca, 20, 3, 5, 20, -56, 50, '#39362f');
+    // Sobreposições finas sugerem tecido e costuras, sem projetar um segundo
+    // bloco sobre a face.
+    B(cabeca, 64, 3, 3, 0, -28, 48, tom(cfg.mascara, 1.28));
+    B(cabeca, 2, 18, 3, 0, -14, 48, tom(cfg.mascara, 1.3));
+    B(cabeca, 54, 2, 3, 0, -4, 48, tom(cfg.mascara, 0.75));
   } else {
     const sobr = cfg.sobr || tom(cfg.cabelo, 0.9);
-    B(cabeca, 26, 8, 6, -20, -58, 47, sobr); B(cabeca, 26, 8, 6, 20, -58, 47, sobr);
+    if (!pescador && !raposaOriginal && !nativoOriginal) { B(cabeca, 26, 8, 6, -20, -58, 47, sobr); B(cabeca, 26, 8, 6, 20, -58, 47, sobr); }
+    if (nativoOriginal) { B(cabeca, 21, 5, 6, -20, -58, 47, sobr); B(cabeca, 21, 5, 6, 20, -58, 47, sobr); }
+    if (raposaOriginal) { B(cabeca, 22, 5, 6, -20, -59, 48, '#b65e24'); B(cabeca, 22, 5, 6, 20, -59, 48, '#b65e24'); }
     const base = cfg.bicho ? cfg.bicho.focinho : cfg.skin;
     B(cabeca, 19, 17, 5, -20, -45, 47, '#fdfbf7'); B(cabeca, 19, 17, 5, 20, -45, 47, '#fdfbf7');
-    B(cabeca, 19, 7, 6, -20, -51, 48, base); B(cabeca, 19, 7, 6, 20, -51, 48, base);
-    B(cabeca, 10, 10, 4, -20, -42, 50, cfg.iris || '#2a1f1a'); B(cabeca, 10, 10, 4, 20, -42, 50, cfg.iris || '#2a1f1a');
+    if (!pescador && !raposaOriginal && !nativoOriginal) { B(cabeca, 19, 7, 6, -20, -51, 48, base); B(cabeca, 19, 7, 6, 20, -51, 48, base); }
+    B(cabeca, 10, 10, 4, -20, pescador ? -44 : -42, 50, cfg.iris || '#2a1f1a'); B(cabeca, 10, 10, 4, 20, pescador ? -44 : -42, 50, cfg.iris || '#2a1f1a');
+    if (pescador) { B(cabeca, 4, 4, 3, -22, -47, 53, '#fffaf2'); B(cabeca, 4, 4, 3, 18, -47, 53, '#fffaf2'); }
+    if (nativoOriginal) { B(cabeca, 4, 4, 3, -22, -45, 53, '#fffaf2'); B(cabeca, 4, 4, 3, 18, -45, 53, '#fffaf2'); }
+    if (nativoOriginal) {
+      B(cabeca, 12, 3, 3, -31, -28, 48, '#b3422f'); B(cabeca, 12, 3, 3, 31, -28, 48, '#b3422f');
+      B(cabeca, 9, 3, 3, -31, -23, 48, '#e5c69a'); B(cabeca, 9, 3, 3, 31, -23, 48, '#e5c69a');
+    }
     // Pálpebras: tampam o olho aberto quando ele dorme. Ficam numa junta à parte,
     // escondida, pelo mesmo motivo do fone — aparecer não pode remontar o boneco.
     // Nos bichos a cor é a da máscara em volta do olho, não a da pele.
@@ -239,22 +487,52 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
     B(olhos, 21, 19, 4, -20, -45, 49, palpebra); B(olhos, 21, 19, 4, 20, -45, 49, palpebra);
     B(olhos, 19, 3, 5, -20, -43, 51, tom(palpebra, 0.55)); B(olhos, 19, 3, 5, 20, -43, 51, tom(palpebra, 0.55));
     if (cfg.bicho) {
-      B(cabeca, 36, 26, 17, 0, -19, 48, cfg.bicho.focinho); B(cabeca, 14, 11, 9, 0, -27, 57, cfg.bicho.nariz);
+      B(cabeca, pescador || carameloOriginal ? 44 : raposaOriginal ? 42 : 36, 26, raposaOriginal || carameloOriginal ? 21 : 17, 0, -19, 48, cfg.bicho.focinho); B(cabeca, carameloOriginal ? 17 : 14, 11, 9, 0, -27, raposaOriginal || carameloOriginal ? 59 : 57, cfg.bicho.nariz);
       B(cabeca, 16, 5, 6, 0, -13, 56, tom(cfg.bicho.nariz, 1.6));
+      if (carameloOriginal) {
+        B(cabeca, 3, 8, 3, 0, -19, 61, '#5c3b2e');
+        B(cabeca, 10, 3, 3, -4, -13, 61, '#5c3b2e', 1, ' rotateZ(12deg)');
+        B(cabeca, 10, 3, 3, 4, -13, 61, '#5c3b2e', 1, ' rotateZ(-12deg)');
+      }
+      if (pescador) B(cabeca, 10, 4, 5, 0, -9, 57, '#b86858');
       B(cabeca, 15, 24, 17, -47, -30, 16, cfg.bicho.focinho); B(cabeca, 15, 24, 17, 47, -30, 16, cfg.bicho.focinho);
     } else {
       B(cabeca, 14, 12, 11, 0, -31, 48, tom(cfg.skin, 0.88));
       const pelo = cfg.barba || cfg.bigode;
-      if (cfg.barba) { B(cabeca, 84, 26, 20, 0, -14, 40, cfg.barba); B(cabeca, 20, 30, 22, -40, -24, 32, cfg.barba); B(cabeca, 20, 30, 22, 40, -24, 32, cfg.barba); }
-      if (pelo) { B(cabeca, 10, 7, 7, 0, -21, 49, pelo); B(cabeca, 17, 7, 7, -12, -23, 47, pelo); B(cabeca, 17, 7, 7, 12, -23, 47, pelo); }
-      else B(cabeca, 15, 5, 5, 0, -14, 47, '#a8452a');
+      const barbaNutri = cfg.nome === 'Nutricionista' && varianteNutricionista === 1 && cfg.barba;
+      if (barbaNutri) {
+        B(cabeca, 68, 15, 8, 0, -8, 45, cfg.barba!);
+        B(cabeca, 19, 26, 8, -25, -20, 45, cfg.barba!); B(cabeca, 19, 26, 8, 25, -20, 45, cfg.barba!);
+        B(cabeca, 16, 22, 20, -40, -20, 32, cfg.barba!); B(cabeca, 16, 22, 20, 40, -20, 32, cfg.barba!);
+        B(cabeca, 22, 8, 6, -11, -22, 49, cfg.barba!); B(cabeca, 22, 8, 6, 11, -22, 49, cfg.barba!);
+        B(cabeca, 14, 4, 4, 0, -13, 51, '#884434');
+        B(cabeca, 18, 3, 3, -21, -7, 50, tom(cfg.barba!, 1.18)); B(cabeca, 18, 3, 3, 21, -7, 50, tom(cfg.barba!, 1.18));
+      } else {
+        if (cfg.barba) { B(cabeca, 84, 26, 20, 0, -14, 40, cfg.barba); B(cabeca, 20, 30, 22, -40, -24, 32, cfg.barba); B(cabeca, 20, 30, 22, 40, -24, 32, cfg.barba); }
+        if (senhorOriginal && pelo) {
+          B(cabeca, 19, 7, 7, -9, -22, 49, pelo); B(cabeca, 19, 7, 7, 9, -22, 49, pelo);
+          B(cabeca, 9, 4, 5, -17, -20, 50, tom(pelo, 1.22)); B(cabeca, 9, 4, 5, 17, -20, 50, tom(pelo, 1.22));
+          B(cabeca, 13, 3, 4, 0, -12, 49, '#a86554');
+        } else if (pelo) { B(cabeca, 10, 7, 7, 0, -21, 49, pelo); B(cabeca, 17, 7, 7, -12, -23, 47, pelo); B(cabeca, 17, 7, 7, 12, -23, 47, pelo); }
+        else B(cabeca, 15, 5, 5, 0, -14, 47, '#a8452a');
+        if (roqueiroOriginal) { B(cabeca, 6, 5, 3, 3, -14, 51, '#bfc8cb'); B(cabeca, 3, 2, 2, 2, -15, 53, '#f7faf7'); }
+        if (nativoOriginal) B(cabeca, 13, 3, 4, 0, -13, 51, '#c37a64');
+      }
     }
   }
   if (cfg.pinta) B(cabeca, 5, 5, 4, 27, -28, 46, '#3a2a1d');
   if (cfg.oculos) {
-    B(cabeca, 24, 20, 4, -20, -45, 50, cfg.oculos); B(cabeca, 24, 20, 4, 20, -45, 50, cfg.oculos);
-    B(cabeca, 19, 15, 3, -20, -45, 52, cfg.lente || '#cfe9f5'); B(cabeca, 19, 15, 3, 20, -45, 52, cfg.lente || '#cfe9f5');
-    B(cabeca, 12, 4, 3, 0, -45, 51, cfg.oculos);
+    if (roqueiroOriginal) {
+      B(cabeca, 27, 19, 5, -20, -45, 50, '#17181d'); B(cabeca, 27, 19, 5, 20, -45, 50, '#17181d');
+      B(cabeca, 21, 13, 3, -20, -45, 53, '#34404d'); B(cabeca, 21, 13, 3, 20, -45, 53, '#34404d');
+      B(cabeca, 10, 3, 2, -23, -49, 55, '#788995', 1, ' rotateZ(-18deg)');
+      B(cabeca, 10, 3, 2, 17, -49, 55, '#788995', 1, ' rotateZ(-18deg)');
+      B(cabeca, 12, 4, 4, 0, -46, 52, '#17181d');
+    } else {
+      B(cabeca, 24, 20, 4, -20, -45, 50, cfg.oculos); B(cabeca, 24, 20, 4, 20, -45, 50, cfg.oculos);
+      B(cabeca, 19, 15, 3, -20, -45, 52, cfg.lente || '#cfe9f5'); B(cabeca, 19, 15, 3, 20, -45, 52, cfg.lente || '#cfe9f5');
+      B(cabeca, 12, 4, 3, 0, -45, 51, cfg.oculos);
+    }
     B(cabeca, 10, 4, 24, -42, -45, 38, cfg.oculos); B(cabeca, 10, 4, 24, 42, -45, 38, cfg.oculos);
   }
   // O fone entra montado desde o começo e fica escondido: aparecer é só trocar o
@@ -307,6 +585,7 @@ interface VoxelAvatarProps {
 }
 
 const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, className = '' }) => {
+  const variantePescador = 3, varianteNutricionista = 1, variantePolicial = 1, varianteRegata = 1, varianteRaposa = 1, varianteRoqueiro = 1, varianteSenhor = 1, varianteSurfista = 1, varianteNativo = 1, varianteCaramelo = 1;
   const palcoRef = useRef<HTMLDivElement>(null);
   const poseRef = useRef(pose);
   poseRef.current = pose;
@@ -322,7 +601,10 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
   chegadaRef.current = onChegou;
 
   useEffect(() => {
-    const cfg = getVoxelConfig(characterId);
+    const original = getVoxelConfig(characterId);
+    const cfg = original && characterId === 'vira-lata-caramelo'
+      ? { ...original, skin: '#d99443', cabelo: '#d99443', relogio: '#c99b30', bicho: original.bicho && { ...original.bicho, orelha: '#b87532', focinho: '#f4d4a2', rabo: ['#d99443', '#c47d32', '#d99443'] } }
+      : original && characterId === 'surfista' ? { ...original, bermuda: '#602070' } : original;
     const palco = palcoRef.current;
     if (!cfg || !palco) return;
     palco.textContent = '';
@@ -333,7 +615,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     const sombra = document.createElement('div');
     sombra.style.cssText = 'position:absolute;width:132px;height:72px;left:-66px;top:-36px;background:#8f8375;opacity:.26;border-radius:50%;transform:translate3d(0,40px,0) rotateX(90deg);transition:transform 320ms ease';
     cena.appendChild(sombra);
-    const p = montar(cfg, cena);
+    const p = montar(cfg, cena, variantePescador, varianteNutricionista, variantePolicial, varianteRegata, varianteRaposa, varianteRoqueiro, varianteSenhor, varianteSurfista, varianteNativo, varianteCaramelo);
 
     const menosMovimento = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const escala = altura / 212;
@@ -485,7 +767,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       p.bracoD.style.transform = `translate3d(34px,-48px,0) rotateZ(${zD}deg) rotateX(${bD}deg)`;
       p.pernaE.style.transform = `translate3d(-13px,-4px,0) rotateX(${perna}deg)`;
       p.pernaD.style.transform = `translate3d(13px,-4px,0) rotateX(${-perna}deg)`;
-      if (p.rabo) p.rabo.style.transform = `translate3d(0,-12px,-19px) rotateY(${Math.sin(t * 1.6) * 14}deg)`;
+      if (p.rabo) p.rabo.style.transform = `translate3d(${characterId === 'raposa' ? 32 : characterId === 'vira-lata-caramelo' ? 25 : 0}px,-12px,-19px) rotateY(${Math.sin(t * 1.6) * 14}deg)`;
       pivot.style.transform = `scale(${escala}) rotateX(-10deg) rotateY(${ry}deg)`;
 
       if (caminhando) {
