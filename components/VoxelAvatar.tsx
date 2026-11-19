@@ -107,7 +107,7 @@ const ADERECO: Record<string, (a: Pai, cor?: string) => void> = {
   nada: () => { },
 };
 
-interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement; fone: HTMLElement; adEsq: HTMLElement; adDir: HTMLElement; aquario?: HTMLElement; olhos?: HTMLElement }
+interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement; fone: HTMLElement; adEsq: HTMLElement; adDir: HTMLElement; aquario?: HTMLElement; olhos?: HTMLElement; cronometro: HTMLElement }
 
 const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   const alturaPerna = cfg.curto ? 20 : 28;
@@ -187,6 +187,18 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
     B(aquario, 18, 11, 11, 2, 2, 0, '#e96f34'); B(aquario, 9, 9, 8, -9, 2, 0, '#bf4f1b'); B(aquario, 8, 16, 7, -15, 6, -6, '#5aa83f');
     B(aquario, 46, 42, 42, 0, 0, 0, '#bfe3ef', 0.45);
   }
+  // Despertador que ele segura quando o cronômetro está rodando. Prende no
+  // tronco, e não na mão, para não brigar com o que cada animação faz com os
+  // braços; nas poses calmas os braços vêm à frente e o abraçam.
+  const cronometro = J(corpo, 0, -22, 30);
+  cronometro.style.display = 'none';
+  B(cronometro, 40, 40, 11, 0, 0, -3, '#e96f34');
+  B(cronometro, 30, 30, 12, 0, 0, 2, '#f7f3ed');
+  B(cronometro, 4, 13, 5, 0, -5, 8, '#473c33');
+  B(cronometro, 11, 4, 5, 4, 1, 8, '#473c33');
+  B(cronometro, 9, 9, 9, -14, -22, -2, '#b9bec4'); B(cronometro, 9, 9, 9, 14, -22, -2, '#b9bec4');
+  B(cronometro, 7, 6, 7, 0, -24, -2, '#8f8375');
+
   const cabeca = J(corpo, 0, -52, 0);
   let olhos: HTMLElement | undefined;
   B(cabeca, 92, 88, 92, 0, -44, 0, cfg.skin);
@@ -261,7 +273,7 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
     B(fone, 20, 36, 34, x + Math.sign(x) * 5, -40, 2, FONE);
     B(fone, 10, 30, 30, x + Math.sign(x) * 16, -40, 2, '#e96f34');
   });
-  return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo, fone, adEsq, adDir, aquario, olhos };
+  return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo, fone, adEsq, adDir, aquario, olhos, cronometro };
 };
 
 export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando';
@@ -282,6 +294,10 @@ interface VoxelAvatarProps {
   pose?: VoxelPose;
   /** Mostra o fone de ouvido na cabeça e faz ele balançar no ritmo. */
   fone?: boolean;
+  /** Põe o despertador nas mãos dele: o cronômetro está rodando. */
+  cronometro?: boolean;
+  /** O tempo acabou: ele treme junto com o despertador tocando. */
+  alarme?: boolean;
   /** Chamado uma vez quando ele termina de andar para fora da tela. */
   onSaiuDaTela?: () => void;
   /** Chamado uma vez quando ele termina de andar de volta para o lugar. */
@@ -289,12 +305,16 @@ interface VoxelAvatarProps {
   className?: string;
 }
 
-const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, onSaiuDaTela, onChegou, className = '' }) => {
+const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, className = '' }) => {
   const palcoRef = useRef<HTMLDivElement>(null);
   const poseRef = useRef(pose);
   poseRef.current = pose;
   const foneRef = useRef(fone);
   foneRef.current = fone;
+  const cronometroRef = useRef(cronometro);
+  cronometroRef.current = cronometro;
+  const alarmeRef = useRef(alarme);
+  alarmeRef.current = alarme;
   const saidaRef = useRef(onSaiuDaTela);
   saidaRef.current = onSaiuDaTela;
   const chegadaRef = useRef(onChegou);
@@ -328,6 +348,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     let poseAnterior: VoxelPose | null = null;
     let foneAnterior: boolean | null = null;
     let guardaAnterior: string | null = null;
+    let cronoAnterior: boolean | null = null;
     const PERCURSO = 280;
 
     const desenhar = (ms: number) => {
@@ -362,12 +383,20 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
         foneAnterior = comFone;
         p.fone.style.display = comFone ? '' : 'none';
       }
+      const comCrono = cronometroRef.current;
+      if (comCrono !== cronoAnterior) {
+        cronoAnterior = comCrono;
+        p.cronometro.style.display = comCrono ? '' : 'none';
+      }
 
       // O que está na mão acompanha o braço. Acenando, o braço direito sobe a
       // 150° e levaria o objeto por cima da cabeça; deitado, os dois braços
       // dobram para dentro e o objeto atravessa o corpo e o chão. Nessas poses
       // ele guarda o item, com um desvanecer curto para não sumir num estalo.
-      const guarda = dormindo ? 'ambos' : tchau ? 'direita' : 'nenhum';
+      // Segurando o despertador com os dois braços ele não tem como continuar
+      // com o vaso e o rádio na mão: guarda os dois enquanto o relógio está ali.
+      const maosNoRelogio = comCrono && !dormindo && !caminhando && !tchau && !festa;
+      const guarda = dormindo || maosNoRelogio ? 'ambos' : tchau ? 'direita' : 'nenhum';
       if (guarda !== guardaAnterior) {
         guardaAnterior = guarda;
         p.adDir.style.opacity = guarda === 'nenhum' ? '1' : '0';
@@ -393,6 +422,10 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       let bE = 6;
       let bD = 8;
       if (cfg.aquario) { zE = -26; zD = 26; bE = 62; bD = 62; }
+      // Segurando o despertador os dois braços vêm à frente. Só nas poses
+      // paradas: acenando, andando e comemorando os braços têm outro trabalho,
+      // e o relógio fica encostado no peito como quem carrega debaixo do braço.
+      if (comCrono && !dormindo && !caminhando && !tchau && !festa) { zE = -22; zD = 22; bE = 58; bD = 58; }
       if (cfg.dir === 'vaso') { zD = -34; bD = 46; }
       if (cfg.dir === 'prancheta') bD = 22;
       if (cfg.dir === 'rifle') bD = 30;
@@ -418,7 +451,13 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       // ninguém. O deslocamento em x recentra o corpo, que deitado passa a se
       // estender para a esquerda da origem.
       const deitado = dormindo ? ' rotateX(20deg) rotateZ(-90deg)' : '';
-      p.raiz.style.transform = `translate3d(${dormindo ? 46 : 0}px,${-sobe + (dormindo ? -4 : 0)}px,0)${deitado}`;
+      // Alarme: a 6,7 Hz o corpo inteiro vibra, e o despertador vai junto porque
+      // está preso no tronco. Para quem pediu menos movimento no sistema não há
+      // tremor nenhum -- o relógio sumindo das mãos já avisa que o tempo acabou.
+      const tocando = alarmeRef.current && !menosMovimento;
+      const treme = tocando ? Math.sin(t * 42) * 3.5 : 0;
+      const tremeX = tocando ? Math.sin(t * 37) * 3 : 0;
+      p.raiz.style.transform = `translate3d(${(dormindo ? 46 : 0) + tremeX}px,${-sobe + (dormindo ? -4 : 0)}px,0)${deitado}${tocando ? ` rotateZ(${treme}deg)` : ''}`;
       // Em pé a respiração sobe e desce; deitado ela tem de ir na direção da
       // barriga, que agora é o eixo z do corpo, senão ele escorrega para o lado.
       p.corpo.style.transform = dormindo
@@ -426,7 +465,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
         : `translate3d(0,${-balanco}px,0) rotateX(${estudando ? 6 : 0}deg)`;
       // Deitado ele ocupa mais chão do que em pé: a sombra acompanha.
       sombra.style.transform = `translate3d(0,40px,0) rotateX(90deg)${dormindo ? ' scale(1.4,0.78)' : ''}`;
-      p.cabeca.style.transform = `translate3d(0,-52px,0) rotateY(${olhaEmVolta}deg) rotateX(${inclinaCabeca}deg) rotateZ(${tombaCabeca}deg)`;
+      p.cabeca.style.transform = `translate3d(0,-52px,0) rotateY(${olhaEmVolta}deg) rotateX(${inclinaCabeca}deg) rotateZ(${tombaCabeca + treme * 1.6}deg)`;
       p.bracoE.style.transform = `translate3d(-34px,-48px,0) rotateZ(${zE}deg) rotateX(${bE}deg)`;
       p.bracoD.style.transform = `translate3d(34px,-48px,0) rotateZ(${zD}deg) rotateX(${bD}deg)`;
       p.pernaE.style.transform = `translate3d(-13px,-4px,0) rotateX(${perna}deg)`;

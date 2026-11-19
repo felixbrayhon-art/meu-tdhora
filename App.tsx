@@ -135,7 +135,6 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', syncViewWithHistory);
   }, []);
   const [timerMode, setTimerMode] = useState<TimerMode>(TimerMode.POMODORO);
-  const [showGlobalBar, setShowGlobalBar] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -168,6 +167,8 @@ const App: React.FC = () => {
 
   // Global Timer State
   const [globalTimerActive, setGlobalTimerActive] = useState(false);
+  const [timerTerminouEm, setTimerTerminouEm] = useState(0);
+  const [minutosPomodoro, setMinutosPomodoro] = useState(() => readTimerMinutes(TimerMode.POMODORO, 25));
   const [globalTimerSeconds, setGlobalTimerSeconds] = useState(() => readTimerMinutes(TimerMode.POMODORO, 25) * 60);
 
   const safeJsonParse = (key: string, defaultValue: any) => {
@@ -237,7 +238,6 @@ const App: React.FC = () => {
     initialLesson?: any;
   } | null>(null);
   // Kept in sessionStorage so reloading the Aula Viva page repeats the same request.
-  const [lessonDockOpen, setLessonDockOpen] = useState(false);
   const [livingLessonData, setLivingLessonData] = useState<{ subject: string; topic: string } | null>(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem('living_lesson_request') || 'null');
@@ -363,11 +363,9 @@ const App: React.FC = () => {
   // States for Sidebar Navigation
   const [tdhQuestionSession, setTDHQuestionSession] = useState(false);
   const isQuestionSession = currentView === 'QUIZ_PLAYER' || (currentView === 'TDH_QUESTOES' && tdhQuestionSession);
-  // Reading/writing views (Aula Viva, Vade Mecum, notebooks): no mascot over the text, compact header, collapsed timer.
+  // Telas de ler e escrever (Aula Viva, Vade Mecum, cadernos): cabeçalho
+  // compacto e o companheiro mais alto, longe do texto.
   const isFocusLesson = currentView === 'LIVING_LESSON' || currentView === 'VADE_MECUM' || currentView === 'DIGITAL_NOTEBOOK' || currentView === 'NOTES';
-  useEffect(() => {
-    if (!isFocusLesson) setLessonDockOpen(false);
-  }, [isFocusLesson]);
   const [materialsSelectedFolderId, setMaterialsSelectedFolderId] = useState<string | null>(null);
   const [materialsSelectedNotebookId, setMaterialsSelectedNotebookId] = useState<string | null>(null);
   const [flashcardsSelectedFolderId, setFlashcardsSelectedFolderId] = useState<string | null>(null);
@@ -738,11 +736,15 @@ const App: React.FC = () => {
     }
   }, [isPlayingRain]);
 
+  // Também quando alguma faixa entra no ar, e não só quando o volume muda: na
+  // primeira montagem os <audio> ainda não existem (a tela de abertura está no
+  // lugar deles), então o efeito não achava nada e a primeira faixa a tocar
+  // saía a 100% enquanto o controle mostrava 50%.
   useEffect(() => {
     if (relaxAudioRef.current) relaxAudioRef.current.volume = audioVolume;
     if (mpbAudioRef.current) mpbAudioRef.current.volume = audioVolume;
     if (rainAudioRef.current) rainAudioRef.current.volume = audioVolume * 0.6;
-  }, [audioVolume]);
+  }, [audioVolume, activeChannel, isPlayingRain]);
 
   // Global Clock
   useEffect(() => {
@@ -753,6 +755,10 @@ const App: React.FC = () => {
       }, 1000);
     } else if (globalTimerSeconds === 0 && globalTimerActive) {
       setGlobalTimerActive(false);
+      // Avisa o mascote para tocar o alarme. Acabar o tempo e parar na mão são
+      // coisas diferentes, e as duas zeram globalTimerActive: sem esta marca
+      // ele guardaria o relógio em silêncio nos dois casos.
+      setTimerTerminouEm(Date.now());
       logStudyMinutes(timerMode === TimerMode.EMERGENCY ? 5 : 25);
     }
     return () => clearInterval(interval);
@@ -1177,13 +1183,6 @@ const App: React.FC = () => {
     });
   };
 
-  const handleCloseGlobalBar = () => {
-    setGlobalTimerActive(false);
-    setActiveChannel(null);
-    setIsPlayingRain(false);
-    setShowGlobalBar(false);
-  };
-
   const finishInitialization = useCallback(() => {
     setSplashDone(true);
   }, []);
@@ -1240,16 +1239,7 @@ const App: React.FC = () => {
       </>
     );
 
-  const formatMiniTime = (s: number) => {
-    const mins = Math.floor(s / 60);
-    const secs = s % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
-  // Na tela do Timer o relógio já aparece grande: a mini-barra só duplicaria e cobriria
-  // os botões. Na tela inicial (Aula Direta) ela some: é onde o aluno escolhe o que
-  // estudar, e um cronômetro correndo ali apressa antes mesmo de ter o que estudar.
-  const showMiniBar = showGlobalBar && currentView !== 'TIMER' && currentView !== 'AI_DIRECT';
   const sidebarProps = {
     currentView,
     questionSession: isQuestionSession,
@@ -1327,83 +1317,12 @@ const App: React.FC = () => {
             </div>
           )}
 
-          <div ref={scrollAreaRef} data-main-scroll className={`flex-1 overflow-y-auto custom-scrollbar relative ${showMiniBar && !isQuestionSession && !isFocusLesson ? 'pb-28' : ''}`}>
+          <div ref={scrollAreaRef} data-main-scroll className="flex-1 overflow-y-auto custom-scrollbar relative">
             <audio ref={relaxAudioRef} src={LOFI_RELAX_URL} loop preload="none" />
             <audio ref={mpbAudioRef} src={MPB_LOFI_URL} loop preload="none" />
             <audio ref={rainAudioRef} src={RAIN_SOUND_URL} loop preload="none" />
 
-            {showGlobalBar && isFocusLesson && !lessonDockOpen && (
-              <button
-                type="button"
-                onClick={() => setLessonDockOpen(true)}
-                aria-label="Abrir relógio e sons"
-                className="fixed right-4 z-[150] flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#cfc9a2] bg-white/95 text-xs font-black tabular-nums text-[#473c33] shadow-xl backdrop-blur-xl dark:border-white/20 dark:bg-[#2d2e27] dark:text-[#f2efd2]"
-                style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
-              >
-                {formatMiniTime(globalTimerSeconds)}
-              </button>
-            )}
-            {showGlobalBar && isFocusLesson && lessonDockOpen && (
-              <button
-                type="button"
-                onClick={() => setLessonDockOpen(false)}
-                className="fixed right-4 z-[91] min-h-[44px] rounded-full bg-[#e96f34] px-4 text-xs font-black uppercase tracking-wide text-white shadow-lg"
-                style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
-              >
-                Recolher relógio
-              </button>
-            )}
-            {showMiniBar && !isQuestionSession && (!isFocusLesson || lessonDockOpen) && (
-              <div className="global-minibar fixed left-1/2 -translate-x-1/2 z-[90] w-[95%] max-w-2xl animate-in slide-in-from-bottom-8 duration-500" style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
-                {isStorageFull && !user && <div className="bg-red-500 text-white text-[10px] font-black uppercase tracking-widest py-1 px-4 rounded-t-xl mb-[-10px] mx-auto w-fit shadow-lg animate-bounce">⚠️ Memória do Navegador Cheia! Entre com o Google para salvar na nuvem</div>}
-                <div className="bg-white/90 backdrop-blur-xl border border-white shadow-2xl rounded-[35px] p-2 flex items-center justify-between gap-3 relative">
-                  <button onClick={handleCloseGlobalBar} className="absolute -top-3 -right-3 w-8 h-8 bg-white shadow-md border border-gray-100 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 transition-all hover:scale-110 z-20" title="Parar atividades e fechar">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-
-                  <div className="flex items-center gap-1 bg-gray-50/50 p-1 rounded-[25px]">
-                    <button onClick={() => setActiveChannel(activeChannel === 'RELAX' ? null : 'RELAX')} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${activeChannel === 'RELAX' ? 'bg-[#fed386] text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`} title="Lofi Relax">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                      </svg>
-                    </button>
-                    <button onClick={() => setIsPlayingRain(!isPlayingRain)} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isPlayingRain ? 'bg-[#fecc73] text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`} title="Chuva de Fundo">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="flex-1 flex items-center justify-center gap-4 bg-gray-50/50 p-1 rounded-[25px]">
-                    <button onClick={() => setCurrentView('TIMER')} className="flex flex-col items-center hover:opacity-70 transition-opacity">
-                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">{timerMode}</span>
-                      <span className="text-xl font-black tabular-nums leading-none">{formatMiniTime(globalTimerSeconds)}</span>
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setGlobalTimerActive(!globalTimerActive)} className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 ${globalTimerActive ? 'bg-red-500 text-white' : 'bg-[#b1c77b] text-white'}`}>
-                        {globalTimerActive ? (
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="pr-2">
-                    <input type="range" min="0" max="1" step="0.01" value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} className="w-12 h-1 accent-[#fed386] hidden sm:block opacity-40 hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <main className="max-w-[1760px] min-h-full mx-auto px-4 lg:px-8 pt-8 relative" style={{ paddingBottom: !isQuestionSession && !isFocusLesson ? `calc(${showMiniBar ? '11rem' : '7rem'} + env(safe-area-inset-bottom, 0px))` : '2rem' }}>
+            <main className="max-w-[1760px] min-h-full mx-auto px-4 lg:px-8 pt-8 relative" style={{ paddingBottom: !isQuestionSession && !isFocusLesson ? 'calc(7rem + env(safe-area-inset-bottom, 0px))' : '2rem' }}>
               {showRevisionNotice && (
                 <aside role="status" className="mb-5 flex flex-col gap-3 rounded-2xl border border-[#e5d7bd] bg-[#fff8ec] px-4 py-3 text-[#473c33] shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-[#65533d] dark:bg-[#2b241b] dark:text-[#f4ebdd]">
                   <p className="text-sm font-semibold">
@@ -1432,7 +1351,6 @@ const App: React.FC = () => {
                       setTimerMode={(mode) => {
                         setTimerMode(mode);
                         setGlobalTimerSeconds(readTimerMinutes(mode, mode === TimerMode.EMERGENCY ? 5 : 25) * 60);
-                        setShowGlobalBar(true);
                       }}
                       flashcardCount={dueFlashcardsCount}
                       stats={stats}
@@ -1685,7 +1603,6 @@ const App: React.FC = () => {
                         setActiveSubjectId(s.id);
                         setTimerMode(TimerMode.POMODORO);
                         setGlobalTimerSeconds(1500);
-                        setShowGlobalBar(true);
                         setCurrentView('TIMER');
                       }}
                       editalConfig={editalConfig}
@@ -1778,7 +1695,6 @@ const App: React.FC = () => {
                         setTimerMode(TimerMode.POMODORO);
                         setGlobalTimerSeconds(1500);
                         setGlobalTimerActive(true);
-                        setShowGlobalBar(true);
                         setCurrentView('TIMER');
                       }}
                     />
@@ -1877,7 +1793,36 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {!isQuestionSession && !isFocusLesson && currentView !== 'SMART_REVISION' && currentView !== 'MATERIALS' && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} liftForBar={showMiniBar} activeChannel={activeChannel} setActiveChannel={setActiveChannel} />}
+        {/* O companheiro fica em todas as telas. Quem não quiser pede para ele
+            sair pela roda, e isso agora dura entre as sessões. Ele só muda de
+            altura: cada tela tem a sua barra fixa no rodapé (a de responder
+            questões ocupa ~6rem, a régua de escrita do quiz fica a 3px do chão,
+            e nas aulas em foco há o relógio flutuante a 5,5rem), e ele precisa
+            encostar acima dela para não cobrir botão nem ficar escondido. */}
+        <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId}
+          recuoRem={isFocusLesson ? 10 : isQuestionSession ? 8.5 : 1}
+          tempoJaNaTela={currentView === 'TIMER'}
+          activeChannel={activeChannel} setActiveChannel={setActiveChannel}
+          isPlayingRain={isPlayingRain} setIsPlayingRain={setIsPlayingRain}
+          audioVolume={audioVolume} setAudioVolume={setAudioVolume}
+          timerAtivo={globalTimerActive}
+          onLigarTimer={() => {
+            setTimerMode(TimerMode.POMODORO);
+            setGlobalTimerSeconds(minutosPomodoro * 60);
+            setGlobalTimerActive(true);
+          }}
+          minutosPomodoro={minutosPomodoro}
+          onAjustarMinutos={(min) => {
+            setMinutosPomodoro(min);
+            safeSetItem(`tdh_timer_minutes_${TimerMode.POMODORO}`, String(min));
+            // Com o cronômetro parado o novo tempo já vale; rodando, mexer no
+            // relógio no meio da contagem seria tirar o chão de quem está focado.
+            if (!globalTimerActive) { setTimerMode(TimerMode.POMODORO); setGlobalTimerSeconds(min * 60); }
+          }}
+          onPararTimer={() => setGlobalTimerActive(false)}
+          timerTerminouEm={timerTerminouEm}
+          timerSegundos={globalTimerSeconds}
+        />
         {toast && (
           <div role="status" aria-live="polite" className="fixed left-1/2 top-4 z-[2000] -translate-x-1/2 rounded-2xl bg-[#473c33] px-5 py-3 text-sm font-bold text-white shadow-2xl dark:bg-[#d9772b]">
             {toast}
