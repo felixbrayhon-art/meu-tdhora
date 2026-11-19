@@ -53,6 +53,12 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   });
   const [frase, setFrase] = useState<string | null>(null);
   const [buscandoFrase, setBuscandoFrase] = useState(false);
+  // De quantos em quantos minutos ele traz uma frase sozinho. 0 = desligado.
+  const [intervaloMotivacao, setIntervaloMotivacao] = useState(() => {
+    const v = parseInt((() => { try { return localStorage.getItem('tdh_motivacao_intervalo') || '0'; } catch { return '0'; } })(), 10);
+    return [15, 30, 60].includes(v) ? v : 0;
+  });
+  const sumirFraseRef = useRef<number>(0);
   // 'aqui' -> 'despedindo' -> 'andando' -> 'fora'. Não guardamos em disco: recarregar traz ele de volta.
   // Agora ele aparece em todas as telas, entao "sair" precisa durar: quem nao
   // quer o companheiro teria de dispensa-lo a cada recarga.
@@ -197,17 +203,36 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     try { localStorage.setItem('tdh_motivacao_estilo', estilo); } catch { /* modo privado */ }
   };
 
-  const pedirFrase = async () => {
+  const escolherIntervalo = (minutos: number) => {
+    setIntervaloMotivacao(minutos);
+    try { localStorage.setItem('tdh_motivacao_intervalo', String(minutos)); } catch { /* modo privado */ }
+  };
+
+  const pedirFrase = async (automatica = false) => {
     setPainelMotivacao(false);
     setMenuAberto(false);
+    window.clearTimeout(sumirFraseRef.current);
     setFrase(null);
     setBuscandoFrase(true);
     try {
       setFrase(await getMotivacao(estiloMotivacao));
+      // A que ele trouxe sozinho se recolhe: ninguém pediu, e um balão parado
+      // no canto para sempre vira estorvo. A pedida fica até ser fechada.
+      if (automatica) sumirFraseRef.current = window.setTimeout(() => setFrase(null), 45_000);
     } finally {
       setBuscandoFrase(false);
     }
   };
+
+  // O relógio do modo automático. Guardamos a função numa ref para o intervalo
+  // não ser reiniciado toda vez que ele troca o estilo da frase.
+  const pedirFraseRef = useRef(pedirFrase);
+  pedirFraseRef.current = pedirFrase;
+  useEffect(() => {
+    if (!intervaloMotivacao || presenca !== 'aqui') return;
+    const t = window.setInterval(() => { pedirFraseRef.current(true); }, intervaloMotivacao * 60_000);
+    return () => window.clearInterval(t);
+  }, [intervaloMotivacao, presenca]);
 
   const ligarTimer = () => {
     setMenuAberto(false);
@@ -490,11 +515,33 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 </div>
                 <button
                   type="button"
-                  onClick={pedirFrase}
-                  className="flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-[#e96f34] px-4 text-xs font-black uppercase tracking-wide text-white shadow-[0_6px_14px_rgba(233,111,52,0.3)] transition-all hover:bg-[#d55f27] active:scale-95"
+                  onClick={() => pedirFrase()}
+                  className="mb-3 flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-[#e96f34] px-4 text-xs font-black uppercase tracking-wide text-white shadow-[0_6px_14px_rgba(233,111,52,0.3)] transition-all hover:bg-[#d55f27] active:scale-95"
                 >
                   Quero uma frase
                 </button>
+                <p className="mb-2 px-1 text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Modo automático</p>
+                <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="De quanto em quanto tempo">
+                  {([[0, 'Não'], [15, '15m'], [30, '30m'], [60, '1h']] as const).map(([min, nome]) => (
+                    <button
+                      key={min}
+                      type="button"
+                      role="radio"
+                      aria-checked={intervaloMotivacao === min}
+                      onClick={() => escolherIntervalo(min)}
+                      className={`min-h-[36px] rounded-xl text-[10px] font-black uppercase transition-colors ${
+                        intervaloMotivacao === min ? 'bg-[#473c33] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
+                      }`}
+                    >
+                      {nome}
+                    </button>
+                  ))}
+                </div>
+                {intervaloMotivacao > 0 && (
+                  <p className="mt-2 text-center text-[9px] font-bold leading-snug text-[#a79c8e]">
+                    Uma frase a cada {intervaloMotivacao === 60 ? '1 hora' : `${intervaloMotivacao} minutos`}. Cada uma gasta uma consulta de IA.
+                  </p>
+                )}
               </div>
             )}
             {somAberto && (
