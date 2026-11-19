@@ -2675,6 +2675,4 @@ html[style*="--font-scale"] .text-\[12px\] { font-size: calc(12px * var(--font-s
 
 /* Barra flutuante do Pomodoro: centralizada na área de conteúdo (ao lado da barra lateral), não na janela inteira. */
 @media (min-width: 1024px) {
-    body:has(.app-sidebar-slot > [data-sidebar="wide"]) .global-minibar { left: calc(50% + 9rem); width: min(42rem, calc(95% - 18rem)); }
-    body:has(.app-sidebar-slot > [data-sidebar="mini"]) .global-minibar { left: calc(50% + 2.5rem); width: min(42rem, calc(95% - 5rem)); }
 }

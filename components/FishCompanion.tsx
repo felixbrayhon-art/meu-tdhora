@@ -26,14 +26,19 @@ interface FishCompanionProps {
   timerTerminouEm?: number;
   /** Quanto falta, em segundos, para mostrar na etiqueta acima dele. */
   timerSegundos?: number;
+  /** Duração do pomodoro, em minutos, e como mudá-la. */
+  minutosPomodoro?: number;
+  onAjustarMinutos?: (minutos: number) => void;
 }
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, recuoRem = 1, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0 }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, recuoRem = 1, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0, minutosPomodoro = 25, onAjustarMinutos }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
   const temVoxel = !!getVoxelConfig(characterId);
   const [menuAberto, setMenuAberto] = useState(false);
+  // Agora que a barra do Pomodoro saiu, editar a duração é aqui.
+  const [painelTempo, setPainelTempo] = useState(false);
   // 'aqui' -> 'despedindo' -> 'andando' -> 'fora'. Não guardamos em disco: recarregar traz ele de volta.
   // Agora ele aparece em todas as telas, entao "sair" precisa durar: quem nao
   // quer o companheiro teria de dispensa-lo a cada recarga.
@@ -76,10 +81,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   // alterna, então ele fica de fora para não abrir e fechar na mesma batida.
   useEffect(() => {
     if (!menuAberto) return;
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuAberto(false); };
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') { setMenuAberto(false); setPainelTempo(false); } };
     const fora = (e: PointerEvent) => {
       const alvo = e.target as Node;
-      if (!menuRef.current?.contains(alvo) && !mascoteRef.current?.contains(alvo)) setMenuAberto(false);
+      if (!menuRef.current?.contains(alvo) && !mascoteRef.current?.contains(alvo)) { setMenuAberto(false); setPainelTempo(false); }
     };
     window.addEventListener('keydown', tecla);
     window.addEventListener('pointerdown', fora);
@@ -239,6 +244,13 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       texto: timerAtivo ? '#f7f3ed' : '#6b5a49',
       acao: timerAtivo ? pararTimer : ligarTimer,
     },
+    {
+      id: 'ajustar',
+      rotulo: 'Ajustar o tempo',
+      cor: '#F4EBDD',
+      texto: '#6b5a49',
+      acao: () => setPainelTempo(true),
+    },
     ...POSES_ESCOLHIVEIS.map(({ pose, rotulo }) => ({
       id: pose,
       rotulo,
@@ -249,7 +261,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     })),
     { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
   ];
-  const rodaAberta = menuAberto && presenca === 'aqui' && !isOpen;
+  const emCena = presenca === 'aqui' && !isOpen;
+  const rodaAberta = menuAberto && !painelTempo && emCena;
+  const painelAberto = painelTempo && emCena;
+  const aberto = rodaAberta || painelAberto;
   const faltam = `${Math.floor(timerSegundos / 60)}:${String(timerSegundos % 60).padStart(2, '0')}`;
   // A etiqueta aparece onde a tela ainda não mostra o tempo em lugar nenhum:
   // duas contagens na mesma tela só competem entre si. Em pé ela fica acima da cabeça dele, altura que
@@ -258,16 +273,16 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
 
   return (
     <>
-    {rodaAberta && (
+    {aberto && (
       /* Escurece o fundo porque o boneco sai do canto e passa por cima do
          conteúdo: sem isso a roda disputaria leitura com a tela inteira. */
-      <div className="fixed inset-0 z-[55] bg-[#2a1f18]/40 backdrop-blur-[2px] animate-in fade-in duration-200" onClick={() => setMenuAberto(false)} aria-hidden="true" />
+      <div className="fixed inset-0 z-[55] bg-[#2a1f18]/40 backdrop-blur-[2px] animate-in fade-in duration-200" onClick={() => { setMenuAberto(false); setPainelTempo(false); }} aria-hidden="true" />
     )}
     <div
       className="fixed right-3 lg:right-6 z-[60] flex flex-col items-end pointer-events-none [&>*]:pointer-events-auto motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
       style={{
         bottom: `calc(${recuoRem}rem + env(safe-area-inset-bottom, 0px))`,
-        transform: rodaAberta ? `translate3d(${desloc.x}px, ${desloc.y}px, 0)` : undefined,
+        transform: aberto ? `translate3d(${desloc.x}px, ${desloc.y}px, 0)` : undefined,
       }}
     >
       {/* Janela de Chat */}
@@ -360,13 +375,62 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
             // senão ele cresce dentro do furo e encosta nas peças. A escala é no
             // grupo e em volta do próprio centro, que é o ponto já centralizado.
             className="relative flex flex-col items-end gap-2 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
-            style={{ transform: rodaAberta && desloc.escala < 1 ? `scale(${desloc.escala})` : undefined }}
+            style={{ transform: aberto && desloc.escala < 1 ? `scale(${desloc.escala})` : undefined }}
           >
             {rodaAberta && (
               /* A roda nasce centrada no boneco: o invólucro só contém o botão
                  dele, então `inset-0` já é a caixa do personagem. */
               <div ref={menuRef} className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <CompanionWheel itens={itensRoda} rotulo={`Opções de ${companionName}`} />
+              </div>
+            )}
+            {painelAberto && (
+              /* Ocupa o mesmo lugar da roda, centrado no boneco — que fica
+                 coberto enquanto isto está aberto. Mantive centrado em vez de
+                 acima dele para não estourar o topo em tela curta: o painel
+                 tem 230px e subi-lo inteiro deixaria 12px de folga num 640. */
+              <div ref={menuRef} role="dialog" aria-label="Ajustar o tempo do cronômetro" className="absolute left-1/2 top-1/2 z-20 w-[244px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Ajustar o tempo</span>
+                  <button type="button" onClick={() => setPainelTempo(false)} aria-label="Fechar" className="flex h-7 w-7 items-center justify-center rounded-lg text-[#8f8375] transition-colors hover:bg-[#f0e8dc] dark:hover:bg-white/5">
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <button type="button" onClick={() => onAjustarMinutos?.(Math.max(1, minutosPomodoro - 5))} aria-label="Cinco minutos a menos" className="h-11 w-11 rounded-2xl bg-[#f0e8dc] text-lg font-black text-[#473c33] transition-colors hover:bg-[#e6dac8] dark:bg-white/5 dark:text-[#f2efd2]">−</button>
+                  <div className="text-center leading-none">
+                    <span className="block text-3xl font-black tabular-nums text-[#473c33] dark:text-[#f2efd2]">{minutosPomodoro}</span>
+                    <span className="mt-1 block text-[9px] font-black uppercase tracking-[0.18em] text-[#a79c8e]">minutos</span>
+                  </div>
+                  <button type="button" onClick={() => onAjustarMinutos?.(Math.min(180, minutosPomodoro + 5))} aria-label="Cinco minutos a mais" className="h-11 w-11 rounded-2xl bg-[#f0e8dc] text-lg font-black text-[#473c33] transition-colors hover:bg-[#e6dac8] dark:bg-white/5 dark:text-[#f2efd2]">+</button>
+                </div>
+                <div className="mb-3 grid grid-cols-4 gap-1.5">
+                  {[15, 25, 45, 50].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => onAjustarMinutos?.(m)}
+                      aria-pressed={minutosPomodoro === m}
+                      className={`min-h-[36px] rounded-xl text-[11px] font-black tabular-nums transition-colors ${
+                        minutosPomodoro === m ? 'bg-[#473c33] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setPainelTempo(false); setMenuAberto(false); if (timerAtivo) pararTimer(); else ligarTimer(); }}
+                  className="flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-[#e96f34] px-4 text-xs font-black uppercase tracking-wide text-white shadow-[0_6px_14px_rgba(233,111,52,0.3)] transition-all hover:bg-[#d55f27] active:scale-95"
+                >
+                  {timerAtivo ? 'Parar agora' : 'Começar agora'}
+                </button>
+                {!timerAtivo && (
+                  <p className="mt-2 text-center text-[9px] font-bold leading-snug text-[#a79c8e]">
+                    Ele vai buscar o relógio antes de começar.
+                  </p>
+                )}
               </div>
             )}
             {mostrarTempo && (
@@ -376,7 +440,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
             )}
             <button
               ref={mascoteRef}
-              onClick={() => { if (presenca !== 'aqui') return; if (menuAberto) setMenuAberto(false); else abrirRoda(); }}
+              onClick={() => { if (presenca !== 'aqui') return; if (menuAberto) { setMenuAberto(false); setPainelTempo(false); } else abrirRoda(); }}
               aria-label={menuAberto ? 'Fechar as opções' : `Opções de ${companionName}`}
               aria-expanded={menuAberto}
               aria-haspopup="menu"
