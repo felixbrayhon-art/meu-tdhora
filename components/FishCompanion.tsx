@@ -11,9 +11,12 @@ interface FishCompanionProps {
   characterId?: string;
   /** A mini-barra do Pomodoro está visível: ancora o mascote acima dela para não cobrir controles. */
   liftForBar?: boolean;
+  /** Estação de música tocando agora (a mesma da barra de ferramentas), ou null. */
+  activeChannel?: 'RELAX' | 'MPB' | null;
+  setActiveChannel?: (c: 'RELAX' | 'MPB' | null) => void;
 }
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false, activeChannel = null, setActiveChannel }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
@@ -22,6 +25,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   // 'aqui' -> 'despedindo' -> 'andando' -> 'fora'. Não guardamos em disco: recarregar traz ele de volta.
   const [presenca, setPresenca] = useState<'aqui' | 'despedindo' | 'andando' | 'fora' | 'chegando'>('aqui');
   const [cochilando, setCochilando] = useState(false);
+  // Ele só está de fone depois de ir buscar: a música é consequência da ida, não o contrário.
+  const [comFone, setComFone] = useState(false);
+  // Por que ele saiu da tela: para ficar fora ('sair') ou para pegar o fone ('fone').
+  const missaoRef = useRef<'sair' | 'fone'>('sair');
   // A animação que o aluno escolheu. Enquanto for a padrão, o cochilo automático
   // ainda vale; a partir do momento em que ele escolhe algo, a escolha manda.
   const [animacao, setAnimacao] = useState<VoxelPose>('estudando');
@@ -80,6 +87,29 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       eventos.forEach((e) => window.removeEventListener(e, reiniciar));
     };
   }, [presenca, isOpen, animacao]);
+
+  // Se a música for desligada pela barra de ferramentas, o fone sai da cabeça
+  // junto: ficar de fone em silêncio diria que ainda está tocando. Reagimos à
+  // virada para o silêncio, e não a "está em silêncio": durante a ida buscar o
+  // fone ainda não há canal nenhum, e ele tiraria o fone ao chegar.
+  const canalAnteriorRef = useRef(activeChannel);
+  useEffect(() => {
+    const antes = canalAnteriorRef.current;
+    canalAnteriorRef.current = activeChannel;
+    if (antes && !activeChannel) setComFone(false);
+  }, [activeChannel]);
+
+  const ligarMusica = () => {
+    setMenuAberto(false);
+    missaoRef.current = 'fone';
+    setPresenca('andando');
+  };
+
+  const desligarMusica = () => {
+    setMenuAberto(false);
+    setComFone(false);
+    setActiveChannel?.(null);
+  };
 
   const handleSend = async () => {
     if (!message.trim() || isTyping) return;
@@ -236,6 +266,20 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                     Falar com {companionName}
                   </button>
                 </div>
+                {/* Ligar a música manda ele buscar o fone; desligar tira na hora,
+                    porque esperar a viagem para o silêncio chegar seria castigo. */}
+                <div className="px-2 pb-1">
+                  <button
+                    role="menuitem"
+                    onClick={activeChannel ? desligarMusica : ligarMusica}
+                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[#f7f3ed] px-4 text-[11px] font-black uppercase tracking-wide text-[#8f8375] transition-colors hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]"
+                  >
+                    <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 15v-3a8 8 0 0116 0v3M4 15a2 2 0 012-2h1v6H6a2 2 0 01-2-2zm16 0a2 2 0 01-2 2h-1v-6h1a2 2 0 012 2z" />
+                    </svg>
+                    {activeChannel ? 'Desligar a música' : 'Ligar a música'}
+                  </button>
+                </div>
                 <div className="px-3 pb-2 pt-1">
                   <p className="mb-2 px-1 text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Animação</p>
                   <div className="grid grid-cols-2 gap-1.5">
@@ -261,7 +305,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 </div>
                 <button
                   role="menuitem"
-                  onClick={() => { setMenuAberto(false); setPresenca('despedindo'); }}
+                  onClick={() => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); }}
                   className="min-h-[44px] border-t border-[#eee6d6] px-4 text-left text-xs font-black uppercase tracking-wide text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33] dark:border-white/10 dark:text-[#a89680] dark:hover:bg-white/5"
                 >
                   Pedir para sair da tela
@@ -281,8 +325,17 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 characterId={characterId}
                 altura={132}
                 pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : presenca === 'chegando' ? 'voltando' : cochilando ? 'dormindo' : animacao}
-                onSaiuDaTela={() => setPresenca('fora')}
-                onChegou={() => setPresenca('aqui')}
+                fone={comFone}
+                onSaiuDaTela={() => {
+                  // Foi buscar o fone: nos bastidores ele coloca e já volta andando,
+                  // então não passa pelo estado 'fora' nem pede para ser chamado.
+                  if (missaoRef.current === 'fone') { setComFone(true); setPresenca('chegando'); }
+                  else setPresenca('fora');
+                }}
+                onChegou={() => {
+                  setPresenca('aqui');
+                  if (missaoRef.current === 'fone') { missaoRef.current = 'sair'; setActiveChannel?.('RELAX'); }
+                }}
               />
             </button>
           </div>

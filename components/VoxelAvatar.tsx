@@ -102,7 +102,7 @@ const ADERECO: Record<string, (a: Pai, cor?: string) => void> = {
   nada: () => { },
 };
 
-interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement }
+interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement; fone: HTMLElement }
 
 const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   const alturaPerna = cfg.curto ? 20 : 28;
@@ -222,7 +222,23 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
     B(cabeca, 12, 4, 3, 0, -45, 51, cfg.oculos);
     B(cabeca, 10, 4, 24, -42, -45, 38, cfg.oculos); B(cabeca, 10, 4, 24, 42, -45, 38, cfg.oculos);
   }
-  return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo };
+  // O fone entra montado desde o começo e fica escondido: aparecer é só trocar o
+  // display, sem remontar o boneco no meio da caminhada de volta.
+  const fone = J(cabeca, 0, 0, 0);
+  fone.style.display = 'none';
+  // Grafite claro, e não preto: metade dos personagens tem cabelo escuro e o fone
+  // sumia dentro dele. A concha ainda ganha um disco laranja virado para fora.
+  const FONE = '#55504a';
+  // Cabelo afro e capacete ocupam o alto da cabeça; o arco sobe para passar por cima.
+  const yArco = cfg.estilo === 'afro' ? -116 : cfg.capacete || cfg.balde ? -106 : -98;
+  B(fone, 106, 13, 27, 0, yArco, 0, FONE);
+  B(fone, 94, 9, 23, 0, yArco + 10, 0, '#e8e2d6');
+  [-50, 50].forEach((x) => {
+    B(fone, 13, -46 - yArco, 19, x, (yArco - 46) / 2, 0, FONE);
+    B(fone, 20, 36, 34, x + Math.sign(x) * 5, -40, 2, FONE);
+    B(fone, 10, 30, 30, x + Math.sign(x) * 16, -40, 2, '#e96f34');
+  });
+  return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo, fone };
 };
 
 export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando';
@@ -241,6 +257,8 @@ interface VoxelAvatarProps {
   /** Altura do palco em px. O boneco é escalado para caber nela. */
   altura?: number;
   pose?: VoxelPose;
+  /** Mostra o fone de ouvido na cabeça e faz ele balançar no ritmo. */
+  fone?: boolean;
   /** Chamado uma vez quando ele termina de andar para fora da tela. */
   onSaiuDaTela?: () => void;
   /** Chamado uma vez quando ele termina de andar de volta para o lugar. */
@@ -248,10 +266,12 @@ interface VoxelAvatarProps {
   className?: string;
 }
 
-const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', onSaiuDaTela, onChegou, className = '' }) => {
+const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, onSaiuDaTela, onChegou, className = '' }) => {
   const palcoRef = useRef<HTMLDivElement>(null);
   const poseRef = useRef(pose);
   poseRef.current = pose;
+  const foneRef = useRef(fone);
+  foneRef.current = fone;
   const saidaRef = useRef(onSaiuDaTela);
   saidaRef.current = onSaiuDaTela;
   const chegadaRef = useRef(onChegou);
@@ -283,6 +303,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     let desloc = 0;
     let avisou = false;
     let poseAnterior: VoxelPose | null = null;
+    let foneAnterior: boolean | null = null;
     const PERCURSO = 280;
 
     const desenhar = (ms: number) => {
@@ -308,6 +329,14 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
         if (andando) desloc = 0;
         avisou = false;
         poseAnterior = pose;
+      }
+
+      // Só escreve no display quando muda: por quadro seria uma recalculada de
+      // layout de graça em 20 cubos que ninguém pediu.
+      const comFone = foneRef.current;
+      if (comFone !== foneAnterior) {
+        foneAnterior = comFone;
+        p.fone.style.display = comFone ? '' : 'none';
       }
 
       // Andando ele vira de perfil para o lado em que caminha; acenando e dormindo,
@@ -338,7 +367,9 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       zD += salto * 12;
 
       const inclinaCabeca = dormindo ? 10 : estudando ? 16 : -salto * 6;
-      const tombaCabeca = dormindo ? 14 : 0;
+      // Com o fone na cabeça ele marca o ritmo. Dormindo ou andando, não: um já
+      // tem inclinação própria e o outro já balança por conta do passo.
+      const tombaCabeca = (dormindo ? 14 : 0) + (comFone && !dormindo && !caminhando ? Math.sin(t * 5.5) * 7 : 0);
       const olhaEmVolta = dormindo || estudando || caminhando ? 0 : Math.sin(t * 0.7) * 9;
 
       // Dormindo ele deita: o corpo inteiro tomba 82° e desce até o chão. A sombra
