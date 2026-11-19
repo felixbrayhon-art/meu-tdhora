@@ -21,9 +21,11 @@ interface FishCompanionProps {
   onPararTimer?: () => void;
   /** Muda de valor toda vez que o pomodoro chega ao fim sozinho. */
   timerTerminouEm?: number;
+  /** Quanto falta, em segundos, para mostrar na etiqueta acima dele. */
+  timerSegundos?: number;
 }
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0 }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0 }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
@@ -238,6 +240,12 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
   ];
   const rodaAberta = menuAberto && presenca === 'aqui' && !isOpen;
+  const faltam = `${Math.floor(timerSegundos / 60)}:${String(timerSegundos % 60).padStart(2, '0')}`;
+  // A etiqueta aparece onde a mini-barra do Pomodoro não aparece: `liftForBar` é
+  // justamente o sinal de que a barra está na tela, e duas contagens na mesma
+  // tela só competem entre si. Em pé ela fica acima da cabeça dele, altura que
+  // também cabe dentro do furo da roda — então não precisa sumir quando a roda abre.
+  const mostrarTempo = timerAtivo && !liftForBar && presenca === 'aqui';
 
   return (
     <>
@@ -351,6 +359,11 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
               <div ref={menuRef} className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <CompanionWheel itens={itensRoda} rotulo={`Opções de ${companionName}`} />
               </div>
+            )}
+            {mostrarTempo && (
+              <span className="pointer-events-none absolute -top-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-[#473c33] px-2.5 py-1 text-[11px] font-black tabular-nums leading-none text-[#f7f3ed] shadow-lg">
+                {faltam}
+              </span>
             )}
             <button
               ref={mascoteRef}

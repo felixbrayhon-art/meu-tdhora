@@ -102,7 +102,11 @@ const CompanionWheel: React.FC<CompanionWheelProps> = ({ itens, rotulo }) => {
             <path d={d} fill={item.cor} strokeWidth={9} className="stroke-transparent group-focus-visible:stroke-[#2a1f18]" />
           </svg>
           <span
-            className="absolute w-[80px] -translate-x-1/2 -translate-y-1/2 text-center text-[10px] font-black uppercase leading-[1.15] tracking-wide"
+            // Palavra comprida ("CRONÔMETRO") encosta na borda curva do setor e
+            // é cortada pelo recorte: nesses rótulos a fonte diminui um ponto.
+            className={`absolute w-[80px] -translate-x-1/2 -translate-y-1/2 text-center font-black uppercase leading-[1.15] tracking-wide ${
+              item.rotulo.split(' ').some((palavra) => palavra.length > 9) ? 'text-[9px] tracking-normal' : 'text-[10px]'
+            }`}
             style={{ left: cx, top: cy, color: item.texto }}
           >
             {item.rotulo}

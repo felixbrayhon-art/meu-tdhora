@@ -1893,6 +1893,7 @@ const App: React.FC = () => {
           }}
           onPararTimer={() => setGlobalTimerActive(false)}
           timerTerminouEm={timerTerminouEm}
+          timerSegundos={globalTimerSeconds}
         />}
         {toast && (
           <div role="status" aria-live="polite" className="fixed left-1/2 top-4 z-[2000] -translate-x-1/2 rounded-2xl bg-[#473c33] px-5 py-3 text-sm font-bold text-white shadow-2xl dark:bg-[#d9772b]">
