@@ -12,9 +12,16 @@ const tom = (hex: string, k: number): string => {
   return `#${((1 << 24) + (c(n >> 16) << 16) + (c((n >> 8) & 255) << 8) + c(n & 255)).toString(16).slice(1)}`;
 };
 
+// Toda face é montada com a frente virada para fora do cubo, e com
+// backface-visibility:hidden: quem está de costas para a câmera o navegador
+// descarta sozinho, a cada quadro e em qualquer rotação. Tentar adivinhar isso
+// na montagem (não criar a face de trás e a de baixo) deixava o boneco vazado,
+// porque as partes giram em juntas próprias — a cabeça inclina, as pernas
+// abrem e dormindo o corpo inteiro deita a 82°, e aí a face que faltava era
+// justamente a que apontava para quem olha.
 const criarFace = (w: number, h: number, t: string, cor: string, op: number) => {
   const f = document.createElement('div');
-  f.style.cssText = `position:absolute;width:${w}px;height:${h}px;left:${-w / 2}px;top:${-h / 2}px;background:${cor};transform:${t};opacity:${op}`;
+  f.style.cssText = `position:absolute;width:${w}px;height:${h}px;left:${-w / 2}px;top:${-h / 2}px;background:${cor};transform:${t};opacity:${op};backface-visibility:hidden`;
   return f;
 };
 
@@ -25,13 +32,11 @@ const B = (p: Pai, w: number, h: number, d: number, x: number, y: number, z: num
   b.style.cssText = 'position:absolute;transform-style:preserve-3d';
   b.style.transform = `translate3d(${x}px,${y}px,${z}px)${rot}`;
   b.appendChild(criarFace(w, h, `translateZ(${d / 2}px)`, cor, op));
-  // Sem a face de trás: o boneco não gira mais, e nas poses extremas (de perfil,
-  // andando) ele chega a 76°, ainda abaixo dos 90° em que as costas apareceriam.
+  b.appendChild(criarFace(w, h, `rotateY(180deg) translateZ(${d / 2}px)`, tom(cor, 0.8), op));
   b.appendChild(criarFace(d, h, `rotateY(90deg) translateZ(${w / 2}px)`, tom(cor, 0.88), op));
   b.appendChild(criarFace(d, h, `rotateY(-90deg) translateZ(${w / 2}px)`, tom(cor, 0.72), op));
   b.appendChild(criarFace(w, d, `rotateX(90deg) translateZ(${h / 2}px)`, tom(cor, 1.16), op));
-  // A face de baixo não entra: a câmera olha de cima (rotateX(-10deg)), então ela
-  // nunca aparece, e são 54 elementos a menos para o navegador reprojetar por quadro.
+  b.appendChild(criarFace(w, d, `rotateX(-90deg) translateZ(${h / 2}px)`, tom(cor, 0.58), op));
   p.appendChild(b);
   return b;
 };
