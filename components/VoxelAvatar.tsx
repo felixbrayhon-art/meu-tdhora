@@ -114,7 +114,7 @@ const ADERECO: Record<string, (a: Pai, cor?: string) => void> = {
   nada: () => { },
 };
 
-interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement; fone: HTMLElement; adEsq: HTMLElement; adDir: HTMLElement; aquario?: HTMLElement; olhos?: HTMLElement; cronometro: HTMLElement }
+interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement; fone: HTMLElement; adEsq: HTMLElement; adDir: HTMLElement; aquario?: HTMLElement; olhos?: HTMLElement; cronometro: HTMLElement; livro: HTMLElement }
 
 const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, varianteNutricionista: 1 | 2 | 3 = 1, variantePolicial: 1 | 2 | 3 = 1, varianteRegata: 1 | 2 | 3 = 1, varianteRaposa: 1 | 2 | 3 = 1, varianteRoqueiro: 1 | 2 | 3 = 1, varianteSenhor: 1 | 2 | 3 = 1, varianteSurfista: 1 | 2 | 3 = 1, varianteNativo: 1 | 2 | 3 = 1, varianteCaramelo: 1 | 2 | 3 = 1): Partes => {
   const alturaPerna = cfg.curto ? 20 : 28;
@@ -332,6 +332,16 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
   B(cronometro, 11, 4, 5, 4, 1, 8, '#473c33');
   B(cronometro, 9, 9, 9, -14, -22, -2, '#b9bec4'); B(cronometro, 9, 9, 9, 14, -22, -2, '#b9bec4');
   B(cronometro, 7, 6, 7, 0, -24, -2, '#8f8375');
+
+  // Livro aberto, preso ao tronco para ficar entre as duas mãos.
+  const livro = J(corpo, 0, -72, 72);
+  livro.style.transform += ' rotateX(-30deg)';
+  livro.style.display = 'none';
+  B(livro, 60, 35, 5, 0, 0, 0, '#8a3b2a');
+  // As páginas ficam do lado do leitor (-Z); a capa fica voltada para fora.
+  B(livro, 27, 30, 4, -15, 0, -4, '#f3ece0', 1, ' rotateY(8deg)');
+  B(livro, 27, 30, 4, 15, 0, -4, '#f3ece0', 1, ' rotateY(-8deg)');
+  B(livro, 2, 28, 3, 0, 0, -7, '#c9bba6');
 
   const cabeca = J(corpo, 0, -52, 0);
   let olhos: HTMLElement | undefined;
@@ -551,18 +561,22 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     B(fone, 20, 36, 34, x + Math.sign(x) * 5, -40, 2, FONE);
     B(fone, 10, 30, 30, x + Math.sign(x) * 16, -40, 2, '#e96f34');
   });
-  return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo, fone, adEsq, adDir, aquario, olhos, cronometro };
+  return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo, fone, adEsq, adDir, aquario, olhos, cronometro, livro };
 };
 
-export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando' | 'dancando';
+export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando' | 'dancando' | 'distraido-olhar' | 'distraido-maos' | 'distraido-pes' | 'lendo';
 
 /** As animações que dá para escolher na tela. 'andando' fica de fora: é a saída. */
 export const POSES_ESCOLHIVEIS: { pose: VoxelPose; rotulo: string }[] = [
   { pose: 'estudando', rotulo: 'Estudando' },
+  { pose: 'lendo', rotulo: 'Lendo' },
   { pose: 'parado', rotulo: 'De boa' },
   { pose: 'tchau', rotulo: 'Acenando' },
   { pose: 'festejando', rotulo: 'Comemorando' },
   { pose: 'dancando', rotulo: 'Dançando' },
+  { pose: 'distraido-olhar', rotulo: 'Olhando em volta' },
+  { pose: 'distraido-maos', rotulo: 'Brincando com as mãos' },
+  { pose: 'distraido-pes', rotulo: 'Balançando os pés' },
   { pose: 'dormindo', rotulo: 'Dormindo' },
 ];
 
@@ -631,7 +645,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     let poseAnterior: VoxelPose | null = null;
     let foneAnterior: boolean | null = null;
     let guardaAnterior: string | null = null;
-    let cronoAnterior: boolean | null = null;
+    let cronoAnterior: string | null = null;
     const PERCURSO = 280;
 
     const desenhar = (ms: number) => {
@@ -651,6 +665,16 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       const estudando = pose === 'estudando';
       const festa = pose === 'festejando';
       const danca = pose === 'dancando';
+      const olhar = pose === 'distraido-olhar';
+      const maos = pose === 'distraido-maos';
+      const pes = pose === 'distraido-pes';
+      const lendo = pose === 'lendo';
+      const movimento = menosMovimento ? 0 : 1;
+      // Cada distração tem um pequeno ciclo com pausas e gestos desencontrados.
+      const curiosidade = Math.sin(t * 0.72) * movimento;
+      const olharLado = Math.tanh(curiosidade * 3) * 35;
+      const mexeMaos = Math.sin(t * 2.6) * movimento;
+      const inquieto = Math.sin(t * 1.65) * movimento;
 
       if (pose !== poseAnterior) {
         // Sair começa no lugar e vai embora; voltar começa fora e vem andando.
@@ -668,9 +692,13 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
         p.fone.style.display = comFone ? '' : 'none';
       }
       const comCrono = cronometroRef.current;
-      if (comCrono !== cronoAnterior) {
-        cronoAnterior = comCrono;
-        p.cronometro.style.display = comCrono ? '' : 'none';
+      const mostraAlarme = comCrono && (!lendo || alarmeRef.current);
+      const mostraLivro = lendo && !alarmeRef.current;
+      const objetos = `${mostraAlarme}-${mostraLivro}`;
+      if (objetos !== cronoAnterior) {
+        cronoAnterior = objetos;
+        p.cronometro.style.display = mostraAlarme ? '' : 'none';
+        p.livro.style.display = mostraLivro ? '' : 'none';
       }
 
       // O que está na mão acompanha o braço. Acenando, o braço direito sobe a
@@ -679,15 +707,15 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       // ele guarda o item, com um desvanecer curto para não sumir num estalo.
       // Segurando o despertador com os dois braços ele não tem como continuar
       // com o vaso e o rádio na mão: guarda os dois enquanto o relógio está ali.
-      const maosNoRelogio = comCrono && !dormindo && !caminhando && !tchau && !festa && !danca;
-      const guarda = dormindo || danca || maosNoRelogio ? 'ambos' : tchau ? 'direita' : 'nenhum';
+      const maosNoRelogio = comCrono && !dormindo && !caminhando && !tchau && !festa && !danca && !maos;
+      const guarda = dormindo || danca || maos || lendo || maosNoRelogio ? 'ambos' : tchau ? 'direita' : 'nenhum';
       if (guarda !== guardaAnterior) {
         guardaAnterior = guarda;
         p.adDir.style.opacity = guarda === 'nenhum' ? '1' : '0';
         p.adEsq.style.opacity = guarda === 'ambos' ? '0' : '1';
-        if (p.aquario) p.aquario.style.opacity = dormindo ? '0' : '1';
         if (p.olhos) p.olhos.style.display = dormindo ? '' : 'none';
       }
+      if (p.aquario) p.aquario.style.opacity = dormindo || lendo ? '0' : '1';
 
       // Andando ele vira de perfil para o lado em que caminha; acenando e dormindo,
       // de frente; no resto do tempo volta para o descanso de três quartos.
@@ -707,7 +735,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       const sobe = salto * 26 + ombro + (caminhando ? Math.abs(passo) * 5 : 0);
       const balanco = festa || caminhando || danca ? 0 : Math.sin(t * (dormindo ? 0.9 : 2)) * (dormindo ? 4.5 : 2.5);
       // Deitado de costas as pernas ficam esticadas; em pé elas só andam ou dobram no pulo.
-      const perna = caminhando ? passo * 30 : dormindo ? 0 : danca ? lado * 24 : -salto * 22;
+      const perna = caminhando ? passo * 30 : dormindo ? 0 : danca ? lado * 24 : pes ? inquieto * 22 : -salto * 22;
 
       let zE = 6;
       let zD = -6;
@@ -730,14 +758,19 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       // Um braço sobe enquanto o outro desce, e as mãos vêm à frente do corpo
       // no contratempo: é o que dá a leitura de dança, e não de ginástica.
       if (danca) { zE = 24 + lado * 16; zD = -24 + lado * 16; bE = 14 - lado * 10; bD = 14 + lado * 10; }
+      if (olhar) { zE = 10 + curiosidade * 6; zD = -10 + curiosidade * 6; bE = 12; bD = 12; }
+      if (maos) { zE = -24 + mexeMaos * 10; zD = 24 + mexeMaos * 10; bE = 58 + Math.sin(t * 3.4) * 14 * movimento; bD = 58 - Math.sin(t * 3.4 + 0.6) * 14 * movimento; }
+      if (pes) { zE = 10 + inquieto * 6; zD = -10 + inquieto * 6; bE = 12 - inquieto * 10; bD = 12 + inquieto * 10; }
+      if (lendo) { zE = -8; zD = 8; bE = 100; bD = 100; }
       zE -= salto * 12;
       zD += salto * 12;
 
-      const inclinaCabeca = dormindo ? 0 : estudando ? 16 : danca ? 4 : -salto * 6;
+      // O rosto aponta para +Z: rotação X negativa faz o olhar descer para o livro.
+      const inclinaCabeca = dormindo ? 0 : lendo ? -14 + Math.sin(t * 0.7) * 2 * movimento : estudando ? 16 : maos ? 19 + Math.sin(t * 1.3) * 5 * movimento : olhar ? 4 + Math.sin(t * 1.44) * 5 * movimento : danca ? 4 : -salto * 6;
       // Com o fone na cabeça ele marca o ritmo. Dormindo ou andando, não: um já
       // tem inclinação própria e o outro já balança por conta do passo.
-      const tombaCabeca = (dormindo ? 14 : 0) + lado * 7 + (comFone && !dormindo && !caminhando && !danca ? Math.sin(t * 5.5) * 7 : 0);
-      const olhaEmVolta = dormindo || estudando || caminhando ? 0 : danca ? lado * 10 : Math.sin(t * 0.7) * 9;
+      const tombaCabeca = (dormindo ? 14 : 0) + lado * 7 + (olhar ? -curiosidade * 10 : maos ? mexeMaos * 4 : pes ? -inquieto * 8 : 0) + (comFone && !dormindo && !caminhando && !danca ? Math.sin(t * 5.5) * 7 : 0);
+      const olhaEmVolta = dormindo || estudando || caminhando ? 0 : lendo ? Math.sin(t * 0.8) * 12 * movimento : olhar ? olharLado : maos ? mexeMaos * 7 : pes ? inquieto * 12 : danca ? lado * 10 : Math.sin(t * 0.7) * 9;
 
       // Dormindo ele deita de barriga para cima, de cabeça à esquerda: rotateZ
       // (-90) põe o corpo na horizontal e rotateX(20) rola um pouco para as
@@ -759,15 +792,15 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
         ? `translate3d(0,0,${balanco}px)`
         : danca
           ? `translate3d(${lado * 17}px,0,0) rotateZ(${-lado * 6}deg)`
-          : `translate3d(0,${-balanco}px,0) rotateX(${estudando ? 6 : 0}deg)`;
+          : `translate3d(${pes ? inquieto * 8 : olhar ? curiosidade * 3 : 0}px,${-balanco}px,0) rotateX(${estudando ? 6 : maos ? 5 : 0}deg) rotateZ(${pes ? -inquieto * 5 : olhar ? -curiosidade * 3 : 0}deg)`;
       // Deitado ele ocupa mais chão do que em pé: a sombra acompanha.
       sombra.style.transform = `translate3d(0,40px,0) rotateX(90deg)${dormindo ? ' scale(1.4,0.78)' : ''}`;
       p.cabeca.style.transform = `translate3d(0,-52px,0) rotateY(${olhaEmVolta}deg) rotateX(${inclinaCabeca}deg) rotateZ(${tombaCabeca + treme * 1.6}deg)`;
-      p.bracoE.style.transform = `translate3d(-34px,-48px,0) rotateZ(${zE}deg) rotateX(${bE}deg)`;
-      p.bracoD.style.transform = `translate3d(34px,-48px,0) rotateZ(${zD}deg) rotateX(${bD}deg)`;
+      p.bracoE.style.transform = `translate3d(-34px,-48px,0) rotateZ(${zE}deg) rotateX(${bE}deg)${lendo ? ' scaleY(1.7)' : ''}`;
+      p.bracoD.style.transform = `translate3d(34px,-48px,0) rotateZ(${zD}deg) rotateX(${bD}deg)${lendo ? ' scaleY(1.7)' : ''}`;
       p.pernaE.style.transform = `translate3d(-13px,-4px,0) rotateX(${perna}deg)`;
       p.pernaD.style.transform = `translate3d(13px,-4px,0) rotateX(${-perna}deg)`;
-      if (p.rabo) p.rabo.style.transform = `translate3d(${characterId === 'raposa' ? 32 : characterId === 'vira-lata-caramelo' ? 25 : 0}px,-12px,-19px) rotateY(${Math.sin(t * 1.6) * 14}deg)`;
+      if (p.rabo) p.rabo.style.transform = `translate3d(${characterId === 'raposa' && varianteRaposa === 1 ? 32 : characterId === 'vira-lata-caramelo' && varianteCaramelo === 1 ? 25 : 0}px,-12px,-19px) rotateY(${Math.sin(t * 1.6) * 14}deg)`;
       pivot.style.transform = `scale(${escala}) rotateX(-10deg) rotateY(${ry}deg)`;
 
       if (caminhando) {
