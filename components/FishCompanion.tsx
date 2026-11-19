@@ -56,6 +56,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const [painelTempo, setPainelTempo] = useState(false);
   const [painelSom, setPainelSom] = useState(false);
   const [painelMotivacao, setPainelMotivacao] = useState(false);
+  const [painelAnimacao, setPainelAnimacao] = useState(false);
   // A escolha entre bíblica e filosófica fica gravada: é preferência, não
   // decisão para refazer a cada frase pedida.
   const [estiloMotivacao, setEstiloMotivacao] = useState<EstiloMotivacao>(() => {
@@ -345,23 +346,23 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       texto: '#6b5a49',
       acao: () => setPainelTempo(true),
     },
-    ...POSES_ESCOLHIVEIS.map(({ pose, rotulo }) => ({
-      id: pose,
-      rotulo,
-      cor: animacao === pose ? '#4A352A' : '#E8DDCC',
-      texto: animacao === pose ? '#F4EBDD' : '#6b5a49',
-      marcado: animacao === pose,
-      acao: () => setAnimacao(pose),
-    })),
+    {
+      id: 'animacao',
+      rotulo: 'Animação',
+      cor: '#E8DDCC',
+      texto: '#6b5a49',
+      acao: () => setPainelAnimacao(true),
+    },
     { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
   ];
   const emCena = presenca === 'aqui' && !isOpen;
-  const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && emCena;
+  const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && !painelAnimacao && emCena;
   const painelAberto = painelTempo && emCena;
   const somAberto = painelSom && emCena;
   const motivacaoAberta = painelMotivacao && emCena;
-  const aberto = rodaAberta || painelAberto || somAberto || motivacaoAberta;
-  const fecharTudo = () => { setMenuAberto(false); setPainelTempo(false); setPainelSom(false); setPainelMotivacao(false); };
+  const animacaoAberta = painelAnimacao && emCena;
+  const aberto = rodaAberta || painelAberto || somAberto || motivacaoAberta || animacaoAberta;
+  const fecharTudo = () => { setMenuAberto(false); setPainelTempo(false); setPainelSom(false); setPainelMotivacao(false); setPainelAnimacao(false); };
   const faltam = `${Math.floor(timerSegundos / 60)}:${String(timerSegundos % 60).padStart(2, '0')}`;
   // A etiqueta aparece onde a tela ainda não mostra o tempo em lugar nenhum:
   // duas contagens na mesma tela só competem entre si. Em pé ela fica acima da cabeça dele, altura que
@@ -511,6 +512,37 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                  dele, então `inset-0` já é a caixa do personagem. */
               <div ref={menuRef} className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <CompanionWheel itens={itensRoda} rotulo={`Opções de ${companionName}`} />
+              </div>
+            )}
+            {animacaoAberta && (
+              /* As seis animações saíram da roda para cá. Com elas lá dentro o
+                 anel chegou a doze fatias, e aí o rótulo fica maior que o setor
+                 e vaza por cima do vizinho. Em duas colunas ainda se lê. */
+              <div ref={menuRef} role="dialog" aria-label="Animação" className="absolute left-1/2 top-1/2 z-20 w-[244px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Animação</span>
+                  <button type="button" onClick={() => setPainelAnimacao(false)} aria-label="Fechar" className="flex h-7 w-7 items-center justify-center rounded-lg text-[#8f8375] transition-colors hover:bg-[#f0e8dc] dark:hover:bg-white/5">
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                {/* Fica aberto depois de escolher: o painel cobre o boneco, mas
+                    a pessoa costuma experimentar duas ou três até achar a que quer. */}
+                <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Qual animação">
+                  {POSES_ESCOLHIVEIS.map(({ pose, rotulo }) => (
+                    <button
+                      key={pose}
+                      type="button"
+                      role="radio"
+                      aria-checked={animacao === pose}
+                      onClick={() => setAnimacao(pose)}
+                      className={`min-h-[42px] rounded-xl px-1 text-[10px] font-black uppercase tracking-wide transition-colors ${
+                        animacao === pose ? 'bg-[#473c33] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
+                      }`}
+                    >
+                      {rotulo}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {motivacaoAberta && (

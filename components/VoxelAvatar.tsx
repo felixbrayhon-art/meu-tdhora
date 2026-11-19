@@ -276,7 +276,7 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo, fone, adEsq, adDir, aquario, olhos, cronometro };
 };
 
-export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando';
+export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando' | 'dancando';
 
 /** As animações que dá para escolher na tela. 'andando' fica de fora: é a saída. */
 export const POSES_ESCOLHIVEIS: { pose: VoxelPose; rotulo: string }[] = [
@@ -284,6 +284,7 @@ export const POSES_ESCOLHIVEIS: { pose: VoxelPose; rotulo: string }[] = [
   { pose: 'parado', rotulo: 'De boa' },
   { pose: 'tchau', rotulo: 'Acenando' },
   { pose: 'festejando', rotulo: 'Comemorando' },
+  { pose: 'dancando', rotulo: 'Dançando' },
   { pose: 'dormindo', rotulo: 'Dormindo' },
 ];
 
@@ -367,6 +368,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       const tchau = pose === 'tchau';
       const estudando = pose === 'estudando';
       const festa = pose === 'festejando';
+      const danca = pose === 'dancando';
 
       if (pose !== poseAnterior) {
         // Sair começa no lugar e vai embora; voltar começa fora e vem andando.
@@ -395,8 +397,8 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       // ele guarda o item, com um desvanecer curto para não sumir num estalo.
       // Segurando o despertador com os dois braços ele não tem como continuar
       // com o vaso e o rádio na mão: guarda os dois enquanto o relógio está ali.
-      const maosNoRelogio = comCrono && !dormindo && !caminhando && !tchau && !festa;
-      const guarda = dormindo || maosNoRelogio ? 'ambos' : tchau ? 'direita' : 'nenhum';
+      const maosNoRelogio = comCrono && !dormindo && !caminhando && !tchau && !festa && !danca;
+      const guarda = dormindo || danca || maosNoRelogio ? 'ambos' : tchau ? 'direita' : 'nenhum';
       if (guarda !== guardaAnterior) {
         guardaAnterior = guarda;
         p.adDir.style.opacity = guarda === 'nenhum' ? '1' : '0';
@@ -411,11 +413,17 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       ry += (alvo - ry) * (1 - Math.exp(-7.5 * dt));
 
       const salto = festa ? Math.abs(Math.sin(t * 3)) : 0;
+      // Dança: uma batida e a mesma batida meio tempo atrás. Tudo no corpo sai
+      // de uma das duas, para braços, quadril e cabeça andarem no mesmo compasso
+      // em vez de cada um no seu, que é o que faz parecer travamento.
+      const bat = danca ? Math.sin(t * 7) : 0;
+      const contra = danca ? Math.sin(t * 7 - Math.PI / 2) : 0;
+      const pulinho = danca ? Math.abs(Math.sin(t * 7)) * 11 : 0;
       const passo = caminhando ? Math.sin(t * 7.5) : 0;
-      const sobe = salto * 26 + (caminhando ? Math.abs(passo) * 5 : 0);
-      const balanco = festa || caminhando ? 0 : Math.sin(t * (dormindo ? 0.9 : 2)) * (dormindo ? 4.5 : 2.5);
+      const sobe = salto * 26 + pulinho + (caminhando ? Math.abs(passo) * 5 : 0);
+      const balanco = festa || caminhando || danca ? 0 : Math.sin(t * (dormindo ? 0.9 : 2)) * (dormindo ? 4.5 : 2.5);
       // Deitado de costas as pernas ficam esticadas; em pé elas só andam ou dobram no pulo.
-      const perna = caminhando ? passo * 30 : dormindo ? 0 : -salto * 22;
+      const perna = caminhando ? passo * 30 : dormindo ? 0 : danca ? bat * 17 : -salto * 22;
 
       let zE = 6;
       let zD = -6;
@@ -435,14 +443,17 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       // De barriga para cima os braços descansam ao longo do corpo, abertos o
       // bastante para não sumirem dentro do tronco.
       if (dormindo) { bE = 0; bD = 0; zE = 16; zD = -16; }
+      // Um braço sobe enquanto o outro desce, e as mãos vêm à frente do corpo
+      // no contratempo: é o que dá a leitura de dança, e não de ginástica.
+      if (danca) { zE = -58 + bat * 52; zD = 58 - bat * 52; bE = 26 + contra * 22; bD = 26 - contra * 22; }
       zE -= salto * 12;
       zD += salto * 12;
 
-      const inclinaCabeca = dormindo ? 0 : estudando ? 16 : -salto * 6;
+      const inclinaCabeca = dormindo ? 0 : estudando ? 16 : danca ? 6 + contra * 7 : -salto * 6;
       // Com o fone na cabeça ele marca o ritmo. Dormindo ou andando, não: um já
       // tem inclinação própria e o outro já balança por conta do passo.
-      const tombaCabeca = (dormindo ? 14 : 0) + (comFone && !dormindo && !caminhando ? Math.sin(t * 5.5) * 7 : 0);
-      const olhaEmVolta = dormindo || estudando || caminhando ? 0 : Math.sin(t * 0.7) * 9;
+      const tombaCabeca = (dormindo ? 14 : 0) + bat * 10 + (comFone && !dormindo && !caminhando && !danca ? Math.sin(t * 5.5) * 7 : 0);
+      const olhaEmVolta = dormindo || estudando || caminhando ? 0 : danca ? contra * 13 : Math.sin(t * 0.7) * 9;
 
       // Dormindo ele deita de barriga para cima, de cabeça à esquerda: rotateZ
       // (-90) põe o corpo na horizontal e rotateX(20) rola um pouco para as
@@ -462,7 +473,9 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       // barriga, que agora é o eixo z do corpo, senão ele escorrega para o lado.
       p.corpo.style.transform = dormindo
         ? `translate3d(0,0,${balanco}px)`
-        : `translate3d(0,${-balanco}px,0) rotateX(${estudando ? 6 : 0}deg)`;
+        : danca
+          ? `translate3d(${bat * 7}px,0,0) rotateZ(${bat * 8}deg) rotateY(${contra * 16}deg)`
+          : `translate3d(0,${-balanco}px,0) rotateX(${estudando ? 6 : 0}deg)`;
       // Deitado ele ocupa mais chão do que em pé: a sombra acompanha.
       sombra.style.transform = `translate3d(0,40px,0) rotateX(90deg)${dormindo ? ' scale(1.4,0.78)' : ''}`;
       p.cabeca.style.transform = `translate3d(0,-52px,0) rotateY(${olhaEmVolta}deg) rotateX(${inclinaCabeca}deg) rotateZ(${tombaCabeca + treme * 1.6}deg)`;
