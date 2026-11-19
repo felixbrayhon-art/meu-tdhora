@@ -168,6 +168,7 @@ const App: React.FC = () => {
 
   // Global Timer State
   const [globalTimerActive, setGlobalTimerActive] = useState(false);
+  const [timerTerminouEm, setTimerTerminouEm] = useState(0);
   const [globalTimerSeconds, setGlobalTimerSeconds] = useState(() => readTimerMinutes(TimerMode.POMODORO, 25) * 60);
 
   const safeJsonParse = (key: string, defaultValue: any) => {
@@ -753,6 +754,10 @@ const App: React.FC = () => {
       }, 1000);
     } else if (globalTimerSeconds === 0 && globalTimerActive) {
       setGlobalTimerActive(false);
+      // Avisa o mascote para tocar o alarme. Acabar o tempo e parar na mão são
+      // coisas diferentes, e as duas zeram globalTimerActive: sem esta marca
+      // ele guardaria o relógio em silêncio nos dois casos.
+      setTimerTerminouEm(Date.now());
       logStudyMinutes(timerMode === TimerMode.EMERGENCY ? 5 : 25);
     }
     return () => clearInterval(interval);
@@ -1887,6 +1892,7 @@ const App: React.FC = () => {
             setShowGlobalBar(true);
           }}
           onPararTimer={() => setGlobalTimerActive(false)}
+          timerTerminouEm={timerTerminouEm}
         />}
         {toast && (
           <div role="status" aria-live="polite" className="fixed left-1/2 top-4 z-[2000] -translate-x-1/2 rounded-2xl bg-[#473c33] px-5 py-3 text-sm font-bold text-white shadow-2xl dark:bg-[#d9772b]">

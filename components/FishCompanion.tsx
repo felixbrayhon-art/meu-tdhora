@@ -19,9 +19,11 @@ interface FishCompanionProps {
   timerAtivo?: boolean;
   onLigarTimer?: () => void;
   onPararTimer?: () => void;
+  /** Muda de valor toda vez que o pomodoro chega ao fim sozinho. */
+  timerTerminouEm?: number;
 }
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0 }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
@@ -34,6 +36,8 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const [comFone, setComFone] = useState(false);
   // Ele só está com o despertador depois de ir buscar, como acontece com o fone.
   const [comRelogio, setComRelogio] = useState(false);
+  // O despertador tocando no fim do pomodoro.
+  const [alarme, setAlarme] = useState(false);
   // Por que ele saiu da tela: para ficar fora, para pegar o fone ou o relógio.
   const missaoRef = useRef<'sair' | 'fone' | 'relogio'>('sair');
   // A roda de opções não cabe encostada no canto, então, enquanto ela está
@@ -124,15 +128,25 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     setMenuAberto(true);
   };
 
-  // Quando o cronômetro para -- pelo menu, pela barra ou porque o pomodoro
-  // chegou ao fim -- ele guarda o relógio. Reagimos à virada, e não a "está
-  // parado": durante a ida buscar o relógio ele ainda não começou a correr.
+  // Parar e acabar são coisas diferentes, e as duas chegam aqui como "o timer
+  // não está mais ativo". Por isso as duas moram no mesmo efeito: separadas,
+  // uma apagaria o relógio antes de a outra conseguir tocar o alarme.
+  // Reagimos à virada, e não a "está parado": durante a ida buscar o relógio
+  // ele ainda não começou a correr.
   const timerAnteriorRef = useRef(timerAtivo);
+  const fimAnteriorRef = useRef(timerTerminouEm);
   useEffect(() => {
-    const antes = timerAnteriorRef.current;
+    const parou = timerAnteriorRef.current && !timerAtivo;
+    const acabou = timerTerminouEm !== fimAnteriorRef.current;
     timerAnteriorRef.current = timerAtivo;
-    if (antes && !timerAtivo) setComRelogio(false);
-  }, [timerAtivo]);
+    fimAnteriorRef.current = timerTerminouEm;
+    if (acabou) {
+      setAlarme(true);
+      const t = setTimeout(() => { setAlarme(false); setComRelogio(false); }, 3200);
+      return () => clearTimeout(t);
+    }
+    if (parou) setComRelogio(false);
+  }, [timerAtivo, timerTerminouEm]);
 
   const ligarMusica = () => {
     setMenuAberto(false);
@@ -148,6 +162,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
 
   const pararTimer = () => {
     setMenuAberto(false);
+    setAlarme(false);
     setComRelogio(false);
     onPararTimer?.();
   };
@@ -353,6 +368,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : presenca === 'chegando' ? 'voltando' : cochilando ? 'dormindo' : animacao}
                 fone={comFone}
                 cronometro={comRelogio}
+                alarme={alarme}
                 onSaiuDaTela={() => {
                   // Foi buscar o fone: nos bastidores ele coloca e já volta andando,
                   // então não passa pelo estado 'fora' nem pede para ser chamado.

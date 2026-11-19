@@ -296,6 +296,8 @@ interface VoxelAvatarProps {
   fone?: boolean;
   /** Põe o despertador nas mãos dele: o cronômetro está rodando. */
   cronometro?: boolean;
+  /** O tempo acabou: ele treme junto com o despertador tocando. */
+  alarme?: boolean;
   /** Chamado uma vez quando ele termina de andar para fora da tela. */
   onSaiuDaTela?: () => void;
   /** Chamado uma vez quando ele termina de andar de volta para o lugar. */
@@ -303,7 +305,7 @@ interface VoxelAvatarProps {
   className?: string;
 }
 
-const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, onSaiuDaTela, onChegou, className = '' }) => {
+const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, className = '' }) => {
   const palcoRef = useRef<HTMLDivElement>(null);
   const poseRef = useRef(pose);
   poseRef.current = pose;
@@ -311,6 +313,8 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
   foneRef.current = fone;
   const cronometroRef = useRef(cronometro);
   cronometroRef.current = cronometro;
+  const alarmeRef = useRef(alarme);
+  alarmeRef.current = alarme;
   const saidaRef = useRef(onSaiuDaTela);
   saidaRef.current = onSaiuDaTela;
   const chegadaRef = useRef(onChegou);
@@ -447,7 +451,13 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       // ninguém. O deslocamento em x recentra o corpo, que deitado passa a se
       // estender para a esquerda da origem.
       const deitado = dormindo ? ' rotateX(20deg) rotateZ(-90deg)' : '';
-      p.raiz.style.transform = `translate3d(${dormindo ? 46 : 0}px,${-sobe + (dormindo ? -4 : 0)}px,0)${deitado}`;
+      // Alarme: a 6,7 Hz o corpo inteiro vibra, e o despertador vai junto porque
+      // está preso no tronco. Para quem pediu menos movimento no sistema não há
+      // tremor nenhum -- o relógio sumindo das mãos já avisa que o tempo acabou.
+      const tocando = alarmeRef.current && !menosMovimento;
+      const treme = tocando ? Math.sin(t * 42) * 3.5 : 0;
+      const tremeX = tocando ? Math.sin(t * 37) * 3 : 0;
+      p.raiz.style.transform = `translate3d(${(dormindo ? 46 : 0) + tremeX}px,${-sobe + (dormindo ? -4 : 0)}px,0)${deitado}${tocando ? ` rotateZ(${treme}deg)` : ''}`;
       // Em pé a respiração sobe e desce; deitado ela tem de ir na direção da
       // barriga, que agora é o eixo z do corpo, senão ele escorrega para o lado.
       p.corpo.style.transform = dormindo
@@ -455,7 +465,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
         : `translate3d(0,${-balanco}px,0) rotateX(${estudando ? 6 : 0}deg)`;
       // Deitado ele ocupa mais chão do que em pé: a sombra acompanha.
       sombra.style.transform = `translate3d(0,40px,0) rotateX(90deg)${dormindo ? ' scale(1.4,0.78)' : ''}`;
-      p.cabeca.style.transform = `translate3d(0,-52px,0) rotateY(${olhaEmVolta}deg) rotateX(${inclinaCabeca}deg) rotateZ(${tombaCabeca}deg)`;
+      p.cabeca.style.transform = `translate3d(0,-52px,0) rotateY(${olhaEmVolta}deg) rotateX(${inclinaCabeca}deg) rotateZ(${tombaCabeca + treme * 1.6}deg)`;
       p.bracoE.style.transform = `translate3d(-34px,-48px,0) rotateZ(${zE}deg) rotateX(${bE}deg)`;
       p.bracoD.style.transform = `translate3d(34px,-48px,0) rotateZ(${zD}deg) rotateX(${bD}deg)`;
       p.pernaE.style.transform = `translate3d(-13px,-4px,0) rotateX(${perna}deg)`;
