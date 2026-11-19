@@ -10,8 +10,11 @@ import { getVoxelConfig } from '../services/voxelCharacters';
 interface FishCompanionProps {
   studyProfile?: StudyProfile;
   characterId?: string;
-  /** A mini-barra do Pomodoro está visível: ancora o mascote acima dela para não cobrir controles. */
-  liftForBar?: boolean;
+  /** A que altura do rodapé ele encosta, em rem. Cada tela tem a sua barra fixa
+   *  embaixo, e ele precisa ficar acima dela para não cobrir nem ser coberto. */
+  recuoRem?: number;
+  /** A tela já mostra o tempo em algum lugar: a etiqueta dele não aparece. */
+  tempoJaNaTela?: boolean;
   /** Estação de música tocando agora (a mesma da barra de ferramentas), ou null. */
   activeChannel?: 'RELAX' | 'MPB' | null;
   setActiveChannel?: (c: 'RELAX' | 'MPB' | null) => void;
@@ -25,14 +28,21 @@ interface FishCompanionProps {
   timerSegundos?: number;
 }
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0 }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, recuoRem = 1, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0 }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
   const temVoxel = !!getVoxelConfig(characterId);
   const [menuAberto, setMenuAberto] = useState(false);
   // 'aqui' -> 'despedindo' -> 'andando' -> 'fora'. Não guardamos em disco: recarregar traz ele de volta.
-  const [presenca, setPresenca] = useState<'aqui' | 'despedindo' | 'andando' | 'fora' | 'chegando'>('aqui');
+  // Agora ele aparece em todas as telas, entao "sair" precisa durar: quem nao
+  // quer o companheiro teria de dispensa-lo a cada recarga.
+  const [presenca, setPresenca] = useState<'aqui' | 'despedindo' | 'andando' | 'fora' | 'chegando'>(() => {
+    try { return localStorage.getItem('tdh_companheiro_fora') === '1' ? 'fora' : 'aqui'; } catch { return 'aqui'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('tdh_companheiro_fora', presenca === 'fora' ? '1' : '0'); } catch { /* modo privado */ }
+  }, [presenca]);
   const [cochilando, setCochilando] = useState(false);
   // Ele só está de fone depois de ir buscar: a música é consequência da ida, não o contrário.
   const [comFone, setComFone] = useState(false);
@@ -241,11 +251,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   ];
   const rodaAberta = menuAberto && presenca === 'aqui' && !isOpen;
   const faltam = `${Math.floor(timerSegundos / 60)}:${String(timerSegundos % 60).padStart(2, '0')}`;
-  // A etiqueta aparece onde a mini-barra do Pomodoro não aparece: `liftForBar` é
-  // justamente o sinal de que a barra está na tela, e duas contagens na mesma
-  // tela só competem entre si. Em pé ela fica acima da cabeça dele, altura que
+  // A etiqueta aparece onde a tela ainda não mostra o tempo em lugar nenhum:
+  // duas contagens na mesma tela só competem entre si. Em pé ela fica acima da cabeça dele, altura que
   // também cabe dentro do furo da roda — então não precisa sumir quando a roda abre.
-  const mostrarTempo = timerAtivo && !liftForBar && presenca === 'aqui';
+  const mostrarTempo = timerAtivo && !tempoJaNaTela && presenca === 'aqui';
 
   return (
     <>
@@ -257,7 +266,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     <div
       className="fixed right-3 lg:right-6 z-[60] flex flex-col items-end pointer-events-none [&>*]:pointer-events-auto motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
       style={{
-        bottom: liftForBar ? 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' : 'calc(1rem + env(safe-area-inset-bottom, 0px))',
+        bottom: `calc(${recuoRem}rem + env(safe-area-inset-bottom, 0px))`,
         transform: rodaAberta ? `translate3d(${desloc.x}px, ${desloc.y}px, 0)` : undefined,
       }}
     >
