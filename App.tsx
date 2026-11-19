@@ -736,11 +736,15 @@ const App: React.FC = () => {
     }
   }, [isPlayingRain]);
 
+  // Também quando alguma faixa entra no ar, e não só quando o volume muda: na
+  // primeira montagem os <audio> ainda não existem (a tela de abertura está no
+  // lugar deles), então o efeito não achava nada e a primeira faixa a tocar
+  // saía a 100% enquanto o controle mostrava 50%.
   useEffect(() => {
     if (relaxAudioRef.current) relaxAudioRef.current.volume = audioVolume;
     if (mpbAudioRef.current) mpbAudioRef.current.volume = audioVolume;
     if (rainAudioRef.current) rainAudioRef.current.volume = audioVolume * 0.6;
-  }, [audioVolume]);
+  }, [audioVolume, activeChannel, isPlayingRain]);
 
   // Global Clock
   useEffect(() => {
@@ -1799,6 +1803,8 @@ const App: React.FC = () => {
           recuoRem={isFocusLesson ? 10 : isQuestionSession ? 8.5 : 1}
           tempoJaNaTela={currentView === 'TIMER'}
           activeChannel={activeChannel} setActiveChannel={setActiveChannel}
+          isPlayingRain={isPlayingRain} setIsPlayingRain={setIsPlayingRain}
+          audioVolume={audioVolume} setAudioVolume={setAudioVolume}
           timerAtivo={globalTimerActive}
           onLigarTimer={() => {
             setTimerMode(TimerMode.POMODORO);

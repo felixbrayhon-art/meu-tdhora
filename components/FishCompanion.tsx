@@ -29,9 +29,14 @@ interface FishCompanionProps {
   /** Duração do pomodoro, em minutos, e como mudá-la. */
   minutosPomodoro?: number;
   onAjustarMinutos?: (minutos: number) => void;
+  /** Chuva de fundo e volume, que antes viviam na barra do Pomodoro. */
+  isPlayingRain?: boolean;
+  setIsPlayingRain?: (v: boolean) => void;
+  audioVolume?: number;
+  setAudioVolume?: (v: number) => void;
 }
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, recuoRem = 1, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0, minutosPomodoro = 25, onAjustarMinutos }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, recuoRem = 1, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0, minutosPomodoro = 25, onAjustarMinutos, isPlayingRain = false, setIsPlayingRain, audioVolume = 0.5, setAudioVolume }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
@@ -39,6 +44,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const [menuAberto, setMenuAberto] = useState(false);
   // Agora que a barra do Pomodoro saiu, editar a duração é aqui.
   const [painelTempo, setPainelTempo] = useState(false);
+  const [painelSom, setPainelSom] = useState(false);
   // 'aqui' -> 'despedindo' -> 'andando' -> 'fora'. Não guardamos em disco: recarregar traz ele de volta.
   // Agora ele aparece em todas as telas, entao "sair" precisa durar: quem nao
   // quer o companheiro teria de dispensa-lo a cada recarga.
@@ -81,10 +87,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   // alterna, então ele fica de fora para não abrir e fechar na mesma batida.
   useEffect(() => {
     if (!menuAberto) return;
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') { setMenuAberto(false); setPainelTempo(false); } };
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') fecharTudo(); };
     const fora = (e: PointerEvent) => {
       const alvo = e.target as Node;
-      if (!menuRef.current?.contains(alvo) && !mascoteRef.current?.contains(alvo)) { setMenuAberto(false); setPainelTempo(false); }
+      if (!menuRef.current?.contains(alvo) && !mascoteRef.current?.contains(alvo)) fecharTudo();
     };
     window.addEventListener('keydown', tecla);
     window.addEventListener('pointerdown', fora);
@@ -165,8 +171,15 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     if (parou) setComRelogio(false);
   }, [timerAtivo, timerTerminouEm]);
 
-  const ligarMusica = () => {
+  // Qual estação ele vai ligar ao voltar com o fone.
+  const canalDesejadoRef = useRef<'RELAX' | 'MPB'>('RELAX');
+
+  const ligarMusica = (canal: 'RELAX' | 'MPB' = 'RELAX') => {
+    canalDesejadoRef.current = canal;
+    // Já está de fone: trocar de estação não pede viagem nenhuma.
+    if (comFone) { setActiveChannel?.(canal); return; }
     setMenuAberto(false);
+    setPainelSom(false);
     missaoRef.current = 'fone';
     setPresenca('andando');
   };
@@ -231,11 +244,11 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const itensRoda: ItemRoda[] = [
     { id: 'falar', rotulo: `Falar com ${companionName}`, peso: 2, cor: '#e96f34', texto: '#fffaf4', acao: () => { setMenuAberto(false); setIsOpen(true); } },
     {
-      id: 'musica',
-      rotulo: activeChannel ? 'Desligar a música' : 'Ligar a música',
-      cor: activeChannel ? '#D8A53A' : '#F4EBDD',
-      texto: activeChannel ? '#3a2a1d' : '#6b5a49',
-      acao: activeChannel ? desligarMusica : ligarMusica,
+      id: 'som',
+      rotulo: 'Som',
+      cor: activeChannel || isPlayingRain ? '#D8A53A' : '#F4EBDD',
+      texto: activeChannel || isPlayingRain ? '#3a2a1d' : '#6b5a49',
+      acao: () => setPainelSom(true),
     },
     {
       id: 'cronometro',
@@ -262,9 +275,11 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
   ];
   const emCena = presenca === 'aqui' && !isOpen;
-  const rodaAberta = menuAberto && !painelTempo && emCena;
+  const rodaAberta = menuAberto && !painelTempo && !painelSom && emCena;
   const painelAberto = painelTempo && emCena;
-  const aberto = rodaAberta || painelAberto;
+  const somAberto = painelSom && emCena;
+  const aberto = rodaAberta || painelAberto || somAberto;
+  const fecharTudo = () => { setMenuAberto(false); setPainelTempo(false); setPainelSom(false); };
   const faltam = `${Math.floor(timerSegundos / 60)}:${String(timerSegundos % 60).padStart(2, '0')}`;
   // A etiqueta aparece onde a tela ainda não mostra o tempo em lugar nenhum:
   // duas contagens na mesma tela só competem entre si. Em pé ela fica acima da cabeça dele, altura que
@@ -276,7 +291,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     {aberto && (
       /* Escurece o fundo porque o boneco sai do canto e passa por cima do
          conteúdo: sem isso a roda disputaria leitura com a tela inteira. */
-      <div className="fixed inset-0 z-[55] bg-[#2a1f18]/40 backdrop-blur-[2px] animate-in fade-in duration-200" onClick={() => { setMenuAberto(false); setPainelTempo(false); }} aria-hidden="true" />
+      <div className="fixed inset-0 z-[55] bg-[#2a1f18]/40 backdrop-blur-[2px] animate-in fade-in duration-200" onClick={fecharTudo} aria-hidden="true" />
     )}
     <div
       className="fixed right-3 lg:right-6 z-[60] flex flex-col items-end pointer-events-none [&>*]:pointer-events-auto motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
@@ -384,6 +399,60 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 <CompanionWheel itens={itensRoda} rotulo={`Opções de ${companionName}`} />
               </div>
             )}
+            {somAberto && (
+              <div ref={menuRef} role="dialog" aria-label="Som" className="absolute left-1/2 top-1/2 z-20 w-[244px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Som</span>
+                  <button type="button" onClick={() => setPainelSom(false)} aria-label="Fechar" className="flex h-7 w-7 items-center justify-center rounded-lg text-[#8f8375] transition-colors hover:bg-[#f0e8dc] dark:hover:bg-white/5">
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                {/* Duas estações, que a barra antiga nem mostrava: ela só tinha a
+                    Lofi, e a MPB ficava escondida no leitor do Drive. */}
+                <div className="mb-2 grid grid-cols-2 gap-1.5">
+                  {([['RELAX', 'Lofi'], ['MPB', 'MPB']] as const).map(([canal, nome]) => (
+                    <button
+                      key={canal}
+                      type="button"
+                      aria-pressed={activeChannel === canal}
+                      onClick={() => (activeChannel === canal ? desligarMusica() : ligarMusica(canal))}
+                      className={`min-h-[42px] rounded-xl text-[10px] font-black uppercase tracking-wide transition-colors ${
+                        activeChannel === canal ? 'bg-[#473c33] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
+                      }`}
+                    >
+                      {nome}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  aria-pressed={isPlayingRain}
+                  onClick={() => setIsPlayingRain?.(!isPlayingRain)}
+                  className={`mb-3 min-h-[42px] w-full rounded-xl text-[10px] font-black uppercase tracking-wide transition-colors ${
+                    isPlayingRain ? 'bg-[#2E4A54] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
+                  }`}
+                >
+                  Chuva de fundo
+                </button>
+                <label className="block">
+                  <span className="mb-1.5 block text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Volume</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={audioVolume}
+                    onChange={(e) => setAudioVolume?.(parseFloat(e.target.value))}
+                    className="h-1.5 w-full accent-[#e96f34]"
+                  />
+                </label>
+                {!activeChannel && !isPlayingRain && (
+                  <p className="mt-2 text-center text-[9px] font-bold leading-snug text-[#a79c8e]">
+                    Ele vai buscar o fone antes de a música começar.
+                  </p>
+                )}
+              </div>
+            )}
             {painelAberto && (
               /* Ocupa o mesmo lugar da roda, centrado no boneco — que fica
                  coberto enquanto isto está aberto. Mantive centrado em vez de
@@ -440,7 +509,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
             )}
             <button
               ref={mascoteRef}
-              onClick={() => { if (presenca !== 'aqui') return; if (menuAberto) { setMenuAberto(false); setPainelTempo(false); } else abrirRoda(); }}
+              onClick={() => { if (presenca !== 'aqui') return; if (menuAberto) fecharTudo(); else abrirRoda(); }}
               aria-label={menuAberto ? 'Fechar as opções' : `Opções de ${companionName}`}
               aria-expanded={menuAberto}
               aria-haspopup="menu"
@@ -464,7 +533,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 }}
                 onChegou={() => {
                   setPresenca('aqui');
-                  if (missaoRef.current === 'fone') { missaoRef.current = 'sair'; setActiveChannel?.('RELAX'); }
+                  if (missaoRef.current === 'fone') { missaoRef.current = 'sair'; setActiveChannel?.(canalDesejadoRef.current); }
                   else if (missaoRef.current === 'relogio') { missaoRef.current = 'sair'; onLigarTimer?.(); }
                 }}
               />
