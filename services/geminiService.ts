@@ -2250,36 +2250,51 @@ export const getProactiveAdvice = async (stats: any, edital: EditalConfig, profi
   }
 };
 
-export const getDailyBibleMotivation = async (): Promise<string> => {
-  const DEFAULT_MOTIVATION = "Tudo posso naquele que me fortalece. - Reflexão: Confie no seu processo e mantenha a calma.";
-  const bibleMotivationPrompt = `${getTimeContext()}
-      Gere uma passagem curta e motivacional da Bíblia totalmente focada para um estudante com TDAH (foco, superação, ansiedade, perseverança).
+export type EstiloMotivacao = 'biblica' | 'filosofica';
+
+const MOTIVACAO_PADRAO: Record<EstiloMotivacao, string> = {
+  biblica: "Tudo posso naquele que me fortalece. - Reflexão: Confie no seu processo e mantenha a calma.",
+  filosofica: "Não é porque as coisas são difíceis que não ousamos; é porque não ousamos que elas são difíceis. (Sêneca) - Reflexão: Começar já é metade do caminho.",
+};
+
+export const getMotivacao = async (estilo: EstiloMotivacao = 'biblica'): Promise<string> => {
+  const padrao = MOTIVACAO_PADRAO[estilo];
+  const corpo = estilo === 'biblica'
+    ? `Gere uma passagem curta e motivacional da Bíblia totalmente focada para um estudante com TDAH (foco, superação, ansiedade, perseverança).
       A linguagem deve ser inspiradora e focada no esforço, na superação e na esperança.
+      O formato deve ser: "Passagem (Capítulo:Versículo) - Reflexão curta."`
+    : `Gere uma frase curta e motivacional de um filósofo (estoicos, existencialistas, clássicos) voltada para um estudante com TDAH (foco, superação, ansiedade, perseverança).
+      A frase precisa ser mesmo do autor citado: se não tiver certeza da autoria, escolha outra que você tenha.
+      O formato deve ser: "Frase (Autor) - Reflexão curta."`;
+  const prompt = `${getTimeContext()}
+      ${corpo}
       Adicione uma reflexão rápida e pessoal de máximo 30 palavras para o estudante focar no dia de hoje.
-      O formato deve ser: "Passagem (Capítulo:Versículo) - Reflexão curta."
       NÃO use emojis. NÃO use formatação com asteriscos.`;
 
   try {
     const response = await generateContentWithRetry({
       model: LITE_MODEL,
       contents: [
-        { role: 'user', parts: [{ text: bibleMotivationPrompt }] }
+        { role: 'user', parts: [{ text: prompt }] }
       ],
     });
-    return response.text?.trim() || DEFAULT_MOTIVATION;
+    return response.text?.trim() || padrao;
   } catch (error) {
     if (shouldTryProviderFallbacks(error)) {
       try {
-        const fallbackText = await tryTextFallbacks(undefined, [{ role: 'user', content: bibleMotivationPrompt }], 0.7);
-        return fallbackText?.trim() || DEFAULT_MOTIVATION;
+        const fallbackText = await tryTextFallbacks(undefined, [{ role: 'user', content: prompt }], 0.7);
+        return fallbackText?.trim() || padrao;
       } catch (fallbackError) {
-        console.error('Fallback OpenRouter também falhou em getDailyBibleMotivation:', fallbackError);
+        console.error('Fallback OpenRouter também falhou em getMotivacao:', fallbackError);
       }
     }
     console.error("Erro ao buscar motivação:", error);
-    return DEFAULT_MOTIVATION;
+    return padrao;
   }
 };
+
+/** Mantida para a tela Momento de Paz, que só usa a versão bíblica. */
+export const getDailyBibleMotivation = (): Promise<string> => getMotivacao('biblica');
 
 export const generateStudyCycle = async (edital: EditalConfig, totalCycleHours: number) => {
   const context = {

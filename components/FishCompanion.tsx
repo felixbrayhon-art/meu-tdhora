@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { chatWithFish } from '../services/geminiService';
+import { chatWithFish, getMotivacao, EstiloMotivacao } from '../services/geminiService';
 import { StudyProfile } from '../types';
 import { getCharacterSrc, getCharacter } from '../services/avatarService';
 import AvatarDisplay from './AvatarDisplay';
@@ -45,6 +45,14 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   // Agora que a barra do Pomodoro saiu, editar a duração é aqui.
   const [painelTempo, setPainelTempo] = useState(false);
   const [painelSom, setPainelSom] = useState(false);
+  const [painelMotivacao, setPainelMotivacao] = useState(false);
+  // A escolha entre bíblica e filosófica fica gravada: é preferência, não
+  // decisão para refazer a cada frase pedida.
+  const [estiloMotivacao, setEstiloMotivacao] = useState<EstiloMotivacao>(() => {
+    try { return localStorage.getItem('tdh_motivacao_estilo') === 'filosofica' ? 'filosofica' : 'biblica'; } catch { return 'biblica'; }
+  });
+  const [frase, setFrase] = useState<string | null>(null);
+  const [buscandoFrase, setBuscandoFrase] = useState(false);
   // 'aqui' -> 'despedindo' -> 'andando' -> 'fora'. Não guardamos em disco: recarregar traz ele de volta.
   // Agora ele aparece em todas as telas, entao "sair" precisa durar: quem nao
   // quer o companheiro teria de dispensa-lo a cada recarga.
@@ -184,6 +192,23 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     setPresenca('andando');
   };
 
+  const escolherEstilo = (estilo: EstiloMotivacao) => {
+    setEstiloMotivacao(estilo);
+    try { localStorage.setItem('tdh_motivacao_estilo', estilo); } catch { /* modo privado */ }
+  };
+
+  const pedirFrase = async () => {
+    setPainelMotivacao(false);
+    setMenuAberto(false);
+    setFrase(null);
+    setBuscandoFrase(true);
+    try {
+      setFrase(await getMotivacao(estiloMotivacao));
+    } finally {
+      setBuscandoFrase(false);
+    }
+  };
+
   const ligarTimer = () => {
     setMenuAberto(false);
     missaoRef.current = 'relogio';
@@ -258,6 +283,13 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       acao: timerAtivo ? pararTimer : ligarTimer,
     },
     {
+      id: 'motivacao',
+      rotulo: 'Motivação',
+      cor: '#8A9A7B',
+      texto: '#fffaf4',
+      acao: () => setPainelMotivacao(true),
+    },
+    {
       id: 'ajustar',
       rotulo: 'Ajustar o tempo',
       cor: '#F4EBDD',
@@ -275,11 +307,12 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
   ];
   const emCena = presenca === 'aqui' && !isOpen;
-  const rodaAberta = menuAberto && !painelTempo && !painelSom && emCena;
+  const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && emCena;
   const painelAberto = painelTempo && emCena;
   const somAberto = painelSom && emCena;
-  const aberto = rodaAberta || painelAberto || somAberto;
-  const fecharTudo = () => { setMenuAberto(false); setPainelTempo(false); setPainelSom(false); };
+  const motivacaoAberta = painelMotivacao && emCena;
+  const aberto = rodaAberta || painelAberto || somAberto || motivacaoAberta;
+  const fecharTudo = () => { setMenuAberto(false); setPainelTempo(false); setPainelSom(false); setPainelMotivacao(false); };
   const faltam = `${Math.floor(timerSegundos / 60)}:${String(timerSegundos % 60).padStart(2, '0')}`;
   // A etiqueta aparece onde a tela ainda não mostra o tempo em lugar nenhum:
   // duas contagens na mesma tela só competem entre si. Em pé ela fica acima da cabeça dele, altura que
@@ -365,6 +398,38 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
         </div>
       )}
 
+      {/* O balão da frase: irmão do invólucro do boneco, não filho dele. Dentro,
+          ele entraria na caixa que serve de centro para a roda e jogaria o anel
+          para cima. Some quando o personagem não está em cena. */}
+      {(frase || buscandoFrase) && !isOpen && presenca === 'aqui' && (
+        <div role="status" className="mb-3 w-[min(78vw,270px)] animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="relative rounded-[26px] border border-[#e9e0d4] bg-[#fdfbf7] px-4 py-3 shadow-xl dark:border-white/10 dark:bg-[#2d2e27]">
+            <button
+              type="button"
+              onClick={() => { setFrase(null); setBuscandoFrase(false); }}
+              aria-label="Fechar a frase"
+              className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-[#e9e0d4] bg-[#fdfbf7] text-[#8f8375] shadow-md transition-colors hover:text-[#473c33] dark:border-white/10 dark:bg-[#2d2e27]"
+            >
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">
+              {estiloMotivacao === 'biblica' ? 'Motivação bíblica' : 'Motivação filosófica'}
+            </p>
+            {buscandoFrase ? (
+              <p className="flex items-center gap-1.5 text-sm font-bold text-[#8f8375]">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#e96f34]" style={{ animationDelay: '0s' }} />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#e96f34]" style={{ animationDelay: '0.15s' }} />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#e96f34]" style={{ animationDelay: '0.3s' }} />
+              </p>
+            ) : (
+              <p className="text-[13px] font-semibold leading-snug text-[#473c33] dark:text-[#f2efd2]">{frase}</p>
+            )}
+            {/* Rabinho apontando para ele, no canto de baixo à direita. */}
+            <span aria-hidden="true" className="absolute -bottom-[7px] right-9 h-3.5 w-3.5 rotate-45 border-b border-r border-[#e9e0d4] bg-[#fdfbf7] dark:border-white/10 dark:bg-[#2d2e27]" />
+          </div>
+        </div>
+      )}
+
       {/* Botão Flutuante (O Peixe / Personagem) */}
       {isOpen ? (
         <button onClick={() => setIsOpen(false)} aria-label="Fechar conversa" className="w-14 h-14 lg:w-16 lg:h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-500 hover:scale-110 active:scale-95 bg-[#473c33]">
@@ -397,6 +462,39 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                  dele, então `inset-0` já é a caixa do personagem. */
               <div ref={menuRef} className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <CompanionWheel itens={itensRoda} rotulo={`Opções de ${companionName}`} />
+              </div>
+            )}
+            {motivacaoAberta && (
+              <div ref={menuRef} role="dialog" aria-label="Motivação" className="absolute left-1/2 top-1/2 z-20 w-[244px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Motivação</span>
+                  <button type="button" onClick={() => setPainelMotivacao(false)} aria-label="Fechar" className="flex h-7 w-7 items-center justify-center rounded-lg text-[#8f8375] transition-colors hover:bg-[#f0e8dc] dark:hover:bg-white/5">
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                <div className="mb-3 grid grid-cols-2 gap-1.5">
+                  {([['biblica', 'Bíblica'], ['filosofica', 'Filosófica']] as const).map(([id, nome]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="radio"
+                      aria-checked={estiloMotivacao === id}
+                      onClick={() => escolherEstilo(id)}
+                      className={`min-h-[42px] rounded-xl px-1 text-[10px] font-black uppercase tracking-wide transition-colors ${
+                        estiloMotivacao === id ? 'bg-[#473c33] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
+                      }`}
+                    >
+                      {nome}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={pedirFrase}
+                  className="flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-[#e96f34] px-4 text-xs font-black uppercase tracking-wide text-white shadow-[0_6px_14px_rgba(233,111,52,0.3)] transition-all hover:bg-[#d55f27] active:scale-95"
+                >
+                  Quero uma frase
+                </button>
               </div>
             )}
             {somAberto && (
