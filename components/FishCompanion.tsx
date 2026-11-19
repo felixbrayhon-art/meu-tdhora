@@ -424,6 +424,20 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                     </button>
                   ))}
                 </div>
+                {/* Tocar de novo na estação acesa já desligava, mas isso não se
+                    lê em dois botões iguais: o desligar precisa estar escrito. */}
+                {activeChannel && (
+                  <button
+                    type="button"
+                    onClick={desligarMusica}
+                    className="mb-2 flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-xl bg-[#f0e8dc] text-[10px] font-black uppercase tracking-wide text-[#8f8375] transition-colors hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]"
+                  >
+                    <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6" />
+                    </svg>
+                    Desligar a música
+                  </button>
+                )}
                 <button
                   type="button"
                   aria-pressed={isPlayingRain}
