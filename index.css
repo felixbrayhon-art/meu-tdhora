@@ -139,6 +139,15 @@ body {
     margin-bottom: 0.5rem;
 }
 
+/* Os "z" que sobem do mascote dormindo (components/VoxelAvatar.tsx). Começam
+   e terminam invisíveis para os três poderem se revezar no mesmo lugar. */
+@keyframes mascote-zzz {
+    0%   { opacity: 0; transform: translate(0, 4px) scale(0.7) rotate(-10deg); }
+    18%  { opacity: 0.95; }
+    70%  { opacity: 0.55; }
+    100% { opacity: 0; transform: translate(24px, -52px) scale(1.25) rotate(14deg); }
+}
+
 @keyframes swim {
     0%, 100% { transform: translateY(0) rotate(0deg); }
     25% { transform: translateY(-10px) rotate(2deg); }

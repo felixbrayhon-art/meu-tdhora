@@ -718,11 +718,17 @@ const App: React.FC = () => {
     if (relaxAudioRef.current) relaxAudioRef.current.pause();
     if (mpbAudioRef.current) mpbAudioRef.current.pause();
 
-    if (activeChannel === 'RELAX' && relaxAudioRef.current) {
-      relaxAudioRef.current.play().catch(() => {});
-    } else if (activeChannel === 'MPB' && mpbAudioRef.current) {
-      mpbAudioRef.current.play().catch(() => {});
-    }
+    const faixa = activeChannel === 'RELAX' ? relaxAudioRef.current : activeChannel === 'MPB' ? mpbAudioRef.current : null;
+    if (!faixa) return;
+    // Quando a música é pedida pelo mascote, ela só começa depois de ele ir buscar
+    // o fone — segundos depois do clique. Safari pode recusar um play() tão longe
+    // do toque, então, se recusar, tentamos de novo no primeiro toque seguinte.
+    let destravar: (() => void) | null = null;
+    faixa.play().catch(() => {
+      destravar = () => { faixa.play().catch(() => {}); };
+      window.addEventListener('pointerdown', destravar, { once: true });
+    });
+    return () => { if (destravar) window.removeEventListener('pointerdown', destravar); };
   }, [activeChannel]);
 
   useEffect(() => {
@@ -1871,7 +1877,7 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {!isQuestionSession && !isFocusLesson && currentView !== 'SMART_REVISION' && currentView !== 'MATERIALS' && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} liftForBar={showMiniBar} />}
+        {!isQuestionSession && !isFocusLesson && currentView !== 'SMART_REVISION' && currentView !== 'MATERIALS' && <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId} liftForBar={showMiniBar} activeChannel={activeChannel} setActiveChannel={setActiveChannel} />}
         {toast && (
           <div role="status" aria-live="polite" className="fixed left-1/2 top-4 z-[2000] -translate-x-1/2 rounded-2xl bg-[#473c33] px-5 py-3 text-sm font-bold text-white shadow-2xl dark:bg-[#d9772b]">
             {toast}

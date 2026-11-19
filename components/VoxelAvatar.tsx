@@ -12,9 +12,16 @@ const tom = (hex: string, k: number): string => {
   return `#${((1 << 24) + (c(n >> 16) << 16) + (c((n >> 8) & 255) << 8) + c(n & 255)).toString(16).slice(1)}`;
 };
 
+// Toda face é montada com a frente virada para fora do cubo, e com
+// backface-visibility:hidden: quem está de costas para a câmera o navegador
+// descarta sozinho, a cada quadro e em qualquer rotação. Tentar adivinhar isso
+// na montagem (não criar a face de trás e a de baixo) deixava o boneco vazado,
+// porque as partes giram em juntas próprias — a cabeça inclina, as pernas
+// abrem e dormindo o corpo inteiro deita a 82°, e aí a face que faltava era
+// justamente a que apontava para quem olha.
 const criarFace = (w: number, h: number, t: string, cor: string, op: number) => {
   const f = document.createElement('div');
-  f.style.cssText = `position:absolute;width:${w}px;height:${h}px;left:${-w / 2}px;top:${-h / 2}px;background:${cor};transform:${t};opacity:${op}`;
+  f.style.cssText = `position:absolute;width:${w}px;height:${h}px;left:${-w / 2}px;top:${-h / 2}px;background:${cor};transform:${t};opacity:${op};backface-visibility:hidden`;
   return f;
 };
 
@@ -25,13 +32,11 @@ const B = (p: Pai, w: number, h: number, d: number, x: number, y: number, z: num
   b.style.cssText = 'position:absolute;transform-style:preserve-3d';
   b.style.transform = `translate3d(${x}px,${y}px,${z}px)${rot}`;
   b.appendChild(criarFace(w, h, `translateZ(${d / 2}px)`, cor, op));
-  // Sem a face de trás: o boneco não gira mais, e nas poses extremas (de perfil,
-  // andando) ele chega a 76°, ainda abaixo dos 90° em que as costas apareceriam.
+  b.appendChild(criarFace(w, h, `rotateY(180deg) translateZ(${d / 2}px)`, tom(cor, 0.8), op));
   b.appendChild(criarFace(d, h, `rotateY(90deg) translateZ(${w / 2}px)`, tom(cor, 0.88), op));
   b.appendChild(criarFace(d, h, `rotateY(-90deg) translateZ(${w / 2}px)`, tom(cor, 0.72), op));
   b.appendChild(criarFace(w, d, `rotateX(90deg) translateZ(${h / 2}px)`, tom(cor, 1.16), op));
-  // A face de baixo não entra: a câmera olha de cima (rotateX(-10deg)), então ela
-  // nunca aparece, e são 54 elementos a menos para o navegador reprojetar por quadro.
+  b.appendChild(criarFace(w, d, `rotateX(-90deg) translateZ(${h / 2}px)`, tom(cor, 0.58), op));
   p.appendChild(b);
   return b;
 };
@@ -102,7 +107,7 @@ const ADERECO: Record<string, (a: Pai, cor?: string) => void> = {
   nada: () => { },
 };
 
-interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement }
+interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement; fone: HTMLElement; adEsq: HTMLElement; adDir: HTMLElement; aquario?: HTMLElement; olhos?: HTMLElement }
 
 const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   const alturaPerna = cfg.curto ? 20 : 28;
@@ -161,19 +166,29 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   const manga = cfg.regata || cfg.semCamisa ? cfg.skin : cfg.torso;
   const bracoE = J(corpo, -34, -48, 0);
   const bracoD = J(corpo, 34, -48, 0);
+  // O que está na mão mora numa junta própria, separada do braço, para poder
+  // sumir sozinho nas poses em que a mão precisa ficar livre.
+  const naMao: HTMLElement[] = [];
   ([[bracoE, cfg.esq], [bracoD, cfg.dir]] as [HTMLElement, string | undefined][]).forEach(([a, prop]) => {
     B(a, 15, cfg.regata || cfg.semCamisa ? 34 : 30, 15, 0, 16, 0, manga);
     if (!(cfg.regata || cfg.semCamisa)) B(a, 16, 10, 16, 0, 34, 0, tom(manga, 1.1));
     B(a, 17, 15, 17, 0, 44, 0, cfg.bicho ? tom(cfg.skin, 0.72) : cfg.skin);
-    (ADERECO[prop || 'nada'] || ADERECO.nada)(a, cfg.lapela);
+    const g = J(a, 0, 0, 0);
+    g.style.transition = 'opacity 220ms ease';
+    (ADERECO[prop || 'nada'] || ADERECO.nada)(g, cfg.lapela);
+    naMao.push(g);
   });
+  const [adEsq, adDir] = naMao;
   if (cfg.relogio) B(bracoD, 19, 8, 19, 0, 30, 0, cfg.relogio);
+  let aquario: HTMLElement | undefined;
   if (cfg.aquario) {
-    const bw = J(corpo, 0, -14, 36);
-    B(bw, 18, 11, 11, 2, 2, 0, '#e96f34'); B(bw, 9, 9, 8, -9, 2, 0, '#bf4f1b'); B(bw, 8, 16, 7, -15, 6, -6, '#5aa83f');
-    B(bw, 46, 42, 42, 0, 0, 0, '#bfe3ef', 0.45);
+    aquario = J(corpo, 0, -14, 36);
+    aquario.style.transition = 'opacity 220ms ease';
+    B(aquario, 18, 11, 11, 2, 2, 0, '#e96f34'); B(aquario, 9, 9, 8, -9, 2, 0, '#bf4f1b'); B(aquario, 8, 16, 7, -15, 6, -6, '#5aa83f');
+    B(aquario, 46, 42, 42, 0, 0, 0, '#bfe3ef', 0.45);
   }
   const cabeca = J(corpo, 0, -52, 0);
+  let olhos: HTMLElement | undefined;
   B(cabeca, 92, 88, 92, 0, -44, 0, cfg.skin);
   if (cfg.bicho) {
     B(cabeca, 27, 27, 19, -33, -99, -4, cfg.bicho.orelha); B(cabeca, 27, 27, 19, 33, -99, -4, cfg.bicho.orelha);
@@ -203,6 +218,14 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
     B(cabeca, 19, 17, 5, -20, -45, 47, '#fdfbf7'); B(cabeca, 19, 17, 5, 20, -45, 47, '#fdfbf7');
     B(cabeca, 19, 7, 6, -20, -51, 48, base); B(cabeca, 19, 7, 6, 20, -51, 48, base);
     B(cabeca, 10, 10, 4, -20, -42, 50, cfg.iris || '#2a1f1a'); B(cabeca, 10, 10, 4, 20, -42, 50, cfg.iris || '#2a1f1a');
+    // Pálpebras: tampam o olho aberto quando ele dorme. Ficam numa junta à parte,
+    // escondida, pelo mesmo motivo do fone — aparecer não pode remontar o boneco.
+    // Nos bichos a cor é a da máscara em volta do olho, não a da pele.
+    olhos = J(cabeca, 0, 0, 0);
+    olhos.style.display = 'none';
+    const palpebra = cfg.bicho?.mascara || cfg.skin;
+    B(olhos, 21, 19, 4, -20, -45, 49, palpebra); B(olhos, 21, 19, 4, 20, -45, 49, palpebra);
+    B(olhos, 19, 3, 5, -20, -43, 51, tom(palpebra, 0.55)); B(olhos, 19, 3, 5, 20, -43, 51, tom(palpebra, 0.55));
     if (cfg.bicho) {
       B(cabeca, 36, 26, 17, 0, -19, 48, cfg.bicho.focinho); B(cabeca, 14, 11, 9, 0, -27, 57, cfg.bicho.nariz);
       B(cabeca, 16, 5, 6, 0, -13, 56, tom(cfg.bicho.nariz, 1.6));
@@ -222,7 +245,23 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
     B(cabeca, 12, 4, 3, 0, -45, 51, cfg.oculos);
     B(cabeca, 10, 4, 24, -42, -45, 38, cfg.oculos); B(cabeca, 10, 4, 24, 42, -45, 38, cfg.oculos);
   }
-  return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo };
+  // O fone entra montado desde o começo e fica escondido: aparecer é só trocar o
+  // display, sem remontar o boneco no meio da caminhada de volta.
+  const fone = J(cabeca, 0, 0, 0);
+  fone.style.display = 'none';
+  // Grafite claro, e não preto: metade dos personagens tem cabelo escuro e o fone
+  // sumia dentro dele. A concha ainda ganha um disco laranja virado para fora.
+  const FONE = '#55504a';
+  // Cabelo afro e capacete ocupam o alto da cabeça; o arco sobe para passar por cima.
+  const yArco = cfg.estilo === 'afro' ? -116 : cfg.capacete || cfg.balde ? -106 : -98;
+  B(fone, 106, 13, 27, 0, yArco, 0, FONE);
+  B(fone, 94, 9, 23, 0, yArco + 10, 0, '#e8e2d6');
+  [-50, 50].forEach((x) => {
+    B(fone, 13, -46 - yArco, 19, x, (yArco - 46) / 2, 0, FONE);
+    B(fone, 20, 36, 34, x + Math.sign(x) * 5, -40, 2, FONE);
+    B(fone, 10, 30, 30, x + Math.sign(x) * 16, -40, 2, '#e96f34');
+  });
+  return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo, fone, adEsq, adDir, aquario, olhos };
 };
 
 export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando';
@@ -241,6 +280,8 @@ interface VoxelAvatarProps {
   /** Altura do palco em px. O boneco é escalado para caber nela. */
   altura?: number;
   pose?: VoxelPose;
+  /** Mostra o fone de ouvido na cabeça e faz ele balançar no ritmo. */
+  fone?: boolean;
   /** Chamado uma vez quando ele termina de andar para fora da tela. */
   onSaiuDaTela?: () => void;
   /** Chamado uma vez quando ele termina de andar de volta para o lugar. */
@@ -248,10 +289,12 @@ interface VoxelAvatarProps {
   className?: string;
 }
 
-const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', onSaiuDaTela, onChegou, className = '' }) => {
+const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, onSaiuDaTela, onChegou, className = '' }) => {
   const palcoRef = useRef<HTMLDivElement>(null);
   const poseRef = useRef(pose);
   poseRef.current = pose;
+  const foneRef = useRef(fone);
+  foneRef.current = fone;
   const saidaRef = useRef(onSaiuDaTela);
   saidaRef.current = onSaiuDaTela;
   const chegadaRef = useRef(onChegou);
@@ -267,7 +310,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     palco.appendChild(pivot);
     const cena = J(pivot, 0, 48, 0);
     const sombra = document.createElement('div');
-    sombra.style.cssText = 'position:absolute;width:132px;height:72px;left:-66px;top:-36px;background:#8f8375;opacity:.26;border-radius:50%;transform:translate3d(0,40px,0) rotateX(90deg)';
+    sombra.style.cssText = 'position:absolute;width:132px;height:72px;left:-66px;top:-36px;background:#8f8375;opacity:.26;border-radius:50%;transform:translate3d(0,40px,0) rotateX(90deg);transition:transform 320ms ease';
     cena.appendChild(sombra);
     const p = montar(cfg, cena);
 
@@ -283,6 +326,8 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     let desloc = 0;
     let avisou = false;
     let poseAnterior: VoxelPose | null = null;
+    let foneAnterior: boolean | null = null;
+    let guardaAnterior: string | null = null;
     const PERCURSO = 280;
 
     const desenhar = (ms: number) => {
@@ -310,6 +355,27 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
         poseAnterior = pose;
       }
 
+      // Só escreve no display quando muda: por quadro seria uma recalculada de
+      // layout de graça em 20 cubos que ninguém pediu.
+      const comFone = foneRef.current;
+      if (comFone !== foneAnterior) {
+        foneAnterior = comFone;
+        p.fone.style.display = comFone ? '' : 'none';
+      }
+
+      // O que está na mão acompanha o braço. Acenando, o braço direito sobe a
+      // 150° e levaria o objeto por cima da cabeça; deitado, os dois braços
+      // dobram para dentro e o objeto atravessa o corpo e o chão. Nessas poses
+      // ele guarda o item, com um desvanecer curto para não sumir num estalo.
+      const guarda = dormindo ? 'ambos' : tchau ? 'direita' : 'nenhum';
+      if (guarda !== guardaAnterior) {
+        guardaAnterior = guarda;
+        p.adDir.style.opacity = guarda === 'nenhum' ? '1' : '0';
+        p.adEsq.style.opacity = guarda === 'ambos' ? '0' : '1';
+        if (p.aquario) p.aquario.style.opacity = dormindo ? '0' : '1';
+        if (p.olhos) p.olhos.style.display = dormindo ? '' : 'none';
+      }
+
       // Andando ele vira de perfil para o lado em que caminha; acenando e dormindo,
       // de frente; no resto do tempo volta para o descanso de três quartos.
       const alvo = andando ? 76 : voltando ? -76 : tchau || dormindo ? 0 : DESCANSO;
@@ -319,8 +385,8 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       const passo = caminhando ? Math.sin(t * 7.5) : 0;
       const sobe = salto * 26 + (caminhando ? Math.abs(passo) * 5 : 0);
       const balanco = festa || caminhando ? 0 : Math.sin(t * (dormindo ? 0.9 : 2)) * (dormindo ? 4.5 : 2.5);
-      // Deitado, as pernas ficam encolhidas; em pé elas só andam ou dobram no pulo.
-      const perna = caminhando ? passo * 30 : dormindo ? -22 : -salto * 22;
+      // Deitado de costas as pernas ficam esticadas; em pé elas só andam ou dobram no pulo.
+      const perna = caminhando ? passo * 30 : dormindo ? 0 : -salto * 22;
 
       let zE = 6;
       let zD = -6;
@@ -333,18 +399,33 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       if (cfg.esq === 'vara') { zE = 9; bE = 4; }
       if (caminhando) { bE += passo * 22; bD -= passo * 22; }
       if (tchau) { zD = -150 + Math.sin(t * 9) * 22; bD = 0; }
-      if (dormindo) { bE = -14; bD = -14; zE = 10; zD = -10; }
+      // De barriga para cima os braços descansam ao longo do corpo, abertos o
+      // bastante para não sumirem dentro do tronco.
+      if (dormindo) { bE = 0; bD = 0; zE = 16; zD = -16; }
       zE -= salto * 12;
       zD += salto * 12;
 
-      const inclinaCabeca = dormindo ? 10 : estudando ? 16 : -salto * 6;
-      const tombaCabeca = dormindo ? 14 : 0;
+      const inclinaCabeca = dormindo ? 0 : estudando ? 16 : -salto * 6;
+      // Com o fone na cabeça ele marca o ritmo. Dormindo ou andando, não: um já
+      // tem inclinação própria e o outro já balança por conta do passo.
+      const tombaCabeca = (dormindo ? 14 : 0) + (comFone && !dormindo && !caminhando ? Math.sin(t * 5.5) * 7 : 0);
       const olhaEmVolta = dormindo || estudando || caminhando ? 0 : Math.sin(t * 0.7) * 9;
 
-      // Dormindo ele deita: o corpo inteiro tomba 82° e desce até o chão. A sombra
-      // fica fora da raiz, então continua deitada no lugar certo.
-      p.raiz.style.transform = `translate3d(0,${-sobe + (dormindo ? 26 : 0)}px,0) rotateZ(${dormindo ? -82 : 0}deg)`;
-      p.corpo.style.transform = `translate3d(0,${-balanco}px,0) rotateX(${estudando ? 6 : 0}deg)`;
+      // Dormindo ele deita de barriga para cima, de cabeça à esquerda: rotateZ
+      // (-90) põe o corpo na horizontal e rotateX(20) rola um pouco para as
+      // costas. Só um pouco — a 52° o boneco virava um amontoado de cubos, por
+      // causa do encurtamento, e com 130px de altura não dava para reconhecer
+      // ninguém. O deslocamento em x recentra o corpo, que deitado passa a se
+      // estender para a esquerda da origem.
+      const deitado = dormindo ? ' rotateX(20deg) rotateZ(-90deg)' : '';
+      p.raiz.style.transform = `translate3d(${dormindo ? 46 : 0}px,${-sobe + (dormindo ? -4 : 0)}px,0)${deitado}`;
+      // Em pé a respiração sobe e desce; deitado ela tem de ir na direção da
+      // barriga, que agora é o eixo z do corpo, senão ele escorrega para o lado.
+      p.corpo.style.transform = dormindo
+        ? `translate3d(0,0,${balanco}px)`
+        : `translate3d(0,${-balanco}px,0) rotateX(${estudando ? 6 : 0}deg)`;
+      // Deitado ele ocupa mais chão do que em pé: a sombra acompanha.
+      sombra.style.transform = `translate3d(0,40px,0) rotateX(90deg)${dormindo ? ' scale(1.4,0.78)' : ''}`;
       p.cabeca.style.transform = `translate3d(0,-52px,0) rotateY(${olhaEmVolta}deg) rotateX(${inclinaCabeca}deg) rotateZ(${tombaCabeca}deg)`;
       p.bracoE.style.transform = `translate3d(-34px,-48px,0) rotateZ(${zE}deg) rotateX(${bE}deg)`;
       p.bracoD.style.transform = `translate3d(34px,-48px,0) rotateZ(${zD}deg) rotateX(${bD}deg)`;
@@ -375,14 +456,35 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
 
   if (!getVoxelConfig(characterId)) return null;
   return (
-    // O flex centraliza o ponto de origem do 3D. Sem ele o boneco é desenhado a
-    // partir do canto de cima e sobe para fora da caixa, por cima do que estiver ali.
-    <div
-      ref={palcoRef}
-      aria-hidden="true"
-      className={`flex items-center justify-center ${className}`}
-      style={{ height: altura, width: altura * 0.78, perspective: 900 }}
-    />
+    // Os zzz ficam fora do palco: o palco é limpo com textContent no efeito, e
+    // qualquer filho que o React pusesse ali seria apagado na primeira montagem.
+    <div aria-hidden="true" className={`relative ${className}`} style={{ height: altura, width: altura * 0.78 }}>
+      {/* O flex centraliza o ponto de origem do 3D. Sem ele o boneco é desenhado
+          a partir do canto de cima e sobe para fora da caixa. */}
+      <div ref={palcoRef} className="absolute inset-0 flex items-center justify-center" style={{ perspective: 900 }} />
+      {pose === 'dormindo' && (
+        // Deitado, a cabeça fica à esquerda e a cerca de 70% da altura do
+        // palco: é de lá que os zzz sobem, e não do alto da caixa, onde
+        // flutuariam soltos por cima do texto da página. Laranja do app porque
+        // precisam aparecer no creme da tela e no fundo escuro da roda.
+        [0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="pointer-events-none absolute select-none font-black lowercase text-[#e96f34]"
+            style={{
+              left: `${13 + i * 6}%`,
+              top: `${56 - i * 6}%`,
+              fontSize: 11 + i * 4,
+              opacity: 0,
+              textShadow: '0 1px 3px rgba(42,31,24,0.45)',
+              animation: `mascote-zzz 2.7s ${i * 0.9}s infinite ease-out`,
+            }}
+          >
+            z
+          </span>
+        ))
+      )}
+    </div>
   );
 };
 

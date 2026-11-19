@@ -4,6 +4,7 @@ import { StudyProfile } from '../types';
 import { getCharacterSrc, getCharacter } from '../services/avatarService';
 import AvatarDisplay from './AvatarDisplay';
 import VoxelAvatar, { POSES_ESCOLHIVEIS, VoxelPose } from './VoxelAvatar';
+import CompanionWheel, { ItemRoda } from './CompanionWheel';
 import { getVoxelConfig } from '../services/voxelCharacters';
 
 interface FishCompanionProps {
@@ -11,9 +12,12 @@ interface FishCompanionProps {
   characterId?: string;
   /** A mini-barra do Pomodoro está visível: ancora o mascote acima dela para não cobrir controles. */
   liftForBar?: boolean;
+  /** Estação de música tocando agora (a mesma da barra de ferramentas), ou null. */
+  activeChannel?: 'RELAX' | 'MPB' | null;
+  setActiveChannel?: (c: 'RELAX' | 'MPB' | null) => void;
 }
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false, activeChannel = null, setActiveChannel }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
@@ -22,6 +26,13 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   // 'aqui' -> 'despedindo' -> 'andando' -> 'fora'. Não guardamos em disco: recarregar traz ele de volta.
   const [presenca, setPresenca] = useState<'aqui' | 'despedindo' | 'andando' | 'fora' | 'chegando'>('aqui');
   const [cochilando, setCochilando] = useState(false);
+  // Ele só está de fone depois de ir buscar: a música é consequência da ida, não o contrário.
+  const [comFone, setComFone] = useState(false);
+  // Por que ele saiu da tela: para ficar fora ('sair') ou para pegar o fone ('fone').
+  const missaoRef = useRef<'sair' | 'fone'>('sair');
+  // A roda de opções não cabe encostada no canto, então, enquanto ela está
+  // aberta, o companheiro inteiro desliza para o meio da tela e volta depois.
+  const [desloc, setDesloc] = useState({ x: 0, y: 0, escala: 1 });
   // A animação que o aluno escolheu. Enquanto for a padrão, o cochilo automático
   // ainda vale; a partir do momento em que ele escolhe algo, a escolha manda.
   const [animacao, setAnimacao] = useState<VoxelPose>('estudando');
@@ -81,6 +92,44 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     };
   }, [presenca, isOpen, animacao]);
 
+  // Se a música for desligada pela barra de ferramentas, o fone sai da cabeça
+  // junto: ficar de fone em silêncio diria que ainda está tocando. Reagimos à
+  // virada para o silêncio, e não a "está em silêncio": durante a ida buscar o
+  // fone ainda não há canal nenhum, e ele tiraria o fone ao chegar.
+  const canalAnteriorRef = useRef(activeChannel);
+  useEffect(() => {
+    const antes = canalAnteriorRef.current;
+    canalAnteriorRef.current = activeChannel;
+    if (antes && !activeChannel) setComFone(false);
+  }, [activeChannel]);
+
+  // Medimos o boneco no lugar dele e mandamos a diferença até o centro da tela:
+  // animar `transform` não mexe no layout, animar `bottom`/`right` mexeria.
+  const abrirRoda = () => {
+    const r = mascoteRef.current?.getBoundingClientRect();
+    const menor = Math.min(window.innerWidth, window.innerHeight);
+    if (r) {
+      setDesloc({
+        x: Math.round(window.innerWidth / 2 - (r.left + r.width / 2)),
+        y: Math.round(window.innerHeight / 2 - (r.top + r.height / 2)),
+        escala: Math.min(1, (menor - 36) / 344),
+      });
+    }
+    setMenuAberto(true);
+  };
+
+  const ligarMusica = () => {
+    setMenuAberto(false);
+    missaoRef.current = 'fone';
+    setPresenca('andando');
+  };
+
+  const desligarMusica = () => {
+    setMenuAberto(false);
+    setComFone(false);
+    setActiveChannel?.(null);
+  };
+
   const handleSend = async () => {
     if (!message.trim() || isTyping) return;
 
@@ -117,8 +166,43 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     }
   };
 
+  // Paleta terrosa do app: laranja para a ação principal, mostarda quando a
+  // música está no ar, café para a animação escolhida e areia para o resto.
+  const itensRoda: ItemRoda[] = [
+    { id: 'falar', rotulo: `Falar com ${companionName}`, peso: 2, cor: '#e96f34', texto: '#fffaf4', acao: () => { setMenuAberto(false); setIsOpen(true); } },
+    {
+      id: 'musica',
+      rotulo: activeChannel ? 'Desligar a música' : 'Ligar a música',
+      cor: activeChannel ? '#D8A53A' : '#F4EBDD',
+      texto: activeChannel ? '#3a2a1d' : '#6b5a49',
+      acao: activeChannel ? desligarMusica : ligarMusica,
+    },
+    ...POSES_ESCOLHIVEIS.map(({ pose, rotulo }) => ({
+      id: pose,
+      rotulo,
+      cor: animacao === pose ? '#4A352A' : '#E8DDCC',
+      texto: animacao === pose ? '#F4EBDD' : '#6b5a49',
+      marcado: animacao === pose,
+      acao: () => setAnimacao(pose),
+    })),
+    { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
+  ];
+  const rodaAberta = menuAberto && presenca === 'aqui' && !isOpen;
+
   return (
-    <div className="fixed right-3 lg:right-6 z-[60] flex flex-col items-end pointer-events-none [&>*]:pointer-events-auto" style={{ bottom: liftForBar ? 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' : 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
+    <>
+    {rodaAberta && (
+      /* Escurece o fundo porque o boneco sai do canto e passa por cima do
+         conteúdo: sem isso a roda disputaria leitura com a tela inteira. */
+      <div className="fixed inset-0 z-[55] bg-[#2a1f18]/40 backdrop-blur-[2px] animate-in fade-in duration-200" onClick={() => setMenuAberto(false)} aria-hidden="true" />
+    )}
+    <div
+      className="fixed right-3 lg:right-6 z-[60] flex flex-col items-end pointer-events-none [&>*]:pointer-events-auto motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
+      style={{
+        bottom: liftForBar ? 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' : 'calc(1rem + env(safe-area-inset-bottom, 0px))',
+        transform: rodaAberta ? `translate3d(${desloc.x}px, ${desloc.y}px, 0)` : undefined,
+      }}
+    >
       {/* Janela de Chat */}
       {isOpen && (
         <div className="mb-4 w-[calc(100vw-1.5rem)] max-w-[400px] h-[min(500px,60vh)] bg-white rounded-[40px] shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
@@ -204,85 +288,45 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
             <span aria-hidden="true">🫱</span>
           </button>
         ) : (
-          <div className="relative flex flex-col items-end gap-2">
-            {menuAberto && presenca === 'aqui' && (
-              /* z-20: o boneco vem depois no DOM e pintava por cima do menu. */
-              <div ref={menuRef} role="menu" className="relative z-20 flex flex-col overflow-hidden rounded-2xl border border-[#e9e0d4] bg-white shadow-xl dark:border-white/10 dark:bg-[#2d2e27]">
-                <div className="flex items-center justify-between gap-2 pl-4 pr-1 pt-1">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Companheiro</span>
-                  <button
-                    type="button"
-                    onClick={() => setMenuAberto(false)}
-                    aria-label="Fechar as opções"
-                    title="Fechar"
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33] dark:text-[#a89680] dark:hover:bg-white/5"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                {/* A conversa é o motivo de o mascote existir: vem como botão cheio,
-                    não como mais um item de lista do mesmo peso dos outros. */}
-                <div className="px-2 pb-1">
-                  <button
-                    role="menuitem"
-                    onClick={() => { setMenuAberto(false); setIsOpen(true); }}
-                    className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#e96f34] px-4 text-xs font-black uppercase tracking-wide text-white shadow-[0_6px_14px_rgba(233,111,52,0.3)] transition-all hover:bg-[#d55f27] active:scale-95"
-                  >
-                    <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.9 9.9 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    Falar com {companionName}
-                  </button>
-                </div>
-                <div className="px-3 pb-2 pt-1">
-                  <p className="mb-2 px-1 text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Animação</p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {POSES_ESCOLHIVEIS.map(({ pose, rotulo }) => (
-                      <button
-                        key={pose}
-                        role="menuitemradio"
-                        aria-checked={animacao === pose}
-                        onClick={() => setAnimacao(pose)}
-                        className={`min-h-[36px] rounded-xl px-2 text-[10px] font-black uppercase tracking-wide transition-colors ${
-                          // Sem dark:bg-[#d9772b] aqui: index.css força essa classe para
-                          // o laranja forte nos dois temas, e o chip competia com o botão
-                          // de conversar, que é a ação principal do menu.
-                          animacao === pose
-                            ? 'bg-[#473c33] text-white'
-                            : 'bg-[#f7f3ed] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
-                        }`}
-                      >
-                        {rotulo}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  role="menuitem"
-                  onClick={() => { setMenuAberto(false); setPresenca('despedindo'); }}
-                  className="min-h-[44px] border-t border-[#eee6d6] px-4 text-left text-xs font-black uppercase tracking-wide text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33] dark:border-white/10 dark:text-[#a89680] dark:hover:bg-white/5"
-                >
-                  Pedir para sair da tela
-                </button>
+          <div
+            // Em tela estreita a roda encolhe, e o boneco tem de encolher junto,
+            // senão ele cresce dentro do furo e encosta nas peças. A escala é no
+            // grupo e em volta do próprio centro, que é o ponto já centralizado.
+            className="relative flex flex-col items-end gap-2 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
+            style={{ transform: rodaAberta && desloc.escala < 1 ? `scale(${desloc.escala})` : undefined }}
+          >
+            {rodaAberta && (
+              /* A roda nasce centrada no boneco: o invólucro só contém o botão
+                 dele, então `inset-0` já é a caixa do personagem. */
+              <div ref={menuRef} className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <CompanionWheel itens={itensRoda} rotulo={`Opções de ${companionName}`} />
               </div>
             )}
             <button
               ref={mascoteRef}
-              onClick={() => { if (presenca === 'aqui') setMenuAberto((v) => !v); }}
-              aria-label={`Opções de ${companionName}`}
+              onClick={() => { if (presenca !== 'aqui') return; if (menuAberto) setMenuAberto(false); else abrirRoda(); }}
+              aria-label={menuAberto ? 'Fechar as opções' : `Opções de ${companionName}`}
               aria-expanded={menuAberto}
               aria-haspopup="menu"
-              title={companionName}
-              className="relative transition-transform duration-300 hover:scale-105 active:scale-95"
+              title={menuAberto ? 'Fechar' : companionName}
+              // z-10: o boneco fica no miolo da roda e também é o botão de fechar.
+              className="relative z-10 transition-transform duration-300 hover:scale-105 active:scale-95"
             >
               <VoxelAvatar
                 characterId={characterId}
                 altura={132}
                 pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : presenca === 'chegando' ? 'voltando' : cochilando ? 'dormindo' : animacao}
-                onSaiuDaTela={() => setPresenca('fora')}
-                onChegou={() => setPresenca('aqui')}
+                fone={comFone}
+                onSaiuDaTela={() => {
+                  // Foi buscar o fone: nos bastidores ele coloca e já volta andando,
+                  // então não passa pelo estado 'fora' nem pede para ser chamado.
+                  if (missaoRef.current === 'fone') { setComFone(true); setPresenca('chegando'); }
+                  else setPresenca('fora');
+                }}
+                onChegou={() => {
+                  setPresenca('aqui');
+                  if (missaoRef.current === 'fone') { missaoRef.current = 'sair'; setActiveChannel?.('RELAX'); }
+                }}
               />
             </button>
           </div>
@@ -301,6 +345,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
         </button>
       )}
     </div>
+    </>
   );
 };
 
