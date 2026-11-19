@@ -107,7 +107,7 @@ const ADERECO: Record<string, (a: Pai, cor?: string) => void> = {
   nada: () => { },
 };
 
-interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement; fone: HTMLElement }
+interface Partes { raiz: HTMLElement; corpo: HTMLElement; cabeca: HTMLElement; bracoE: HTMLElement; bracoD: HTMLElement; pernaE: HTMLElement; pernaD: HTMLElement; rabo?: HTMLElement; fone: HTMLElement; adEsq: HTMLElement; adDir: HTMLElement; aquario?: HTMLElement }
 
 const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   const alturaPerna = cfg.curto ? 20 : 28;
@@ -166,17 +166,26 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
   const manga = cfg.regata || cfg.semCamisa ? cfg.skin : cfg.torso;
   const bracoE = J(corpo, -34, -48, 0);
   const bracoD = J(corpo, 34, -48, 0);
+  // O que está na mão mora numa junta própria, separada do braço, para poder
+  // sumir sozinho nas poses em que a mão precisa ficar livre.
+  const naMao: HTMLElement[] = [];
   ([[bracoE, cfg.esq], [bracoD, cfg.dir]] as [HTMLElement, string | undefined][]).forEach(([a, prop]) => {
     B(a, 15, cfg.regata || cfg.semCamisa ? 34 : 30, 15, 0, 16, 0, manga);
     if (!(cfg.regata || cfg.semCamisa)) B(a, 16, 10, 16, 0, 34, 0, tom(manga, 1.1));
     B(a, 17, 15, 17, 0, 44, 0, cfg.bicho ? tom(cfg.skin, 0.72) : cfg.skin);
-    (ADERECO[prop || 'nada'] || ADERECO.nada)(a, cfg.lapela);
+    const g = J(a, 0, 0, 0);
+    g.style.transition = 'opacity 220ms ease';
+    (ADERECO[prop || 'nada'] || ADERECO.nada)(g, cfg.lapela);
+    naMao.push(g);
   });
+  const [adEsq, adDir] = naMao;
   if (cfg.relogio) B(bracoD, 19, 8, 19, 0, 30, 0, cfg.relogio);
+  let aquario: HTMLElement | undefined;
   if (cfg.aquario) {
-    const bw = J(corpo, 0, -14, 36);
-    B(bw, 18, 11, 11, 2, 2, 0, '#e96f34'); B(bw, 9, 9, 8, -9, 2, 0, '#bf4f1b'); B(bw, 8, 16, 7, -15, 6, -6, '#5aa83f');
-    B(bw, 46, 42, 42, 0, 0, 0, '#bfe3ef', 0.45);
+    aquario = J(corpo, 0, -14, 36);
+    aquario.style.transition = 'opacity 220ms ease';
+    B(aquario, 18, 11, 11, 2, 2, 0, '#e96f34'); B(aquario, 9, 9, 8, -9, 2, 0, '#bf4f1b'); B(aquario, 8, 16, 7, -15, 6, -6, '#5aa83f');
+    B(aquario, 46, 42, 42, 0, 0, 0, '#bfe3ef', 0.45);
   }
   const cabeca = J(corpo, 0, -52, 0);
   B(cabeca, 92, 88, 92, 0, -44, 0, cfg.skin);
@@ -243,7 +252,7 @@ const montar = (cfg: VoxelConfig, cena: Pai): Partes => {
     B(fone, 20, 36, 34, x + Math.sign(x) * 5, -40, 2, FONE);
     B(fone, 10, 30, 30, x + Math.sign(x) * 16, -40, 2, '#e96f34');
   });
-  return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo, fone };
+  return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo, fone, adEsq, adDir, aquario };
 };
 
 export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando';
@@ -309,6 +318,7 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     let avisou = false;
     let poseAnterior: VoxelPose | null = null;
     let foneAnterior: boolean | null = null;
+    let guardaAnterior: string | null = null;
     const PERCURSO = 280;
 
     const desenhar = (ms: number) => {
@@ -342,6 +352,18 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       if (comFone !== foneAnterior) {
         foneAnterior = comFone;
         p.fone.style.display = comFone ? '' : 'none';
+      }
+
+      // O que está na mão acompanha o braço. Acenando, o braço direito sobe a
+      // 150° e levaria o objeto por cima da cabeça; deitado, os dois braços
+      // dobram para dentro e o objeto atravessa o corpo e o chão. Nessas poses
+      // ele guarda o item, com um desvanecer curto para não sumir num estalo.
+      const guarda = dormindo ? 'ambos' : tchau ? 'direita' : 'nenhum';
+      if (guarda !== guardaAnterior) {
+        guardaAnterior = guarda;
+        p.adDir.style.opacity = guarda === 'nenhum' ? '1' : '0';
+        p.adEsq.style.opacity = guarda === 'ambos' ? '0' : '1';
+        if (p.aquario) p.aquario.style.opacity = dormindo ? '0' : '1';
       }
 
       // Andando ele vira de perfil para o lado em que caminha; acenando e dormindo,
