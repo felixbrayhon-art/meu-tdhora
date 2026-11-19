@@ -15,9 +15,13 @@ interface FishCompanionProps {
   /** Estação de música tocando agora (a mesma da barra de ferramentas), ou null. */
   activeChannel?: 'RELAX' | 'MPB' | null;
   setActiveChannel?: (c: 'RELAX' | 'MPB' | null) => void;
+  /** O cronômetro global está correndo agora. */
+  timerAtivo?: boolean;
+  onLigarTimer?: () => void;
+  onPararTimer?: () => void;
 }
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false, activeChannel = null, setActiveChannel }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, liftForBar = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
@@ -28,8 +32,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const [cochilando, setCochilando] = useState(false);
   // Ele só está de fone depois de ir buscar: a música é consequência da ida, não o contrário.
   const [comFone, setComFone] = useState(false);
-  // Por que ele saiu da tela: para ficar fora ('sair') ou para pegar o fone ('fone').
-  const missaoRef = useRef<'sair' | 'fone'>('sair');
+  // Ele só está com o despertador depois de ir buscar, como acontece com o fone.
+  const [comRelogio, setComRelogio] = useState(false);
+  // Por que ele saiu da tela: para ficar fora, para pegar o fone ou o relógio.
+  const missaoRef = useRef<'sair' | 'fone' | 'relogio'>('sair');
   // A roda de opções não cabe encostada no canto, então, enquanto ela está
   // aberta, o companheiro inteiro desliza para o meio da tela e volta depois.
   const [desloc, setDesloc] = useState({ x: 0, y: 0, escala: 1 });
@@ -118,10 +124,32 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     setMenuAberto(true);
   };
 
+  // Quando o cronômetro para -- pelo menu, pela barra ou porque o pomodoro
+  // chegou ao fim -- ele guarda o relógio. Reagimos à virada, e não a "está
+  // parado": durante a ida buscar o relógio ele ainda não começou a correr.
+  const timerAnteriorRef = useRef(timerAtivo);
+  useEffect(() => {
+    const antes = timerAnteriorRef.current;
+    timerAnteriorRef.current = timerAtivo;
+    if (antes && !timerAtivo) setComRelogio(false);
+  }, [timerAtivo]);
+
   const ligarMusica = () => {
     setMenuAberto(false);
     missaoRef.current = 'fone';
     setPresenca('andando');
+  };
+
+  const ligarTimer = () => {
+    setMenuAberto(false);
+    missaoRef.current = 'relogio';
+    setPresenca('andando');
+  };
+
+  const pararTimer = () => {
+    setMenuAberto(false);
+    setComRelogio(false);
+    onPararTimer?.();
   };
 
   const desligarMusica = () => {
@@ -176,6 +204,13 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       cor: activeChannel ? '#D8A53A' : '#F4EBDD',
       texto: activeChannel ? '#3a2a1d' : '#6b5a49',
       acao: activeChannel ? desligarMusica : ligarMusica,
+    },
+    {
+      id: 'cronometro',
+      rotulo: timerAtivo ? 'Parar o cronômetro' : 'Ligar o cronômetro',
+      cor: timerAtivo ? '#7D7A36' : '#F4EBDD',
+      texto: timerAtivo ? '#f7f3ed' : '#6b5a49',
+      acao: timerAtivo ? pararTimer : ligarTimer,
     },
     ...POSES_ESCOLHIVEIS.map(({ pose, rotulo }) => ({
       id: pose,
@@ -317,15 +352,18 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 altura={132}
                 pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : presenca === 'chegando' ? 'voltando' : cochilando ? 'dormindo' : animacao}
                 fone={comFone}
+                cronometro={comRelogio}
                 onSaiuDaTela={() => {
                   // Foi buscar o fone: nos bastidores ele coloca e já volta andando,
                   // então não passa pelo estado 'fora' nem pede para ser chamado.
                   if (missaoRef.current === 'fone') { setComFone(true); setPresenca('chegando'); }
+                  else if (missaoRef.current === 'relogio') { setComRelogio(true); setPresenca('chegando'); }
                   else setPresenca('fora');
                 }}
                 onChegou={() => {
                   setPresenca('aqui');
                   if (missaoRef.current === 'fone') { missaoRef.current = 'sair'; setActiveChannel?.('RELAX'); }
+                  else if (missaoRef.current === 'relogio') { missaoRef.current = 'sair'; onLigarTimer?.(); }
                 }}
               />
             </button>
