@@ -27,6 +27,7 @@ const TABS: Aba[] = [
   { chave: 'HUB_RELAXE', label: 'Relaxe', icon: Smile, view: 'HUB', categoria: 'RELAXE' },
   { chave: 'HUB_MOTIVACAO', label: 'Motivação', icon: Heart, view: 'HUB', categoria: 'MOTIVACAO' },
   { chave: 'PERFORMANCE', label: 'Desempenho', icon: BarChart3, view: 'PERFORMANCE' },
+  { chave: 'MASCOTE', label: 'Meu Mascote', icon: Smile, view: 'MASCOTE' },
 ];
 
 interface ToolTabsProps {

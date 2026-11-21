@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { VoxelConfig, getVoxelConfig } from '../services/voxelCharacters';
-import { VoxelAjustes, aplicarAjustes } from '../services/voxelCustom';
+import { Mascote, aplicarMascote, configDoMascote } from '../services/mascote';
 
 // Mascote 3D feito de cubos CSS: nenhuma imagem, só divs com transform.
 // Cada cubo são seis faces; o tom de cada face é o mesmo multiplicado por um
@@ -69,6 +69,39 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
     B(h, 40, 16, 40, -24, -92, 2, tom(c, 1.18)); B(h, 34, 14, 34, 26, -94, -10, tom(c, 1.18));
   },
   careca: (h, c) => { B(h, 92, 10, 92, 0, -84, 0, tom(c, 0.9)); },
+  // Penteados do estúdio. Seguem a mesma caixa dos outros: topo em -80, nuca
+  // em -58 e franja encostando no rosto em z 43, para caberem sob os chapéus.
+  moicano: (h, c) => {
+    B(h, 92, 12, 92, 0, -82, 0, tom(c, 0.55));
+    B(h, 26, 34, 92, 0, -98, 0, c);
+    B(h, 18, 14, 86, 0, -118, 2, tom(c, 1.12));
+    B(h, 90, 12, 16, 0, -66, -44, tom(c, 0.8));
+  },
+  coque: (h, c) => {
+    B(h, 94, 22, 94, 0, -79, 0, c);
+    B(h, 94, 30, 16, 0, -57, -44, c);
+    B(h, 12, 20, 76, -43, -62, -6, c); B(h, 12, 20, 76, 43, -62, -6, c);
+    B(h, 92, 12, 16, 0, -70, 43, c);
+    B(h, 40, 36, 36, 0, -102, -34, tom(c, 1.1));
+    B(h, 14, 10, 14, 0, -84, -46, tom(c, 0.86));
+  },
+  rabo: (h, c) => {
+    B(h, 94, 22, 94, 0, -79, 0, c);
+    B(h, 94, 32, 16, 0, -56, -44, c);
+    B(h, 12, 24, 78, -43, -62, -4, c); B(h, 12, 24, 78, 43, -62, -4, c);
+    B(h, 92, 12, 16, 0, -70, 43, c);
+    // O rabo de cavalo cai por trás, com uma leve inclinação.
+    B(h, 22, 20, 22, 0, -74, -52, tom(c, 1.08));
+    B(h, 20, 54, 20, 0, -44, -58, c, 1, ' rotateX(-10deg)');
+    B(h, 16, 16, 16, 0, -16, -62, tom(c, 1.12));
+  },
+  chanel: (h, c) => {
+    B(h, 96, 24, 96, 0, -78, 0, c);
+    B(h, 96, 56, 18, 0, -44, -44, c);
+    B(h, 16, 56, 92, -44, -44, -2, c); B(h, 16, 56, 92, 44, -44, -2, c);
+    B(h, 94, 14, 20, 0, -68, 42, tom(c, 1.1));
+    B(h, 30, 10, 18, -26, -74, 42, tom(c, 1.16));
+  },
 };
 
 const ADERECO: Record<string, (a: Pai, cor?: string) => void> = {
@@ -222,6 +255,27 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     B(corpo, 26, 3, 3, 0, -47, 21, '#e8d5ad');
     B(corpo, 3, 7, 3, 0, -43, 21, '#e8d5ad');
     B(corpo, 5, 6, 3, 0, -39, 22, '#c49c5d');
+  }
+  // Saia: três degraus que alargam para baixo e passam do joelho, senão o
+  // recorte fica na altura de uma bermuda e ninguém lê como saia.
+  if (cfg.vestido) {
+    B(corpo, 58, 12, 44, 0, -6, 0, cfg.vestido);
+    B(corpo, 70, 14, 54, 0, 4, 0, cfg.vestido);
+    B(corpo, 80, 16, 62, 0, 16, 0, tom(cfg.vestido, 1.07));
+  }
+  // Moletom: capuz caído atrás da cabeça, gola e bolso canguru na frente. O
+  // capuz fica atrás do bloco da cabeça (que vai de z -46 a 46): mais para
+  // dentro ele é desenhado, mas some inteiro dentro dela.
+  if (cfg.capuz) {
+    // O capuz é mais largo que a cabeça (92) de propósito: atrás dela, só
+    // aparece o que passar das laterais. Mais estreito, some inteiro.
+    B(corpo, 106, 40, 26, 0, -78, -56, tom(cfg.capuz, 0.84));
+    B(corpo, 98, 18, 22, 0, -54, -54, tom(cfg.capuz, 0.66));
+    B(corpo, 62, 12, 46, 0, -50, -2, tom(cfg.capuz, 1.1));
+    // Cordões em creme e bolso canguru: é por eles que o moletom se lê de
+    // frente. Creme fixo porque um tom do próprio moletom some nele.
+    B(corpo, 4, 22, 4, -9, -41, 22, '#f3ece0'); B(corpo, 4, 17, 4, 9, -44, 22, '#f3ece0');
+    B(corpo, 38, 17, 6, 0, -10, 21, tom(cfg.capuz, 0.8));
   }
   if (cfg.listrasT) { B(corpo, 55, 5, 41, 0, -42, 0, cfg.listrasT); B(corpo, 55, 5, 41, 0, -30, 0, cfg.listrasT); B(corpo, 55, 5, 41, 0, -18, 0, cfg.listrasT); }
   if (cfg.listra) { B(corpo, 56, 6, 42, 0, -36, 0, cfg.listra); B(corpo, 56, 6, 42, 0, -16, 0, cfg.listra); }
@@ -425,7 +479,33 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     const larguraOrelha = raposaOriginal ? 25 : gato ? 26 : pescador && variantePescador === 2 ? 38 : pescador ? 30 : 27;
     const alturaOrelha = raposaOriginal ? 45 : gato ? 36 : pescador && variantePescador === 2 ? 42 : pescador ? 34 : 27;
     const dentroOrelha = pescador && variantePescador === 2 ? 23 : pescador ? 17 : 15;
-    if (!carameloOriginal) {
+    // O estúdio escolhe o formato da orelha: é o que separa um gato de um
+    // coelho quando o resto do corpo é o mesmo. Sem escolha, fica a orelha
+    // padrão que os personagens prontos já usavam.
+    const formato = cfg.bicho.orelhaTipo;
+    if (formato) {
+      const orelha = cfg.bicho.orelha;
+      const dentro = cfg.bicho.dentro;
+      [-1, 1].forEach((lado) => {
+        const x = lado * 34;
+        if (formato === 'ponta') {
+          B(cabeca, 24, 30, 16, x, -102, -4, orelha);
+          B(cabeca, 14, 14, 14, x + lado * 3, -122, -4, orelha);
+          B(cabeca, 13, 16, 10, x, -100, 4, dentro);
+        } else if (formato === 'caida') {
+          B(cabeca, 22, 20, 18, x + lado * 10, -92, -2, orelha);
+          B(cabeca, 20, 30, 16, x + lado * 16, -70, 0, orelha, 1, ` rotateZ(${lado * 14}deg)`);
+          B(cabeca, 11, 22, 9, x + lado * 15, -72, 7, dentro, 1, ` rotateZ(${lado * 14}deg)`);
+        } else if (formato === 'redonda') {
+          B(cabeca, 30, 26, 18, x, -100, -4, orelha);
+          B(cabeca, 17, 15, 11, x, -98, 5, dentro);
+        } else {
+          // comprida: a orelha de coelho, levemente aberta para fora.
+          B(cabeca, 18, 54, 16, x + lado * 4, -116, -4, orelha, 1, ` rotateZ(${lado * 7}deg)`);
+          B(cabeca, 9, 36, 9, x + lado * 6, -114, 3, dentro, 1, ` rotateZ(${lado * 7}deg)`);
+        }
+      });
+    } else if (!carameloOriginal) {
       B(cabeca, larguraOrelha, alturaOrelha, 19, -orelhaX, -99, -4, cfg.bicho.orelha); B(cabeca, larguraOrelha, alturaOrelha, 19, orelhaX, -99, -4, cfg.bicho.orelha);
       B(cabeca, dentroOrelha, dentroOrelha, 11, -orelhaX, -97, 4, cfg.bicho.dentro); B(cabeca, dentroOrelha, dentroOrelha, 11, orelhaX, -97, 4, cfg.bicho.dentro);
     }
@@ -601,6 +681,12 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
       B(cabeca, 20, 3, 3, -20, -53, 52, '#6d5144'); B(cabeca, 20, 3, 3, 20, -53, 52, '#6d5144');
       B(cabeca, 4, 5, 3, -30, -54, 52, '#6d5144'); B(cabeca, 4, 5, 3, 30, -54, 52, '#6d5144');
     }
+    // Os mesmos cílios da Médica, agora como peça que o estúdio liga em
+    // qualquer boneco: traço por cima do olho e um pontinho no canto de fora.
+    if (cfg.cilios) {
+      B(cabeca, 20, 3, 3, -20, -53, 52, cfg.cilios); B(cabeca, 20, 3, 3, 20, -53, 52, cfg.cilios);
+      B(cabeca, 4, 5, 3, -30, -54, 52, cfg.cilios); B(cabeca, 4, 5, 3, 30, -54, 52, cfg.cilios);
+    }
     if (biomedicaOriginal) {
       B(cabeca, 4, 4, 3, -22, -45, 53, '#fffaf2'); B(cabeca, 4, 4, 3, 18, -45, 53, '#fffaf2');
       B(cabeca, 20, 3, 3, -20, -53, 52, '#745644'); B(cabeca, 20, 3, 3, 20, -53, 52, '#745644');
@@ -724,16 +810,19 @@ interface VoxelAvatarProps {
   onSaiuDaTela?: () => void;
   /** Chamado uma vez quando ele termina de andar de volta para o lugar. */
   onChegou?: () => void;
-  /** O que o aluno mudou no editor: tipo, cabelo, olhos, pele, roupa, mãos. */
-  ajustes?: VoxelAjustes;
+  /** O mascote do aluno: um personagem pronto retocado ou um criado no estúdio. */
+  mascote?: Mascote;
   className?: string;
 }
 
-const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, ajustes, className = '' }) => {
-  const idBase = ajustes?.base || characterId;
-  const chaveAjustes = JSON.stringify(ajustes || {});
-  const ajustesRef = useRef(ajustes);
-  ajustesRef.current = ajustes;
+const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, mascote, className = '' }) => {
+  // No modo 'criado' não existe personagem de origem: a receita sai inteira das
+  // peças que o aluno escolheu no estúdio.
+  const criado = mascote?.modo === 'criado';
+  const idBase = criado ? undefined : mascote?.base || characterId;
+  const chaveMascote = JSON.stringify(mascote || {});
+  const mascoteRef = useRef(mascote);
+  mascoteRef.current = mascote;
   const variantePescador = 3, varianteNutricionista = 1, variantePolicial = 1, varianteRegata = 1, varianteRaposa = 1, varianteRoqueiro = 1, varianteSenhor = 1, varianteSurfista = 1, varianteNativo = 1, varianteCaramelo = 1;
   const palcoRef = useRef<HTMLDivElement>(null);
   const poseRef = useRef(pose);
@@ -750,13 +839,16 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
   chegadaRef.current = onChegou;
 
   useEffect(() => {
-    // O editor pode trocar a receita de base, então os retoques por personagem
-    // seguem o id da base escolhida, não o do avatar do onboarding.
+    // O estúdio pode trocar a receita de base, então os retoques por personagem
+    // seguem o id da base escolhida, não o do avatar do onboarding. Eles entram
+    // antes das escolhas do aluno: são parte do desenho original, não por cima.
     const original = getVoxelConfig(idBase);
     const retocado = original && idBase === 'vira-lata-caramelo'
       ? { ...original, skin: '#d99443', cabelo: '#d99443', relogio: '#c99b30', bicho: original.bicho && { ...original.bicho, orelha: '#b87532', focinho: '#f4d4a2', rabo: ['#d99443', '#c47d32', '#d99443'] } }
       : original && idBase === 'surfista' ? { ...original, bermuda: '#602070' } : original;
-    const cfg = retocado && ajustesRef.current ? aplicarAjustes(retocado, ajustesRef.current) : retocado;
+    const cfg = criado
+      ? configDoMascote(characterId, mascoteRef.current)
+      : retocado && mascoteRef.current ? aplicarMascote(retocado, mascoteRef.current) : retocado;
     const palco = palcoRef.current;
     if (!cfg || !palco) return;
     palco.textContent = '';
@@ -962,9 +1054,9 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     // `chaveAjustes` entra como dependência no lugar do objeto: a cada render o
     // pai cria um objeto novo, e comparar por identidade remontaria o boneco
     // inteiro sem nada ter mudado.
-  }, [idBase, altura, chaveAjustes]);
+  }, [idBase, criado, altura, chaveMascote]);
 
-  if (!getVoxelConfig(idBase)) return null;
+  if (!criado && !getVoxelConfig(idBase)) return null;
   return (
     // Os zzz ficam fora do palco: o palco é limpo com textContent no efeito, e
     // qualquer filho que o React pusesse ali seria apagado na primeira montagem.

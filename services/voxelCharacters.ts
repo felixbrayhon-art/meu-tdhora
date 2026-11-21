@@ -2,7 +2,9 @@
 // As cores saíram das próprias artes em public/character-assets/to-dahora-2d/
 // (amostradas por faixa de altura: cabelo, rosto, tronco, perna, pé), para o
 // boneco não divergir do desenho que o aluno escolheu no onboarding.
-export type VoxelCabelo = 'curto' | 'cacheado' | 'afro' | 'longo' | 'careca';
+export type VoxelCabelo = 'curto' | 'cacheado' | 'afro' | 'longo' | 'careca' | 'moicano' | 'coque' | 'rabo' | 'chanel';
+/** Formato da orelha do bicho. Sem valor, fica a orelha dos personagens prontos. */
+export type VoxelOrelha = 'ponta' | 'caida' | 'redonda' | 'comprida';
 export type VoxelAdereco =
   | 'prancheta' | 'tablet' | 'caneta' | 'vaso' | 'radio' | 'vara' | 'peixe'
   | 'violao' | 'guitarra' | 'rifle' | 'chave' | 'livro' | 'martelo' | 'passaro' | 'nada';
@@ -15,6 +17,7 @@ export interface VoxelBicho {
   rabo: string[];
   /** Faixa escura em volta dos olhos (guaxinim). */
   mascara?: string;
+  orelhaTipo?: VoxelOrelha;
 }
 
 export interface VoxelConfig {
@@ -52,6 +55,10 @@ export interface VoxelConfig {
   bainha?: string;
   meia?: string;
   regata?: boolean;
+  /** Saia ou vestido, por cima da cintura. */
+  vestido?: string;
+  /** Moletom: capuz atrás da cabeça, gola e bolso canguru. */
+  capuz?: string;
   semCamisa?: boolean;
   bermuda?: string;
   curto?: boolean;
@@ -64,6 +71,8 @@ export interface VoxelConfig {
   lente?: string;
   mascara?: string;
   pinta?: boolean;
+  /** Cílios: traço por cima do olho e pontinho no canto de fora. */
+  cilios?: string;
   // extras
   bicho?: VoxelBicho;
   aquario?: boolean;

@@ -4,8 +4,7 @@ import { AppView, StudyProfile } from '../types';
 import { getCharacterSrc, getCharacter } from '../services/avatarService';
 import AvatarDisplay from './AvatarDisplay';
 import VoxelAvatar, { POSES_ESCOLHIVEIS, VoxelPose } from './VoxelAvatar';
-import CompanionEditor from './CompanionEditor';
-import { VoxelAjustes, configBase, gravarAjustes, lerAjustes } from '../services/voxelCustom';
+import { AVISO, Mascote, configDoMascote, ler as lerMascote, nomeDoMascote } from '../services/mascote';
 import CompanionWheel, { ItemRoda } from './CompanionWheel';
 import { getVoxelConfig } from '../services/voxelCharacters';
 
@@ -18,6 +17,8 @@ interface FishCompanionProps {
   emQuestao?: boolean;
   onAbrirRevisoes?: () => void;
   onAbrirFlashcards?: () => void;
+  /** Abre a tela do estúdio, onde o mascote é montado. */
+  onAbrirEstudio?: () => void;
   /** A que altura do rodapé ele encosta, em rem. Cada tela tem a sua barra fixa
    *  embaixo, e ele precisa ficar acima dela para não cobrir nem ser coberto. */
   recuoRem?: number;
@@ -58,18 +59,25 @@ const PERIODOS = [
   { ms: 604_800_000, nome: '1 semana' },
 ];
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, telaAtual, revisoesPendentes = 0, flashcardsPendentes = 0, emQuestao = false, onAbrirRevisoes, onAbrirFlashcards, recuoRem = 1, sobreEditor = false, sobreAula = false, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0, minutosPomodoro = 25, onAjustarMinutos, isPlayingRain = false, setIsPlayingRain, audioVolume = 0.5, setAudioVolume }) => {
-  // O que o aluno mudou no editor. Pode inclusive trocar o tipo do boneco, e aí
-  // quem escolheu um personagem sem receita em cubos também passa a ter mascote.
-  const [ajustes, setAjustes] = useState<VoxelAjustes>(() => lerAjustes());
-  // Trocar o tipo no editor troca o companheiro inteiro — nome, retrato do chat
-  // e boneco. Sem isso a roda chamava de Médica um cachorro cinza com violão.
-  const idCompanheiro = ajustes.base || characterId;
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, telaAtual, revisoesPendentes = 0, flashcardsPendentes = 0, emQuestao = false, onAbrirRevisoes, onAbrirFlashcards, onAbrirEstudio, recuoRem = 1, sobreEditor = false, sobreAula = false, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0, minutosPomodoro = 25, onAjustarMinutos, isPlayingRain = false, setIsPlayingRain, audioVolume = 0.5, setAudioVolume }) => {
+  // O mascote que o aluno montou no estúdio. É outra tela, sem estado em comum
+  // com esta: o aviso do serviço é o que traz a mudança para cá na hora.
+  const [mascote, setMascote] = useState<Mascote>(() => lerMascote());
+  useEffect(() => {
+    const reler = () => setMascote(lerMascote());
+    window.addEventListener(AVISO, reler);
+    window.addEventListener('storage', reler);
+    return () => { window.removeEventListener(AVISO, reler); window.removeEventListener('storage', reler); };
+  }, []);
+  // Trocar o personagem no estúdio troca o companheiro inteiro — nome, retrato
+  // do chat e boneco. Sem isso a roda chamava de Médica um cachorro com violão.
+  // No modo criado não existe arte 2D, então o retrato segue sendo o do
+  // personagem do onboarding e só o nome passa a ser o que o aluno deu.
+  const idCompanheiro = mascote.base || characterId;
   const companionIconSrc = idCompanheiro ? getCharacterSrc(idCompanheiro, 'frente') : '/fish-companion-icon.jpg';
-  const companionName = idCompanheiro ? getCharacter(idCompanheiro).name : 'Peixe Amigo';
+  const companionName = nomeDoMascote(mascote, idCompanheiro ? getCharacter(idCompanheiro).name : 'Peixe Amigo');
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
-  const mudarAjustes = (proximos: VoxelAjustes) => { setAjustes(proximos); gravarAjustes(proximos); };
-  const temVoxel = !!configBase(characterId, ajustes);
+  const temVoxel = !!configDoMascote(characterId, mascote);
   const [menuAberto, setMenuAberto] = useState(false);
   const [lado, setLado] = useState<'esquerda' | 'direita'>(() => ler('tdh_companheiro_lado') === 'esquerda' ? 'esquerda' : 'direita');
   const [fimBarraLateral, setFimBarraLateral] = useState(0);
@@ -86,7 +94,6 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const [painelSom, setPainelSom] = useState(false);
   const [painelMotivacao, setPainelMotivacao] = useState(false);
   const [painelAnimacao, setPainelAnimacao] = useState(false);
-  const [painelEditor, setPainelEditor] = useState(false);
   // A escolha entre bíblica e filosófica fica gravada: é preferência, não
   // decisão para refazer a cada frase pedida.
   const [estiloMotivacao, setEstiloMotivacao] = useState<EstiloMotivacao>(() => {
@@ -446,25 +453,24 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       texto: '#6b5a49',
       acao: () => setPainelAnimacao(true),
     }] : []),
-    {
+    ...(onAbrirEstudio ? [{
       id: 'aparencia',
       rotulo: 'Aparência',
       cor: '#C8B6A0',
       texto: '#2f2721',
-      acao: () => setPainelEditor(true),
-    },
+      acao: () => { fecharTudo(); onAbrirEstudio(); },
+    }] : []),
     { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca(temVoxel ? 'despedindo' : 'fora'); } },
   ];
   const emCena = presenca === 'aqui' && !isOpen;
-  const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && !painelAnimacao && !painelEditor && emCena;
+  const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && !painelAnimacao && emCena;
   const painelAberto = painelTempo && emCena;
   const somAberto = painelSom && emCena;
   const motivacaoAberta = painelMotivacao && emCena;
   const animacaoAberta = painelAnimacao && emCena;
-  const editorAberto = painelEditor && emCena;
-  const aberto = rodaAberta || painelAberto || somAberto || motivacaoAberta || animacaoAberta || editorAberto;
+  const aberto = rodaAberta || painelAberto || somAberto || motivacaoAberta || animacaoAberta;
   const camadaEditor = sobreEditor && editorTelaCheia;
-  const fecharTudo = () => { setMenuAberto(false); setPainelTempo(false); setPainelSom(false); setPainelMotivacao(false); setPainelAnimacao(false); setPainelEditor(false); };
+  const fecharTudo = () => { setMenuAberto(false); setPainelTempo(false); setPainelSom(false); setPainelMotivacao(false); setPainelAnimacao(false); };
   const alternarAjuda = () => {
     const ativa = !ajudaAutomatica;
     setAjudaAutomatica(ativa);
@@ -668,14 +674,6 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                  dele, então `inset-0` já é a caixa do personagem. */
               <div ref={menuRef} className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <CompanionWheel itens={itensRoda} rotulo={`Opções de ${companionName}`} />
-              </div>
-            )}
-            {editorAberto && (
-              /* Mais largo que os outros painéis: tem o boneco de amostra em cima
-                 e as fileiras de cor embaixo. Enquanto está aberto o companheiro
-                 já está deslizado para o meio da tela, então cabe. */
-              <div ref={menuRef} role="dialog" aria-label="Editar o mascote" className="absolute left-1/2 top-1/2 z-20 max-h-[min(84vh,540px)] w-[min(88vw,312px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
-                <CompanionEditor characterId={idCompanheiro} ajustes={ajustes} onMudar={mudarAjustes} onFechar={() => setPainelEditor(false)} />
               </div>
             )}
             {animacaoAberta && (
@@ -904,7 +902,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
             >
               {temVoxel ? <VoxelAvatar
                 characterId={idCompanheiro}
-                ajustes={ajustes}
+                mascote={mascote}
                 altura={88}
                 pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : presenca === 'chegando' ? 'voltando' : cochilando ? 'dormindo' : gestoEspontaneo || animacao}
                 fone={comFone}
