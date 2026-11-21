@@ -295,8 +295,6 @@ export interface UserStats {
   aiProvider?: 'auto' | 'groq' | 'openrouter' | 'freellmapi' | 'gemini';
   questionProfileStyle?: string;
   fontSizeMultiplier?: number; // 1, 1.25, 1.5
-  heroScenario?: 'quarto' | 'estudio' | 'biblioteca' | 'quarto-3d' | 'estudio-3d' | 'biblioteca-3d' | 'solido'; // cenário de fundo do card principal do Hub
-  heroTintColor?: string; // cor do degradê sobreposto ao cenário do card principal do Hub
 }
 
 export interface Activity {
