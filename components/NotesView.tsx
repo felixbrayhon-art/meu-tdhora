@@ -478,7 +478,7 @@ const NoteEditor: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-[1100] bg-white flex flex-col">
+    <div data-editor-tela-cheia className="fixed inset-0 z-[1100] bg-white flex flex-col">
       <div className="relative bg-white px-3 sm:px-4 lg:px-6 py-3 shadow-sm border-b border-gray-100 flex-shrink-0 flex flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-3">
         <button aria-label="Salvar e fechar anotação" title="Salvar e fechar" onClick={handleSaveAndClose} className="order-1 inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-2.5 hover:bg-gray-100 transition-colors flex-shrink-0 touch-manipulation">
           <X className="w-6 h-6 text-gray-600" />

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { chatWithFish, getMotivacao, EstiloMotivacao } from '../services/geminiService';
-import { StudyProfile } from '../types';
+import { AppView, StudyProfile } from '../types';
 import { getCharacterSrc, getCharacter } from '../services/avatarService';
 import AvatarDisplay from './AvatarDisplay';
 import VoxelAvatar, { POSES_ESCOLHIVEIS, VoxelPose } from './VoxelAvatar';
@@ -10,9 +10,19 @@ import { getVoxelConfig } from '../services/voxelCharacters';
 interface FishCompanionProps {
   studyProfile?: StudyProfile;
   characterId?: string;
+  telaAtual?: AppView;
+  revisoesPendentes?: number;
+  flashcardsPendentes?: number;
+  emQuestao?: boolean;
+  onAbrirRevisoes?: () => void;
+  onAbrirFlashcards?: () => void;
   /** A que altura do rodapé ele encosta, em rem. Cada tela tem a sua barra fixa
    *  embaixo, e ele precisa ficar acima dela para não cobrir nem ser coberto. */
   recuoRem?: number;
+  /** Fica acima do editor de notas, que ocupa a tela inteira. */
+  sobreEditor?: boolean;
+  /** A aula guiada usa uma camada própria para ocupar toda a área de estudo. */
+  sobreAula?: boolean;
   /** A tela já mostra o tempo em algum lugar: a etiqueta dele não aparece. */
   tempoJaNaTela?: boolean;
   /** Estação de música tocando agora (a mesma da barra de ferramentas), ou null. */
@@ -46,12 +56,22 @@ const PERIODOS = [
   { ms: 604_800_000, nome: '1 semana' },
 ];
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, recuoRem = 1, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0, minutosPomodoro = 25, onAjustarMinutos, isPlayingRain = false, setIsPlayingRain, audioVolume = 0.5, setAudioVolume }) => {
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, telaAtual, revisoesPendentes = 0, flashcardsPendentes = 0, emQuestao = false, onAbrirRevisoes, onAbrirFlashcards, recuoRem = 1, sobreEditor = false, sobreAula = false, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0, minutosPomodoro = 25, onAjustarMinutos, isPlayingRain = false, setIsPlayingRain, audioVolume = 0.5, setAudioVolume }) => {
   const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
   const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
   const temVoxel = !!getVoxelConfig(characterId);
   const [menuAberto, setMenuAberto] = useState(false);
+  const [lado, setLado] = useState<'esquerda' | 'direita'>(() => ler('tdh_companheiro_lado') === 'esquerda' ? 'esquerda' : 'direita');
+  const [fimBarraLateral, setFimBarraLateral] = useState(0);
+  const [editorTelaCheia, setEditorTelaCheia] = useState(false);
+  const trocarLado = () => {
+    const proximo = lado === 'direita' ? 'esquerda' : 'direita';
+    setLado(proximo);
+    gravar('tdh_companheiro_lado', proximo);
+    fecharTudo();
+    window.requestAnimationFrame(() => mascoteRef.current?.focus());
+  };
   // Agora que a barra do Pomodoro saiu, editar a duração é aqui.
   const [painelTempo, setPainelTempo] = useState(false);
   const [painelSom, setPainelSom] = useState(false);
@@ -80,6 +100,14 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     try { localStorage.setItem('tdh_companheiro_fora', presenca === 'fora' ? '1' : '0'); } catch { /* modo privado */ }
   }, [presenca]);
   const [cochilando, setCochilando] = useState(false);
+  const [gestoEspontaneo, setGestoEspontaneo] = useState<VoxelPose | null>(null);
+  const [ajudaAutomatica, setAjudaAutomatica] = useState(() => ler('tdh_companheiro_ajuda') !== '0');
+  const [dica, setDica] = useState<{ texto: string; destino?: 'revisoes' | 'flashcards' } | null>(null);
+  const ultimaAtividadeRef = useRef(Date.now());
+  const abrirRevisoesRef = useRef(onAbrirRevisoes);
+  const abrirFlashcardsRef = useRef(onAbrirFlashcards);
+  abrirRevisoesRef.current = onAbrirRevisoes;
+  abrirFlashcardsRef.current = onAbrirFlashcards;
   // Ele só está de fone depois de ir buscar: a música é consequência da ida, não o contrário.
   const [comFone, setComFone] = useState(false);
   // Ele só está com o despertador depois de ir buscar, como acontece com o fone.
@@ -101,6 +129,59 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const scrollRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const mascoteRef = useRef<HTMLButtonElement>(null);
+  const trocarLadoRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const registrar = () => { ultimaAtividadeRef.current = Date.now(); };
+    const eventos: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+    eventos.forEach((evento) => window.addEventListener(evento, registrar, { passive: true }));
+    return () => eventos.forEach((evento) => window.removeEventListener(evento, registrar));
+  }, []);
+
+  useEffect(() => {
+    if (!dica) return;
+    const timeout = window.setTimeout(() => setDica(null), 20_000);
+    return () => window.clearTimeout(timeout);
+  }, [dica]);
+
+  useEffect(() => { setDica(null); }, [telaAtual, timerAtivo]);
+
+  // Pequenos gestos ocorrem somente na pose padrão e fora de sessões de foco.
+  useEffect(() => {
+    if (!ajudaAutomatica || !temVoxel || presenca !== 'aqui' || isOpen || menuAberto || timerAtivo || emQuestao || editorTelaCheia || animacao !== 'estudando') {
+      setGestoEspontaneo(null);
+      return;
+    }
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    let fim = 0;
+    const intervalo = window.setInterval(() => {
+      if (document.hidden || Date.now() - ultimaAtividadeRef.current > 90_000) return;
+      setGestoEspontaneo('distraido-olhar');
+      fim = window.setTimeout(() => setGestoEspontaneo(null), 4000);
+    }, 75_000);
+    return () => { window.clearInterval(intervalo); window.clearTimeout(fim); };
+  }, [ajudaAutomatica, temVoxel, presenca, isOpen, menuAberto, timerAtivo, emQuestao, editorTelaCheia, animacao]);
+
+  // A barra pode ser recolhida; acompanhe sua largura para o lado esquerdo
+  // ficar junto à borda do conteúdo, sem cobrir a navegação.
+  useEffect(() => {
+    const barra = document.querySelector<HTMLElement>('.app-sidebar-slot');
+    const medir = () => setFimBarraLateral(Math.max(0, barra?.getBoundingClientRect().right || 0));
+    medir();
+    window.addEventListener('resize', medir);
+    const observador = barra && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(medir) : null;
+    if (barra) observador?.observe(barra);
+    return () => { window.removeEventListener('resize', medir); observador?.disconnect(); };
+  }, []);
+
+  useEffect(() => {
+    if (!sobreEditor) { setEditorTelaCheia(false); return; }
+    const verificar = () => setEditorTelaCheia(Boolean(document.querySelector('[data-editor-tela-cheia], .ink-root')));
+    verificar();
+    const observador = new MutationObserver(verificar);
+    observador.observe(document.body, { childList: true, subtree: true });
+    return () => observador.disconnect();
+  }, [sobreEditor]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -115,7 +196,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') fecharTudo(); };
     const fora = (e: PointerEvent) => {
       const alvo = e.target as Node;
-      if (!menuRef.current?.contains(alvo) && !mascoteRef.current?.contains(alvo)) fecharTudo();
+      if (!menuRef.current?.contains(alvo) && !mascoteRef.current?.contains(alvo) && !trocarLadoRef.current?.contains(alvo)) fecharTudo();
     };
     window.addEventListener('keydown', tecla);
     window.addEventListener('pointerdown', fora);
@@ -164,6 +245,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   // Medimos o boneco no lugar dele e mandamos a diferença até o centro da tela:
   // animar `transform` não mexe no layout, animar `bottom`/`right` mexeria.
   const abrirRoda = () => {
+    setDica(null);
     const r = mascoteRef.current?.getBoundingClientRect();
     const menor = Math.min(window.innerWidth, window.innerHeight);
     if (r) {
@@ -202,7 +284,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const ligarMusica = (canal: 'RELAX' | 'MPB' = 'RELAX') => {
     canalDesejadoRef.current = canal;
     // Já está de fone: trocar de estação não pede viagem nenhuma.
-    if (comFone) { setActiveChannel?.(canal); return; }
+    if (comFone || !temVoxel) { setActiveChannel?.(canal); setPainelSom(false); setMenuAberto(false); return; }
     setMenuAberto(false);
     setPainelSom(false);
     missaoRef.current = 'fone';
@@ -261,6 +343,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
 
   const ligarTimer = () => {
     setMenuAberto(false);
+    if (!temVoxel) { onLigarTimer?.(); return; }
     missaoRef.current = 'relogio';
     setPresenca('andando');
   };
@@ -346,14 +429,14 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       texto: '#6b5a49',
       acao: () => setPainelTempo(true),
     },
-    {
+    ...(temVoxel ? [{
       id: 'animacao',
       rotulo: 'Animação',
       cor: '#E8DDCC',
       texto: '#6b5a49',
       acao: () => setPainelAnimacao(true),
-    },
-    { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
+    }] : []),
+    { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca(temVoxel ? 'despedindo' : 'fora'); } },
   ];
   const emCena = presenca === 'aqui' && !isOpen;
   const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && !painelAnimacao && emCena;
@@ -362,7 +445,47 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const motivacaoAberta = painelMotivacao && emCena;
   const animacaoAberta = painelAnimacao && emCena;
   const aberto = rodaAberta || painelAberto || somAberto || motivacaoAberta || animacaoAberta;
+  const camadaEditor = sobreEditor && editorTelaCheia;
   const fecharTudo = () => { setMenuAberto(false); setPainelTempo(false); setPainelSom(false); setPainelMotivacao(false); setPainelAnimacao(false); };
+  const alternarAjuda = () => {
+    const ativa = !ajudaAutomatica;
+    setAjudaAutomatica(ativa);
+    gravar('tdh_companheiro_ajuda', ativa ? '1' : '0');
+    if (!ativa) setDica(null);
+  };
+
+  // Avisa apenas sobre pendências reais, em telas tranquilas e com o usuário
+  // presente. O intervalo é compartilhado entre recargas para evitar repetição.
+  useEffect(() => {
+    const telasTranquilas: AppView[] = ['HUB', 'AI_DIRECT', 'STUDY_PLAN', 'STUDY_CYCLE', 'MATERIALS'];
+    if (!ajudaAutomatica || !telaAtual || !telasTranquilas.includes(telaAtual) || timerAtivo || emQuestao || editorTelaCheia || presenca !== 'aqui' || isOpen || menuAberto || frase || buscandoFrase) return;
+    if (!revisoesPendentes && !flashcardsPendentes) return;
+    const sugerir = () => {
+      if (document.hidden || Date.now() - ultimaAtividadeRef.current > 90_000) return;
+      const foco = document.activeElement;
+      if (foco instanceof HTMLElement && (foco.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName))) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"], [role="alertdialog"]')) return;
+      const ultima = Number(ler('tdh_companheiro_ultima_dica')) || 0;
+      if (Date.now() - ultima < 30 * 60_000) return;
+      if (revisoesPendentes > 0 && abrirRevisoesRef.current) {
+        setDica({ texto: `Você tem ${revisoesPendentes} ${revisoesPendentes === 1 ? 'revisão pendente' : 'revisões pendentes'}. Podemos retomá-las quando quiser.`, destino: 'revisoes' });
+      } else if (flashcardsPendentes > 0 && abrirFlashcardsRef.current) {
+        setDica({ texto: `${flashcardsPendentes} ${flashcardsPendentes === 1 ? 'flashcard está pronto' : 'flashcards estão prontos'} para revisão.`, destino: 'flashcards' });
+      } else return;
+      gravar('tdh_companheiro_ultima_dica', String(Date.now()));
+    };
+    const primeira = window.setTimeout(sugerir, 45_000);
+    const intervalo = window.setInterval(sugerir, 60_000);
+    return () => { window.clearTimeout(primeira); window.clearInterval(intervalo); };
+  }, [ajudaAutomatica, telaAtual, revisoesPendentes, flashcardsPendentes, timerAtivo, emQuestao, editorTelaCheia, presenca, isOpen, menuAberto, frase, buscandoFrase]);
+
+  const terminoDicaRef = useRef(timerTerminouEm);
+  useEffect(() => {
+    if (timerTerminouEm === terminoDicaRef.current) return;
+    terminoDicaRef.current = timerTerminouEm;
+    if (!ajudaAutomatica || presenca !== 'aqui' || document.hidden || editorTelaCheia || emQuestao || isOpen || menuAberto) return;
+    setDica({ texto: 'Seu tempo de foco terminou. Que tal uma pausa antes de continuar?' });
+  }, [timerTerminouEm, ajudaAutomatica, presenca, editorTelaCheia, emQuestao, isOpen, menuAberto]);
   const faltam = `${Math.floor(timerSegundos / 60)}:${String(timerSegundos % 60).padStart(2, '0')}`;
   // A etiqueta aparece onde a tela ainda não mostra o tempo em lugar nenhum:
   // duas contagens na mesma tela só competem entre si. Em pé ela fica acima da cabeça dele, altura que
@@ -374,12 +497,18 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     {aberto && (
       /* Escurece o fundo porque o boneco sai do canto e passa por cima do
          conteúdo: sem isso a roda disputaria leitura com a tela inteira. */
-      <div className="fixed inset-0 z-[55] bg-[#2a1f18]/40 backdrop-blur-[2px] animate-in fade-in duration-200" onClick={fecharTudo} aria-hidden="true" />
+      <div className={`fixed inset-0 ${camadaEditor ? 'z-[1400]' : sobreAula ? 'z-[249]' : 'z-[55]'} bg-[#2a1f18]/40 backdrop-blur-[2px] animate-in fade-in duration-200`} onClick={fecharTudo} aria-hidden="true" />
+    )}
+    {aberto && (
+      <button ref={trocarLadoRef} type="button" onClick={trocarLado} className={`fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 rounded-full bg-[#473c33] px-4 py-3 text-xs font-bold text-white shadow-lg ${camadaEditor ? 'z-[1402]' : sobreAula ? 'z-[252]' : 'z-[62]'}`}>
+        Mover mascote para a {lado === 'direita' ? 'esquerda' : 'direita'}
+      </button>
     )}
     <div
-      className="fixed right-3 lg:right-6 z-[60] flex flex-col items-end pointer-events-none [&>*]:pointer-events-auto motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
+      className={`fixed ${lado === 'direita' ? 'right-3 lg:right-6 items-end' : 'items-start'} ${camadaEditor ? 'z-[1401]' : sobreAula ? 'z-[250]' : 'z-[60]'} flex flex-col pointer-events-none [&>*]:pointer-events-auto motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out`}
       style={{
         bottom: `calc(${recuoRem}rem + env(safe-area-inset-bottom, 0px))`,
+        left: lado === 'esquerda' ? `calc(${editorTelaCheia ? 0 : fimBarraLateral}px + 0.75rem)` : undefined,
         transform: aberto ? `translate3d(${desloc.x}px, ${desloc.y}px, 0)` : undefined,
       }}
     >
@@ -451,6 +580,15 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       {/* O balão da frase: irmão do invólucro do boneco, não filho dele. Dentro,
           ele entraria na caixa que serve de centro para a roda e jogaria o anel
           para cima. Some quando o personagem não está em cena. */}
+      {dica && !frase && !buscandoFrase && !aberto && !isOpen && !editorTelaCheia && presenca === 'aqui' && (
+        <div role="status" aria-live="polite" className="mb-3 w-[min(68vw,230px)] rounded-2xl border border-[#e9e0d4] bg-[#fdfbf7] p-3 text-[#473c33] shadow-lg dark:border-white/10 dark:bg-[#2d2e27] dark:text-[#f4ebdd]">
+          <div className="flex items-start gap-2">
+            <p className="flex-1 text-xs font-medium leading-relaxed">{dica.texto}</p>
+            <button type="button" aria-label="Fechar sugestão" onClick={() => setDica(null)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#8f8375] hover:bg-[#f0e8dc] dark:hover:bg-white/5">×</button>
+          </div>
+          {dica.destino && <button type="button" onClick={() => { const destino = dica.destino; setDica(null); if (destino === 'revisoes') onAbrirRevisoes?.(); else onAbrirFlashcards?.(); }} className="mt-2 rounded-lg bg-[#e96f34] px-3 py-2 text-[11px] font-bold text-white">{dica.destino === 'revisoes' ? 'Abrir revisões' : 'Abrir flashcards'}</button>}
+        </div>
+      )}
       {(frase || buscandoFrase) && !isOpen && presenca === 'aqui' && (
         <div role="status" className="mb-3 w-[min(78vw,270px)] animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="relative rounded-[26px] border border-[#e9e0d4] bg-[#fdfbf7] px-4 py-3 shadow-xl dark:border-white/10 dark:bg-[#2d2e27]">
@@ -487,12 +625,12 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-      ) : characterId && temVoxel ? (
+      ) : (
         // O personagem inteiro, montado em cubos CSS. Fundo transparente e silhueta
         // estreita: ocupa menos que a arte 2D de corpo inteiro, que cobria botões.
         presenca === 'fora' ? (
           <button
-            onClick={() => setPresenca('chegando')}
+            onClick={() => setPresenca(temVoxel ? 'chegando' : 'aqui')}
             aria-label={`Chamar ${companionName} de volta`}
             title={`Chamar ${companionName} de volta`}
             className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#fed386] text-lg shadow-lg transition-transform hover:scale-110 active:scale-95"
@@ -546,7 +684,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
               </div>
             )}
             {motivacaoAberta && (
-              <div ref={menuRef} role="dialog" aria-label="Motivação" className="absolute left-1/2 top-1/2 z-20 w-[244px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
+              <div ref={menuRef} role="dialog" aria-label="Motivação" className="absolute left-1/2 top-1/2 z-20 max-h-[min(80vh,480px)] w-[244px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Motivação</span>
                   <button type="button" onClick={() => setPainelMotivacao(false)} aria-label="Fechar" className="flex h-7 w-7 items-center justify-center rounded-lg text-[#8f8375] transition-colors hover:bg-[#f0e8dc] dark:hover:bg-white/5">
@@ -600,6 +738,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                     Uma frase por {PERIODOS.find((p) => p.ms === periodoMotivacao)?.nome.replace('1 ', '')}, na primeira vez que você abrir o app depois do prazo.
                   </p>
                 )}
+                <label className="mt-3 flex min-h-11 items-center gap-2 rounded-xl bg-[#f0e8dc] px-3 text-[11px] font-bold text-[#66584b] dark:bg-white/5 dark:text-[#e5d8c8]">
+                  <input type="checkbox" checked={ajudaAutomatica} onChange={alternarAjuda} className="h-4 w-4 accent-[#e96f34]" />
+                  Dicas e gestos automáticos
+                </label>
               </div>
             )}
             {somAberto && (
@@ -663,7 +805,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                     className="h-1.5 w-full accent-[#e96f34]"
                   />
                 </label>
-                {!activeChannel && !isPlayingRain && (
+                {temVoxel && !activeChannel && !isPlayingRain && (
                   <p className="mt-2 text-center text-[9px] font-bold leading-snug text-[#a79c8e]">
                     Ele vai buscar o fone antes de a música começar.
                   </p>
@@ -712,7 +854,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 >
                   {timerAtivo ? 'Parar agora' : 'Começar agora'}
                 </button>
-                {!timerAtivo && (
+                {temVoxel && !timerAtivo && (
                   <p className="mt-2 text-center text-[9px] font-bold leading-snug text-[#a79c8e]">
                     Ele vai buscar o relógio antes de começar.
                   </p>
@@ -734,10 +876,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
               // z-10: o boneco fica no miolo da roda e também é o botão de fechar.
               className="relative z-10 transition-transform duration-300 hover:scale-105 active:scale-95"
             >
-              <VoxelAvatar
+              {temVoxel && characterId ? <VoxelAvatar
                 characterId={characterId}
-                altura={132}
-                pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : presenca === 'chegando' ? 'voltando' : cochilando ? 'dormindo' : animacao}
+                altura={88}
+                pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : presenca === 'chegando' ? 'voltando' : cochilando ? 'dormindo' : gestoEspontaneo || animacao}
                 fone={comFone}
                 cronometro={comRelogio}
                 alarme={alarme}
@@ -753,22 +895,12 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                   if (missaoRef.current === 'fone') { missaoRef.current = 'sair'; setActiveChannel?.(canalDesejadoRef.current); }
                   else if (missaoRef.current === 'relogio') { missaoRef.current = 'sair'; onLigarTimer?.(); }
                 }}
-              />
+              /> : <span className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#fed386] shadow-lg">
+                {characterId ? <AvatarDisplay characterId={characterId} className="h-full w-full" /> : <img src={companionIconSrc} alt="" className="h-full w-full object-cover object-top" />}
+              </span>}
             </button>
           </div>
         )
-      ) : characterId ? (
-        <button onClick={() => setIsOpen(true)} aria-label={`Falar com ${companionName}`} title={`Falar com ${companionName}`} className="relative group h-14 w-14 lg:h-16 lg:w-16 rounded-full bg-[#fed386] shadow-xl border-2 border-white transition-transform duration-300 hover:scale-110 active:scale-95">
-          <AvatarDisplay characterId={characterId} className="h-full w-full rounded-full" />
-          <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#fff1e8] border-2 border-white rounded-full animate-pulse"></div>
-        </button>
-      ) : (
-        <button onClick={() => setIsOpen(true)} className="w-20 h-20 rounded-[30px] shadow-2xl flex items-center justify-center transition-all duration-500 hover:scale-110 active:scale-95 group overflow-hidden bg-[#fed386] hover:bg-[#fecc73]">
-          <div className="relative flex items-center justify-center w-full h-full">
-            <img src={companionIconSrc} alt={`Falar com ${companionName}`} className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-300" />
-            <div className="absolute top-1 right-1 w-4 h-4 bg-[#fff1e8] border-2 border-white rounded-full animate-pulse"></div>
-          </div>
-        </button>
       )}
     </div>
     </>

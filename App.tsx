@@ -1800,7 +1800,15 @@ const App: React.FC = () => {
             e nas aulas em foco há o relógio flutuante a 5,5rem), e ele precisa
             encostar acima dela para não cobrir botão nem ficar escondido. */}
         <FishCompanion studyProfile={stats.studyProfile} characterId={stats.characterId}
-          recuoRem={isFocusLesson ? 10 : isQuestionSession ? 8.5 : 1}
+          telaAtual={currentView}
+          revisoesPendentes={pendingRevisionCount}
+          flashcardsPendentes={dueFlashcardsCount}
+          emQuestao={isQuestionSession}
+          onAbrirRevisoes={() => setCurrentView('SMART_REVISION')}
+          onAbrirFlashcards={() => { setFlashcardsSelectedFolderId(null); setFlashcardsViewMode('FOLDERS'); setCurrentView('FLASHCARDS'); }}
+          recuoRem={currentView === 'NOTES' || currentView === 'DIGITAL_NOTEBOOK' ? 5.5 : isFocusLesson ? 10 : isQuestionSession ? 8.5 : 1}
+          sobreEditor={currentView === 'NOTES' || currentView === 'DIGITAL_NOTEBOOK'}
+          sobreAula={currentView === 'GUIDED_LESSON'}
           tempoJaNaTela={currentView === 'TIMER'}
           activeChannel={activeChannel} setActiveChannel={setActiveChannel}
           isPlayingRain={isPlayingRain} setIsPlayingRain={setIsPlayingRain}
