@@ -22,6 +22,8 @@ export interface VoxelConfig {
   skin: string;
   cabelo: string;
   estilo: VoxelCabelo;
+  /** O aluno mexeu no cabelo: use só o penteado da tabela, sem mechas à mão. */
+  cabeloLivre?: boolean;
   torso: string;
   pernas: string;
   sapato: string;

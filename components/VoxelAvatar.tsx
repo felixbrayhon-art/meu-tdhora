@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { VoxelConfig, getVoxelConfig } from '../services/voxelCharacters';
+import { VoxelAjustes, aplicarAjustes } from '../services/voxelCustom';
 
 // Mascote 3D feito de cubos CSS: nenhuma imagem, só divs com transform.
 // Cada cubo são seis faces; o tom de cada face é o mesmo multiplicado por um
@@ -128,6 +129,9 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
   const carameloOriginal = cfg.nome === 'Vira-Lata Caramelo' && varianteCaramelo === 1;
   const biomedicaOriginal = cfg.nome === 'Biomédica' && varianteBiomedica === 1;
   const gato = cfg.nome === 'Gato Estiloso';
+  // Mechas desenhadas à mão combinam com o cabelo de origem; se o aluno trocou
+  // o penteado ou a cor no editor, elas saem e fica só o penteado da tabela.
+  const cabeloProprio = !cfg.cabeloLivre;
   const rostoRefinado = ['Detetive', 'Diplomata', 'Engenheiro', 'Fisioterapeuta', 'Garoto do Aquário', 'Gato Estiloso', 'Homem de Jaqueta Jeans', 'Jorge do Bem', 'Juiz', 'Marinheiro', 'Médica'].includes(cfg.nome);
   if (cfg.pranchaLado) {
     if (surfistaOriginal) {
@@ -452,7 +456,7 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
       }
     }
   } else {
-    if (biomedicaOriginal) {
+    if (biomedicaOriginal && cabeloProprio) {
       // Camadas separadas desenham a risca, a franja e as mechas laterais.
       B(cabeca, 94, 17, 94, 0, -83, 0, '#e7c582');
       B(cabeca, 94, 52, 16, 0, -51, -43, '#d7af70');
@@ -471,22 +475,22 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
       B(cabeca, 25, 6, 72, -20, -94, -2, '#f4d9a4');
       B(cabeca, 27, 7, 72, 20, -93, -2, '#edd09a');
     } else CABELO[cfg.estilo](cabeca, cfg.cabelo);
-    if (regataOriginal) {
+    if (regataOriginal && cabeloProprio) {
       B(cabeca, 24, 14, 22, -27, -87, 30, tom(cfg.cabelo, 1.15));
       B(cabeca, 22, 12, 20, 2, -92, 28, tom(cfg.cabelo, 1.12));
       B(cabeca, 20, 13, 22, 28, -87, 28, tom(cfg.cabelo, 1.18));
     }
-    if (surfistaOriginal) {
+    if (surfistaOriginal && cabeloProprio) {
       B(cabeca, 20, 12, 18, -30, -83, 35, '#f2d57f');
       B(cabeca, 20, 11, 18, -4, -87, 37, '#e9c46a');
       B(cabeca, 21, 13, 18, 23, -83, 35, '#f2d57f');
     }
-    if (nativoOriginal) {
+    if (nativoOriginal && cabeloProprio) {
       B(cabeca, 22, 8, 18, -29, -84, 36, '#38271e');
       B(cabeca, 22, 8, 18, 0, -87, 36, '#38271e');
       B(cabeca, 22, 8, 18, 29, -84, 36, '#38271e');
     }
-    if (roqueiroOriginal) {
+    if (roqueiroOriginal && cabeloProprio) {
       B(cabeca, 26, 18, 28, -39, -89, 24, '#392722');
       B(cabeca, 26, 19, 28, -12, -99, 25, '#3d2924');
       B(cabeca, 26, 17, 28, 16, -99, 25, '#392722');
@@ -720,10 +724,16 @@ interface VoxelAvatarProps {
   onSaiuDaTela?: () => void;
   /** Chamado uma vez quando ele termina de andar de volta para o lugar. */
   onChegou?: () => void;
+  /** O que o aluno mudou no editor: tipo, cabelo, olhos, pele, roupa, mãos. */
+  ajustes?: VoxelAjustes;
   className?: string;
 }
 
-const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, className = '' }) => {
+const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, ajustes, className = '' }) => {
+  const idBase = ajustes?.base || characterId;
+  const chaveAjustes = JSON.stringify(ajustes || {});
+  const ajustesRef = useRef(ajustes);
+  ajustesRef.current = ajustes;
   const variantePescador = 3, varianteNutricionista = 1, variantePolicial = 1, varianteRegata = 1, varianteRaposa = 1, varianteRoqueiro = 1, varianteSenhor = 1, varianteSurfista = 1, varianteNativo = 1, varianteCaramelo = 1;
   const palcoRef = useRef<HTMLDivElement>(null);
   const poseRef = useRef(pose);
@@ -740,10 +750,13 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
   chegadaRef.current = onChegou;
 
   useEffect(() => {
-    const original = getVoxelConfig(characterId);
-    const cfg = original && characterId === 'vira-lata-caramelo'
+    // O editor pode trocar a receita de base, então os retoques por personagem
+    // seguem o id da base escolhida, não o do avatar do onboarding.
+    const original = getVoxelConfig(idBase);
+    const retocado = original && idBase === 'vira-lata-caramelo'
       ? { ...original, skin: '#d99443', cabelo: '#d99443', relogio: '#c99b30', bicho: original.bicho && { ...original.bicho, orelha: '#b87532', focinho: '#f4d4a2', rabo: ['#d99443', '#c47d32', '#d99443'] } }
-      : original && characterId === 'surfista' ? { ...original, bermuda: '#602070' } : original;
+      : original && idBase === 'surfista' ? { ...original, bermuda: '#602070' } : original;
+    const cfg = retocado && ajustesRef.current ? aplicarAjustes(retocado, ajustesRef.current) : retocado;
     const palco = palcoRef.current;
     if (!cfg || !palco) return;
     palco.textContent = '';
@@ -946,9 +959,12 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     };
     quadro = requestAnimationFrame(desenhar);
     return () => { cancelAnimationFrame(quadro); palco.textContent = ''; palco.style.transform = ''; };
-  }, [characterId, altura]);
+    // `chaveAjustes` entra como dependência no lugar do objeto: a cada render o
+    // pai cria um objeto novo, e comparar por identidade remontaria o boneco
+    // inteiro sem nada ter mudado.
+  }, [idBase, altura, chaveAjustes]);
 
-  if (!getVoxelConfig(characterId)) return null;
+  if (!getVoxelConfig(idBase)) return null;
   return (
     // Os zzz ficam fora do palco: o palco é limpo com textContent no efeito, e
     // qualquer filho que o React pusesse ali seria apagado na primeira montagem.
