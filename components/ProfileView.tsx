@@ -29,27 +29,6 @@ const AVATAR_OPTIONS = [
   { color: '#473c33', name: 'Peixe Dark' },
 ];
 
-const HERO_SCENARIO_OPTIONS: {
-  id: NonNullable<UserStats['heroScenario']>;
-  label: string;
-}[] = [
-  { id: 'quarto', label: 'Quarto' },
-  { id: 'estudio', label: 'Estúdio' },
-  { id: 'biblioteca', label: 'Biblioteca' },
-  { id: 'quarto-3d', label: 'Quarto 3D' },
-  { id: 'estudio-3d', label: 'Estúdio 3D' },
-  { id: 'biblioteca-3d', label: 'Biblioteca 3D' },
-  { id: 'solido', label: 'Cor Sólida' },
-];
-
-const HERO_TINT_OPTIONS: { color: string | null; name: string }[] = [
-  { color: null, name: 'Padrão' },
-  { color: '#facc15', name: 'Amarelo' },
-  { color: '#f97316', name: 'Laranja' },
-  { color: '#3B82F6', name: 'Azul' },
-  { color: '#8B5CF6', name: 'Roxo' },
-  { color: '#10B981', name: 'Verde' },
-];
 
 const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOpenCatalog, myId, isAIEnabled, setIsAIEnabled, onLogout, onLogin, isLoggedIn, onNotify }) => {
   const [name, setName] = useState(stats.name);
@@ -62,8 +41,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
   const [aiProvider, setAiProvider] = useState<NonNullable<UserStats['aiProvider']>>(stats.aiProvider || 'auto');
   const [questionProfileStyle, setQuestionProfileStyle] = useState(stats.questionProfileStyle || '');
   const [fontSizeMultiplier, setFontSizeMultiplier] = useState(stats.fontSizeMultiplier || 1);
-  const [heroScenario, setHeroScenario] = useState(stats.heroScenario || 'quarto');
-  const [heroTintColor, setHeroTintColor] = useState(stats.heroTintColor);
   const [justSaved, setJustSaved] = useState(false);
   const [freeLLMAPIAvailable, setFreeLLMAPIAvailable] = useState(false);
   const localFreeLLMPreview = import.meta.env.DEV &&
@@ -92,8 +69,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
       aiProvider,
       questionProfileStyle,
       fontSizeMultiplier,
-      heroScenario,
-      heroTintColor,
     });
     const sizeLabel = fontSizeMultiplier === 1 ? 'Normal' : fontSizeMultiplier === 1.25 ? 'Grande' : 'Gigante';
     onNotify?.(fontSizeMultiplier !== (stats.fontSizeMultiplier || 1) ? `Alterações salvas. Tamanho da fonte: ${sizeLabel}.` : 'Alterações salvas.');
@@ -191,38 +166,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
                 {AVATAR_OPTIONS.map((opt) => (
                   <button key={opt.color} onClick={() => setSelectedColor(opt.color)} aria-label={`Cor do avatar ${opt.color}`} aria-pressed={selectedColor === opt.color} className={`aspect-square rounded-2xl flex items-center justify-center transition-all ${selectedColor === opt.color ? 'ring-4 ring-[#fed386] ring-offset-4 scale-110' : 'opacity-60 grayscale hover:opacity-100 hover:grayscale-0'}`} style={{ backgroundColor: opt.color }}>
                     <FishLogo iconOnly primaryColor="white" className="scale-50" days={stats.totalDaysStudied} />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Cenário do Painel</label>
-              <div className="grid grid-cols-3 gap-4">
-                {HERO_SCENARIO_OPTIONS.map((opt) => (
-                  <button key={opt.id} onClick={() => setHeroScenario(opt.id)} className={`relative aspect-video overflow-hidden rounded-2xl transition-all ${heroScenario === opt.id ? 'ring-4 ring-[#fed386] ring-offset-2 scale-105' : 'opacity-70 hover:opacity-100'}`}>
-                    {opt.id === 'solido' ? (
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background: heroTintColor ? `linear-gradient(135deg, ${heroTintColor}, ${heroTintColor}cc)` : 'linear-gradient(135deg, #fde68a, #fb923c)',
-                        }}
-                      />
-                    ) : (
-                      <img src={`/hero-scenarios/${opt.id}.png`} alt={opt.label} className="absolute inset-0 h-full w-full object-cover" />
-                    )}
-                    <span className="absolute inset-x-0 bottom-0 bg-[#473c33]/50 py-1 text-[9px] font-black uppercase tracking-widest text-white">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Cor do Painel</label>
-              <div className="grid grid-cols-6 gap-4">
-                {HERO_TINT_OPTIONS.map((opt) => (
-                  <button key={opt.name} onClick={() => setHeroTintColor(opt.color || undefined)} title={opt.name} className={`aspect-square rounded-2xl flex items-center justify-center transition-all border-2 ${heroTintColor === opt.color || (!heroTintColor && !opt.color) ? 'ring-4 ring-[#fed386] ring-offset-2 scale-110 border-transparent' : 'border-gray-100 opacity-70 hover:opacity-100'}`} style={{ backgroundColor: opt.color || '#E5E7EB' }}>
-                    {!opt.color && <span className="text-xs font-black uppercase" style={{ color: '#473c33' }}>Padrão</span>}
                   </button>
                 ))}
               </div>
@@ -358,8 +301,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
               aiProvider,
               questionProfileStyle,
               fontSizeMultiplier,
-              heroScenario,
-              heroTintColor,
             });
           }}
         />
