@@ -3,7 +3,7 @@ import { UserStats, StudyProfile, ExplanationStyle, getFishRank } from '../types
 import FishLogo from './FishLogo';
 import AvatarBuilder from './AvatarBuilder';
 import CharacterRevealScreen from './CharacterRevealScreen';
-import { getCharacterSrc } from '../services/avatarService';
+import VoxelAvatar from './VoxelAvatar';
 import { Zap } from './icons';
 import { BackupSection } from './BackupControls';
 
@@ -120,7 +120,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
             <div className="relative z-10 flex flex-col items-center gap-8 md:flex-row">
               <button onClick={() => setShowAvatarBuilder(true)} className="group relative h-44 w-36 shrink-0 overflow-hidden rounded-[32px] border-4 border-white/10 bg-white/5 shadow-inner transition-transform hover:scale-[1.02]">
                 {characterId ? (
-                  <img src={getCharacterSrc(characterId)} alt="" className="absolute inset-0 h-full w-full object-cover object-top" />
+                  <VoxelAvatar characterId={characterId} altura={176} pose="parado" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
                 ) : (
                   <div className="flex h-full items-center justify-center" style={{ backgroundColor: selectedColor }}>
                     <FishLogo iconOnly primaryColor="white" className="scale-150" days={stats.totalDaysStudied} />

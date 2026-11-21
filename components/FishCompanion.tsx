@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { chatWithFish, getMotivacao, EstiloMotivacao } from '../services/geminiService';
 import { AppView, StudyProfile } from '../types';
-import { getCharacterSrc, getCharacter } from '../services/avatarService';
+import { getCharacter } from '../services/avatarService';
 import AvatarDisplay from './AvatarDisplay';
 import VoxelAvatar, { POSES_ESCOLHIVEIS, VoxelPose } from './VoxelAvatar';
-import { AVISO, Mascote, configDoMascote, ler as lerMascote, nomeDoMascote } from '../services/mascote';
+import { AVISO, Mascote, ler as lerMascote, nomeDoMascote } from '../services/mascote';
 import CompanionWheel, { ItemRoda } from './CompanionWheel';
 import { getVoxelConfig } from '../services/voxelCharacters';
 
@@ -74,10 +74,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   // No modo criado não existe arte 2D, então o retrato segue sendo o do
   // personagem do onboarding e só o nome passa a ser o que o aluno deu.
   const idCompanheiro = mascote.base || characterId;
-  const companionIconSrc = idCompanheiro ? getCharacterSrc(idCompanheiro, 'frente') : '/fish-companion-icon.jpg';
   const companionName = nomeDoMascote(mascote, idCompanheiro ? getCharacter(idCompanheiro).name : 'Peixe Amigo');
-  // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
-  const temVoxel = !!configDoMascote(characterId, mascote);
+  // Todo personagem tem receita em cubos, e um id que não tenha cai no primeiro
+  // da lista — então o boneco sempre existe e não há caminho sem ele.
+  const idBoneco = getCharacter(idCompanheiro).id;
   const [menuAberto, setMenuAberto] = useState(false);
   const [lado, setLado] = useState<'esquerda' | 'direita'>(() => ler('tdh_companheiro_lado') === 'esquerda' ? 'esquerda' : 'direita');
   const [fimBarraLateral, setFimBarraLateral] = useState(0);
@@ -165,7 +165,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
 
   // Pequenos gestos ocorrem somente na pose padrão e fora de sessões de foco.
   useEffect(() => {
-    if (!ajudaAutomatica || !temVoxel || presenca !== 'aqui' || isOpen || menuAberto || timerAtivo || emQuestao || editorTelaCheia || animacao !== 'estudando') {
+    if (!ajudaAutomatica || presenca !== 'aqui' || isOpen || menuAberto || timerAtivo || emQuestao || editorTelaCheia || animacao !== 'estudando') {
       setGestoEspontaneo(null);
       return;
     }
@@ -177,7 +177,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       fim = window.setTimeout(() => setGestoEspontaneo(null), 4000);
     }, 75_000);
     return () => { window.clearInterval(intervalo); window.clearTimeout(fim); };
-  }, [ajudaAutomatica, temVoxel, presenca, isOpen, menuAberto, timerAtivo, emQuestao, editorTelaCheia, animacao]);
+  }, [ajudaAutomatica, presenca, isOpen, menuAberto, timerAtivo, emQuestao, editorTelaCheia, animacao]);
 
   // A barra pode ser recolhida; acompanhe sua largura para o lado esquerdo
   // ficar junto à borda do conteúdo, sem cobrir a navegação.
@@ -301,7 +301,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const ligarMusica = (canal: 'RELAX' | 'MPB' = 'RELAX') => {
     canalDesejadoRef.current = canal;
     // Já está de fone: trocar de estação não pede viagem nenhuma.
-    if (comFone || !temVoxel) { setActiveChannel?.(canal); setPainelSom(false); setMenuAberto(false); return; }
+    if (comFone) { setActiveChannel?.(canal); setPainelSom(false); setMenuAberto(false); return; }
     setMenuAberto(false);
     setPainelSom(false);
     missaoRef.current = 'fone';
@@ -360,7 +360,6 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
 
   const ligarTimer = () => {
     setMenuAberto(false);
-    if (!temVoxel) { onLigarTimer?.(); return; }
     missaoRef.current = 'relogio';
     setPresenca('andando');
   };
@@ -446,13 +445,13 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       texto: '#6b5a49',
       acao: () => setPainelTempo(true),
     },
-    ...(temVoxel ? [{
+    {
       id: 'animacao',
       rotulo: 'Animação',
       cor: '#E8DDCC',
       texto: '#6b5a49',
       acao: () => setPainelAnimacao(true),
-    }] : []),
+    },
     ...(onAbrirEstudio ? [{
       id: 'aparencia',
       rotulo: 'Aparência',
@@ -460,7 +459,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       texto: '#2f2721',
       acao: () => { fecharTudo(); onAbrirEstudio(); },
     }] : []),
-    { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca(temVoxel ? 'despedindo' : 'fora'); } },
+    { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
   ];
   const emCena = presenca === 'aqui' && !isOpen;
   const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && !painelAnimacao && emCena;
@@ -543,7 +542,8 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
           <div className="p-6 bg-[#fed386] text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
-                {idCompanheiro ? <AvatarDisplay characterId={idCompanheiro} className="h-full w-full" /> : <img src={companionIconSrc} alt="" className="w-full h-full object-cover object-top" />}
+                {/* O mesmo mascote da tela, de rosto: o chat é com ele. */}
+                <AvatarDisplay characterId={idBoneco} mascote={mascote} className="h-full w-full" />
               </div>
               <div>
                 <h3 className="font-black text-lg leading-none uppercase">{companionName}</h3>
@@ -654,7 +654,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
         // estreita: ocupa menos que a arte 2D de corpo inteiro, que cobria botões.
         presenca === 'fora' ? (
           <button
-            onClick={() => setPresenca(temVoxel ? 'chegando' : 'aqui')}
+            onClick={() => setPresenca('chegando')}
             aria-label={`Chamar ${companionName} de volta`}
             title={`Chamar ${companionName} de volta`}
             className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#fed386] text-lg shadow-lg transition-transform hover:scale-110 active:scale-95"
@@ -829,7 +829,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                     className="h-1.5 w-full accent-[#e96f34]"
                   />
                 </label>
-                {temVoxel && !activeChannel && !isPlayingRain && (
+                {!activeChannel && !isPlayingRain && (
                   <p className="mt-2 text-center text-[9px] font-bold leading-snug text-[#a79c8e]">
                     Ele vai buscar o fone antes de a música começar.
                   </p>
@@ -878,7 +878,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 >
                   {timerAtivo ? 'Parar agora' : 'Começar agora'}
                 </button>
-                {temVoxel && !timerAtivo && (
+                {!timerAtivo && (
                   <p className="mt-2 text-center text-[9px] font-bold leading-snug text-[#a79c8e]">
                     Ele vai buscar o relógio antes de começar.
                   </p>
@@ -900,8 +900,8 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
               // z-10: o boneco fica no miolo da roda e também é o botão de fechar.
               className="relative z-10 transition-transform duration-300 hover:scale-105 active:scale-95"
             >
-              {temVoxel ? <VoxelAvatar
-                characterId={idCompanheiro}
+              <VoxelAvatar
+                characterId={idBoneco}
                 mascote={mascote}
                 altura={88}
                 pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : presenca === 'chegando' ? 'voltando' : cochilando ? 'dormindo' : gestoEspontaneo || animacao}
@@ -920,9 +920,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                   if (missaoRef.current === 'fone') { missaoRef.current = 'sair'; setActiveChannel?.(canalDesejadoRef.current); }
                   else if (missaoRef.current === 'relogio') { missaoRef.current = 'sair'; onLigarTimer?.(); }
                 }}
-              /> : <span className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#fed386] shadow-lg">
-                {idCompanheiro ? <AvatarDisplay characterId={idCompanheiro} className="h-full w-full" /> : <img src={companionIconSrc} alt="" className="h-full w-full object-cover object-top" />}
-              </span>}
+              />
             </button>
           </div>
         )

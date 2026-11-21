@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, X } from './icons';
 import FishLogo from './FishLogo';
-import { CHARACTERS, defaultCharacterId, getCharacter, resolveCharacterId, CharacterPose } from '../services/avatarService';
+import { CHARACTERS, defaultCharacterId, getCharacter, resolveCharacterId } from '../services/avatarService';
+import VoxelAvatar from './VoxelAvatar';
 
 interface AvatarBuilderProps {
   initialCharacterId?: string;
@@ -11,10 +12,12 @@ interface AvatarBuilderProps {
   confirmLabel?: string;
 }
 
-const POSES: { id: CharacterPose; label: string }[] = [
-  { id: 'frente', label: 'Frente' },
-  { id: 'lado', label: 'Perfil' },
-  { id: 'costas', label: 'Costas' },
+// As três vistas da folha de personagem. Antes eram três desenhos por
+// personagem; agora é o mesmo boneco girado, então vale para qualquer um.
+const VISTAS: { id: string; label: string; angulo: number }[] = [
+  { id: 'frente', label: 'Frente', angulo: 0 },
+  { id: 'lado', label: 'Perfil', angulo: -70 },
+  { id: 'costas', label: 'Costas', angulo: 180 },
 ];
 
 // Each card leans a little, like cut-out paper on a character sheet.
@@ -23,7 +26,7 @@ const PLATE_TILTS = ['-3deg', '2.5deg', '-1.5deg', '3deg', '-2.5deg', '1.5deg'];
 interface GridCard {
   key: string;
   label: string;
-  src: string;
+  characterId: string;
   active: boolean;
   onClick: () => void;
 }
@@ -34,9 +37,6 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
   const selected = getCharacter(characterId);
 
   const selectCharacter = (id: string) => setCharacterId(id);
-
-  // The sheet always shows the three turnaround views of the selected character.
-  const sheetViews = POSES.map((pose) => ({ key: pose.id, label: pose.label, src: selected.poses[pose.id] }));
 
   const renderPlateCard = (card: GridCard, index: number) => (
     <button
@@ -49,7 +49,9 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
     >
       <span className="cs-card__stage">
         <span aria-hidden="true" className="cs-card__plate" />
-        <img src={card.src} alt="" loading="lazy" className="cs-card__art character-avatar-thumb" />
+        {/* Parado: são 23 bonecos na mesma tela, e cada um com a sua volta de
+            animação deixava a escolha travada no celular. */}
+        <VoxelAvatar characterId={card.characterId} altura={112} estatico pose="parado" className="cs-card__art" />
         {card.active && (
           <span aria-hidden="true" className="cs-card__badge">
             <Check className="h-3.5 w-3.5" strokeWidth={3.5} />
@@ -94,16 +96,11 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
           </div>
 
           <div className="cs-sheet" aria-live="polite">
-            {sheetViews.map((view, index) => (
-              <figure key={view.key} className="cs-sheet__view" style={{ '--cs-tilt': PLATE_TILTS[index] } as React.CSSProperties}>
+            {VISTAS.map((vista, index) => (
+              <figure key={vista.id} className="cs-sheet__view" style={{ '--cs-tilt': PLATE_TILTS[index] } as React.CSSProperties} aria-label={`${selected.name} — ${vista.label}`}>
                 <span aria-hidden="true" className="cs-sheet__plate" />
-                <img
-                  key={view.src}
-                  src={view.src}
-                  alt={`${selected.name} — ${view.label}`}
-                  className="cs-sheet__art character-avatar-art character-avatar-pose-transition"
-                />
-                <figcaption className="cs-sheet__label">{view.label}</figcaption>
+                <VoxelAvatar key={`${characterId}-${vista.id}`} characterId={characterId} altura={200} angulo={vista.angulo} pose="parado" className="cs-sheet__art" />
+                <figcaption className="cs-sheet__label">{vista.label}</figcaption>
               </figure>
             ))}
           </div>
@@ -124,7 +121,7 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
           {CHARACTERS.map((character, index) => renderPlateCard({
             key: character.id,
             label: character.name,
-            src: character.poses.frente,
+            characterId: character.id,
             active: character.id === characterId,
             onClick: () => selectCharacter(character.id),
           }, index))}
@@ -137,7 +134,7 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
         <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <span className="cs-footer__thumb" aria-hidden="true">
-              <img src={selected.poses.frente} alt="" />
+              <VoxelAvatar characterId={characterId} recorte="rosto" estatico altura={44} pose="parado" />
             </span>
             <span className="min-w-0">
               <span className="cs-footer__name">{selected.name}</span>

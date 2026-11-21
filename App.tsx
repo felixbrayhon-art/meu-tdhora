@@ -1235,6 +1235,11 @@ const App: React.FC = () => {
               studyProfile,
               explanationStyle: defaultStyles[studyProfile],
             }));
+            // Quem acabou de escolher o personagem cai no estúdio dele: é o
+            // momento em que a pessoa ainda está decidindo quem vai estudar
+            // com ela. Nas aberturas seguintes o app volta a abrir na Aula
+            // Direta, que é a ferramenta do dia a dia.
+            setCurrentView('MASCOTE');
           }}
         />
         <BuildTag />
