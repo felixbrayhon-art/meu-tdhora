@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, X } from './icons';
 import FishLogo from './FishLogo';
 import { CHARACTERS, defaultCharacterId, getCharacter, resolveCharacterId } from '../services/avatarService';
@@ -19,6 +19,34 @@ const VISTAS: { id: string; label: string; angulo: number }[] = [
   { id: 'lado', label: 'Perfil', angulo: -70 },
   { id: 'costas', label: 'Costas', angulo: 180 },
 ];
+
+/**
+ * O boneco de um card da grade. Duas economias, porque são 23 na mesma tela:
+ * só a cabeça (o corpo inteiro são ~700 divs por boneco, cada cubo um contexto
+ * 3D próprio) e montagem só quando o card chega perto da vista. Sem as duas, a
+ * rolagem da escolha travava. O corpo inteiro de quem está escolhido continua
+ * à mostra nas três vistas lá em cima.
+ */
+const CardArt: React.FC<{ characterId: string }> = ({ characterId }) => {
+  const caixa = useRef<HTMLSpanElement>(null);
+  const [visivel, setVisivel] = useState(false);
+
+  useEffect(() => {
+    const alvo = caixa.current;
+    if (!alvo || typeof IntersectionObserver === 'undefined') { setVisivel(true); return; }
+    const observador = new IntersectionObserver(([entrada]) => {
+      if (entrada.isIntersecting) { setVisivel(true); observador.disconnect(); }
+    }, { rootMargin: '300px' });
+    observador.observe(alvo);
+    return () => observador.disconnect();
+  }, []);
+
+  return (
+    <span ref={caixa} className="cs-card__art">
+      {visivel && <VoxelAvatar characterId={characterId} recorte="rosto" estatico altura={116} pose="parado" />}
+    </span>
+  );
+};
 
 // Each card leans a little, like cut-out paper on a character sheet.
 const PLATE_TILTS = ['-3deg', '2.5deg', '-1.5deg', '3deg', '-2.5deg', '1.5deg'];
@@ -49,9 +77,7 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
     >
       <span className="cs-card__stage">
         <span aria-hidden="true" className="cs-card__plate" />
-        {/* Parado: são 23 bonecos na mesma tela, e cada um com a sua volta de
-            animação deixava a escolha travada no celular. */}
-        <VoxelAvatar characterId={card.characterId} altura={112} estatico pose="parado" className="cs-card__art" />
+        <CardArt characterId={card.characterId} />
         {card.active && (
           <span aria-hidden="true" className="cs-card__badge">
             <Check className="h-3.5 w-3.5" strokeWidth={3.5} />
@@ -99,7 +125,11 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
             {VISTAS.map((vista, index) => (
               <figure key={vista.id} className="cs-sheet__view" style={{ '--cs-tilt': PLATE_TILTS[index] } as React.CSSProperties} aria-label={`${selected.name} — ${vista.label}`}>
                 <span aria-hidden="true" className="cs-sheet__plate" />
-                <VoxelAvatar key={`${characterId}-${vista.id}`} characterId={characterId} altura={200} angulo={vista.angulo} pose="parado" className="cs-sheet__art" />
+                {/* Paradas: são três bonecos de corpo inteiro do mesmo
+                    personagem, e mexer os três a cada quadro é o que mais pesa
+                    nesta tela. Folha de personagem é retrato, não animação — e
+                    logo depois, na revelação, ele entra comemorando. */}
+                <VoxelAvatar key={`${characterId}-${vista.id}`} characterId={characterId} altura={200} angulo={vista.angulo} estatico pose="parado" className="cs-sheet__art" />
                 <figcaption className="cs-sheet__label">{vista.label}</figcaption>
               </figure>
             ))}

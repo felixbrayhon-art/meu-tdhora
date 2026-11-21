@@ -867,14 +867,19 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     cena.appendChild(sombra);
     const p = montar(cfg, cena, variantePescador, varianteNutricionista, variantePolicial, varianteRegata, varianteRaposa, varianteRoqueiro, varianteSenhor, varianteSurfista, varianteNativo, varianteCaramelo);
 
-    // Só a cabeça: esconde o corpo e enquadra. Os cubos continuam montados —
-    // `display:none` já tira o custo de pintar, e separar a montagem em duas
-    // dobraria um código que é uma receita linear de 500 linhas.
+    // Só a cabeça: o corpo é montado e depois tirado do documento. Esconder
+    // com `display:none` bastava para não pintar, mas cada cubo é um contexto
+    // 3D próprio e continuava pesando na composição — numa tela com 23 bonecos
+    // isso é a diferença entre rolar liso e travar. Montar em duas receitas
+    // separadas seria melhor ainda, e dobraria 500 linhas de montagem.
     const soRosto = recorte === 'rosto';
     if (soRosto) {
-      sombra.style.display = 'none';
-      [p.pernaE, p.pernaD, p.bracoE, p.bracoD, p.rabo].forEach((parte) => { if (parte) parte.style.display = 'none'; });
-      Array.from(p.corpo.children).forEach((filho) => { if (filho !== p.cabeca) (filho as HTMLElement).style.display = 'none'; });
+      // A sombra e os objetos de chão (a prancha do surfista, o aquário)
+      // penduram da cena, não do corpo: sem esta primeira volta a prancha
+      // continuava de pé ao lado de um rosto flutuando.
+      Array.from(cena.children).forEach((filho) => { if (filho !== p.raiz) filho.remove(); });
+      [p.pernaE, p.pernaD, p.bracoE, p.bracoD, p.rabo].forEach((parte) => parte?.remove());
+      Array.from(p.corpo.children).forEach((filho) => { if (filho !== p.cabeca) filho.remove(); });
     }
 
     const menosMovimento = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
