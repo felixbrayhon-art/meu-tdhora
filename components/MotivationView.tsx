@@ -49,7 +49,7 @@ const MotivationView: React.FC = () => {
       ) : (
         <div className="relative w-full flex flex-col items-center sm:flex-row sm:items-end sm:justify-center gap-2 sm:gap-0">
           {/* Dormindo: é o momento de paz, e é a pose de descanso que ele tem. */}
-          <VoxelAvatar characterId={characterId} altura={150} pose="dormindo" className="shrink-0 drop-shadow-lg sm:-mr-2 sm:mb-2" />
+          <VoxelAvatar characterId={characterId} altura={150} pose="dormindo" className="shrink-0 sm:-mr-2 sm:mb-2" />
           <div className="bg-white/70 rounded-[30px] px-6 py-5 shadow-sm max-w-lg">
             <p className="text-[#799339] text-lg font-bold text-center leading-relaxed">{motivation}</p>
           </div>

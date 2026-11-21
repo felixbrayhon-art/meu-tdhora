@@ -2052,9 +2052,11 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
     transform: rotate(var(--cs-tilt, 0deg));
     border-radius: 3px;
 }
+/* Sem `filter` aqui: a sombra obrigava o navegador a rasterizar a cena 3D
+   inteira do boneco e borrá-la. Com 23 deles na grade, a tela abria com um
+   quadro de três segundos. O boneco já tem a própria sombra no chão. */
 #avatar-selection-screen .cs-sheet__art {
     position: relative; z-index: 1;
-    filter: drop-shadow(0 6px 4px rgba(74,53,42,.28));
     animation: cs-pop .35s ease-out;
 }
 #avatar-selection-screen .cs-sheet__label {
@@ -2107,7 +2109,6 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
 #avatar-selection-screen .cs-card__art {
     position: absolute; z-index: 1; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    filter: drop-shadow(0 5px 3px rgba(40,26,18,.35));
     transition: transform .25s ease;
 }
 #avatar-selection-screen .cs-card:hover .cs-card__plate { transform: rotate(0deg) scale(1.03); }
@@ -2183,7 +2184,6 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
 }
 #character-reveal-screen .cr-figure__art {
     position: relative; z-index: 1;
-    filter: drop-shadow(0 10px 8px rgba(74,53,42,.3));
 }
 #character-reveal-screen .cr-footer {
     position: relative; display: flex; flex-direction: column; align-items: center; gap: .9rem;

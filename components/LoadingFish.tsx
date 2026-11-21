@@ -28,7 +28,7 @@ const LoadingFish: React.FC<LoadingFishProps> = ({ message = 'Ajustando o foco..
           <div className={`${fullScreen ? 'w-full max-w-md rounded-3xl border border-white/15 bg-[#473c33]/70 backdrop-blur-xl p-6 sm:p-8 text-center shadow-2xl' : 'text-center space-y-2'}`}>
             {fullScreen && (
               <div className="relative mx-auto mb-5 w-24 h-20 flex items-center justify-center">
-                <VoxelAvatar characterId={characterId} altura={96} pose="lendo" className="relative z-10 drop-shadow-xl" />
+                <VoxelAvatar characterId={characterId} altura={96} pose="lendo" className="relative z-10" />
                 <span className="absolute right-0 top-1 w-3 h-3 rounded-full bg-[#fecc73] animate-bounce" />
                 <span className="absolute right-3 top-8 w-2 h-2 rounded-full bg-[#ffe6b9] animate-bounce" style={{ animationDelay: '0.35s' }} />
               </div>

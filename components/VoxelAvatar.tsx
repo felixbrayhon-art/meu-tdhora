@@ -28,16 +28,42 @@ const criarFace = (w: number, h: number, t: string, cor: string, op: number) => 
 
 type Pai = HTMLElement;
 
+// Boneco parado, câmera fixa: das seis faces de cada cubo, três nunca aparecem.
+// Deixar de criá-las é o que faz a diferença numa tela com muitos bonecos — o
+// caro não é criar os divs (3.500 saem em 10 ms), é o navegador compor cada um
+// como contexto 3D próprio (1.700 ms para os mesmos 3.500). Cortar metade
+// corta metade desse tempo.
+//
+// A escolha é por ângulo de descanso: o topo sempre aparece (a câmera olha de
+// cima), a frente até um quarto de volta e, depois disso, as costas; a lateral
+// é a do lado para onde o boneco virou. É estado de módulo porque a montagem é
+// uma receita linear e síncrona de 500 linhas, e enfiar o modo em cada uma das
+// centenas de chamadas de B() só ia esconder a regra.
+let faceCortada: ((lado: 'frente' | 'tras' | 'dir' | 'esq' | 'topo' | 'base') => boolean) | null = null;
+
+const cortarFacesPara = (angulo: number) => {
+  const g = ((angulo % 360) + 360) % 360;
+  const deCostas = g > 90 && g < 270;
+  // Em CSS, rotateY negativo traz o lado +X do boneco para a frente.
+  const ladoVisivel = g > 180 ? 'dir' : 'esq';
+  faceCortada = (lado) =>
+    lado === 'base' ||
+    (lado === 'frente' && deCostas) ||
+    (lado === 'tras' && !deCostas) ||
+    (lado !== 'topo' && lado !== 'frente' && lado !== 'tras' && lado !== ladoVisivel);
+};
+
 const B = (p: Pai, w: number, h: number, d: number, x: number, y: number, z: number, cor: string, op = 1, rot = ''): HTMLElement => {
   const b = document.createElement('div');
   b.style.cssText = 'position:absolute;transform-style:preserve-3d';
   b.style.transform = `translate3d(${x}px,${y}px,${z}px)${rot}`;
-  b.appendChild(criarFace(w, h, `translateZ(${d / 2}px)`, cor, op));
-  b.appendChild(criarFace(w, h, `rotateY(180deg) translateZ(${d / 2}px)`, tom(cor, 0.8), op));
-  b.appendChild(criarFace(d, h, `rotateY(90deg) translateZ(${w / 2}px)`, tom(cor, 0.88), op));
-  b.appendChild(criarFace(d, h, `rotateY(-90deg) translateZ(${w / 2}px)`, tom(cor, 0.72), op));
-  b.appendChild(criarFace(w, d, `rotateX(90deg) translateZ(${h / 2}px)`, tom(cor, 1.16), op));
-  b.appendChild(criarFace(w, d, `rotateX(-90deg) translateZ(${h / 2}px)`, tom(cor, 0.58), op));
+  const corta = faceCortada;
+  if (!corta || !corta('frente')) b.appendChild(criarFace(w, h, `translateZ(${d / 2}px)`, cor, op));
+  if (!corta || !corta('tras')) b.appendChild(criarFace(w, h, `rotateY(180deg) translateZ(${d / 2}px)`, tom(cor, 0.8), op));
+  if (!corta || !corta('dir')) b.appendChild(criarFace(d, h, `rotateY(90deg) translateZ(${w / 2}px)`, tom(cor, 0.88), op));
+  if (!corta || !corta('esq')) b.appendChild(criarFace(d, h, `rotateY(-90deg) translateZ(${w / 2}px)`, tom(cor, 0.72), op));
+  if (!corta || !corta('topo')) b.appendChild(criarFace(w, d, `rotateX(90deg) translateZ(${h / 2}px)`, tom(cor, 1.16), op));
+  if (!corta || !corta('base')) b.appendChild(criarFace(w, d, `rotateX(-90deg) translateZ(${h / 2}px)`, tom(cor, 0.58), op));
   p.appendChild(b);
   return b;
 };
@@ -858,13 +884,20 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     const palco = palcoRef.current;
     if (!cfg || !palco) return;
     palco.textContent = '';
+    // O boneco é montado solto, fora do documento, e só entra na página
+    // pronto. Montado dentro dela, cada um dos ~700 cubos entrava sozinho numa
+    // árvore 3D já viva e obrigava o navegador a recalcular tudo de novo a
+    // cada peça: numa tela com 23 bonecos isso virava um quadro de 3 segundos,
+    // com a página inteira congelada.
     const pivot = document.createElement('div');
     pivot.style.cssText = 'position:absolute;transform-style:preserve-3d';
-    palco.appendChild(pivot);
     const cena = J(pivot, 0, 48, 0);
     const sombra = document.createElement('div');
     sombra.style.cssText = 'position:absolute;width:132px;height:72px;left:-66px;top:-36px;background:#8f8375;opacity:.26;border-radius:50%;transform:translate3d(0,40px,0) rotateX(90deg);transition:transform 320ms ease';
     cena.appendChild(sombra);
+    // Parado a câmera não muda, então as faces escondidas nem são criadas.
+    // Animado elas precisam existir: o boneco gira, anda e deita.
+    if (estatico) cortarFacesPara(angulo ?? -20);
     const p = montar(cfg, cena, variantePescador, varianteNutricionista, variantePolicial, varianteRegata, varianteRaposa, varianteRoqueiro, varianteSenhor, varianteSurfista, varianteNativo, varianteCaramelo);
 
     // Só a cabeça: o corpo é montado e depois tirado do documento. Esconder
@@ -881,6 +914,8 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       [p.pernaE, p.pernaD, p.bracoE, p.bracoD, p.rabo].forEach((parte) => parte?.remove());
       Array.from(p.corpo.children).forEach((filho) => { if (filho !== p.cabeca) filho.remove(); });
     }
+    faceCortada = null;
+    palco.appendChild(pivot);
 
     const menosMovimento = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     // De corpo inteiro a figura tem 212 de altura; a cabeça sozinha, com cabelo
