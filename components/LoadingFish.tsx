@@ -1,7 +1,8 @@
 import React from 'react';
 import { FishSilhouette } from './FishGraphics';
 import { useCharacterId } from '../contexts/CharacterContext';
-import { getLoadingSrc, getSceneSrc } from '../services/avatarService';
+import { getSceneSrc } from '../services/avatarService';
+import VoxelAvatar from './VoxelAvatar';
 
 interface LoadingFishProps {
   message?: string;
@@ -12,10 +13,9 @@ interface LoadingFishProps {
 
 const LoadingFish: React.FC<LoadingFishProps> = ({ message = 'Ajustando o foco...', submessage = 'Estamos preparando seu conteúdo.', fullScreen = false }) => {
   const characterId = useCharacterId();
-  const characterSrc = getLoadingSrc(characterId);
   const sceneSrc = getSceneSrc(characterId);
 
-  if (characterSrc && sceneSrc) {
+  if (sceneSrc) {
     return (
       <div className={`relative overflow-hidden flex flex-col items-end justify-end animate-in fade-in duration-500 bg-[#faf3e3] ${fullScreen ? 'w-full h-full' : 'min-h-[55vh] rounded-[40px]'}`}>
         <img src={sceneSrc} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -28,7 +28,7 @@ const LoadingFish: React.FC<LoadingFishProps> = ({ message = 'Ajustando o foco..
           <div className={`${fullScreen ? 'w-full max-w-md rounded-3xl border border-white/15 bg-[#473c33]/70 backdrop-blur-xl p-6 sm:p-8 text-center shadow-2xl' : 'text-center space-y-2'}`}>
             {fullScreen && (
               <div className="relative mx-auto mb-5 w-24 h-20 flex items-center justify-center">
-                <img src={characterSrc} alt="" className="relative z-10 w-20 h-20 object-contain drop-shadow-xl" />
+                <VoxelAvatar characterId={characterId} altura={96} pose="lendo" className="relative z-10 drop-shadow-xl" />
                 <span className="absolute right-0 top-1 w-3 h-3 rounded-full bg-[#fecc73] animate-bounce" />
                 <span className="absolute right-3 top-8 w-2 h-2 rounded-full bg-[#ffe6b9] animate-bounce" style={{ animationDelay: '0.35s' }} />
               </div>

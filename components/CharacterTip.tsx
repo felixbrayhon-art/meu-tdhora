@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from './icons';
 import { useCharacterId } from '../contexts/CharacterContext';
-import { getExpressionSrc, getCharacterSrc } from '../services/avatarService';
+import VoxelAvatar from './VoxelAvatar';
 
 interface CharacterTipProps {
   /** Unique key for this tip — controls the "already seen" flag in localStorage. */
@@ -22,10 +22,6 @@ const CharacterTip: React.FC<CharacterTipProps> = ({ id, message }) => {
 
   if (dismissed) return null;
 
-  const src = characterId
-    ? (getExpressionSrc(characterId, 'explicando') ?? getCharacterSrc(characterId, 'frente'))
-    : undefined;
-
   const dismiss = () => {
     setDismissed(true);
     try {
@@ -37,7 +33,7 @@ const CharacterTip: React.FC<CharacterTipProps> = ({ id, message }) => {
 
   return (
     <div className="relative bg-[#fff6e8] border border-[#fff0d5] rounded-[30px] pt-5 pr-10 pb-5 pl-4 mb-6 flex items-end gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
-      {src && <img src={src} alt="" className="h-20 sm:h-24 object-contain shrink-0 -mb-5" />}
+      {characterId && <VoxelAvatar characterId={characterId} altura={96} pose="tchau" className="shrink-0 -mb-5" />}
       <div className="flex-1 bg-white rounded-2xl rounded-bl-none p-4 shadow-sm text-sm text-gray-700 font-medium leading-relaxed">
         {message}
       </div>

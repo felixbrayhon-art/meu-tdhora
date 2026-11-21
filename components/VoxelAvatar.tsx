@@ -812,10 +812,16 @@ interface VoxelAvatarProps {
   onChegou?: () => void;
   /** O mascote do aluno: um personagem pronto retocado ou um criado no estúdio. */
   mascote?: Mascote;
+  /** 'rosto' mostra só a cabeça, enquadrada: é o avatar redondo pequeno. */
+  recorte?: 'inteiro' | 'rosto';
+  /** Monta, posiciona e para. Para listas com muitos bonecos na tela de uma vez. */
+  estatico?: boolean;
+  /** Giro de descanso em graus: 0 de frente, -90 de perfil, 180 de costas. */
+  angulo?: number;
   className?: string;
 }
 
-const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, mascote, className = '' }) => {
+const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, mascote, recorte = 'inteiro', estatico = false, angulo, className = '' }) => {
   // No modo 'criado' não existe personagem de origem: a receita sai inteira das
   // peças que o aluno escolheu no estúdio.
   const criado = mascote?.modo === 'criado';
@@ -861,11 +867,23 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
     cena.appendChild(sombra);
     const p = montar(cfg, cena, variantePescador, varianteNutricionista, variantePolicial, varianteRegata, varianteRaposa, varianteRoqueiro, varianteSenhor, varianteSurfista, varianteNativo, varianteCaramelo);
 
+    // Só a cabeça: esconde o corpo e enquadra. Os cubos continuam montados —
+    // `display:none` já tira o custo de pintar, e separar a montagem em duas
+    // dobraria um código que é uma receita linear de 500 linhas.
+    const soRosto = recorte === 'rosto';
+    if (soRosto) {
+      sombra.style.display = 'none';
+      [p.pernaE, p.pernaD, p.bracoE, p.bracoD, p.rabo].forEach((parte) => { if (parte) parte.style.display = 'none'; });
+      Array.from(p.corpo.children).forEach((filho) => { if (filho !== p.cabeca) (filho as HTMLElement).style.display = 'none'; });
+    }
+
     const menosMovimento = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const escala = altura / 212;
+    // De corpo inteiro a figura tem 212 de altura; a cabeça sozinha, com cabelo
+    // e chapéu, cabe em 112 — e fica a 48 acima do centro do palco.
+    const escala = altura / (soRosto ? 112 : 212);
     // Parado ele fica de três quartos, virado para quem lê. Não gira: girar sem
     // parar puxava o olho do aluno e obrigava a desenhar as costas de cada cubo.
-    const DESCANSO = -20;
+    const DESCANSO = angulo ?? -20;
     let ry = DESCANSO;
     let quadro = 0;
     let inicio = 0;
@@ -1030,8 +1048,10 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
       p.bracoD.style.transform = `translate3d(34px,-48px,0) rotateZ(${zD}deg) rotateX(${bD}deg)${lendo ? ' scaleY(1.7)' : ''}`;
       p.pernaE.style.transform = `translate3d(-13px,-4px,0) rotateX(${perna}deg)`;
       p.pernaD.style.transform = `translate3d(13px,-4px,0) rotateX(${-perna}deg)`;
-      if (p.rabo) p.rabo.style.transform = `translate3d(${characterId === 'raposa' && varianteRaposa === 1 ? 32 : (characterId === 'vira-lata-caramelo' && varianteCaramelo === 1) || characterId === 'gato-jaqueta' ? 25 : 0}px,-12px,-19px) rotateY(${Math.sin(t * 1.6) * 14}deg)`;
-      pivot.style.transform = `scale(${escala}) rotateX(-10deg) rotateY(${ry}deg)`;
+      if (p.rabo) p.rabo.style.transform = `translate3d(${idBase === 'raposa' && varianteRaposa === 1 ? 32 : (idBase === 'vira-lata-caramelo' && varianteCaramelo === 1) || idBase === 'gato-jaqueta' ? 25 : 0}px,-12px,-19px) rotateY(${Math.sin(t * 1.6) * 14}deg)`;
+      pivot.style.transform = soRosto
+        ? `translateY(${48 * escala}px) scale(${escala}) rotateX(-6deg) rotateY(${ry}deg)`
+        : `scale(${escala}) rotateX(-10deg) rotateY(${ry}deg)`;
 
       if (caminhando) {
         const passoPx = (menosMovimento ? 700 : 200) * dt;
@@ -1047,14 +1067,14 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
         desloc = 0;
         palco.style.transform = '';
       }
-      quadro = requestAnimationFrame(desenhar);
+      if (!estatico) quadro = requestAnimationFrame(desenhar);
     };
     quadro = requestAnimationFrame(desenhar);
     return () => { cancelAnimationFrame(quadro); palco.textContent = ''; palco.style.transform = ''; };
     // `chaveAjustes` entra como dependência no lugar do objeto: a cada render o
     // pai cria um objeto novo, e comparar por identidade remontaria o boneco
     // inteiro sem nada ter mudado.
-  }, [idBase, criado, altura, chaveMascote]);
+  }, [idBase, criado, altura, chaveMascote, recorte, estatico, angulo]);
 
   if (!criado && !getVoxelConfig(idBase)) return null;
   return (
