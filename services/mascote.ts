@@ -54,8 +54,7 @@ export interface Mascote {
   cilios?: boolean;
   pinta?: boolean;
   cinto?: boolean;
-  /** modo 'pronto': tira o chapéu que o personagem já usa. */
-  semChapeu?: boolean;
+
   dir?: VoxelAdereco;
   esq?: VoxelAdereco;
 }
@@ -210,7 +209,6 @@ export const limpar = (bruto: unknown): Mascote => {
   if (a.cilios === true) limpo.cilios = true;
   if (a.pinta === true) limpo.pinta = true;
   if (a.cinto === true) limpo.cinto = true;
-  if (a.semChapeu === true) limpo.semChapeu = true;
   (['pele', 'cabelo', 'olhos', 'corCamisa', 'corDetalhe', 'corCalca', 'corCalcado', 'corChapeu'] as const).forEach((campo) => {
     const v = cor(a[campo]);
     if (v) limpo[campo] = v;
@@ -243,6 +241,19 @@ export const gravar = (m: Mascote) => {
 
 // ------------------------------------------------------- montar a receita
 
+/**
+ * Põe na receita o chapéu escolhido, tirando antes o que já estivesse lá.
+ * Vale nos dois modos: no criado a cabeça começa vazia, no pronto ela começa
+ * com o chapéu do personagem — e é por aqui que ele sai.
+ */
+const porChapeu = (cfg: VoxelConfig, chapeu: ChapeuId, cor: string) => {
+  PECAS_CHAPEU.forEach((peca) => delete cfg[peca]);
+  if (chapeu === 'bone') { cfg.bone = cor; cfg.boneAba = mult(cor, 0.78); }
+  if (chapeu === 'quepe') cfg.quepe = cor;
+  if (chapeu === 'capacete') cfg.capacete = cor;
+  if (chapeu === 'balde') cfg.balde = cor;
+};
+
 /** Modo 'pronto': a receita do personagem com os retoques de cor por cima. */
 export const aplicarMascote = (base: VoxelConfig, m: Mascote): VoxelConfig => {
   const cfg: VoxelConfig = { ...base };
@@ -267,7 +278,8 @@ export const aplicarMascote = (base: VoxelConfig, m: Mascote): VoxelConfig => {
       if (!m.cabelo) cfg.cabelo = m.pele;
     }
   }
-  if (m.semChapeu) PECAS_CHAPEU.forEach((peca) => delete cfg[peca]);
+  // Sem escolha, fica o chapéu que o personagem já usava.
+  if (m.chapeu) porChapeu(cfg, m.chapeu, m.corChapeu || base.bone || base.quepe || base.capacete || base.balde || PADRAO.corChapeu);
   return cfg;
 };
 
@@ -351,10 +363,7 @@ const doZero = (m: Mascote): VoxelConfig => {
   if (v.calcado === 'tenis') cfg.meia = '#fdfbf7';
   if (v.calcado === 'bota') cfg.bainha = mult(v.corCalcado, 1.2);
 
-  if (v.chapeu === 'bone') { cfg.bone = v.corChapeu; cfg.boneAba = mult(v.corChapeu, 0.78); }
-  if (v.chapeu === 'quepe') cfg.quepe = v.corChapeu;
-  if (v.chapeu === 'capacete') cfg.capacete = v.corChapeu;
-  if (v.chapeu === 'balde') cfg.balde = v.corChapeu;
+  porChapeu(cfg, v.chapeu, v.corChapeu);
 
   if (v.oculos !== 'nenhum') { cfg.oculos = '#2a2a2e'; if (v.oculos === 'escuros') cfg.lente = '#2a2a2e'; }
 

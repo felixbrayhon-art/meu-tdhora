@@ -6,6 +6,7 @@ import {
   CALCADOS,
   CALCAS,
   CAMISAS,
+  ChapeuId,
   CHAPEUS,
   CORES_CABELO,
   CORES_OLHOS,
@@ -192,7 +193,7 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack }) =>
                 /* Trocar de personagem recomeça do zero: cada receita tem a sua
                    paleta, e levar o cabelo roxo do anterior para um cachorro
                    devolvia um boneco que ninguém pediu. */
-                onEscolher={(base) => mudar({ modo: 'pronto', base, pele: undefined, cabelo: undefined, estilo: undefined, olhos: undefined, corCamisa: undefined, corCalca: undefined, corCalcado: undefined, dir: undefined, esq: undefined, semChapeu: undefined })}
+                onEscolher={(base) => mudar({ modo: 'pronto', base, pele: undefined, cabelo: undefined, estilo: undefined, olhos: undefined, corCamisa: undefined, corCalca: undefined, corCalcado: undefined, dir: undefined, esq: undefined, chapeu: undefined, corChapeu: undefined })}
               />
             </Secao>
           )}
@@ -318,8 +319,32 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack }) =>
                 <Rotulo>Sapato</Rotulo>
                 <Cores cores={CORES_ROUPA} valor={mascote.corCalcado || cfg?.sapato} nome="Cor do sapato" onEscolher={(corCalcado) => mudar({ corCalcado })} />
               </div>
-              {(cfg?.bone || cfg?.quepe || cfg?.capacete || cfg?.balde || mascote.semChapeu) && (
-                <Marcar ligado={!!mascote.semChapeu} onMudar={(semChapeu) => mudar({ semChapeu })}>Tirar o chapéu</Marcar>
+              <div>
+                <Rotulo>Na cabeça</Rotulo>
+                {/* 'Do personagem' é o estado sem escolha: mantém o que ele já
+                    usa. As outras trocam — inclusive 'Nenhum', que é o tirar. */}
+                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Na cabeça">
+                  {([{ id: 'original', rotulo: 'Do personagem' }, ...CHAPEUS] as const).map(({ id, rotulo }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="radio"
+                      aria-checked={(mascote.chapeu ?? 'original') === id}
+                      onClick={() => mudar({ chapeu: id === 'original' ? undefined : (id as ChapeuId) })}
+                      className={`min-h-[40px] rounded-xl px-3 text-[11px] font-black uppercase tracking-wide transition-colors ${
+                        (mascote.chapeu ?? 'original') === id ? 'bg-[#473c33] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
+                      }`}
+                    >
+                      {rotulo}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {mascote.chapeu && mascote.chapeu !== 'nenhum' && (
+                <div>
+                  <Rotulo>Cor do chapéu</Rotulo>
+                  <Cores cores={CORES_ROUPA} valor={mascote.corChapeu || cfg?.bone || cfg?.quepe || cfg?.capacete || cfg?.balde} nome="Cor do chapéu" onEscolher={(corChapeu) => mudar({ corChapeu })} />
+                </div>
               )}
             </Secao>
           )}
