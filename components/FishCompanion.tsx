@@ -4,6 +4,7 @@ import { AppView, StudyProfile } from '../types';
 import { getCharacterSrc, getCharacter } from '../services/avatarService';
 import AvatarDisplay from './AvatarDisplay';
 import VoxelAvatar, { POSES_ESCOLHIVEIS, VoxelPose } from './VoxelAvatar';
+import { AVISO, Mascote, configDoMascote, ler as lerMascote, nomeDoMascote } from '../services/mascote';
 import CompanionWheel, { ItemRoda } from './CompanionWheel';
 import { getVoxelConfig } from '../services/voxelCharacters';
 
@@ -16,6 +17,8 @@ interface FishCompanionProps {
   emQuestao?: boolean;
   onAbrirRevisoes?: () => void;
   onAbrirFlashcards?: () => void;
+  /** Abre a tela do estúdio, onde o mascote é montado. */
+  onAbrirEstudio?: () => void;
   /** A que altura do rodapé ele encosta, em rem. Cada tela tem a sua barra fixa
    *  embaixo, e ele precisa ficar acima dela para não cobrir nem ser coberto. */
   recuoRem?: number;
@@ -56,11 +59,25 @@ const PERIODOS = [
   { ms: 604_800_000, nome: '1 semana' },
 ];
 
-const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, telaAtual, revisoesPendentes = 0, flashcardsPendentes = 0, emQuestao = false, onAbrirRevisoes, onAbrirFlashcards, recuoRem = 1, sobreEditor = false, sobreAula = false, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0, minutosPomodoro = 25, onAjustarMinutos, isPlayingRain = false, setIsPlayingRain, audioVolume = 0.5, setAudioVolume }) => {
-  const companionIconSrc = characterId ? getCharacterSrc(characterId, 'frente') : '/fish-companion-icon.jpg';
-  const companionName = characterId ? getCharacter(characterId).name : 'Peixe Amigo';
+const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, telaAtual, revisoesPendentes = 0, flashcardsPendentes = 0, emQuestao = false, onAbrirRevisoes, onAbrirFlashcards, onAbrirEstudio, recuoRem = 1, sobreEditor = false, sobreAula = false, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0, minutosPomodoro = 25, onAjustarMinutos, isPlayingRain = false, setIsPlayingRain, audioVolume = 0.5, setAudioVolume }) => {
+  // O mascote que o aluno montou no estúdio. É outra tela, sem estado em comum
+  // com esta: o aviso do serviço é o que traz a mudança para cá na hora.
+  const [mascote, setMascote] = useState<Mascote>(() => lerMascote());
+  useEffect(() => {
+    const reler = () => setMascote(lerMascote());
+    window.addEventListener(AVISO, reler);
+    window.addEventListener('storage', reler);
+    return () => { window.removeEventListener(AVISO, reler); window.removeEventListener('storage', reler); };
+  }, []);
+  // Trocar o personagem no estúdio troca o companheiro inteiro — nome, retrato
+  // do chat e boneco. Sem isso a roda chamava de Médica um cachorro com violão.
+  // No modo criado não existe arte 2D, então o retrato segue sendo o do
+  // personagem do onboarding e só o nome passa a ser o que o aluno deu.
+  const idCompanheiro = mascote.base || characterId;
+  const companionIconSrc = idCompanheiro ? getCharacterSrc(idCompanheiro, 'frente') : '/fish-companion-icon.jpg';
+  const companionName = nomeDoMascote(mascote, idCompanheiro ? getCharacter(idCompanheiro).name : 'Peixe Amigo');
   // Nem todo personagem tem receita em cubos ainda; quem não tem cai no avatar 2D.
-  const temVoxel = !!getVoxelConfig(characterId);
+  const temVoxel = !!configDoMascote(characterId, mascote);
   const [menuAberto, setMenuAberto] = useState(false);
   const [lado, setLado] = useState<'esquerda' | 'direita'>(() => ler('tdh_companheiro_lado') === 'esquerda' ? 'esquerda' : 'direita');
   const [fimBarraLateral, setFimBarraLateral] = useState(0);
@@ -436,6 +453,13 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       texto: '#6b5a49',
       acao: () => setPainelAnimacao(true),
     }] : []),
+    ...(onAbrirEstudio ? [{
+      id: 'aparencia',
+      rotulo: 'Aparência',
+      cor: '#C8B6A0',
+      texto: '#2f2721',
+      acao: () => { fecharTudo(); onAbrirEstudio(); },
+    }] : []),
     { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca(temVoxel ? 'despedindo' : 'fora'); } },
   ];
   const emCena = presenca === 'aqui' && !isOpen;
@@ -519,7 +543,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
           <div className="p-6 bg-[#fed386] text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
-                {characterId ? <AvatarDisplay characterId={characterId} className="h-full w-full" /> : <img src={companionIconSrc} alt="" className="w-full h-full object-cover object-top" />}
+                {idCompanheiro ? <AvatarDisplay characterId={idCompanheiro} className="h-full w-full" /> : <img src={companionIconSrc} alt="" className="w-full h-full object-cover object-top" />}
               </div>
               <div>
                 <h3 className="font-black text-lg leading-none uppercase">{companionName}</h3>
@@ -876,8 +900,9 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
               // z-10: o boneco fica no miolo da roda e também é o botão de fechar.
               className="relative z-10 transition-transform duration-300 hover:scale-105 active:scale-95"
             >
-              {temVoxel && characterId ? <VoxelAvatar
-                characterId={characterId}
+              {temVoxel ? <VoxelAvatar
+                characterId={idCompanheiro}
+                mascote={mascote}
                 altura={88}
                 pose={presenca === 'despedindo' ? 'tchau' : presenca === 'andando' ? 'andando' : presenca === 'chegando' ? 'voltando' : cochilando ? 'dormindo' : gestoEspontaneo || animacao}
                 fone={comFone}
@@ -896,7 +921,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                   else if (missaoRef.current === 'relogio') { missaoRef.current = 'sair'; onLigarTimer?.(); }
                 }}
               /> : <span className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#fed386] shadow-lg">
-                {characterId ? <AvatarDisplay characterId={characterId} className="h-full w-full" /> : <img src={companionIconSrc} alt="" className="h-full w-full object-cover object-top" />}
+                {idCompanheiro ? <AvatarDisplay characterId={idCompanheiro} className="h-full w-full" /> : <img src={companionIconSrc} alt="" className="h-full w-full object-cover object-top" />}
               </span>}
             </button>
           </div>
