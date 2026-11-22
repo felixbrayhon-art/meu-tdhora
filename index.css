@@ -1996,7 +1996,7 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
        trás do boneco e o engole. Ancorada embaixo e com pouco mais de metade
        da altura, vira o horizonte da tela — o laranja dela continua sendo o
        fundo, e o boneco fica em pé na frente da paisagem. */
-    background: #ff4110 url("/cenario-brasil.webp") center bottom / auto 56% no-repeat;
+    background: #714b27 url("/cenario-brasil.webp") center bottom / auto 62% no-repeat;
     color: var(--cs-roast);
     padding-bottom: 54px;
     overflow: hidden;
@@ -2093,16 +2093,15 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
 #avatar-selection-screen .cs-hero__hint {
     margin-top: .35rem; text-align: center; font-size: 13px; font-weight: 600; color: var(--cs-roast);
 }
-/* A escolha de personagem roda sobre a ilustração do Brasil — casario
-   colonial, catedral, cachoeira, Pão de Açúcar — no laranja dela (#ff4110).
-   Tudo o que estava em marrom sobre areia passa para o creme, que é a cor
-   que a própria ilustração usa nos prédios. Vale só para esta tela: a
-   revelação, logo depois, continua na areia. */
+/* A escolha de personagem roda sobre a ilustração do Brasil — Cristo no
+   morro, vitórias-régias, capivara, onça, mico-leão e arara — no marrom dela
+   (#714b27), com o desenho em creme. Tudo o que estava em marrom sobre areia
+   passa para o creme, que é a cor do próprio desenho. Vale só para esta tela:
+   a revelação, logo depois, continua na areia. */
 #avatar-selection-screen .cs-hero { color: var(--cs-cream); }
 #avatar-selection-screen .cs-eyebrow { color: var(--cs-cream-soft) !important; }
 #avatar-selection-screen .cs-title { color: var(--cs-cream) !important; }
-/* O mostarda sumia no laranja; o marrom da própria ilustração destaca. */
-#avatar-selection-screen .cs-title span { color: #4a2415 !important; }
+#avatar-selection-screen .cs-title span { color: var(--cs-mustard) !important; }
 #avatar-selection-screen .cs-ghost-button { color: var(--cs-cream) !important; }
 #avatar-selection-screen .cs-ghost-button:hover { background: rgba(244,235,221,.14) !important; }
 #avatar-selection-screen .cs-logo { background: rgba(32,21,14,.4); }
@@ -2119,10 +2118,10 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
     text-shadow: 0 1px 10px rgba(40,26,18,.85);
 }
 /* Sólidas: translúcidas elas sumiam em cima da ilustração. */
-#avatar-selection-screen .cs-seta { background: var(--cs-cream); color: #8a3312; box-shadow: 0 6px 16px rgba(90,26,6,.35); }
+#avatar-selection-screen .cs-seta { background: var(--cs-cream); color: #5c3c1f; box-shadow: 0 6px 16px rgba(32,20,8,.35); }
 #avatar-selection-screen .cs-seta:hover { background: #fff; }
-#avatar-selection-screen .cs-vista { background: rgba(74,36,21,.5); color: var(--cs-cream); }
-#avatar-selection-screen .cs-vista.is-ativa { background: var(--cs-cream); color: #8a3312; }
+#avatar-selection-screen .cs-vista { background: rgba(42,27,12,.45); color: var(--cs-cream); }
+#avatar-selection-screen .cs-vista.is-ativa { background: var(--cs-cream); color: #5c3c1f; }
 /* O friso de baixo era marrom sobre areia; no fundo café ele sumia. Em creme
    vira a faixa rasgada que fecha a folha, como nas artes de referência. */
 #avatar-selection-screen .cs-hero__strip { background-color: var(--cs-cream); opacity: .9; }
