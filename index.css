@@ -1985,9 +1985,14 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
     color: var(--cs-cream);
     font-family: 'Gilroy', system-ui, sans-serif;
 }
+/* O cenário em traço — morro, nuvens e casario — cobre a tela da escolha
+   inteira, ancorado embaixo, como um morro visto da rua. Só linha e sem
+   preenchimento, para o boneco continuar sendo a figura. Nada de `filter` por
+   aqui: o cenário fica encostado em centenas de cubos 3D, e borrar perto
+   deles custa quadros inteiros. */
 #avatar-selection-screen .cs-hero {
     position: relative;
-    background: var(--cs-sand);
+    background: var(--cs-sand) url("/cenario-personagem.svg") center bottom / cover no-repeat;
     color: var(--cs-roast);
     padding-bottom: 54px;
     overflow: hidden;
@@ -2051,18 +2056,6 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
     display: flex; align-items: flex-end; justify-content: center;
     height: 100%; flex: 1 1 auto; min-width: 0;
 }
-/* Atrás do boneco, um cenário em traço: morro, casario e grafismo nas quinas,
-   no espírito do desenho brasileiro à mão. É um SVG de 4 KB, só linha e sem
-   preenchimento, então o boneco continua sendo a figura e o fundo não disputa
-   com ele. Nada de `filter` por aqui: o cenário fica encostado em centenas de
-   cubos 3D, e borrar perto deles custa quadros inteiros. */
-#avatar-selection-screen .cs-palco__plate {
-    position: absolute; left: 50%; top: -6%; bottom: -2%;
-    width: min(560px, 96vw); translate: -50% 0;
-    pointer-events: none;
-    background: url("/cenario-personagem.svg") center bottom / contain no-repeat;
-}
-
 #avatar-selection-screen .cs-seta {
     flex: 0 0 auto; display: flex; height: 46px; width: 46px;
     align-items: center; justify-content: center;

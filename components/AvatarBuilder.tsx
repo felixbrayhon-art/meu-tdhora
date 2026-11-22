@@ -101,7 +101,6 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
             </button>
 
             <figure key={personagem.id} className={`cs-palco__figura ${entrando === 'direita' ? 'cs-entra-direita' : 'cs-entra-esquerda'}`}>
-              <span aria-hidden="true" className="cs-palco__plate" />
               <VoxelAvatar
                 key={`${personagem.id}-${vista}`}
                 characterId={personagem.id}
