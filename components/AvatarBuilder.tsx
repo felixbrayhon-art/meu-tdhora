@@ -93,6 +93,27 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
             <h1 id="avatar-selection-title" className="cs-title font-logo">Quem vai estudar <span>com você?</span></h1>
           </div>
 
+          {/* Nome, contador e as vistas vêm antes do boneco: embaixo dele
+              eles caíam em cima da ilustração e ficavam difíceis de ler. */}
+          <div className="cs-nameplate">
+            <h2 className="font-logo" aria-live="polite">{personagem.name}</h2>
+          </div>
+          <p className="cs-hero__hint">{indice + 1} de {CHARACTERS.length} · arraste para os lados para ver os outros</p>
+
+          <div className="cs-vistas" role="radiogroup" aria-label="Qual lado mostrar">
+            {VISTAS.map((v, i) => (
+              <button
+                key={v.id}
+                type="button"
+                role="radio"
+                aria-checked={vista === i}
+                onClick={() => setVista(i)}
+                className={`cs-vista ${vista === i ? 'is-ativa' : ''}`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
           {/* Um boneco só, com as setas de cada lado. No celular o alvo do
               arrasto é o palco inteiro, que é bem maior que as setas. */}
           <div className="cs-palco" onPointerDown={aoPressionar} onPointerUp={aoSoltar} onPointerCancel={() => { arrastoRef.current = null; }}>
@@ -117,25 +138,6 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
             </button>
           </div>
 
-          <div className="cs-nameplate">
-            <h2 className="font-logo" aria-live="polite">{personagem.name}</h2>
-          </div>
-          <p className="cs-hero__hint">{indice + 1} de {CHARACTERS.length} · arraste para os lados para ver os outros</p>
-
-          <div className="cs-vistas" role="radiogroup" aria-label="Qual lado mostrar">
-            {VISTAS.map((v, i) => (
-              <button
-                key={v.id}
-                type="button"
-                role="radio"
-                aria-checked={vista === i}
-                onClick={() => setVista(i)}
-                className={`cs-vista ${vista === i ? 'is-ativa' : ''}`}
-              >
-                {v.label}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div aria-hidden="true" className="cs-hero__strip" />
