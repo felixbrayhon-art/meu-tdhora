@@ -1985,22 +1985,7 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
     color: var(--cs-cream);
     font-family: 'Gilroy', system-ui, sans-serif;
 }
-/* O cenário em traço — morro, nuvens e casario — cobre a tela da escolha
-   inteira, ancorado embaixo, como um morro visto da rua. Só linha e sem
-   preenchimento, para o boneco continuar sendo a figura. Nada de `filter` por
-   aqui: o cenário fica encostado em centenas de cubos 3D, e borrar perto
-   deles custa quadros inteiros. */
-#avatar-selection-screen .cs-hero {
-    position: relative;
-    /* A ilustração é um panorama deitado: deixada em `cover` ela sobe por
-       trás do boneco e o engole. Ancorada embaixo e com pouco mais de metade
-       da altura, vira o horizonte da tela — o laranja dela continua sendo o
-       fundo, e o boneco fica em pé na frente da paisagem. */
-    background: #6d4925;
-    color: var(--cs-roast);
-    padding-bottom: 54px;
-    overflow: hidden;
-}
+
 /* Same "sul-americano" triangle band used in the app header and section
    strips, drawn in the page brown so it reads as the seam into the gallery. */
 #avatar-selection-screen .cs-hero__strip,
@@ -2011,23 +1996,10 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
     -webkit-mask: url("/sul-americano-triangulos.svg") repeat-x left bottom / auto 100%;
     mask: url("/sul-americano-triangulos.svg") repeat-x left bottom / auto 100%;
 }
-#avatar-selection-screen .cs-ghost-button {
-    display: inline-flex; align-items: center; gap: .5rem;
-    min-height: 44px; padding: 0 .85rem; border-radius: 999px;
-    font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
-    color: var(--cs-roast) !important; background: transparent !important;
-    transition: background-color .2s;
-}
-#avatar-selection-screen .cs-ghost-button:hover { background: rgba(74,53,42,.1) !important; }
-#avatar-selection-screen .cs-logo {
-    display: inline-flex; align-items: center; justify-content: center;
-    height: 44px; padding: 0 .9rem; border-radius: 999px; background: var(--cs-roast);
-}
-#avatar-selection-screen .cs-step {
-    border-radius: 999px; border: 1.5px solid rgba(74,53,42,.35);
-    padding: .45rem .85rem; font-size: 10px; font-weight: 800;
-    letter-spacing: .16em; text-transform: uppercase; color: var(--cs-roast);
-}
+
+
+
+
 #avatar-selection-screen .cs-eyebrow,
 #character-reveal-screen .cs-eyebrow {
     display: inline-flex; align-items: center; gap: .4rem;
@@ -2044,124 +2016,49 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
 #avatar-selection-screen .cs-title span,
 #character-reveal-screen .cs-title span { color: var(--cs-rust) !important; }
 
-/* Um personagem por vez. A folha com três vistas e a grade dos 23 saíram:
-   eram 26 bonecos na mesma tela, e cada cubo deles é um contexto 3D que o
-   navegador compõe a cada quadro. Agora é um boneco, e as três vistas viraram
-   giros dele. */
-/* A faixa da paisagem: largura inteira sempre, altura própria. Em `cover`
-   o corte cai fora da tela dos dois lados, então o desenho segue para além
-   dela em vez de terminar numa borda reta no meio do caminho. Sobe um pouco
-   acima da base para o chão do desenho não ficar rente ao friso — e o que
-   aparece embaixo é a mesma cor do céu da arte. */
-#avatar-selection-screen .cs-paisagem {
-    position: absolute; left: 0; right: 0; bottom: 46px;
-    height: clamp(210px, 54%, 460px);
-    background: url("/cenario-brasil.webp") center bottom / cover no-repeat;
-    /* Apagada: é cenário, não assunto — o boneco é que tem de saltar. A
-       opacidade mora neste elemento, que é só a imagem; posta por cima da
-       seção ela apanharia a árvore de cubos do boneco junto, e aí cada
-       quadro custaria caro. */
-    opacity: .6;
-}
 
-#avatar-selection-screen .cs-palco {
-    position: relative; display: flex; align-items: center; justify-content: center;
-    gap: clamp(.25rem, 2vw, 1.5rem);
-    margin: 1.1rem auto 0; max-width: 620px;
-    height: clamp(230px, 38vh, 330px);
-    touch-action: pan-y;
-}
-#avatar-selection-screen .cs-palco__figura {
-    position: relative; margin: 0;
-    display: flex; align-items: flex-end; justify-content: center;
-    /* O boneco desce para pisar no chão da paisagem, em vez de flutuar no
-       meio dela. */
-    height: 100%; flex: 1 1 auto; min-width: 0; transform: translateY(42px);
-}
-#avatar-selection-screen .cs-seta {
-    flex: 0 0 auto; display: flex; height: 46px; width: 46px;
-    align-items: center; justify-content: center;
-    border-radius: 999px; background: var(--cs-brown-plate); color: var(--cs-cream);
-    transition: transform .2s ease, background-color .2s ease;
-}
-#avatar-selection-screen .cs-seta:hover { background: var(--cs-brown); transform: scale(1.08); }
-#avatar-selection-screen .cs-seta:active { transform: scale(.94); }
 
-#avatar-selection-screen .cs-vistas {
-    display: flex; justify-content: center; gap: .4rem; margin-top: .9rem;
-}
-#avatar-selection-screen .cs-vista {
-    min-height: 40px; padding: 0 .9rem; border-radius: 12px;
-    background: var(--cs-brown-plate); color: var(--cs-cream-soft);
-    font-size: 10px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase;
-    transition: background-color .2s ease, color .2s ease;
-}
-#avatar-selection-screen .cs-vista.is-ativa { background: var(--cs-mustard); color: var(--cs-roast); }
 
-#avatar-selection-screen .cs-entra-direita { animation: cs-entra-dir .28s ease-out; }
-#avatar-selection-screen .cs-entra-esquerda { animation: cs-entra-esq .28s ease-out; }
 
-#avatar-selection-screen .cs-nameplate {
-    margin-top: .9rem; display: flex; align-items: center; justify-content: center; gap: .6rem;
-}
-#avatar-selection-screen .cs-nameplate h2 {
-    font-size: clamp(1.35rem, 3vw, 1.9rem); text-transform: uppercase; line-height: 1.1;
-    color: var(--cs-roast) !important;
-}
-#avatar-selection-screen .cs-hero__hint {
-    margin-top: .35rem; text-align: center; font-size: 13px; font-weight: 600; color: var(--cs-roast);
-}
-/* A escolha de personagem roda sobre a ilustração do Brasil — Cristo no
-   morro, vitórias-régias, capivara, onça, mico-leão e arara — no marrom dela
-   (#714b27), com o desenho em creme. Tudo o que estava em marrom sobre areia
-   passa para o creme, que é a cor do próprio desenho. Vale só para esta tela:
-   a revelação, logo depois, continua na areia. */
-#avatar-selection-screen .cs-hero { color: var(--cs-cream); }
-#avatar-selection-screen .cs-eyebrow { color: var(--cs-cream-soft) !important; }
-#avatar-selection-screen .cs-title { color: var(--cs-cream) !important; }
-#avatar-selection-screen .cs-title span { color: var(--cs-mustard) !important; }
-#avatar-selection-screen .cs-ghost-button { color: var(--cs-cream) !important; }
-#avatar-selection-screen .cs-ghost-button:hover { background: rgba(244,235,221,.14) !important; }
-#avatar-selection-screen .cs-logo { background: rgba(32,21,14,.4); }
-#avatar-selection-screen .cs-step { border-color: rgba(244,235,221,.4); color: var(--cs-cream-soft); }
-/* O nome cai em cima do casario. A sombra no texto o separa do traço sem
-   precisar apagar o desenho atrás — e sombra de texto não encosta na árvore
-   3D do boneco, então não custa quadro nenhum. */
-#avatar-selection-screen .cs-nameplate h2 {
-    color: var(--cs-cream) !important;
-    text-shadow: 0 2px 12px rgba(40,26,18,.85), 0 0 24px rgba(40,26,18,.6);
-}
-#avatar-selection-screen .cs-hero__hint {
-    color: var(--cs-cream-soft);
-    text-shadow: 0 1px 10px rgba(40,26,18,.85);
-}
-/* Sólidas: translúcidas elas sumiam em cima da ilustração. */
-#avatar-selection-screen .cs-seta { background: var(--cs-cream); color: #5c3c1f; box-shadow: 0 6px 16px rgba(32,20,8,.35); }
-#avatar-selection-screen .cs-seta:hover { background: #fff; }
-#avatar-selection-screen .cs-vista { background: rgba(42,27,12,.45); color: var(--cs-cream); }
-#avatar-selection-screen .cs-vista.is-ativa { background: var(--cs-cream); color: #5c3c1f; }
-/* O friso de baixo era marrom sobre areia; no fundo café ele sumia. Em creme
-   vira a faixa rasgada que fecha a folha, como nas artes de referência. */
-#avatar-selection-screen .cs-hero__strip { background-color: var(--cs-cream); opacity: .9; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #avatar-selection-screen :is(.cs-seta, .cs-vista, .cs-ghost-button, .cs-cta):focus-visible,
 #character-reveal-screen .cs-cta:focus-visible {
     outline: 3px solid var(--cs-mustard); outline-offset: 3px;
 }
 
-#avatar-selection-screen .cs-footer {
-    position: sticky; bottom: 0; z-index: 30;
-    background: rgba(74,53,42,.96); backdrop-filter: blur(8px);
-    box-shadow: 0 -10px 24px rgba(40,26,18,.3);
-}
 
-#avatar-selection-screen .cs-footer__name {
-    display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    font-family: 'Gilroy', sans-serif; font-weight: 800; font-size: 15px; text-transform: uppercase; color: var(--cs-cream);
-}
-#avatar-selection-screen .cs-footer__meta {
-    display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--cs-cream-soft);
-}
+
+
+
 #avatar-selection-screen .cs-cta,
 #character-reveal-screen .cs-cta {
     display: inline-flex; align-items: center; gap: .5rem; flex-shrink: 0;

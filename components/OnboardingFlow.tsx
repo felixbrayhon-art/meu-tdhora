@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StudyProfile } from '../types';
 import ProfileSelection from './ProfileSelection';
-import AvatarBuilder from './AvatarBuilder';
+import MascoteStudio from './MascoteStudio';
 import CharacterRevealScreen from './CharacterRevealScreen';
 import { defaultCharacterId } from '../services/avatarService';
 
@@ -27,13 +27,21 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
   }
 
   if (step === 'personagem') {
+    // O estúdio é a própria escolha: quem está entrando escolhe entre os
+    // prontos ou monta o seu na mesma tela, em vez de escolher aqui e só
+    // depois descobrir que dá para editar.
     return (
-      <AvatarBuilder
-        initialCharacterId={characterId}
-        onBack={() => setStep('objetivo')}
-        confirmLabel="Começar"
-        onSave={(id) => { setCharacterId(id); setStep('revelacao'); }}
-      />
+      <div className="min-h-screen bg-[#fdfbf7] px-4 py-5 dark:bg-[#1c1712] sm:px-6">
+        <div className="mx-auto w-full max-w-[1180px]">
+          <MascoteStudio
+            characterId={characterId}
+            onBack={() => setStep('objetivo')}
+            rotuloVoltar="Voltar"
+            rotuloConfirmar="Começar"
+            onConfirmar={(id) => { setCharacterId(id); setStep('revelacao'); }}
+          />
+        </div>
+      </div>
     );
   }
 

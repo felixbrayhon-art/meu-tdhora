@@ -7,7 +7,6 @@ import SplashScreen from './components/SplashScreen';
 import FishCompanion from './components/FishCompanion';
 import BuildTag from './components/BuildTag';
 import OnboardingFlow from './components/OnboardingFlow';
-import AvatarBuilder from './components/AvatarBuilder';
 import ProfileSelection from './components/ProfileSelection';
 import { checkIsAdmin } from './services/questionBankService';
 import Sidebar from './components/Sidebar';
@@ -1206,16 +1205,19 @@ const App: React.FC = () => {
   if (isAvatarPreview)
     return (
       <>
-        <AvatarBuilder
-          initialCharacterId={stats.characterId}
-          confirmLabel="Prévia do personagem"
-          onSave={() => undefined}
-          onClose={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.delete('previewAvatar');
-            window.location.assign(`${url.pathname}${url.search}${url.hash}`);
-          }}
-        />
+        <div className="min-h-screen bg-[#fdfbf7] px-4 py-5 dark:bg-[#1c1712] sm:px-6">
+          <div className="mx-auto w-full max-w-[1180px]">
+            <MascoteStudio
+              characterId={stats.characterId}
+              rotuloVoltar="Fechar"
+              onBack={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('previewAvatar');
+                window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+              }}
+            />
+          </div>
+        </div>
         <BuildTag />
       </>
     );
