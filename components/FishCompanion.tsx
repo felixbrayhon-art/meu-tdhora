@@ -4,7 +4,8 @@ import { AppView, StudyProfile } from '../types';
 import { getCharacter } from '../services/avatarService';
 import AvatarDisplay from './AvatarDisplay';
 import VoxelAvatar, { POSES_ESCOLHIVEIS, VoxelPose } from './VoxelAvatar';
-import { AVISO, Mascote, ler as lerMascote, nomeDoMascote } from '../services/mascote';
+import { nomeDoMascote } from '../services/mascote';
+import { useMascote } from '../contexts/CharacterContext';
 import CompanionWheel, { ItemRoda } from './CompanionWheel';
 import { getVoxelConfig } from '../services/voxelCharacters';
 
@@ -60,15 +61,9 @@ const PERIODOS = [
 ];
 
 const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId, telaAtual, revisoesPendentes = 0, flashcardsPendentes = 0, emQuestao = false, onAbrirRevisoes, onAbrirFlashcards, onAbrirEstudio, recuoRem = 1, sobreEditor = false, sobreAula = false, tempoJaNaTela = false, activeChannel = null, setActiveChannel, timerAtivo = false, onLigarTimer, onPararTimer, timerTerminouEm = 0, timerSegundos = 0, minutosPomodoro = 25, onAjustarMinutos, isPlayingRain = false, setIsPlayingRain, audioVolume = 0.5, setAudioVolume }) => {
-  // O mascote que o aluno montou no estúdio. É outra tela, sem estado em comum
-  // com esta: o aviso do serviço é o que traz a mudança para cá na hora.
-  const [mascote, setMascote] = useState<Mascote>(() => lerMascote());
-  useEffect(() => {
-    const reler = () => setMascote(lerMascote());
-    window.addEventListener(AVISO, reler);
-    window.addEventListener('storage', reler);
-    return () => { window.removeEventListener(AVISO, reler); window.removeEventListener('storage', reler); };
-  }, []);
+  // O mascote que o aluno montou no estúdio, vindo do mesmo lugar que as
+  // outras telas leem: assim o boneco do canto e o do perfil nunca discordam.
+  const mascote = useMascote();
   // Trocar o personagem no estúdio troca o companheiro inteiro — nome, retrato
   // do chat e boneco. Sem isso a roda chamava de Médica um cachorro com violão.
   // No modo criado não existe arte 2D, então o retrato segue sendo o do
