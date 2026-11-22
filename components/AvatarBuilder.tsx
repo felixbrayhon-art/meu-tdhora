@@ -71,6 +71,12 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
       className="cs-screen fixed inset-0 z-[1200] flex flex-col overflow-y-auto animate-in fade-in duration-500"
     >
       <section className="cs-hero flex-1" aria-label={`Personagem: ${personagem.name}`}>
+        {/* A paisagem é um elemento, não o fundo da seção: como fundo ela
+            tinha de escolher entre ocupar a largura toda (e crescer até
+            cobrir o título nas telas largas e baixas) ou manter a altura (e
+            deixar a borda do desenho à mostra). Numa faixa própria ela faz as
+            duas coisas. */}
+        <span aria-hidden="true" className="cs-paisagem" />
         <div className="relative mx-auto flex w-full max-w-[1180px] flex-col px-4 pt-3 sm:px-6 sm:pt-4">
           <header className="flex items-center justify-between gap-3">
             {onBack || onClose ? (

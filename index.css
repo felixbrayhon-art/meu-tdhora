@@ -1996,9 +1996,7 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
        trás do boneco e o engole. Ancorada embaixo e com pouco mais de metade
        da altura, vira o horizonte da tela — o laranja dela continua sendo o
        fundo, e o boneco fica em pé na frente da paisagem. */
-    /* A paisagem sobe um pouco acima da borda: assim o chão dela aparece
-       inteiro, em vez de ficar rente ao friso. */
-    background: #714b27 url("/cenario-brasil.webp") center calc(100% - 46px) / auto 66% no-repeat;
+    background: #6d4925;
     color: var(--cs-roast);
     padding-bottom: 54px;
     overflow: hidden;
@@ -2050,6 +2048,17 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
    eram 26 bonecos na mesma tela, e cada cubo deles é um contexto 3D que o
    navegador compõe a cada quadro. Agora é um boneco, e as três vistas viraram
    giros dele. */
+/* A faixa da paisagem: largura inteira sempre, altura própria. Em `cover`
+   o corte cai fora da tela dos dois lados, então o desenho segue para além
+   dela em vez de terminar numa borda reta no meio do caminho. Sobe um pouco
+   acima da base para o chão do desenho não ficar rente ao friso — e o que
+   aparece embaixo é a mesma cor do céu da arte. */
+#avatar-selection-screen .cs-paisagem {
+    position: absolute; left: 0; right: 0; bottom: 46px;
+    height: clamp(210px, 54%, 460px);
+    background: url("/cenario-brasil.webp") center bottom / cover no-repeat;
+}
+
 #avatar-selection-screen .cs-palco {
     position: relative; display: flex; align-items: center; justify-content: center;
     gap: clamp(.25rem, 2vw, 1.5rem);
