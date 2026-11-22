@@ -94,17 +94,12 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
             <span className="cs-step hidden sm:inline-block">Passo 2 de 2</span>
           </header>
 
+          {/* Uma linha só. O nome do personagem e o contador já estão no
+              rodapé, junto do botão que confirma — repeti-los aqui enchia a
+              tela de texto na frente da ilustração. */}
           <div className="mt-3 text-center sm:mt-4">
-            <p className="cs-eyebrow">Seu companheiro de foco</p>
-            <h1 id="avatar-selection-title" className="cs-title font-logo">Quem vai estudar <span>com você?</span></h1>
+            <h1 id="avatar-selection-title" className="cs-title font-logo">Escolha o seu <span>mascote</span></h1>
           </div>
-
-          {/* Nome, contador e as vistas vêm antes do boneco: embaixo dele
-              eles caíam em cima da ilustração e ficavam difíceis de ler. */}
-          <div className="cs-nameplate">
-            <h2 className="font-logo" aria-live="polite">{personagem.name}</h2>
-          </div>
-          <p className="cs-hero__hint">{indice + 1} de {CHARACTERS.length} · arraste para os lados para ver os outros</p>
 
           <div className="cs-vistas" role="radiogroup" aria-label="Qual lado mostrar">
             {VISTAS.map((v, i) => (
@@ -152,7 +147,9 @@ const AvatarBuilder: React.FC<AvatarBuilderProps> = ({ initialCharacterId, onSav
       <footer className="cs-footer">
         <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <span className="min-w-0">
-            <span className="cs-footer__name">{personagem.name}</span>
+            {/* O nome muda sem a página recarregar; o aviso leva a troca para
+                quem usa leitor de tela, que antes ouvia pelo título acima. */}
+            <span className="cs-footer__name" aria-live="polite">{personagem.name}</span>
             <span className="cs-footer__meta">{indice + 1} de {CHARACTERS.length}</span>
           </span>
           <button type="button" onClick={() => onSave(personagem.id)} className="cs-cta group">
