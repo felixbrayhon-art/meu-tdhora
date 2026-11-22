@@ -4,6 +4,7 @@ import FishLogo from './FishLogo';
 import MascoteStudio from './MascoteStudio';
 import CharacterRevealScreen from './CharacterRevealScreen';
 import VoxelAvatar from './VoxelAvatar';
+import { useMascote } from '../contexts/CharacterContext';
 import { Zap } from './icons';
 import { BackupSection } from './BackupControls';
 
@@ -34,6 +35,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
   const [name, setName] = useState(stats.name);
   const [selectedColor, setSelectedColor] = useState(stats.avatarColor);
   const [characterId, setCharacterId] = useState<string | undefined>(stats.characterId);
+  const mascote = useMascote();
   const [showAvatarBuilder, setShowAvatarBuilder] = useState(false);
   const [revealCharacterId, setRevealCharacterId] = useState<string | null>(null);
   const [profile, setProfile] = useState<StudyProfile>(stats.studyProfile || 'VESTIBULAR');
@@ -95,7 +97,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
             <div className="relative z-10 flex flex-col items-center gap-8 md:flex-row">
               <button onClick={() => setShowAvatarBuilder(true)} className="group relative h-44 w-36 shrink-0 overflow-hidden rounded-[32px] border-4 border-white/10 bg-white/5 shadow-inner transition-transform hover:scale-[1.02]">
                 {characterId ? (
-                  <VoxelAvatar characterId={characterId} altura={176} pose="parado" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  <VoxelAvatar characterId={characterId} mascote={mascote} altura={176} pose="parado" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
                 ) : (
                   <div className="flex h-full items-center justify-center" style={{ backgroundColor: selectedColor }}>
                     <FishLogo iconOnly primaryColor="white" className="scale-150" days={stats.totalDaysStudied} />

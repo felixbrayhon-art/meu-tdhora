@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight } from './icons';
 import { getCharacter } from '../services/avatarService';
 import VoxelAvatar from './VoxelAvatar';
+import { ler as lerMascote } from '../services/mascote';
 
 interface CharacterRevealScreenProps {
   characterId: string;
@@ -22,6 +23,9 @@ const CharacterRevealScreen: React.FC<CharacterRevealScreenProps> = ({
   continueLabel = 'Vamos lá!',
 }) => {
   const character = getCharacter(characterId);
+  // Lido uma vez: esta tela aparece por segundos e some, e o estúdio acabou
+  // de gravar. Vale também no cadastro, que roda antes do provedor existir.
+  const [mascote] = useState(() => lerMascote());
   const autoContinueMs = AUTO_CONTINUE_MS;
 
   useEffect(() => {
@@ -43,7 +47,7 @@ const CharacterRevealScreen: React.FC<CharacterRevealScreenProps> = ({
 
         <figure className="cr-figure animate-in zoom-in-95 duration-700" aria-label={`${character.name} comemorando`}>
           <span aria-hidden="true" className="cr-figure__plate" />
-          <VoxelAvatar characterId={characterId} altura={300} pose="festejando" className="cr-figure__art" />
+          <VoxelAvatar characterId={characterId} mascote={mascote} altura={300} pose="festejando" className="cr-figure__art" />
         </figure>
 
         <div aria-hidden="true" className="cs-hero__strip" />

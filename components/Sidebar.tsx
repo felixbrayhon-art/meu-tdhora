@@ -3,6 +3,7 @@ import { AppView, QuizFolder, FlashcardFolder, UserStats, getFishRank } from '..
 import { Home, Timer, Layers, BookOpen, Brain, ChevronDown, ChevronRight, ChevronLeft, Folder, FileText, Users, Plus, PanelLeftOpen, PanelLeftClose, BarChart3, Bookmark, Scale, PenLine, Zap, Clock, Trophy, Moon, Sun } from './icons';
 import { motion, AnimatePresence } from 'motion/react';
 import FishLogo from './FishLogo';
+import { useMascote } from '../contexts/CharacterContext';
 import AvatarDisplay from './AvatarDisplay';
 
 interface SidebarProps {
@@ -22,6 +23,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, flashcardFolders, stats, onSelectNotebook, onSelectFlashcardFolder, questionSession = false, isDarkMode = false, onToggleDarkMode, drawer = false, onClose }) => {
+  const mascote = useMascote();
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => { try { return JSON.parse(localStorage.getItem('focus_sidebar_groups') || '{}'); } catch { return {}; } });
@@ -171,7 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, quizFolders, fl
             className={`mt-8 flex items-center gap-3 w-full bg-[#f4ebdd] dark:bg-[#272019] p-3 rounded-2xl border border-[#eee6d6] dark:border-white/[0.06] overflow-hidden transition-all hover:bg-[#eee6d6] dark:hover:bg-[#322922] hover:border-[#e3d9ca] dark:hover:border-white/[0.1] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fec868] ${collapsed ? 'justify-center' : ''}`}
           >
             {stats.characterId ? (
-              <AvatarDisplay characterId={stats.characterId} className="w-10 h-10 rounded-full shrink-0" />
+              <AvatarDisplay characterId={stats.characterId} mascote={mascote} className="w-10 h-10 rounded-full shrink-0" />
             ) : (
               <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: stats.avatarColor }}>
                 <FishLogo iconOnly primaryColor="white" className="scale-[0.4]" days={stats.totalDaysStudied} />

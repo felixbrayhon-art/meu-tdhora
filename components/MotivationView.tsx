@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getDailyBibleMotivation } from '../services/geminiService';
-import { useCharacterId } from '../contexts/CharacterContext';
+import { useCharacterId, useMascote } from '../contexts/CharacterContext';
 import VoxelAvatar from './VoxelAvatar';
 import { toLocalDateKey } from '../utils/localDate';
 
@@ -8,6 +8,7 @@ const MotivationView: React.FC = () => {
   const [motivation, setMotivation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const characterId = useCharacterId();
+  const mascote = useMascote();
 
   useEffect(() => {
     const lastFetch = localStorage.getItem('motivation_fetch_date');
@@ -49,7 +50,7 @@ const MotivationView: React.FC = () => {
       ) : (
         <div className="relative w-full flex flex-col items-center sm:flex-row sm:items-end sm:justify-center gap-2 sm:gap-0">
           {/* Dormindo: é o momento de paz, e é a pose de descanso que ele tem. */}
-          <VoxelAvatar characterId={characterId} altura={150} pose="dormindo" className="shrink-0 sm:-mr-2 sm:mb-2" />
+          <VoxelAvatar characterId={characterId} mascote={mascote} altura={150} pose="dormindo" className="shrink-0 sm:-mr-2 sm:mb-2" />
           <div className="bg-white/70 rounded-[30px] px-6 py-5 shadow-sm max-w-lg">
             <p className="text-[#799339] text-lg font-bold text-center leading-relaxed">{motivation}</p>
           </div>
