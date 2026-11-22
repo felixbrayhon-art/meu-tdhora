@@ -3,7 +3,7 @@ import { chatWithFish, getMotivacao, EstiloMotivacao } from '../services/geminiS
 import { AppView, StudyProfile } from '../types';
 import { getCharacter } from '../services/avatarService';
 import AvatarDisplay from './AvatarDisplay';
-import VoxelAvatar, { POSES_ESCOLHIVEIS, VoxelPose } from './VoxelAvatar';
+import VoxelAvatar, { VoxelPose } from './VoxelAvatar';
 import { nomeDoMascote } from '../services/mascote';
 import { useMascote } from '../contexts/CharacterContext';
 import CompanionWheel, { ItemRoda } from './CompanionWheel';
@@ -88,7 +88,6 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const [painelTempo, setPainelTempo] = useState(false);
   const [painelSom, setPainelSom] = useState(false);
   const [painelMotivacao, setPainelMotivacao] = useState(false);
-  const [painelAnimacao, setPainelAnimacao] = useState(false);
   // A escolha entre bíblica e filosófica fica gravada: é preferência, não
   // decisão para refazer a cada frase pedida.
   const [estiloMotivacao, setEstiloMotivacao] = useState<EstiloMotivacao>(() => {
@@ -131,9 +130,10 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   // A roda de opções não cabe encostada no canto, então, enquanto ela está
   // aberta, o companheiro inteiro desliza para o meio da tela e volta depois.
   const [desloc, setDesloc] = useState({ x: 0, y: 0, escala: 1 });
-  // A animação que o aluno escolheu. Enquanto for a padrão, o cochilo automático
-  // ainda vale; a partir do momento em que ele escolhe algo, a escolha manda.
-  const [animacao, setAnimacao] = useState<VoxelPose>('estudando');
+  // A animação que o aluno escolheu, guardada junto do resto do mascote: é
+  // no estúdio que ela se escolhe agora, e não numa fatia à parte da roda.
+  // Enquanto for a padrão, o cochilo automático ainda vale.
+  const animacao: VoxelPose = mascote.animacao || 'estudando';
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
@@ -420,13 +420,6 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       acao: () => setPainelSom(true),
     },
     {
-      id: 'cronometro',
-      rotulo: timerAtivo ? 'Parar o cronômetro' : 'Ligar o cronômetro',
-      cor: timerAtivo ? '#7D7A36' : '#F4EBDD',
-      texto: timerAtivo ? '#f7f3ed' : '#6b5a49',
-      acao: timerAtivo ? pararTimer : ligarTimer,
-    },
-    {
       id: 'motivacao',
       rotulo: 'Motivação',
       cor: '#8A9A7B',
@@ -434,18 +427,13 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       acao: () => setPainelMotivacao(true),
     },
     {
-      id: 'ajustar',
-      rotulo: 'Ajustar o tempo',
-      cor: '#F4EBDD',
-      texto: '#6b5a49',
+      // Ligar, parar e ajustar os minutos eram três coisas em duas fatias;
+      // é um assunto só, e o painel já dava conta das três.
+      id: 'cronometro',
+      rotulo: 'Cronômetro',
+      cor: timerAtivo ? '#7D7A36' : '#F4EBDD',
+      texto: timerAtivo ? '#f7f3ed' : '#6b5a49',
       acao: () => setPainelTempo(true),
-    },
-    {
-      id: 'animacao',
-      rotulo: 'Animação',
-      cor: '#E8DDCC',
-      texto: '#6b5a49',
-      acao: () => setPainelAnimacao(true),
     },
     ...(onAbrirEstudio ? [{
       id: 'aparencia',
@@ -457,14 +445,13 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
   ];
   const emCena = presenca === 'aqui' && !isOpen;
-  const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && !painelAnimacao && emCena;
+  const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && emCena;
   const painelAberto = painelTempo && emCena;
   const somAberto = painelSom && emCena;
   const motivacaoAberta = painelMotivacao && emCena;
-  const animacaoAberta = painelAnimacao && emCena;
-  const aberto = rodaAberta || painelAberto || somAberto || motivacaoAberta || animacaoAberta;
+  const aberto = rodaAberta || painelAberto || somAberto || motivacaoAberta;
   const camadaEditor = sobreEditor && editorTelaCheia;
-  const fecharTudo = () => { setMenuAberto(false); setPainelTempo(false); setPainelSom(false); setPainelMotivacao(false); setPainelAnimacao(false); };
+  const fecharTudo = () => { setMenuAberto(false); setPainelTempo(false); setPainelSom(false); setPainelMotivacao(false); };
   const alternarAjuda = () => {
     const ativa = !ajudaAutomatica;
     setAjudaAutomatica(ativa);
@@ -508,7 +495,9 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   // A etiqueta aparece onde a tela ainda não mostra o tempo em lugar nenhum:
   // duas contagens na mesma tela só competem entre si. Em pé ela fica acima da cabeça dele, altura que
   // também cabe dentro do furo da roda — então não precisa sumir quando a roda abre.
-  const mostrarTempo = timerAtivo && !tempoJaNaTela && presenca === 'aqui';
+  // A pastilha do tempo some com o painel aberto: ele já mostra quanto falta,
+  // em letra grande, e os dois juntos eram o mesmo número duas vezes.
+  const mostrarTempo = timerAtivo && !tempoJaNaTela && presenca === 'aqui' && !painelTempo;
 
   return (
     <>
@@ -671,37 +660,6 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                 <CompanionWheel itens={itensRoda} rotulo={`Opções de ${companionName}`} />
               </div>
             )}
-            {animacaoAberta && (
-              /* As seis animações saíram da roda para cá. Com elas lá dentro o
-                 anel chegou a doze fatias, e aí o rótulo fica maior que o setor
-                 e vaza por cima do vizinho. Em duas colunas ainda se lê. */
-              <div ref={menuRef} role="dialog" aria-label="Animação" className="absolute left-1/2 top-1/2 z-20 w-[244px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Animação</span>
-                  <button type="button" onClick={() => setPainelAnimacao(false)} aria-label="Fechar" className="flex h-7 w-7 items-center justify-center rounded-lg text-[#8f8375] transition-colors hover:bg-[#f0e8dc] dark:hover:bg-white/5">
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
-                {/* Fica aberto depois de escolher: o painel cobre o boneco, mas
-                    a pessoa costuma experimentar duas ou três até achar a que quer. */}
-                <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Qual animação">
-                  {POSES_ESCOLHIVEIS.map(({ pose, rotulo }) => (
-                    <button
-                      key={pose}
-                      type="button"
-                      role="radio"
-                      aria-checked={animacao === pose}
-                      onClick={() => setAnimacao(pose)}
-                      className={`min-h-[42px] rounded-xl px-1 text-[10px] font-black uppercase tracking-wide transition-colors ${
-                        animacao === pose ? 'bg-[#473c33] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
-                      }`}
-                    >
-                      {rotulo}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
             {motivacaoAberta && (
               <div ref={menuRef} role="dialog" aria-label="Motivação" className="absolute left-1/2 top-1/2 z-20 max-h-[min(80vh,480px)] w-[244px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
                 <div className="mb-3 flex items-center justify-between">
@@ -836,13 +794,21 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                  coberto enquanto isto está aberto. Mantive centrado em vez de
                  acima dele para não estourar o topo em tela curta: o painel
                  tem 230px e subi-lo inteiro deixaria 12px de folga num 640. */
-              <div ref={menuRef} role="dialog" aria-label="Ajustar o tempo do cronômetro" className="absolute left-1/2 top-1/2 z-20 w-[244px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
+              <div ref={menuRef} role="dialog" aria-label="Cronômetro" className="absolute left-1/2 top-1/2 z-20 w-[244px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-[#e9e0d4] bg-[#fdfbf7] p-4 shadow-2xl dark:border-white/10 dark:bg-[#2d2e27]">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Ajustar o tempo</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#a79c8e]">Cronômetro</span>
                   <button type="button" onClick={() => setPainelTempo(false)} aria-label="Fechar" className="flex h-7 w-7 items-center justify-center rounded-lg text-[#8f8375] transition-colors hover:bg-[#f0e8dc] dark:hover:bg-white/5">
                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
+                {/* Correndo, o que importa é quanto falta; parado, de quantos
+                    minutos ele vai ser. */}
+                {timerAtivo ? (
+                  <div className="mb-3 rounded-2xl bg-[#f0e8dc] py-3 text-center dark:bg-white/5">
+                    <span className="block text-3xl font-black tabular-nums leading-none text-[#473c33] dark:text-[#f2efd2]">{faltam}</span>
+                    <span className="mt-1 block text-[9px] font-black uppercase tracking-[0.18em] text-[#a79c8e]">falta</span>
+                  </div>
+                ) : (
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <button type="button" onClick={() => onAjustarMinutos?.(Math.max(1, minutosPomodoro - 5))} aria-label="Cinco minutos a menos" className="h-11 w-11 rounded-2xl bg-[#f0e8dc] text-lg font-black text-[#473c33] transition-colors hover:bg-[#e6dac8] dark:bg-white/5 dark:text-[#f2efd2]">−</button>
                   <div className="text-center leading-none">
@@ -851,7 +817,8 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
                   </div>
                   <button type="button" onClick={() => onAjustarMinutos?.(Math.min(180, minutosPomodoro + 5))} aria-label="Cinco minutos a mais" className="h-11 w-11 rounded-2xl bg-[#f0e8dc] text-lg font-black text-[#473c33] transition-colors hover:bg-[#e6dac8] dark:bg-white/5 dark:text-[#f2efd2]">+</button>
                 </div>
-                <div className="mb-3 grid grid-cols-4 gap-1.5">
+                )}
+                <div className={`mb-3 grid grid-cols-4 gap-1.5 ${timerAtivo ? 'hidden' : ''}`}>
                   {[15, 25, 45, 50].map((m) => (
                     <button
                       key={m}

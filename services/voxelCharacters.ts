@@ -108,5 +108,26 @@ export const VOXEL_CHARACTERS: Record<string, VoxelConfig> = {
   'vira-lata-caramelo': { nome: 'Vira-Lata Caramelo', skin: '#d07030', cabelo: '#d07030', estilo: 'careca', torso: '#c0d0f0', faixa: '#a8c0e8', pernas: '#303030', sapato: '#6b4529', balde: '#f0f0d0', iris: '#4a2f1a', bicho: { orelha: '#a85a22', dentro: '#e8b88a', focinho: '#f0d8b8', nariz: '#2a1f1a', rabo: ['#d07030', '#c06828', '#d07030'] }, dir: 'nada', esq: 'nada' },
 };
 
+/**
+ * As animações do boneco. Moram aqui, e não no componente que desenha, porque
+ * o mascote guarda qual delas o aluno escolheu — e um serviço não pode
+ * depender de um componente sem fechar um ciclo entre os dois.
+ */
+export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando' | 'dancando' | 'distraido-olhar' | 'distraido-maos' | 'distraido-pes' | 'lendo';
+
+/** As que dá para escolher na tela. 'andando' fica de fora: é a saída. */
+export const POSES_ESCOLHIVEIS: { pose: VoxelPose; rotulo: string }[] = [
+  { pose: 'estudando', rotulo: 'Estudando' },
+  { pose: 'lendo', rotulo: 'Lendo' },
+  { pose: 'parado', rotulo: 'De boa' },
+  { pose: 'tchau', rotulo: 'Acenando' },
+  { pose: 'festejando', rotulo: 'Comemorando' },
+  { pose: 'dancando', rotulo: 'Dançando' },
+  { pose: 'distraido-olhar', rotulo: 'Olhando em volta' },
+  { pose: 'distraido-maos', rotulo: 'Brincando com as mãos' },
+  { pose: 'distraido-pes', rotulo: 'Balançando os pés' },
+  { pose: 'dormindo', rotulo: 'Dormindo' },
+];
+
 export const getVoxelConfig = (id?: string): VoxelConfig | undefined =>
   id ? VOXEL_CHARACTERS[id] : undefined;

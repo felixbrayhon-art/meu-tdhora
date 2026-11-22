@@ -114,7 +114,10 @@ const Marcar: React.FC<{ ligado: boolean; onMudar: (v: boolean) => void; childre
 
 const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onConfirmar, rotuloConfirmar = 'Confirmar mascote', rotuloVoltar = 'Voltar' }) => {
   const [mascote, setMascote] = useState<Mascote>(() => ler());
-  const [pose, setPose] = useState<VoxelPose>('parado');
+  // A animação não é mais só a amostra daqui: é a que o boneco faz no canto
+  // da tela, e fica guardada com o resto do mascote. Era uma fatia separada
+  // na roda, repetindo o que este seletor já fazia.
+  const pose: VoxelPose = mascote.animacao || 'estudando';
   const criado = mascote.modo === 'criado';
   const cfg = configDoMascote(characterId, mascote);
   // No modo criado os campos que o aluno ainda não tocou valem pelo padrão, e é
@@ -151,15 +154,15 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
           </div>
           <h2 className="mt-2 text-center text-xl font-black uppercase tracking-tight text-[#473c33] dark:text-[#f4ebdd]">{cfg?.nome || 'Mascote'}</h2>
           <div className="mt-3">
-            <Rotulo>Ver mexendo</Rotulo>
-            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Animação da amostra">
+            <Rotulo>O que ele fica fazendo</Rotulo>
+            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="O que ele fica fazendo">
               {POSES_ESCOLHIVEIS.map(({ pose: p, rotulo }) => (
                 <button
                   key={p}
                   type="button"
                   role="radio"
                   aria-checked={pose === p}
-                  onClick={() => setPose(p)}
+                  onClick={() => mudar({ animacao: p })}
                   className={`min-h-9 rounded-lg px-2 text-[9px] font-black uppercase tracking-wide transition-colors ${
                     pose === p ? 'bg-[#e96f34] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
                   }`}
