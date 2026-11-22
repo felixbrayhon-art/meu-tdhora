@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { UserStats, StudyProfile, ExplanationStyle, getFishRank } from '../types';
 import FishLogo from './FishLogo';
-import AvatarBuilder from './AvatarBuilder';
+import MascoteStudio from './MascoteStudio';
 import CharacterRevealScreen from './CharacterRevealScreen';
 import VoxelAvatar from './VoxelAvatar';
 import { Zap } from './icons';
@@ -273,14 +273,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({ stats, onUpdate, onBack, onOp
         </div>
       </div>
       {showAvatarBuilder && (
-        <AvatarBuilder
-          initialCharacterId={characterId}
-          onClose={() => setShowAvatarBuilder(false)}
-          onSave={(newCharacterId: string) => {
-            setShowAvatarBuilder(false);
-            setRevealCharacterId(newCharacterId);
-          }}
-        />
+        <div role="dialog" aria-modal="true" aria-label="Escolher o mascote" className="fixed inset-0 z-[1200] overflow-y-auto bg-[#fdfbf7] px-4 py-5 dark:bg-[#1c1712] sm:px-6">
+          <div className="mx-auto w-full max-w-[1180px]">
+            <MascoteStudio
+              characterId={characterId}
+              onBack={() => setShowAvatarBuilder(false)}
+              rotuloVoltar="Fechar"
+              rotuloConfirmar="Confirmar mascote"
+              onConfirmar={(novoId: string) => {
+                setShowAvatarBuilder(false);
+                setRevealCharacterId(novoId);
+              }}
+            />
+          </div>
+        </div>
       )}
       {revealCharacterId && (
         <CharacterRevealScreen

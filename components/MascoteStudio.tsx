@@ -38,6 +38,15 @@ import {
 interface MascoteStudioProps {
   characterId?: string;
   onBack: () => void;
+  /**
+   * Quando existe, o estúdio também é a tela de escolher o personagem: ganha
+   * o botão que confirma e devolve qual personagem ficou valendo. É o mesmo
+   * estúdio, para quem está entrando já poder escolher e mexer de uma vez,
+   * em vez de escolher numa tela e editar em outra.
+   */
+  onConfirmar?: (characterId: string) => void;
+  rotuloConfirmar?: string;
+  rotuloVoltar?: string;
 }
 
 const Secao: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
@@ -103,7 +112,7 @@ const Marcar: React.FC<{ ligado: boolean; onMudar: (v: boolean) => void; childre
   </label>
 );
 
-const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack }) => {
+const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onConfirmar, rotuloConfirmar = 'Confirmar mascote', rotuloVoltar = 'Voltar' }) => {
   const [mascote, setMascote] = useState<Mascote>(() => ler());
   const [pose, setPose] = useState<VoxelPose>('parado');
   const criado = mascote.modo === 'criado';
@@ -128,7 +137,7 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack }) =>
           className="flex min-h-11 items-center gap-2 rounded-2xl bg-[#f0e8dc] px-4 text-xs font-black uppercase tracking-widest text-[#8f8375] transition-colors hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]"
         >
           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
-          Voltar
+          {rotuloVoltar}
         </button>
         <p className="text-[11px] font-bold text-[#a79c8e]">Cada escolha é guardada na hora.</p>
       </div>
@@ -369,6 +378,27 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack }) =>
           </button>
         </div>
       </div>
+
+      {/* Preso embaixo: a lista de roupas é longa, e o botão que fecha a
+          escolha não pode depender de rolar até o fim dela. */}
+      {onConfirmar && (
+        <div className="sticky bottom-0 z-20 -mx-4 mt-4 border-t border-[#e9e0d4] bg-[#fdfbf7]/95 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-[#24251f]/95 sm:-mx-6 sm:px-6">
+          <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-3">
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-black uppercase tracking-wide text-[#473c33] dark:text-[#f4ebdd]" aria-live="polite">{cfg?.nome || 'Mascote'}</span>
+              <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#a79c8e]">{criado ? 'Montado por você' : 'Personagem pronto'}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => onConfirmar(mascote.base || characterId || PRONTOS[0].id)}
+              className="flex min-h-12 items-center gap-2 rounded-2xl bg-[#e96f34] px-5 text-xs font-black uppercase tracking-widest text-white transition-transform hover:scale-[1.02] active:scale-95"
+            >
+              {rotuloConfirmar}
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
