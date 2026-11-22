@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 440" fill="none" aria-hidden="true">
+  <!-- Fundo da escolha de personagem: morro e casario em traço, do jeito que
+       se desenha o Brasil à mão, com grafismo indígena nas quinas. Só linha,
+       sem preenchimento: o boneco fica na frente e o cenário não disputa com
+       ele. Vetor e não imagem — pesa 3 KB e serve qualquer tela. -->
+  <g stroke="#6b5243" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity=".55">
+    <!-- morros -->
+    <path d="M18 196c42-10 74-44 104-78 22-25 44-50 70-66 20-12 38-6 54 10 20 20 34 50 52 74"/>
+    <path d="M298 136c18-26 40-52 66-66 22-12 44-4 62 16 20 22 36 52 56 72 20 20 40 30 100 36"/>
+    <path d="M232 84c8-6 16-10 24-10m-8 22c10-8 20-12 30-12"/>
+    <path d="M430 110c10-4 20-4 30 2m-36 18c12-6 24-6 36 2"/>
+    <!-- nuvens -->
+    <path d="M76 86c6-12 24-14 32-4 10-10 30-6 34 8 10-2 18 4 18 12H68c0-10 4-16 8-16Z"/>
+    <path d="M468 62c6-10 20-12 28-4 8-8 24-4 26 8 8-2 16 4 16 10h-80c0-8 4-14 10-14Z"/>
+  </g>
+
+  <!-- casario: cada casa é um bloco com telhado e janelas, como o desenho do
+       morro carioca — as alturas variam de propósito, nada alinhado -->
+  <g stroke="#5b4536" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity=".8">
+    <path d="M10 440V300h78v140M10 300l40-26 38 26"/>
+    <path d="M88 440V264h70v176M88 264h70"/>
+    <path d="M158 440V318h64v122M158 318l32-22 32 22"/>
+    <path d="M222 440V278h58v162M222 278h58"/>
+    <path d="M378 440V290h62v150M378 290l31-22 31 22"/>
+    <path d="M440 440V262h66v178M440 262h66"/>
+    <path d="M506 440V312h84v128M506 312l42-26 42 26"/>
+    <!-- janelas -->
+    <g stroke-width="2.6" opacity=".85">
+      <path d="M26 322h22v20H26zM58 322h18v20H58zM26 364h22v22H26zM58 364h18v22H58z"/>
+      <path d="M104 288h20v22h-20zM136 288h14v22h-14zM104 330h20v22h-20zM136 330h14v22h-14zM104 374h20v24h-20z"/>
+      <path d="M172 338h18v20h-18zM204 338h12v20h-12zM172 378h18v22h-18z"/>
+      <path d="M238 300h20v22h-20zM268 300h8v22h-8zM238 342h20v22h-20zM238 386h20v24h-20z"/>
+      <path d="M392 312h20v20h-20zM424 312h10v20h-10zM392 352h20v22h-20z"/>
+      <path d="M456 286h20v22h-20zM488 286h12v22h-12zM456 328h20v22h-20zM488 328h12v22h-12zM456 372h20v24h-20z"/>
+      <path d="M524 334h22v20h-22zM560 334h18v20h-18zM524 374h22v24h-22z"/>
+    </g>
+    <!-- antenas e caixas d'água -->
+    <path d="M118 264v-24m-12 10 12-10 12 10"/>
+    <path d="M466 262v-20m-10 8 10-8 10 8"/>
+    <path d="M246 278v-18h22v18"/>
+  </g>
+
+  <!-- grafismo: chevrons nas quinas de cima, como nas artes de referência -->
+  <g stroke="#e96f34" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 54 54 18l38 36M16 76 54 40l38 36M16 98 54 62l38 36"/>
+    <path d="M508 54 546 18l38 36M508 76 546 40l38 36M508 98 546 62l38 36"/>
+  </g>
+</svg>

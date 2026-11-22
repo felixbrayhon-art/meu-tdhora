@@ -2051,25 +2051,18 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
     display: flex; align-items: flex-end; justify-content: center;
     height: 100%; flex: 1 1 auto; min-width: 0;
 }
-/* Atrás do boneco, o mesmo friso de triângulos que fecha o cabeçalho e o
-   rodapé desta tela — um em cima, um embaixo, sem cartão e sem moldura. É o
-   desenho que a tela já usa, e não um retângulo estranho atrás dele.
-   Nada de `filter` por aqui: o friso fica encostado em centenas de cubos 3D,
-   e borrar perto deles custa quadros inteiros. Máscara e cor não cobram. */
+/* Atrás do boneco, um cenário em traço: morro, casario e grafismo nas quinas,
+   no espírito do desenho brasileiro à mão. É um SVG de 4 KB, só linha e sem
+   preenchimento, então o boneco continua sendo a figura e o fundo não disputa
+   com ele. Nada de `filter` por aqui: o cenário fica encostado em centenas de
+   cubos 3D, e borrar perto deles custa quadros inteiros. */
 #avatar-selection-screen .cs-palco__plate {
-    position: absolute; left: 50%; top: 0; bottom: 0;
-    width: min(310px, 84vw); translate: -50% 0;
+    position: absolute; left: 50%; top: -6%; bottom: -2%;
+    width: min(560px, 96vw); translate: -50% 0;
     pointer-events: none;
+    background: url("/cenario-personagem.svg") center bottom / contain no-repeat;
 }
-#avatar-selection-screen .cs-palco__plate::before,
-#avatar-selection-screen .cs-palco__plate::after {
-    content: ''; position: absolute; left: 0; right: 0; height: 20px;
-    background-color: var(--cs-brown); opacity: .28;
-    -webkit-mask: url("/sul-americano-triangulos.svg") repeat-x left bottom / auto 100%;
-    mask: url("/sul-americano-triangulos.svg") repeat-x left bottom / auto 100%;
-}
-#avatar-selection-screen .cs-palco__plate::before { top: 6%; transform: scaleY(-1); }
-#avatar-selection-screen .cs-palco__plate::after { bottom: 4%; }
+
 #avatar-selection-screen .cs-seta {
     flex: 0 0 auto; display: flex; height: 46px; width: 46px;
     align-items: center; justify-content: center;
