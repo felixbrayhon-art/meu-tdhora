@@ -1996,7 +1996,9 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
        trás do boneco e o engole. Ancorada embaixo e com pouco mais de metade
        da altura, vira o horizonte da tela — o laranja dela continua sendo o
        fundo, e o boneco fica em pé na frente da paisagem. */
-    background: #714b27 url("/cenario-brasil.webp") center bottom / auto 62% no-repeat;
+    /* A paisagem sobe um pouco acima da borda: assim o chão dela aparece
+       inteiro, em vez de ficar rente ao friso. */
+    background: #714b27 url("/cenario-brasil.webp") center calc(100% - 46px) / auto 66% no-repeat;
     color: var(--cs-roast);
     padding-bottom: 54px;
     overflow: hidden;
@@ -2058,7 +2060,9 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
 #avatar-selection-screen .cs-palco__figura {
     position: relative; margin: 0;
     display: flex; align-items: flex-end; justify-content: center;
-    height: 100%; flex: 1 1 auto; min-width: 0;
+    /* O boneco desce para pisar no chão da paisagem, em vez de flutuar no
+       meio dela. */
+    height: 100%; flex: 1 1 auto; min-width: 0; transform: translateY(42px);
 }
 #avatar-selection-screen .cs-seta {
     flex: 0 0 auto; display: flex; height: 46px; width: 46px;
