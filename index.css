@@ -2057,6 +2057,11 @@ html.dark [class*="bg-[#f4f7ec]"] { background-color: rgba(210, 232, 255, .13) !
     position: absolute; left: 0; right: 0; bottom: 46px;
     height: clamp(210px, 54%, 460px);
     background: url("/cenario-brasil.webp") center bottom / cover no-repeat;
+    /* Apagada: é cenário, não assunto — o boneco é que tem de saltar. A
+       opacidade mora neste elemento, que é só a imagem; posta por cima da
+       seção ela apanharia a árvore de cubos do boneco junto, e aí cada
+       quadro custaria caro. */
+    opacity: .6;
 }
 
 #avatar-selection-screen .cs-palco {
