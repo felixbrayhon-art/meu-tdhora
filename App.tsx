@@ -1800,6 +1800,9 @@ const App: React.FC = () => {
                       profile={stats.studyProfile || 'VESTIBULAR'}
                       explanationStyle={stats.explanationStyle}
                       initialLesson={guidedLessonData?.initialLesson}
+                      editalConfig={editalConfig}
+                      modoEdital={strategicMode}
+                      onModoEdital={setStrategicMode}
                       onBack={() => {
                         if (guidedLessonData?.initialLesson) {
                           setCurrentView('SAVED_GUIDED_LESSONS');
@@ -1820,6 +1823,9 @@ const App: React.FC = () => {
                       topic={livingLessonData?.topic || ''}
                       profile={stats.studyProfile || 'VESTIBULAR'}
                       explanationStyle={stats.explanationStyle}
+                      editalConfig={editalConfig}
+                      modoEdital={strategicMode}
+                      onModoEdital={setStrategicMode}
                       onStart={(subject, topic) => setLivingLessonData({ subject, topic })}
                       onBack={() => setCurrentView('AI_DIRECT')}
                     />

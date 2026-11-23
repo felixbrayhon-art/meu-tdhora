@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw, ScrollText } from './icons';
-import { IllustratedLesson, IllustratedLessonBox, IllustratedLessonPage, StudyProfile, ExplanationStyle } from '../types';
+import { EditalConfig, IllustratedLesson, IllustratedLessonBox, IllustratedLessonPage, StudyProfile, ExplanationStyle } from '../types';
+import EscolhaAssunto from './EscolhaAssunto';
 import { generateLivingLesson } from '../services/geminiService';
 import BookLoader from './BookLoader';
 import ConsensoBadge from './ConsensoBadge';
@@ -321,6 +322,11 @@ interface LivingLessonViewProps {
   explanationStyle?: ExplanationStyle;
   onBack: () => void;
   onStart?: (subject: string, topic: string) => void;
+  // O edital cadastrado, para o formulário listar as matérias e os assuntos do aluno em vez de pedir que
+  // ele digite de novo o que já está registrado.
+  editalConfig?: EditalConfig;
+  modoEdital?: boolean;
+  onModoEdital?: (ligado: boolean) => void;
 }
 
 // One generation per request: React dev mode runs effects twice, and without
@@ -341,7 +347,7 @@ const RATE_LIMIT_RE = /\b429\b|rate[ _-]?limit|quota|limite de/i;
 const RATE_LIMIT_WAIT_MS = 20000;
 const MAX_AUTO_RETRIES = 3;
 
-const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, profile = 'VESTIBULAR', explanationStyle, onBack, onStart }) => {
+const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, profile = 'VESTIBULAR', explanationStyle, onBack, onStart, editalConfig, modoEdital, onModoEdital }) => {
   const [materiaDigitada, setMateriaDigitada] = useState('');
   const [assuntoDigitado, setAssuntoDigitado] = useState('');
   const [lesson, setLesson] = useState<IllustratedLesson | null>(null);
@@ -440,28 +446,19 @@ const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, pro
 
               {onStart ? (
                 <>
-                  <div className="space-y-5">
-                    <label className="block">
-                      <span className={`mb-2 block text-[10px] font-black uppercase tracking-widest ${MUTED}`}>Matéria</span>
-                      <input
-                        value={materiaDigitada}
-                        onChange={(e) => setMateriaDigitada(e.target.value)}
-                        placeholder="Ex.: Direito Constitucional"
-                        autoFocus
-                        className={`w-full rounded-2xl border bg-[#fdfbf7] px-4 py-4 text-sm font-semibold outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15 dark:bg-[#24251f] ${RULE} ${INK}`}
-                      />
-                    </label>
-                    <label className="block">
-                      <span className={`mb-2 block text-[10px] font-black uppercase tracking-widest ${MUTED}`}>Assunto</span>
-                      <input
-                        value={assuntoDigitado}
-                        onChange={(e) => setAssuntoDigitado(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') comecar(); }}
-                        placeholder="Ex.: Legítima defesa"
-                        className={`w-full rounded-2xl border bg-[#fdfbf7] px-4 py-4 text-sm font-semibold outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15 dark:bg-[#24251f] ${RULE} ${INK}`}
-                      />
-                    </label>
-                  </div>
+                  <EscolhaAssunto
+                    editalConfig={editalConfig}
+                    modoEdital={!!modoEdital}
+                    onModoEdital={onModoEdital}
+                    studyProfile={profile}
+                    materia={materiaDigitada}
+                    assunto={assuntoDigitado}
+                    onMateria={setMateriaDigitada}
+                    onAssunto={setAssuntoDigitado}
+                    onEnter={comecar}
+                    campo={`w-full rounded-2xl border bg-[#fdfbf7] px-4 py-4 text-sm font-semibold outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15 dark:bg-[#24251f] ${RULE} ${INK}`}
+                    rotulo={`mb-2 block text-[10px] font-black uppercase tracking-widest ${MUTED}`}
+                  />
 
                   <button
                     type="button"
@@ -472,7 +469,7 @@ const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, pro
                     Montar a aula
                     <ChevronRight className="h-4 w-4" />
                   </button>
-                  <p className={`mt-4 text-center text-[10px] font-bold uppercase tracking-wider ${MUTED}`}>{pronto ? 'Pressione Enter no assunto para continuar' : 'Preencha a matéria e o assunto para liberar o botão'}</p>
+                  <p className={`mt-4 text-center text-[10px] font-bold uppercase tracking-wider ${MUTED}`}>{!pronto ? 'Escolha a matéria e o assunto para liberar o botão' : modoEdital ? 'Tudo pronto para montar a aula' : 'Pressione Enter no assunto para continuar'}</p>
                 </>
               ) : (
                 <>
