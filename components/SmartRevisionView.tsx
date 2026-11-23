@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import MarkdownContent from './MarkdownContent';
-import { SmartRevisionItem, ErrorVaultItem, StudyProfile, StudyPlan, ExplanationStyle } from '../types';
+import { EditalSubject, SmartRevisionItem, ErrorVaultItem, StudyProfile, StudyPlan, ExplanationStyle } from '../types';
 import { generateMicroThemeValidation, explainStuckTopic, identifyAndProgramRecovery } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
 import CharacterTip from './CharacterTip';
 import ForgettingCurve from './ForgettingCurve';
 import { toLocalDateKey } from '../utils/localDate';
 import { CalendarCheck, ChevronLeft, ArrowRight, AlertTriangle, Zap } from './icons';
+import MemoryHeatmap from './MemoryHeatmap';
+import { NotaTopico } from '../services/notaTopico';
 
 interface SmartRevisionViewProps {
   items: SmartRevisionItem[];
+  /** Notas de 0 a 100 por tópico (services/notaTopico.ts) e as matérias do edital, para a aba Domínio. */
+  notas: NotaTopico[];
+  subjects: EditalSubject[];
   vault: ErrorVaultItem[];
   profile: StudyProfile;
   plan: StudyPlan;
@@ -20,7 +25,7 @@ interface SmartRevisionViewProps {
   onBack: () => void;
 }
 
-const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, profile, plan, explanationStyle = 'TECNICA', onComplete, onResolveVault, onBack }) => {
+const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, notas, subjects, vault, profile, plan, explanationStyle = 'TECNICA', onComplete, onResolveVault, onBack }) => {
   const [activeItem, setActiveItem] = useState<SmartRevisionItem | null>(null);
   const [activeVault, setActiveVault] = useState<ErrorVaultItem | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
@@ -32,7 +37,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
   const [recoveryPlan, setRecoveryPlan] = useState<any>(null);
   const [currentRecoveryFlashcards, setCurrentRecoveryFlashcards] = useState<any[]>([]);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<'LIST' | 'CALENDAR' | 'STRATEGY'>('LIST');
+  const [activeSubTab, setActiveSubTab] = useState<'LIST' | 'CALENDAR' | 'STRATEGY' | 'DOMINIO'>('LIST');
   const [viewDate, setViewDate] = useState(new Date());
 
   // Interactive Question State
@@ -437,7 +442,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
         VOLTAR AO HUB
       </button>
 
-      <CharacterTip id="smart-revision" message="Revise cada assunto em três momentos: 24 horas, 7 dias e 30 dias depois de estudá-lo. As questões que você errar ficam no Cofre de Erros para revisar depois." />
+      <CharacterTip id="smart-revision" message="Cada assunto tem uma nota de 0 a 100, que sobe quando você acerta e cai sozinha nos dias sem revisar. É ela que marca a data: indo bem, o assunto demora a voltar; errando, volta logo. As questões que você errar ficam no Cofre de Erros." />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
         <div className="lg:col-span-8 space-y-12">
@@ -454,16 +459,16 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
                   Revisão <span className="text-[#e96f34] dark:text-[#f08a52]">espaçada</span>
                 </h1>
                 <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#e96f34]/15 px-3 py-1 text-xs font-black uppercase tracking-widest text-[#bf4f1b] dark:text-[#f08a52]">
-                  Regra 24h · 7 dias · 30 dias
+                  Intervalo calculado pela sua nota
                 </p>
                 <p className="mt-3 max-w-xl text-sm font-medium leading-relaxed text-[#725442] dark:text-[#c8c5a9]">
-                  Ciclo neurocientífico para fixar o conteúdo: cada assunto volta no momento em que o cérebro mais esquece.
+                  Cada assunto volta quando a sua nota nele cai ao ponto de risco: indo bem, a revisão se afasta; errando, ela é antecipada.
                 </p>
               </div>
             </div>
 
             <div role="tablist" aria-label="Visão da revisão" className="flex w-full gap-1 rounded-[22px] border border-[#e8dcc8] bg-[#f4ebdd] p-1.5 dark:border-white/10 dark:bg-[#2d2e27] sm:w-fit">
-              {([['LIST', 'Lista'], ['CALENDAR', 'Calendário'], ['STRATEGY', 'Estratégia']] as const).map(([key, label]) => (
+              {([['LIST', 'Lista'], ['DOMINIO', 'Domínio'], ['CALENDAR', 'Calendário'], ['STRATEGY', 'Estratégia']] as const).map(([key, label]) => (
                 <button
                   key={key}
                   role="tab"
@@ -478,7 +483,24 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
           </header>
 
           <AnimatePresence mode="wait">
-            {activeSubTab === 'LIST' ? (
+            {activeSubTab === 'DOMINIO' ? (
+              <motion.section key="dominio" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                <div>
+                  <h3 className="font-logo text-xl uppercase tracking-wide text-[#473c33] dark:text-[#f2efd2]">O quanto você domina</h3>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    Nota de 0 a 100 por matéria · sai do seu desempenho e cai sozinha sem revisão
+                  </p>
+                </div>
+                {subjects.length === 0 ? (
+                  <p className="text-sm font-medium leading-relaxed text-[#725442] dark:text-[#c8c5a9]">
+                    As notas aparecem por matéria do edital. Cadastre o seu edital para ver esta visão — o que você estuda fora dele
+                    continua pontuando e aparece na lista de revisão.
+                  </p>
+                ) : (
+                  <MemoryHeatmap subjects={subjects} notas={notas} studyProfile={profile} />
+                )}
+              </motion.section>
+            ) : activeSubTab === 'LIST' ? (
               <motion.section key="list" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
                 <h3 className="font-logo text-xl uppercase tracking-wide text-[#473c33] dark:text-[#f2efd2] flex items-center gap-3">
                   Validações de hoje
@@ -584,7 +606,7 @@ const SmartRevisionView: React.FC<SmartRevisionViewProps> = ({ items, vault, pro
               <h3 className="font-logo text-xl uppercase tracking-wide text-[#a94432] dark:text-[#e58a76]">Cofre de erros</h3>
             </div>
 
-            <p className="mb-6 text-sm font-medium leading-relaxed text-[#725442] dark:text-[#c8c5a9]">Assuntos com falhas recentes. A validação tripla limpa o cofre.</p>
+            <p className="mb-6 text-sm font-medium leading-relaxed text-[#725442] dark:text-[#c8c5a9]">Assuntos com falhas recentes. Acertar a revisão deles limpa o cofre.</p>
 
             <div className="space-y-3">
               {vaultPending.length === 0 ? (

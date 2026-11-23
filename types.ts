@@ -266,11 +266,18 @@ export interface Flashcard {
   options?: string[]; // 5 options
   correctAnswerIndex?: number; // 0-4
 
-  // SRS Fields
+  // Agendamento (FSRS — services/fsrs.ts)
   nextReview?: number; // timestamp
-  interval?: number; // in days
-  easeFactor?: number;
+  interval?: number; // em dias
   reviewsCount?: number;
+  /** Dias até a lembrança desta carta cair a 90%. */
+  estabilidade?: number;
+  /** 1 (fácil) a 10 (difícil), para este aluno. */
+  dificuldade?: number;
+  /** Quando a carta foi revisada pela última vez. */
+  revisadaEm?: number;
+  /** Fator de facilidade do SM-2 antigo. Fica para converter cartas de antes do FSRS. */
+  easeFactor?: number;
 }
 
 export interface FlashcardFolder {
@@ -447,7 +454,11 @@ export interface SmartRevisionItem {
   topic: string;
   subjectName: string;
   scheduledDate: string; // YYYY-MM-DD
-  intervalLevel: 0 | 1 | 3 | 7 | 15 | 30;
+  /**
+   * Intervalo em dias que foi dado desta vez. Era uma escada fixa (1, 7, 30); agora sai da nota do tópico
+   * (services/notaTopico.ts) e pode ser qualquer número.
+   */
+  intervalLevel: number;
   status: 'PENDING' | 'DONE' | 'MISSED';
   createdAt: number;
 }

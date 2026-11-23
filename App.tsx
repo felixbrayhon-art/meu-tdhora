@@ -79,6 +79,7 @@ import { CharacterProvider } from './contexts/CharacterContext';
 import { syncPublicProfile } from './services/socialService';
 import { addLocalDays, toLocalDateKey } from './utils/localDate';
 import { topicosDoConteudo } from './utils/editalTopicos';
+import { chaveTopico, diasParaRevisao, Evento as EventoDesempenho, NotaTopico, notaDaMateria, registrar as registrarNota } from './services/notaTopico';
 
 const readTimerMinutes = (mode: TimerMode, fallback: number): number => {
   try {
@@ -311,6 +312,23 @@ const App: React.FC = () => {
       dailyHours: 4,
     }));
   });
+
+  // Nota de 0 a 100 por tópico (services/notaTopico.ts): o que o aluno domina de cada assunto, medido pelo
+  // desempenho real e corroído pelos dias sem estudar. É ela que decide quando o assunto volta para revisão.
+  const [notasTopicos, setNotasTopicos] = useState<NotaTopico[]>(() => safeJsonParse('focus_notas_topicos', []));
+  useEffect(() => {
+    safeSetItem('focus_notas_topicos', JSON.stringify(notasTopicos));
+  }, [notasTopicos]);
+
+  /** Guarda o resultado de uma atividade no tópico dela. É o único caminho para a nota mudar. */
+  const registrarDesempenho = useCallback((evento: EventoDesempenho) => {
+    setNotasTopicos((prev) => {
+      const id = chaveTopico(evento.materia, evento.assunto);
+      const atual = prev.find((t) => t.id === id);
+      const atualizado = registrarNota(atual, evento);
+      return atual ? prev.map((t) => (t.id === id ? atualizado : t)) : [...prev, atualizado];
+    });
+  }, []);
 
   const [smartSystem, setSmartSystem] = useState<SmartRevisionSystem>(() => {
     return safeJsonParse('focus_smart_system', { queue: [], vault: [] });
@@ -842,19 +860,20 @@ const App: React.FC = () => {
     return subject ? subject.name : null;
   };
 
+  /**
+   * A matéria sob a qual guardar a nota. Usa a do edital quando o assunto bate com alguma, e cai na pasta
+   * do próprio material quando não bate — senão quem não cadastrou edital (ou estuda algo fora dele)
+   * resolve questões e não pontua nada, que era o caso antes.
+   */
+  const materiaPara = (assunto: string, alternativa: string) => getSubjectForTopic(assunto) || alternativa || assunto;
+
   const logStudyMinutes = (minutes: number) => {
     const today = toLocalDateKey();
     setHistory((prev) => ({ ...prev, [today]: (prev[today] || 0) + minutes }));
     addXP(minutes * 2);
 
-    // Update Edital Heat if applicable
-    if (activeSubjectId) {
-      const subj = studyPlan.subjects.find((s) => s.id === activeSubjectId);
-      if (subj) updateHeat(subj.name, minutes / 2); // 1 heat per 2 mins
-    } else if (prefillAI?.topic) {
-      const mappedSubject = getSubjectForTopic(prefillAI.topic);
-      if (mappedSubject) updateHeat(mappedSubject, minutes / 2);
-    }
+    // Tempo de estudo NÃO mexe na nota: ficar sentado na frente da matéria não é prova de que aprendeu.
+    // A nota vem só de resultado de atividade (services/notaTopico.ts).
 
     const newActivity: Activity = {
       id: Math.random().toString(36).substr(2, 9),
@@ -884,15 +903,23 @@ const App: React.FC = () => {
     addXP(10);
   };
 
+  /** Quantos dias até a revisão daquele assunto, segundo a nota dele. Sem nota ainda, amanhã. */
+  const diasAteRevisar = (topic: string, subjectName: string) => {
+    const nota = notasTopicos.find((t) => t.id === chaveTopico(subjectName, topic));
+    return nota ? Math.max(1, diasParaRevisao(nota)) : 1;
+  };
+
   const scheduleRevision = (topic: string, subjectName: string) => {
-    const d1Date = addLocalDays(new Date(), 1);
+    // A data saía de uma escada fixa de 1 → 7 → 30 dias, igual para todo mundo. Agora vem da nota do
+    // tópico: indo bem ela afasta a revisão, errando ela antecipa.
+    const dias = diasAteRevisar(topic, subjectName);
 
     const d1: SmartRevisionItem = {
       id: Math.random().toString(36).substr(2, 9),
       topic,
       subjectName,
-      scheduledDate: d1Date,
-      intervalLevel: 1, // 1st Revision (scheduled within 24h)
+      scheduledDate: addLocalDays(new Date(), dias),
+      intervalLevel: dias,
       status: 'PENDING',
       createdAt: Date.now(),
     };
@@ -911,35 +938,26 @@ const App: React.FC = () => {
       const newQueue = prev.queue.filter((i) => i.id !== itemId);
 
       if (success) {
-        // Schedule next interval according to 24/7/30 Rule:
-        // 1st Revision (1) -> 2nd Revision (7) in 7 days
-        // 2nd Revision (7) -> 3rd Revision (30) in 30 days
-        // 3rd Revision (30) -> Completed (0)
-        // Backwards compatibility included (0->1, 3->7, 15->30)
-        const intervals: Record<number, number> = {
-          0: 1,
-          1: 7,
-          3: 7,
-          7: 30,
-          15: 30,
-          30: 0,
+        // O intervalo vem da nota, não de uma escada fixa. `registrarDesempenho` ainda não atualizou o
+        // estado neste render, então a conta é feita aqui com o evento já aplicado.
+        const id = chaveTopico(item.subjectName, item.topic);
+        const depois = registrarNota(notasTopicos.find((t) => t.id === id), {
+          materia: item.subjectName, assunto: item.topic, tipo: 'revisao', acerto: 1,
+        });
+        const nextInterval = Math.max(1, diasParaRevisao(depois));
+        const newItem: SmartRevisionItem = {
+          ...item,
+          id: Math.random().toString(36).substr(2, 9),
+          intervalLevel: nextInterval,
+          scheduledDate: addLocalDays(new Date(), nextInterval),
+          status: 'PENDING',
+          createdAt: Date.now(),
         };
-        const nextInterval = intervals[item.intervalLevel] || 0;
-
-        if (nextInterval > 0) {
-          const newItem: SmartRevisionItem = {
-            ...item,
-            id: Math.random().toString(36).substr(2, 9),
-            intervalLevel: nextInterval as any,
-            scheduledDate: addLocalDays(new Date(), nextInterval),
-            status: 'PENDING',
-            createdAt: Date.now(),
-          };
-          newQueue.push(newItem);
-        }
-        updateHeat(item.subjectName, 10);
+        newQueue.push(newItem);
+        registrarDesempenho({ materia: item.subjectName, assunto: item.topic, tipo: 'revisao', acerto: 1 });
       } else {
         // Re-schedule 1st Revision (Day 1) tomorrow
+        // Falhou: volta amanhã. A nota cai junto e segura os próximos intervalos curtos.
         const retryItem: SmartRevisionItem = {
           ...item,
           id: Math.random().toString(36).substr(2, 9),
@@ -949,7 +967,7 @@ const App: React.FC = () => {
           createdAt: Date.now(),
         };
         newQueue.push(retryItem);
-        updateHeat(item.subjectName, -5);
+        registrarDesempenho({ materia: item.subjectName, assunto: item.topic, tipo: 'revisao', acerto: 0 });
       }
 
       return { ...prev, queue: newQueue };
@@ -989,7 +1007,6 @@ const App: React.FC = () => {
       }
     });
 
-    updateHeat(subjectName, -15);
   };
 
   const resolveVault = (vaultId: string, recoveryFlashcards?: any[]) => {
@@ -1022,16 +1039,6 @@ const App: React.FC = () => {
     if (v) scheduleRevision(v.topic, v.subjectName);
   };
 
-  const updateHeat = (subjectName: string, amount: number) => {
-    setEditalConfig((prev) => ({
-      ...prev,
-      subjects: prev.subjects.map((s) => {
-        if (s.name !== subjectName) return s;
-        const newHeat = Math.min(100, Math.max(0, (s.heat || 0) + amount));
-        return { ...s, heat: newHeat, lastActivity: Date.now() };
-      }),
-    }));
-  };
 
   const handleSaveToNotebook = (folderId: string, notebookName: string, questions: QuizQuestion[], summary?: string, notebookColor?: string, folderColor?: string) => {
     let targetFolderId = folderId;
@@ -1473,11 +1480,12 @@ const App: React.FC = () => {
                       strategicMode={strategicMode}
                       onModoEdital={setStrategicMode}
                       editalConfig={editalConfig}
-                      onReviewBatchComplete={(folderName, count) => {
+                      onReviewBatchComplete={(folderName, count, acertos) => {
                         addXP(count * 5);
                         handleManualPost(`Revisou ${count} flashcards de "${folderName}"!`);
-                        const mappedSubject = getSubjectForTopic(folderName);
-                        if (mappedSubject) updateHeat(mappedSubject, count);
+                        if (count > 0) {
+                          registrarDesempenho({ materia: materiaPara(folderName, 'Flashcards'), assunto: folderName, tipo: 'flashcards', acerto: (acertos ?? count) / count, itens: count });
+                        }
                       }}
                       selectedFolderId={flashcardsSelectedFolderId}
                       setSelectedFolderId={setFlashcardsSelectedFolderId}
@@ -1508,6 +1516,8 @@ const App: React.FC = () => {
                           const missed = questions?.filter((q) => q.userAnswer !== q.correctAnswer);
                           logErrorToVault(topic, subject, missed);
                         }
+                        // A taxa de acerto era descartada; agora é o que mais move a nota do assunto.
+                        if (total > 0) registrarDesempenho({ materia: subject, assunto: topic, tipo: 'questoes', acerto: correct / total, itens: total });
                         if (strategicMode) scheduleRevision(topic, subject);
                       }}
                       onTriggerGuidedLesson={(subject, topic) => {
@@ -1630,8 +1640,10 @@ const App: React.FC = () => {
                         // (locally or via a cloud sync) while the quiz was still in progress.
                         const notebookName = folders.find((f) => f.id === activeNotebookInfo.folderId)?.notebooks.find((n) => n.id === activeNotebookInfo.notebookId)?.name || 'Simulado';
                         handleManualPost(`Acertou ${score}/${total} no quiz "${notebookName}"!`);
-                        const mappedSubject = getSubjectForTopic(notebookName);
-                        if (mappedSubject) updateHeat(mappedSubject, score * 5);
+                        if (total > 0) {
+                          const pasta = folders.find((f) => f.id === activeNotebookInfo.folderId)?.name || 'Meus materiais';
+                          registrarDesempenho({ materia: materiaPara(notebookName, pasta), assunto: notebookName, tipo: 'questoes', acerto: score / total, itens: total });
+                        }
                         setCurrentView('MATERIALS');
                       }}
                     />
@@ -1723,7 +1735,7 @@ const App: React.FC = () => {
                     />
                   )}
 
-                  {currentView === 'SMART_REVISION' && <SmartRevisionView items={smartSystem.queue} vault={smartSystem.vault} profile={stats.studyProfile!} plan={studyPlan} onBack={() => setCurrentView('AI_DIRECT')} onComplete={handleSmartComplete} onResolveVault={resolveVault} />}
+                  {currentView === 'SMART_REVISION' && <SmartRevisionView items={smartSystem.queue} notas={notasTopicos} subjects={editalConfig.subjects} vault={smartSystem.vault} profile={stats.studyProfile!} plan={studyPlan} onBack={() => setCurrentView('AI_DIRECT')} onComplete={handleSmartComplete} onResolveVault={resolveVault} />}
 
                   {currentView === 'STUDY_CYCLE' && (
                     <StudyCycleView
