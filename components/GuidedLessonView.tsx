@@ -3,7 +3,8 @@ import { scrollMainToTop } from '../utils/scrollTop';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Play, Pause, RotateCcw, Brain, CheckCircle2, ChevronRight, BookOpen, Download, Bookmark, BookmarkCheck } from './icons';
 import { gsap } from 'gsap';
-import { GuidedLesson, GuidedLessonStep, StudyProfile, ExplanationStyle, SavedGuidedLesson } from '../types';
+import { EditalConfig, GuidedLesson, GuidedLessonStep, StudyProfile, ExplanationStyle, SavedGuidedLesson } from '../types';
+import EscolhaAssunto from './EscolhaAssunto';
 import { generateGuidedLesson } from '../services/geminiService';
 import BookLoader from './BookLoader';
 import ConsensoBadge from './ConsensoBadge';
@@ -17,9 +18,14 @@ interface GuidedLessonViewProps {
   onBack: () => void;
   onComplete: (score: number) => void;
   initialLesson?: GuidedLesson; // For viewing saved lessons offline
+  // O que o aluno cadastrou no edital, para o formulário poder oferecer as matérias e os assuntos dele em
+  // vez de pedir que digite de novo o que já está registrado.
+  editalConfig?: EditalConfig;
+  modoEdital?: boolean;
+  onModoEdital?: (ligado: boolean) => void;
 }
 
-const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, profile, explanationStyle = 'TECNICA', onBack, onComplete, initialLesson }) => {
+const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, profile, explanationStyle = 'TECNICA', onBack, onComplete, initialLesson, editalConfig, modoEdital, onModoEdital }) => {
   // Entering directly (e.g. from the sidebar, with no matéria/assunto chosen yet)
   // leaves subject/topic empty — activeSubject/activeTopic hold what's actually
   // being taught, seeded from the props but filled in by the setup form below
@@ -336,28 +342,17 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
                   <p className="mt-2 text-sm font-medium leading-relaxed text-[#8f8375]">Use termos específicos para receber uma explicação mais precisa.</p>
                 </div>
 
-                <div className="space-y-5">
-                  <label className="block">
-                    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Matéria</span>
-                    <input
-                      value={setupSubject}
-                      onChange={(e) => setSetupSubject(e.target.value)}
-                      placeholder="Ex.: Direito Constitucional"
-                      autoFocus
-                      className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Assunto</span>
-                    <input
-                      value={setupTopic}
-                      onChange={(e) => setSetupTopic(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && setupSubject.trim() && setupTopic.trim() && startLesson(setupSubject.trim(), setupTopic.trim())}
-                      placeholder="Ex.: Legítima defesa"
-                      className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15"
-                    />
-                  </label>
-                </div>
+                <EscolhaAssunto
+                  editalConfig={editalConfig}
+                  modoEdital={!!modoEdital}
+                  onModoEdital={onModoEdital}
+                  studyProfile={profile}
+                  materia={setupSubject}
+                  assunto={setupTopic}
+                  onMateria={setSetupSubject}
+                  onAssunto={setSetupTopic}
+                  onEnter={() => { if (setupSubject.trim() && setupTopic.trim()) startLesson(setupSubject.trim(), setupTopic.trim()); }}
+                />
 
                 <button
                   onClick={() => startLesson(setupSubject.trim(), setupTopic.trim())}
@@ -367,7 +362,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
                   Começar aula
                   <ChevronRight className="h-4 w-4" />
                 </button>
-                <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-wider text-[#b7ac9e]">{!setupSubject.trim() || !setupTopic.trim() ? 'Preencha a matéria e o assunto para liberar o botão' : 'Pressione Enter no assunto para continuar'}</p>
+                <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-wider text-[#b7ac9e]">{!setupSubject.trim() || !setupTopic.trim() ? 'Escolha a matéria e o assunto para liberar o botão' : modoEdital ? 'Tudo pronto para começar' : 'Pressione Enter no assunto para continuar'}</p>
               </div>
             </div>
           </section>
