@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { AppView, TimerMode, UserStats, HubCategory, EditalConfig, SmartRevisionItem, StudyProfile, QuizAttempt, QuizFolder, SmartRevisionSystem } from '../types';
-import MemoryHeatmap from './MemoryHeatmap';
 import { getProactiveAdvice } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
 import { ScrollText, BookOpen, BarChart3, Bookmark, ClipboardList, Zap, FileText, Smile, Heart, Cloud, ArrowRight, PenLine, RotateCcw, Copy, Briefcase, Folder, Clock, Calendar, Bell, AlertTriangle, Scale, Search } from './icons';
 import MotivationView from './MotivationView';
-import { NotaTopico } from '../services/notaTopico';
 
 
 // Método VR ainda está em desenvolvimento: o cartão fica escondido do aluno até o fluxo estar pronto (mude para true para voltar).
@@ -21,8 +19,6 @@ interface HubProps {
   setIsPlayingRain: (p: boolean) => void;
   editalConfig: EditalConfig;
   setStrategicMode: (s: boolean) => void;
-  /** Notas de 0 a 100 por tópico (services/notaTopico.ts). */
-  notasTopicos: NotaTopico[];
   setGuidedLessonData: (data: { subject: string; topic: string }) => void;
   setLivingLessonData: (data: { subject: string; topic: string }) => void;
   smartRevisionItems: SmartRevisionItem[];
@@ -39,7 +35,7 @@ interface HubProps {
   onCategoryChange: (c: HubCategory) => void;
 }
 
-const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats, activeChannel, setActiveChannel, isPlayingRain, setIsPlayingRain, editalConfig, notasTopicos, setStrategicMode, setGuidedLessonData, setLivingLessonData, smartRevisionItems, isAIEnabled, isSyncing, attempts, folders, smartSystem, isAdmin, onReactivateEdital, category, onCategoryChange }) => {
+const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats, activeChannel, setActiveChannel, isPlayingRain, setIsPlayingRain, editalConfig, setStrategicMode, setGuidedLessonData, setLivingLessonData, smartRevisionItems, isAIEnabled, isSyncing, attempts, folders, smartSystem, isAdmin, onReactivateEdital, category, onCategoryChange }) => {
   // A barra de secoes subiu para a barra unica do topo (components/ToolTabs.tsx),
   // entao quem manda na categoria agora e o App, nao este componente.
   const activeTab = category;
@@ -217,104 +213,55 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   </div>
                 )}
 
+              </>
+            )}
+          </>
+        )}
+
+        {activeTab === 'ORGANIZACAO' && (
+          <>
+                {/* Estes cartões moravam na aba Edital e eram a maior parte do que poluía aquela
+                    tela — ela agora tem só o edital. Vieram inteiros para cá, nenhum some do app:
+                    vários (Biblioteca Drive, Anotações, Caderno digital, Bloco imutável) só têm
+                    esta porta de entrada. */}
                 <div className="hub-section-label col-span-full flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-2">
                   <h3 className="font-logo text-sm uppercase tracking-[0.18em] text-[#473c33] dark:text-[#f2efd2]">Estudar</h3>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#b7aa96]">praticar e consultar</p>
                 </div>
 
-                <button
-                  onClick={() => {
-                    if (activeTab === 'EDITAL') setStrategicMode(true);
-                    setView('TDH_QUESTOES');
-                  }}
-                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}
-                >
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
-                    <FileText className="w-7 h-7" />
-                  </div>
-                  <h2 className="font-logo text-2xl mb-2 relative z-10 uppercase">
-                    TDH<span className="text-[#fecc73]">questoes</span>
-                  </h2>
-                  <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Foco na Grade' : 'Foco no Edital') : 'Batalha de Simulados'}</p>
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (activeTab === 'EDITAL') setStrategicMode(true);
-                    setView('FLASHCARDS');
-                  }}
-                  className={`p-6 rounded-[30px] text-left transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-none' : 'bg-white dark:bg-[#272019] border border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}
-                >
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
-                    <Copy className="w-7 h-7" />
-                  </div>
-                  {activeTab === 'ESTUDO' && flashcardCount > 0 && <div className="absolute top-8 right-8 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full animate-bounce">{flashcardCount} PENDENTES</div>}
-                  <h2 className="font-logo text-2xl mb-2 uppercase">
-                    FLASH<span className="text-[#fecc73]">cards</span>
-                  </h2>
-                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Conectado à Grade' : 'Conectado ao Edital') : 'Revisão Espaçada'}</p>
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (activeTab === 'EDITAL') setStrategicMode(true);
-                    setView('MATERIALS');
-                  }}
-                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}
-                >
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
-                    <Briefcase className="w-7 h-7" />
-                  </div>
-                  <h2 className="font-logo text-2xl mb-2 uppercase">
-                    MEUS <span className="text-[#fecc73]">materiais</span>
-                  </h2>
-                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Arquivo da Grade' : 'Arquivo Estratégico') : 'Resumos & Cadernos'}</p>
-                </button>
-
-                <button onClick={() => setView('VADE_MECUM')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fdad74] text-white' : 'bg-[#fff1e8] text-[#fda769]'}`}>
-                    <Scale className="w-7 h-7" />
-                  </div>
-                  <h2 className="font-logo text-2xl mb-2 uppercase">
-                    VADE <span className="text-[#fdad74]">MECUM</span>
-                  </h2>
-                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fdb887]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Legislação Atualizada</p>
-                </button>
-
-
-                <button onClick={() => setView('DRIVE_READER')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
+<button onClick={() => setView('DRIVE_READER')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none`}>
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]`}>
                     <Folder className="w-7 h-7" />
                   </div>
                   <h2 className="font-logo text-2xl mb-2 uppercase">
                     BIBLIOTECA <span className="text-[#fed386]">drive</span>
                   </h2>
-                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Livros & PDFs do Drive</p>
+                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] text-gray-400 dark:text-[#7d6f5c]`}>Livros & PDFs do Drive</p>
                 </button>
 
 
                 {isAdmin && (
-                  <button onClick={() => setView('ADMIN_QUESTION_REVIEW')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
-                    <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#b1c77b] text-white' : 'bg-[#f4f7ec] text-[#abc270]'}`}>
+                  <button onClick={() => setView('ADMIN_QUESTION_REVIEW')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none`}>
+                    <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm bg-[#f4f7ec] text-[#abc270]`}>
                       <ClipboardList className="w-7 h-7" />
                     </div>
                     <h2 className="font-logo text-2xl mb-2 uppercase">
                       REVISÃO <span className="text-[#b1c77b]">import.</span>
                     </h2>
-                    <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#bcce8d]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Banco de questões (admin)</p>
+                    <p className={`text-sm font-bold uppercase tracking-widest text-[10px] text-gray-400 dark:text-[#7d6f5c]`}>Banco de questões (admin)</p>
                   </button>
                 )}
 
                 {SHOW_VR_METHOD_CARD && (
-                <button type="button" disabled aria-describedby="vr-method-status" className={`p-6 rounded-[30px] text-left border transition-all cursor-not-allowed opacity-75 group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
+                <button type="button" disabled aria-describedby="vr-method-status" className={`p-6 rounded-[30px] text-left border transition-all cursor-not-allowed opacity-75 group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-75 bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none`}>
                   <span id="vr-method-status" className="absolute top-5 right-5 rounded-full bg-[#fff1e8] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-[#b65f2e] dark:bg-[#3a2f22] dark:text-[#e8a46f]">Em desenvolvimento</span>
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]`}>
                     <Search className="w-7 h-7" />
                   </div>
                   <h2 className="font-logo text-2xl mb-2 relative z-10 uppercase">
                     Método <span className="text-[#fecc73]">VR</span>
                   </h2>
-                  <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Engenharia reversa de questões</p>
+                  <p className={`text-sm mb-4 relative z-10 font-bold uppercase tracking-widest text-[10px] text-gray-400 dark:text-[#7d6f5c]`}>Engenharia reversa de questões</p>
                 </button>
                 )}
 
@@ -323,23 +270,23 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#b7aa96]">anotar à mão</p>
                 </div>
 
-                <button onClick={() => setView('NOTES')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
+                <button onClick={() => setView('NOTES')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none`}>
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]`}>
                     <PenLine className="w-7 h-7" />
                   </div>
                   <h2 className="font-logo text-2xl mb-2 uppercase">
                     ANOTA<span className="text-[#fecc73]">ções</span>
                   </h2>
-                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Escreva à mão</p>
+                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] text-gray-400 dark:text-[#7d6f5c]`}>Escreva à mão</p>
                 </button>
 
 
-                <button onClick={() => setView('DIGITAL_NOTEBOOK')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#e96f34] dark:text-[#d9772b]'}`}>
+                <button onClick={() => setView('DIGITAL_NOTEBOOK')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none`}>
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm bg-[#fff6e8] dark:bg-[#3a2f22] text-[#e96f34] dark:text-[#d9772b]`}>
                     <BookOpen className="w-7 h-7" />
                   </div>
                   <h2 className="font-logo text-2xl mb-2 uppercase">CADERNO <span className="text-[#e96f34] dark:text-[#d9772b]">digital</span></h2>
-                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Escrita, PDFs e desenhos</p>
+                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] text-gray-400 dark:text-[#7d6f5c]`}>Escrita, PDFs e desenhos</p>
                 </button>
 
 
@@ -348,32 +295,18 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#b7aa96]">a IA ensina o conteúdo para você</p>
                 </div>
 
-                <button
-                  onClick={() => {
-                    if (activeTab === 'EDITAL') setStrategicMode(true);
-                    setView('AI_DIRECT');
-                  }}
-                  className={`text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all hover:scale-[1.02] hover:shadow-xl animate-in zoom-in-95 duration-300 delay-100 shadow-2xl dark:shadow-none ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-[#ac6e00] to-[#473c33]' : 'bg-gradient-to-br from-[#473c33] to-[#473c33] dark:from-[#2e2519] dark:to-[#2e2519] dark:border dark:border-white/[0.06]'}`}
-                >
-                  <div className="mb-8 w-12 h-12 bg-white/10 text-[#fed386] rounded-2xl flex items-center justify-center backdrop-blur-md">
-                    <Zap className="w-7 h-7" />
-                  </div>
-                  <h2 className="font-logo text-3xl mb-2 uppercase leading-none">AULA DIRETA</h2>
-                  <p className="text-[#fed386]/80 text-[10px] font-bold uppercase tracking-widest">{activeTab === 'EDITAL' ? (stats.studyProfile === 'FACULDADE' ? 'Conteúdo da Grade' : 'Conteúdo do Edital') : 'Dica rápida com IA'}</p>
-                </button>
-
-                <button onClick={() => setView('SAVED_GUIDED_LESSONS')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-200 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-[#fff0d5] dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
+<button onClick={() => setView('SAVED_GUIDED_LESSONS')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-200 bg-white dark:bg-[#272019] border-[#fff0d5] dark:border-white/[0.06] shadow-sm dark:shadow-none`}>
+                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]`}>
                     <Bookmark className="w-7 h-7" />
                   </div>
                   <h2 className="font-logo text-2xl mb-2 uppercase">
                     AULAS <span className="text-[#fecc73]">salvas</span>
                   </h2>
-                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Biblioteca Offline</p>
+                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] text-gray-400 dark:text-[#7d6f5c]`}>Biblioteca Offline</p>
                 </button>
 
 
-                <div className={`text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all animate-in zoom-in-95 duration-300 delay-200 shadow-2xl dark:shadow-none ${activeTab === 'EDITAL' ? 'bg-gradient-to-br from-[#8c2c0b] to-[#473c33]' : 'bg-gradient-to-br from-[#473c33] to-[#473c33] dark:from-[#2e2519] dark:to-[#2e2519] dark:border dark:border-white/[0.06]'}`}>
+                <div className={`text-white p-6 rounded-[30px] text-left relative overflow-hidden group transition-all animate-in zoom-in-95 duration-300 delay-200 shadow-2xl dark:shadow-none bg-gradient-to-br from-[#473c33] to-[#473c33] dark:from-[#2e2519] dark:to-[#2e2519] dark:border dark:border-white/[0.06]`}>
                   <div className="mb-6 w-12 h-12 bg-white/10 text-[#fed386] rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10">
                     <BookOpen className="w-7 h-7" />
                   </div>
@@ -479,31 +412,19 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-[#b7aa96]">tempo e rotina</p>
                 </div>
 
-                <button onClick={() => setView('TIMER')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
-                    <Clock className="w-7 h-7" />
-                  </div>
-                  <h2 className="font-logo text-2xl mb-2 uppercase">
-                    TIMER <span className="text-[#fed386]">pomodoro</span>
-                  </h2>
-                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Foco em blocos</p>
-                </button>
-
-
-                <button
+<button
                   onClick={() => {
-                    if (activeTab === 'EDITAL') setStrategicMode(true);
                     setView('DYNAMIC_TIMER');
                   }}
-                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-150 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-[#fee6d5] dark:border-white/[0.06]'}`}
+                  className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 delay-150 bg-white dark:bg-[#272019] border-[#fee6d5] dark:border-white/[0.06]`}
                 >
-                  <div className={`mb-6 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fdad74] text-white' : 'bg-[#fff1e8] text-[#fdad74]'}`}>
+                  <div className={`mb-6 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm bg-[#fff1e8] text-[#fdad74]`}>
                     <Clock className="w-7 h-7" />
                   </div>
                   <h2 className="font-logo text-3xl mb-2 uppercase">
                     BLOCO <span className="text-[#fdad74]">IMUTÁVEL</span>
                   </h2>
-                  <p className={`text-[10px] font-bold uppercase tracking-widest leading-tight ${activeTab === 'EDITAL' ? 'text-gray-400 dark:text-[#7d6f5c]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>{activeTab === 'EDITAL' ? 'Foco Estratégico' : 'Timer Dinâmico 40min'}</p>
+                  <p className={`text-[10px] font-bold uppercase tracking-widest leading-tight text-gray-400 dark:text-[#7d6f5c]`}>{'Timer Dinâmico 40min'}</p>
                   <div className="mt-4 flex gap-1">
                     <span className="w-2 h-2 rounded-full bg-[#fdb887]"></span>
                     <span className="w-2 h-2 rounded-full bg-[#fed386]"></span>
@@ -511,38 +432,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
                   </div>
                 </button>
 
-                <button onClick={() => setView('PERFORMANCE')} className={`p-6 rounded-[30px] text-left border transition-all hover:shadow-xl hover:scale-[1.02] group relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'EDITAL' ? 'bg-[#473c33] text-white border-transparent' : 'bg-white dark:bg-[#272019] border-gray-100 dark:border-white/[0.06] shadow-sm dark:shadow-none'}`}>
-                  <div className={`mb-8 w-12 h-12 rounded-2xl flex items-center justify-center relative z-10 shadow-sm ${activeTab === 'EDITAL' ? 'bg-[#fecc73] text-white' : 'bg-[#fff6e8] dark:bg-[#3a2f22] text-[#fec868] dark:text-[#d9772b]'}`}>
-                    <BarChart3 className="w-7 h-7" />
-                  </div>
-                  <h2 className="font-logo text-2xl mb-2 uppercase">
-                    DESEMPENHO
-                  </h2>
-                  <p className={`text-sm font-bold uppercase tracking-widest text-[10px] ${activeTab === 'EDITAL' ? 'text-[#fed386]' : 'text-gray-400 dark:text-[#7d6f5c]'}`}>Acertos e evolução</p>
-                </button>
-
-
-                {activeTab === 'EDITAL' && (
-                  <div className="lg:col-span-3 pt-12 space-y-8">
-                    {/* A legenda "validado / revisar" sumiu com o `heat`: a tarja de cada matéria já diz em
-                        que pé ela está, e a linha de baixo diz quantos assuntos venceram. */}
-                    <div>
-                      <h3 className="font-logo text-2xl uppercase">O quanto você domina</h3>
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                        Nota de 0 a 100 por matéria · sai do seu desempenho e cai sozinha sem revisão
-                      </p>
-                    </div>
-                    <MemoryHeatmap subjects={editalConfig.subjects} notas={notasTopicos} studyProfile={stats.studyProfile} />
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-
-        {activeTab === 'ORGANIZACAO' && (
-          <>
-            <button
+<button
               onClick={() => {
                 setTimerMode(TimerMode.POMODORO);
                 setView('TIMER');
@@ -609,27 +499,7 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
 
         {activeTab === 'REVISAO' && (
           <div className="lg:col-span-3">
-            <button onClick={() => setView('SMART_REVISION')} className="w-full bg-[#473c33] text-white p-8 rounded-[35px] text-left relative overflow-hidden group transition-all hover:scale-[1.01] hover:shadow-2xl animate-in zoom-in-95 duration-300">
-              <div className="max-w-2xl relative z-10">
-                <div className="mb-10 w-16 h-16 bg-[#fecc73] text-white rounded-3xl flex items-center justify-center shadow-xl">
-                  <Zap className="w-10 h-10" />
-                </div>
-                <h2 className="font-logo text-4xl mb-4 uppercase leading-none">
-                  REVISÃO <span className="text-[#fed386]">inteligente</span>
-                </h2>
-                <p className="text-gray-400 dark:text-[#7d6f5c] font-medium text-lg leading-relaxed mb-10 max-w-lg">{stats.studyProfile === 'FACULDADE' ? 'Acesse seu motor de repetição espaçada e valide o conteúdo da sua grade curricular com a IA.' : 'Acesse seu motor de repetição espaçada e valide o conteúdo do edital com a IA.'}</p>
-                <div className="inline-flex items-center gap-4 bg-[#fec868] text-white px-8 py-4 rounded-[25px] font-black uppercase tracking-widest shadow-2xl transition-all group-hover:bg-white group-hover:text-[#fec868]">
-                  ABRIR PAINEL DE REVISÃO
-                  <ArrowRight className="w-6 h-6" />
-                </div>
-              </div>
-              <div className="absolute top-0 right-0 p-8 text-black/10 scale-150 rotate-12 transition-transform group-hover:scale-[1.8] group-hover:rotate-0">
-                <svg className="w-48 h-48" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-            </button>
-          </div>
+</div>
         )}
         {activeTab === 'MOTIVACAO' && <MotivationView />}
       </div>

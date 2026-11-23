@@ -1411,7 +1411,6 @@ const App: React.FC = () => {
                       setIsPlayingRain={setIsPlayingRain}
                       editalConfig={editalConfig}
                       setStrategicMode={setStrategicMode}
-                      notasTopicos={notasTopicos}
                       setGuidedLessonData={setGuidedLessonData}
                       setLivingLessonData={setLivingLessonData}
                       smartRevisionItems={smartSystem.queue}
@@ -1736,7 +1735,7 @@ const App: React.FC = () => {
                     />
                   )}
 
-                  {currentView === 'SMART_REVISION' && <SmartRevisionView items={smartSystem.queue} vault={smartSystem.vault} profile={stats.studyProfile!} plan={studyPlan} onBack={() => setCurrentView('AI_DIRECT')} onComplete={handleSmartComplete} onResolveVault={resolveVault} />}
+                  {currentView === 'SMART_REVISION' && <SmartRevisionView items={smartSystem.queue} notas={notasTopicos} subjects={editalConfig.subjects} vault={smartSystem.vault} profile={stats.studyProfile!} plan={studyPlan} onBack={() => setCurrentView('AI_DIRECT')} onComplete={handleSmartComplete} onResolveVault={resolveVault} />}
 
                   {currentView === 'STUDY_CYCLE' && (
                     <StudyCycleView
