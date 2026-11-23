@@ -9,7 +9,12 @@ self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(APP);
     // Um arquivo que falhe não impede a instalação.
-    await Promise.all(['/', ...PRECACHE].map((url) => cache.add(url).catch(() => {})));
+    await Promise.all(['/', ...PRECACHE].map(async (url) => {
+      try {
+        const res = await fetch(url);
+        if (respostaCoerente(url, res)) await cache.put(url, res);
+      } catch (e) { /* um arquivo que falhe não impede a instalação */ }
+    }));
     await self.skipWaiting();
   })());
 });
@@ -31,10 +36,26 @@ function guardaResto() {
     const cache = await caches.open(APP);
     for (const url of RESTO) {
       if (await cache.match(url)) continue;
-      try { const res = await fetch(url); if (res.ok) await cache.put(url, res); } catch (e) { break; }
+      try {
+        const res = await fetch(url);
+        if (respostaCoerente(url, res)) await cache.put(url, res);
+      } catch (e) { break; }
     }
   })().finally(() => { enchendo = null; });
   return enchendo;
+}
+
+// Um pedido de arquivo que ainda não subiu volta como a própria index.html, com status 200 (é a regra de
+// SPA: o que não existe cai na página). Guardar isso no lugar do .js envenena o cache — e como /assets/ é
+// servido do cache primeiro ("nome com hash nunca muda"), o estrago fica para sempre: a tela que precisa
+// daquele pedaço quebra com "Cannot read properties of undefined (reading 'default')" em toda visita.
+// Foi o que aconteceu em 23/11/2026, numa publicação: 7 arquivos ficaram guardados como HTML.
+function respostaCoerente(url, res) {
+  if (!res || !res.ok) return false;
+  const tipo = res.headers.get('content-type') || '';
+  if (/\.js$/i.test(url)) return tipo.includes('javascript') || tipo.includes('ecmascript');
+  if (/\.css$/i.test(url)) return tipo.includes('css');
+  return true;
 }
 
 async function redeDepoisCache(request, nomeCache, fallbackUrl) {
@@ -51,16 +72,22 @@ async function redeDepoisCache(request, nomeCache, fallbackUrl) {
 async function cacheDepoisRede(request, nomeCache) {
   const cache = await caches.open(nomeCache);
   const hit = await cache.match(request);
-  if (hit) return hit;
+  // Confere o que já está guardado: cache envenenado por uma publicação anterior se cura sozinho na
+  // primeira visita, sem o aluno precisar limpar nada.
+  if (hit) {
+    if (respostaCoerente(request.url, hit)) return hit;
+    await cache.delete(request);
+  }
   const res = await fetch(request);
-  if (res.ok) cache.put(request, res.clone());
+  if (respostaCoerente(request.url, res)) cache.put(request, res.clone());
   return res;
 }
 
 async function atualizaEmSegundoPlano(request, nomeCache) {
   const cache = await caches.open(nomeCache);
-  const hit = await cache.match(request);
-  const rede = fetch(request).then((res) => { if (res.ok) cache.put(request, res.clone()); return res; }).catch(() => null);
+  const guardada = await cache.match(request);
+  const hit = guardada && respostaCoerente(request.url, guardada) ? guardada : null;
+  const rede = fetch(request).then((res) => { if (respostaCoerente(request.url, res)) cache.put(request, res.clone()); return res; }).catch(() => null);
   return hit || (await rede) || Response.error();
 }
 
