@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { VoxelConfig, getVoxelConfig } from '../services/voxelCharacters';
+import { POSES_ESCOLHIVEIS, VoxelConfig, VoxelPose, getVoxelConfig } from '../services/voxelCharacters';
 import { Mascote, aplicarMascote, configDoMascote } from '../services/mascote';
 
 // Mascote 3D feito de cubos CSS: nenhuma imagem, só divs com transform.
@@ -805,21 +805,10 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
   return { raiz, corpo, cabeca, bracoE, bracoD, pernaE, pernaD, rabo, fone, adEsq, adDir, aquario, olhos, cronometro, livro };
 };
 
-export type VoxelPose = 'parado' | 'estudando' | 'tchau' | 'dormindo' | 'andando' | 'voltando' | 'festejando' | 'dancando' | 'distraido-olhar' | 'distraido-maos' | 'distraido-pes' | 'lendo';
-
-/** As animações que dá para escolher na tela. 'andando' fica de fora: é a saída. */
-export const POSES_ESCOLHIVEIS: { pose: VoxelPose; rotulo: string }[] = [
-  { pose: 'estudando', rotulo: 'Estudando' },
-  { pose: 'lendo', rotulo: 'Lendo' },
-  { pose: 'parado', rotulo: 'De boa' },
-  { pose: 'tchau', rotulo: 'Acenando' },
-  { pose: 'festejando', rotulo: 'Comemorando' },
-  { pose: 'dancando', rotulo: 'Dançando' },
-  { pose: 'distraido-olhar', rotulo: 'Olhando em volta' },
-  { pose: 'distraido-maos', rotulo: 'Brincando com as mãos' },
-  { pose: 'distraido-pes', rotulo: 'Balançando os pés' },
-  { pose: 'dormindo', rotulo: 'Dormindo' },
-];
+// A lista de animações mora em services/voxelCharacters.ts: o mascote guarda
+// qual delas ficou escolhida, e serviço não importa componente.
+export type { VoxelPose };
+export { POSES_ESCOLHIVEIS };
 
 interface VoxelAvatarProps {
   characterId?: string;

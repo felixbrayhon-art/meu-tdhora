@@ -14,6 +14,8 @@ import {
   VoxelCabelo,
   VoxelConfig,
   VoxelOrelha,
+  VoxelPose,
+  POSES_ESCOLHIVEIS,
   getVoxelConfig,
 } from './voxelCharacters';
 
@@ -57,6 +59,8 @@ export interface Mascote {
 
   dir?: VoxelAdereco;
   esq?: VoxelAdereco;
+  /** A animação que o boneco faz parado na tela. */
+  animacao?: VoxelPose;
 }
 
 const CHAVE = 'tdh_mascote';
@@ -205,6 +209,7 @@ export const limpar = (bruto: unknown): Mascote => {
   limpo.oculos = um(a.oculos, OCULOS);
   limpo.pelos = um(a.pelos, PELOS);
   limpo.dir = um(a.dir, ADERECOS);
+  if (POSES_ESCOLHIVEIS.some((p) => p.pose === a.animacao)) limpo.animacao = a.animacao as VoxelPose;
   limpo.esq = um(a.esq, ADERECOS);
   if (a.cilios === true) limpo.cilios = true;
   if (a.pinta === true) limpo.pinta = true;
