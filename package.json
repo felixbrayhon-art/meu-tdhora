@@ -14,7 +14,8 @@
     "test:consenso": "node scripts/test-fontes-consenso.mjs",
     "test:ink": "node scripts/test-ink.mjs",
     "test:finenotes": "cd vendor/finenotes && vitest run tests/ink tests/canvas tests/model tests/input tests/export tests/search",
-    "test:edital": "node scripts/test-edital-topicos.mjs"
+    "test:edital": "node scripts/test-edital-topicos.mjs",
+    "test:sw": "node scripts/test-sw-cache.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
