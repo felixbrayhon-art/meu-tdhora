@@ -4,6 +4,7 @@ import { Scissors } from './icons';
 import { analyzeEvocation, generateQuestionsFromAnalysis } from '../services/geminiService';
 import { StudyProfile, QuizQuestion, EditalConfig } from '../types';
 import LoadingFish from './LoadingFish';
+import EditalToggle from './EditalToggle';
 
 interface DynamicTimerProps {
   onBack: () => void;
@@ -11,6 +12,8 @@ interface DynamicTimerProps {
   studyProfile: StudyProfile;
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
+  /** Liga/desliga o modo edital; guardado no App, por isso vale em qualquer tela e sobrevive ao recarregar. */
+  onModoEdital?: (ligado: boolean) => void;
 }
 
 type Phase = 'EVOCATION' | 'PRACTICE' | 'DETECTIVE';
@@ -22,7 +25,7 @@ interface ErrorAnalysis {
   field3: string; // Como não errar de novo?
 }
 
-const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyProfile, strategicMode, editalConfig }) => {
+const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyProfile, strategicMode, editalConfig, onModoEdital }) => {
   const [phase, setPhase] = useState<Phase>('EVOCATION');
   const [seconds, setSeconds] = useState(300); // 5 min
   const [isActive, setIsActive] = useState(false);
@@ -296,7 +299,8 @@ const DynamicTimer: React.FC<DynamicTimerProps> = ({ onBack, onComplete, studyPr
                 <h2 className="mx-auto mt-3 max-w-3xl text-3xl font-black uppercase leading-[1.05] tracking-tight text-[#473c33] md:text-5xl">Feche tudo. O que você lembra do estudo de {strategicMode && selectedTopic ? <span className="mt-2 block text-[#b0632a] underline decoration-2 underline-offset-4">{selectedTopic}?</span> : <span className={`${styles.text} block`}>ontem?</span>}</h2>
               </div>
 
-              {strategicMode && editalConfig && !isActive && (
+              {!isActive && <EditalToggle editalConfig={editalConfig} modoEdital={!!strategicMode} onModoEdital={onModoEdital} studyProfile={studyProfile} className="mb-4 justify-center" />}
+              {strategicMode && editalConfig?.isActive && !isActive && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto w-full mb-6">
                   <div className="space-y-1 text-left">
                     <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-3">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>

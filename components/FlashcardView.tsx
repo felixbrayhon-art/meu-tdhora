@@ -9,6 +9,7 @@ import { ChevronLeft, Brain, Plus, Trash2, FolderPlus, Sparkles, Check, X, Rotat
 import FlashcardDeck3D from './FlashcardDeck3D';
 import StudyBook3D from './StudyBook3D';
 import CustomColorField from './CustomColorField';
+import EditalToggle from './EditalToggle';
 
 interface FlashcardViewProps {
   flashcards: Flashcard[];
@@ -19,6 +20,8 @@ interface FlashcardViewProps {
   studyProfile: StudyProfile;
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
+  /** Liga/desliga o modo edital; guardado no App, por isso vale em qualquer tela e sobrevive ao recarregar. */
+  onModoEdital?: (ligado: boolean) => void;
   onReviewBatchComplete?: (folderName: string, count: number) => void;
   selectedFolderId: string | null;
   setSelectedFolderId: (id: string | null) => void;
@@ -31,7 +34,7 @@ type ManagedView = 'FOLDERS' | 'FOLDER_DETAIL' | 'REVIEW';
 // Card fields come from a rich editor as HTML; lists and checks need the plain text.
 const plainText = (html: string): string => (html || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
-const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards, folders, setFolders, onBack, studyProfile, strategicMode, editalConfig, onReviewBatchComplete, selectedFolderId, setSelectedFolderId, viewMode, setViewMode }) => {
+const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards, folders, setFolders, onBack, studyProfile, strategicMode, editalConfig, onModoEdital, onReviewBatchComplete, selectedFolderId, setSelectedFolderId, viewMode, setViewMode }) => {
   const shouldReduceMotion = useReducedMotion();
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
@@ -772,7 +775,8 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
               <p className="text-[#e4d4bd] text-xs mb-12 text-center leading-relaxed font-black uppercase tracking-[0.2em] px-4">{strategicMode ? (studyProfile === 'FACULDADE' ? 'A IA vai usar as disciplinas da sua grade para criar flashcards de revisão.' : 'A IA vai usar as matérias do seu edital para criar flashcards de revisão.') : 'Informe um tema para criar flashcards com os principais conceitos.'}</p>
 
               <div className="space-y-8">
-                {strategicMode && editalConfig ? (
+                <EditalToggle editalConfig={editalConfig} modoEdital={!!strategicMode} onModoEdital={onModoEdital} studyProfile={studyProfile} tom="escuro" className="mb-4 justify-center" />
+                {strategicMode && editalConfig?.isActive ? (
                   <div className="space-y-6">
                     <div className="space-y-3">
                       <label className="text-[10px] font-black text-[#e4d4bd] uppercase tracking-widest ml-4">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>

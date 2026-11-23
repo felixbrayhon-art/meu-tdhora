@@ -6,6 +6,7 @@ import { scrollMainToTop } from '../utils/scrollTop';
 import CharacterTip from './CharacterTip';
 import { MEDICINA_CURRICULUM, MedicinaPeriod } from '../services/medicinaCurriculum';
 import { BookOpen, Sparkles, Plus, Trash2, HelpCircle, Calendar, Clock, SkipForward } from './icons';
+import { topicosDoConteudo } from '../utils/editalTopicos';
 
 interface EditalSetupProps {
   studyProfile?: StudyProfile;
@@ -220,9 +221,13 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
 
   const handleFinish = () => {
     localStorage.removeItem(draftKey);
+    // Os assuntos saem do conteúdo colado aqui mesmo. Antes nasciam vazios e só a extração de IA dentro de
+    // "Meu Edital" os preenchia — até lá, o seletor de assunto das ferramentas ficava vazio e o edital
+    // recém-cadastrado não servia para nada.
+    const comAssuntos = subjects.map((s) => (s.topics.length ? s : { ...s, topics: topicosDoConteudo(s.content) }));
     onComplete({
       isActive: true,
-      subjects,
+      subjects: comAssuntos,
       examDate,
       dailyHours,
       period: studyProfile === 'FACULDADE' ? period.trim() : undefined,
