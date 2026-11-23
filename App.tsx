@@ -860,6 +860,13 @@ const App: React.FC = () => {
     return subject ? subject.name : null;
   };
 
+  /**
+   * A matéria sob a qual guardar a nota. Usa a do edital quando o assunto bate com alguma, e cai na pasta
+   * do próprio material quando não bate — senão quem não cadastrou edital (ou estuda algo fora dele)
+   * resolve questões e não pontua nada, que era o caso antes.
+   */
+  const materiaPara = (assunto: string, alternativa: string) => getSubjectForTopic(assunto) || alternativa || assunto;
+
   const logStudyMinutes = (minutes: number) => {
     const today = toLocalDateKey();
     setHistory((prev) => ({ ...prev, [today]: (prev[today] || 0) + minutes }));
@@ -1477,9 +1484,8 @@ const App: React.FC = () => {
                       onReviewBatchComplete={(folderName, count, acertos) => {
                         addXP(count * 5);
                         handleManualPost(`Revisou ${count} flashcards de "${folderName}"!`);
-                        const mappedSubject = getSubjectForTopic(folderName);
-                        if (mappedSubject && count > 0) {
-                          registrarDesempenho({ materia: mappedSubject, assunto: folderName, tipo: 'flashcards', acerto: (acertos ?? count) / count, itens: count });
+                        if (count > 0) {
+                          registrarDesempenho({ materia: materiaPara(folderName, 'Flashcards'), assunto: folderName, tipo: 'flashcards', acerto: (acertos ?? count) / count, itens: count });
                         }
                       }}
                       selectedFolderId={flashcardsSelectedFolderId}
@@ -1635,9 +1641,9 @@ const App: React.FC = () => {
                         // (locally or via a cloud sync) while the quiz was still in progress.
                         const notebookName = folders.find((f) => f.id === activeNotebookInfo.folderId)?.notebooks.find((n) => n.id === activeNotebookInfo.notebookId)?.name || 'Simulado';
                         handleManualPost(`Acertou ${score}/${total} no quiz "${notebookName}"!`);
-                        const mappedSubject = getSubjectForTopic(notebookName);
-                        if (mappedSubject && total > 0) {
-                          registrarDesempenho({ materia: mappedSubject, assunto: notebookName, tipo: 'questoes', acerto: score / total, itens: total });
+                        if (total > 0) {
+                          const pasta = folders.find((f) => f.id === activeNotebookInfo.folderId)?.name || 'Meus materiais';
+                          registrarDesempenho({ materia: materiaPara(notebookName, pasta), assunto: notebookName, tipo: 'questoes', acerto: score / total, itens: total });
                         }
                         setCurrentView('MATERIALS');
                       }}
