@@ -59,6 +59,14 @@ const STUDY_VIEWS: AppView[] = [
   'MATERIALS', 'QUIZ_PLAYER', 'GUIDED_LESSON', 'TIMER', 'FOCUS_MODE', 'VR_METHOD', 'DIGITAL_NOTEBOOK',
 ];
 
+// Edital cadastrado antes de os assuntos passarem a sair do próprio conteúdo: a matéria tem o texto colado
+// mas `topics` vazio, e aí o seletor de assunto das ferramentas não tem o que oferecer. Preenche na leitura,
+// para quem já cadastrou não precisar refazer nada. A extração de IA em "Meu Edital" continua substituindo.
+const comAssuntosDoConteudo = (config: EditalConfig): EditalConfig => ({
+  ...config,
+  subjects: (config.subjects || []).map((s) => (s.topics?.length ? s : { ...s, topics: topicosDoConteudo(s.content) })),
+});
+
 const readViewFromUrl = (): AppView => {
   const value = new URLSearchParams(window.location.search).get('view');
   // O app abre na Aula Direta: a antiga tela inicial era so um cardapio de atalhos.
@@ -70,6 +78,7 @@ import { doc, setDoc, getDoc, collection, getDocs, deleteDoc, writeBatch } from 
 import { CharacterProvider } from './contexts/CharacterContext';
 import { syncPublicProfile } from './services/socialService';
 import { addLocalDays, toLocalDateKey } from './utils/localDate';
+import { topicosDoConteudo } from './utils/editalTopicos';
 
 const readTimerMinutes = (mode: TimerMode, fallback: number): number => {
   try {
@@ -295,12 +304,12 @@ const App: React.FC = () => {
   });
 
   const [editalConfig, setEditalConfig] = useState<EditalConfig>(() => {
-    return safeJsonParse('focus_edital', {
+    return comAssuntosDoConteudo(safeJsonParse('focus_edital', {
       isActive: false,
       subjects: [],
       examDate: '',
       dailyHours: 4,
-    });
+    }));
   });
 
   const [smartSystem, setSmartSystem] = useState<SmartRevisionSystem>(() => {
@@ -332,7 +341,23 @@ const App: React.FC = () => {
     return safeJsonParse('focus_ai_enabled', true);
   });
 
-  const [strategicMode, setStrategicMode] = useState(false);
+  // Modo edital: as ferramentas do dia a dia (Aula Direta, TDHQuestões, Flashcards, Cronômetro) oferecem as
+  // matérias e os assuntos do edital em vez de pedir o tema digitado.
+  //
+  // Já foi uma chave de navegação: nascia desligada, só ligava ao entrar por um card da aba Edital do Hub, e
+  // todo "voltar" desligava. Quem cadastrava o edital e abria a mesma tela pela barra de cima encontrava a
+  // caixa em branco, sem nada na tela explicando a diferença — e recarregar a página desfazia tudo.
+  //
+  // Agora: vale em qualquer caminho, acompanha o edital estar ativo e fica guardada, porque é uma escolha do
+  // aluno ("quero estudar pelo meu edital"), não um efeito de por onde ele passou.
+  const [strategicMode, setStrategicMode] = useState<boolean>(() => {
+    const guardado = safeJsonParse('focus_modo_edital', null);
+    const edital = safeJsonParse('focus_edital', { isActive: false });
+    return typeof guardado === 'boolean' ? guardado && edital.isActive : !!edital.isActive;
+  });
+  useEffect(() => {
+    safeSetItem('focus_modo_edital', JSON.stringify(strategicMode));
+  }, [strategicMode]);
 
   const [prefillAI, setPrefillAI] = useState<{
     topic: string;
@@ -412,7 +437,7 @@ const App: React.FC = () => {
           // Sync Edital
           const editalRef = doc(db, 'users', firebaseUser.uid, 'configs', 'edital');
           const editalDoc = await getDoc(editalRef);
-          if (editalDoc.exists()) setEditalConfig(editalDoc.data() as EditalConfig);
+          if (editalDoc.exists()) setEditalConfig(comAssuntosDoConteudo(editalDoc.data() as EditalConfig));
 
           // Sync Quiz Folders
           const foldersRef = collection(db, 'users', firebaseUser.uid, 'quizFolders');
@@ -541,6 +566,16 @@ const App: React.FC = () => {
     }
     safeSetItem('focus_edital', JSON.stringify(editalConfig));
   }, [editalConfig, user, isInitializing, isSyncing]);
+
+  // Ligar o edital já deixa as ferramentas apontadas para ele — era esse o sentido de terminar o cadastro.
+  // Desligar faz o contrário: sem edital ativo não há matéria nenhuma para oferecer.
+  const editalAtivoRef = useRef(editalConfig.isActive);
+  useEffect(() => {
+    if (editalConfig.isActive !== editalAtivoRef.current) {
+      editalAtivoRef.current = editalConfig.isActive;
+      setStrategicMode(editalConfig.isActive);
+    }
+  }, [editalConfig.isActive]);
 
   useEffect(() => {
     if (user && !isInitializing && !isSyncing) {
@@ -1393,7 +1428,6 @@ const App: React.FC = () => {
                     <AIView
                       onBack={() => {
                         setCurrentView('AI_DIRECT');
-                        setStrategicMode(false);
                       }}
                       folders={folders}
                       onSaveToNotebook={handleSaveToNotebook}
@@ -1422,6 +1456,7 @@ const App: React.FC = () => {
                       prefill={prefillAI}
                       onConsumedPrefill={() => setPrefillAI(null)}
                       strategicMode={strategicMode}
+                      onModoEdital={setStrategicMode}
                       editalConfig={editalConfig}
                     />
                   )}
@@ -1433,10 +1468,10 @@ const App: React.FC = () => {
                       setFolders={setFlashcardFolders}
                       onBack={() => {
                         setCurrentView('AI_DIRECT');
-                        setStrategicMode(false);
                       }}
                       studyProfile={stats.studyProfile!}
                       strategicMode={strategicMode}
+                      onModoEdital={setStrategicMode}
                       editalConfig={editalConfig}
                       onReviewBatchComplete={(folderName, count) => {
                         addXP(count * 5);
@@ -1456,7 +1491,6 @@ const App: React.FC = () => {
                       onQuestionsReady={handleStartFilteredQuiz}
                       onBack={() => {
                         setCurrentView('AI_DIRECT');
-                        setStrategicMode(false);
                       }}
                       folders={folders}
                       onSaveToNotebook={handleSaveToNotebook}
@@ -1467,6 +1501,7 @@ const App: React.FC = () => {
                       prefill={prefillQuiz}
                       onConsumedPrefill={() => setPrefillQuiz(null)}
                       strategicMode={strategicMode}
+                      onModoEdital={setStrategicMode}
                       editalConfig={editalConfig}
                       onBatchComplete={(topic, subject, total, correct, questions) => {
                         if (correct < total) {
@@ -1548,7 +1583,6 @@ const App: React.FC = () => {
                       }
                       onBack={() => {
                         setCurrentView('AI_DIRECT');
-                        setStrategicMode(false);
                       }}
                       onPlayQuiz={(fid, nid) => {
                         setActiveNotebookInfo({
@@ -1630,14 +1664,13 @@ const App: React.FC = () => {
                       studyProfile={stats.studyProfile!}
                       onBack={() => {
                         setCurrentView('AI_DIRECT');
-                        setStrategicMode(false);
                       }}
                       onComplete={(mins) => {
                         logStudyMinutes(mins);
                         setCurrentView('AI_DIRECT');
-                        setStrategicMode(false);
                       }}
                       strategicMode={strategicMode}
+                      onModoEdital={setStrategicMode}
                       editalConfig={editalConfig}
                     />
                   )}

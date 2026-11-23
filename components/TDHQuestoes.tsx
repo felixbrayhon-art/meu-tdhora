@@ -13,6 +13,7 @@ import QuestionExplanation from './QuestionExplanation';
 import VerificationBadge from './VerificationBadge';
 import ConsensoBadge from './ConsensoBadge';
 import { RichTextEditor } from './RichTextEditor';
+import EditalToggle from './EditalToggle';
 
 // Reindexes an array of per-question indices (e.g. flagged, questionScratched, questionHighlighted)
 // after the question at `removedIdx` is deleted from the questions array.
@@ -57,6 +58,8 @@ interface TDHQuestoesProps {
   onConsumedPrefill?: () => void;
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
+  /** Liga/desliga o modo edital; guardado no App, por isso vale em qualquer tela e sobrevive ao recarregar. */
+  onModoEdital?: (ligado: boolean) => void;
   explanationStyle?: ExplanationStyle;
   questionProfileStyle?: string;
   fontSizeMultiplier: number;
@@ -71,7 +74,7 @@ interface TDHQuestoesProps {
   onQuestionsReady?: (topic: string, subject: string | undefined, questions: QuizQuestion[], folderId: string, notebookName: string, notebookColor?: string, folderColor?: string) => void;
 }
 
-const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, explanationStyle: initialStyle, questionProfileStyle: initialQuestionStyle, fontSizeMultiplier, onBatchComplete, onTriggerGuidedLesson, onQuestionSessionChange, onQuestionsReady }) => {
+const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, onModoEdital, explanationStyle: initialStyle, questionProfileStyle: initialQuestionStyle, fontSizeMultiplier, onBatchComplete, onTriggerGuidedLesson, onQuestionSessionChange, onQuestionsReady }) => {
   const [topic, setTopic] = useState(prefill || '');
   const [inputMode, setInputMode] = useState<'AUTO' | 'PASTE' | 'MANUAL' | 'ENEM' | 'CONCURSO'>('AUTO');
   const [enemExams, setEnemExams] = useState<EnemExamInfo[]>([]);
@@ -804,7 +807,8 @@ const TDHQuestoes: React.FC<TDHQuestoesProps> = ({ onBack, onSaveToNotebook, fol
                             <p className="text-[11px] font-medium text-slate-400">{strategicMode ? 'Selecione a matéria e o assunto.' : 'Ajuste banca, quantidade e estilo da explicação.'}</p>
                           </div>
                         </div>
-                      {strategicMode && editalConfig ? (
+                      <EditalToggle editalConfig={editalConfig} modoEdital={!!strategicMode} onModoEdital={onModoEdital} studyProfile={studyProfile} className="justify-center" />
+                      {strategicMode && editalConfig?.isActive ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-3 text-left">
                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-4">{studyProfile === 'FACULDADE' ? 'Disciplina da Grade' : 'Matéria do Edital'}</label>

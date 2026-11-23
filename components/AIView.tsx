@@ -5,6 +5,7 @@ import BookLoader from './BookLoader';
 import MarkdownContent from './MarkdownContent';
 import SaveToFolderModal from './SaveToFolderModal';
 import { QuizFolder, QuizQuestion, StudyProfile, EditalConfig, ExplanationStyle } from '../types';
+import EditalToggle from './EditalToggle';
 
 interface AIViewProps {
   onBack: () => void;
@@ -16,12 +17,14 @@ interface AIViewProps {
   onConsumedPrefill?: () => void;
   strategicMode?: boolean;
   editalConfig?: EditalConfig;
+  /** Liga/desliga o modo edital; guardado no App, por isso vale em qualquer tela e sobrevive ao recarregar. */
+  onModoEdital?: (ligado: boolean) => void;
   explanationStyle?: ExplanationStyle;
   /** Leva o tema da aula para o TDHQuestões, onde as questões são conferidas. */
   onPracticeTopic?: (topic: string) => void;
 }
 
-const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, explanationStyle: initialStyle, onPracticeTopic }) => {
+const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook, folders, studyProfile, prefill, onConsumedPrefill, strategicMode, editalConfig, onModoEdital, explanationStyle: initialStyle, onPracticeTopic }) => {
   const [topic, setTopic] = useState(prefill?.topic || '');
   // Matéria separada do assunto. Além de ficar mais claro para o aluno, a busca de
   // fontes (functions/_lib/fontes.ts) separa no dois-pontos e usa a parte depois dele
@@ -216,7 +219,8 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                     </div>
                   )}
 
-                  {strategicMode && editalConfig ? (
+                  <EditalToggle editalConfig={editalConfig} modoEdital={!!strategicMode} onModoEdital={onModoEdital} studyProfile={studyProfile} className="mb-4" />
+                  {strategicMode && editalConfig?.isActive ? (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <label className="block">
                         <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">{studyProfile === 'FACULDADE' ? 'Disciplina da grade' : 'Matéria do edital'}</span>
