@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Flashcard, FlashcardFolder, StudyProfile, EditalConfig } from '../types';
 import { generateStudyContent } from '../services/geminiService';
@@ -10,6 +10,7 @@ import FlashcardDeck3D from './FlashcardDeck3D';
 import StudyBook3D from './StudyBook3D';
 import CustomColorField from './CustomColorField';
 import EditalToggle from './EditalToggle';
+import { doSM2, Nota as NotaFsrs, primeiraRevisao as primeiraRevisaoCarta, revisar as revisarCarta } from '../services/fsrs';
 
 interface FlashcardViewProps {
   flashcards: Flashcard[];
@@ -22,7 +23,8 @@ interface FlashcardViewProps {
   editalConfig?: EditalConfig;
   /** Liga/desliga o modo edital; guardado no App, por isso vale em qualquer tela e sobrevive ao recarregar. */
   onModoEdital?: (ligado: boolean) => void;
-  onReviewBatchComplete?: (folderName: string, count: number) => void;
+  /** `acertos` conta as cartas em que o aluno NÃO apertou 'errei' — é o que alimenta a nota do assunto. */
+  onReviewBatchComplete?: (folderName: string, count: number, acertos: number) => void;
   selectedFolderId: string | null;
   setSelectedFolderId: (id: string | null) => void;
   viewMode: ManagedView;
@@ -35,6 +37,8 @@ type ManagedView = 'FOLDERS' | 'FOLDER_DETAIL' | 'REVIEW';
 const plainText = (html: string): string => (html || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
 const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards, folders, setFolders, onBack, studyProfile, strategicMode, editalConfig, onModoEdital, onReviewBatchComplete, selectedFolderId, setSelectedFolderId, viewMode, setViewMode }) => {
+  // Quantas cartas o aluno acertou na sessão em curso (tudo que não foi "errei").
+  const acertosRef = useRef(0);
   const shouldReduceMotion = useReducedMotion();
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
@@ -189,6 +193,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
     }
 
     const ids = cards.map((c) => c.id).sort(() => Math.random() - 0.5);
+    acertosRef.current = 0;
     setReviewQueue(ids);
     setCurrentReviewIndex(0);
     setShowAnswer(false);
@@ -197,6 +202,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
   };
 
   const handleRate = (quality: 0 | 1 | 2 | 3) => {
+    if (quality > 0) acertosRef.current += 1;
     const currentId = reviewQueue[currentReviewIndex];
     const current = flashcards.find((f) => f.id === currentId);
     if (!current) return;
@@ -205,33 +211,25 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
       prev.map((f) => {
         if (f.id !== current.id) return f;
 
-        const ease = f.easeFactor || 2.5;
-        const count = (f.reviewsCount || 0) + 1;
-        let interval = f.interval || 0;
-        let nextEase = ease;
+        // FSRS no lugar do SM-2 que ficava escrito aqui: ele guarda estabilidade e dificuldade separadas,
+        // em vez de um fator único, e por isso erra menos em carta difícil. Ver services/fsrs.ts.
+        const nota = (quality + 1) as NotaFsrs; // 0..3 da tela → 1..4 do FSRS
+        const anterior = f.estabilidade
+          ? { estabilidade: f.estabilidade, dificuldade: f.dificuldade ?? 5, revisoes: f.reviewsCount || 0, proximaRevisao: f.nextReview || Date.now(), intervalo: f.interval || 0 }
+          : doSM2(f.interval, f.easeFactor, f.reviewsCount);
 
-        if (quality === 0) {
-          interval = 0;
-          nextEase = Math.max(1.3, ease - 0.2);
-        } else {
-          if (interval === 0) interval = 1;
-          else if (interval === 1) interval = 6;
-          else interval = Math.round(interval * ease);
-
-          if (quality === 1) nextEase = Math.max(1.3, ease - 0.15);
-          if (quality === 3) nextEase = Math.min(5, ease + 0.15);
-        }
-
-        const qualityFactor = [0, 0.8, 1, 1.3][quality];
-        const finalInterval = Math.round(interval * qualityFactor);
-        const nextReview = Date.now() + finalInterval * 24 * 60 * 60 * 1000;
+        const estado = anterior
+          ? revisarCarta(anterior, nota, Math.max(0, (Date.now() - (f.revisadaEm ?? f.nextReview ?? Date.now())) / 86400000))
+          : primeiraRevisaoCarta(nota);
 
         return {
           ...f,
-          interval: finalInterval,
-          easeFactor: nextEase,
-          reviewsCount: count,
-          nextReview: quality === 0 ? Date.now() + 10 * 60 * 1000 : nextReview,
+          interval: estado.intervalo,
+          estabilidade: estado.estabilidade,
+          dificuldade: estado.dificuldade,
+          reviewsCount: estado.revisoes,
+          revisadaEm: Date.now(),
+          nextReview: estado.proximaRevisao,
         };
       }),
     );
@@ -247,7 +245,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
     } else {
       setIsReviewDone(true);
       if (onReviewBatchComplete) {
-        onReviewBatchComplete(activeFolder?.name || 'Geral', reviewQueue.length);
+        onReviewBatchComplete(activeFolder?.name || 'Geral', reviewQueue.length, acertosRef.current);
       }
     }
   };

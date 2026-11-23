@@ -5,6 +5,7 @@ import { getProactiveAdvice } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
 import { ScrollText, BookOpen, BarChart3, Bookmark, ClipboardList, Zap, FileText, Smile, Heart, Cloud, ArrowRight, PenLine, RotateCcw, Copy, Briefcase, Folder, Clock, Calendar, Bell, AlertTriangle, Scale, Search } from './icons';
 import MotivationView from './MotivationView';
+import { NotaTopico } from '../services/notaTopico';
 
 
 // Método VR ainda está em desenvolvimento: o cartão fica escondido do aluno até o fluxo estar pronto (mude para true para voltar).
@@ -20,6 +21,8 @@ interface HubProps {
   setIsPlayingRain: (p: boolean) => void;
   editalConfig: EditalConfig;
   setStrategicMode: (s: boolean) => void;
+  /** Notas de 0 a 100 por tópico (services/notaTopico.ts). */
+  notasTopicos: NotaTopico[];
   setGuidedLessonData: (data: { subject: string; topic: string }) => void;
   setLivingLessonData: (data: { subject: string; topic: string }) => void;
   smartRevisionItems: SmartRevisionItem[];
@@ -36,7 +39,7 @@ interface HubProps {
   onCategoryChange: (c: HubCategory) => void;
 }
 
-const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats, activeChannel, setActiveChannel, isPlayingRain, setIsPlayingRain, editalConfig, setStrategicMode, setGuidedLessonData, setLivingLessonData, smartRevisionItems, isAIEnabled, isSyncing, attempts, folders, smartSystem, isAdmin, onReactivateEdital, category, onCategoryChange }) => {
+const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats, activeChannel, setActiveChannel, isPlayingRain, setIsPlayingRain, editalConfig, notasTopicos, setStrategicMode, setGuidedLessonData, setLivingLessonData, smartRevisionItems, isAIEnabled, isSyncing, attempts, folders, smartSystem, isAdmin, onReactivateEdital, category, onCategoryChange }) => {
   // A barra de secoes subiu para a barra unica do topo (components/ToolTabs.tsx),
   // entao quem manda na categoria agora e o App, nao este componente.
   const activeTab = category;
@@ -521,18 +524,15 @@ const Hub: React.FC<HubProps> = ({ setView, setTimerMode, flashcardCount, stats,
 
                 {activeTab === 'EDITAL' && (
                   <div className="lg:col-span-3 pt-12 space-y-8">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-logo text-2xl uppercase">BARRA DE CALOR DA MEMÓRIA</h3>
-                      <div className="flex gap-2">
-                        <span className="flex items-center gap-1 text-[8px] font-black text-[#fecc73] uppercase tracking-widest">
-                          <div className="w-2 h-2 rounded-full bg-[#fecc73]"></div> VALIDADO
-                        </span>
-                        <span className="flex items-center gap-1 text-[8px] font-black text-[#fdad74] uppercase tracking-widest">
-                          <div className="w-2 h-2 rounded-full bg-[#fdad74]"></div> REVISAR
-                        </span>
-                      </div>
+                    {/* A legenda "validado / revisar" sumiu com o `heat`: a tarja de cada matéria já diz em
+                        que pé ela está, e a linha de baixo diz quantos assuntos venceram. */}
+                    <div>
+                      <h3 className="font-logo text-2xl uppercase">O quanto você domina</h3>
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        Nota de 0 a 100 por matéria · sai do seu desempenho e cai sozinha sem revisão
+                      </p>
                     </div>
-                    <MemoryHeatmap subjects={editalConfig.subjects} studyProfile={stats.studyProfile} />
+                    <MemoryHeatmap subjects={editalConfig.subjects} notas={notasTopicos} studyProfile={stats.studyProfile} />
                   </div>
                 )}
               </>
