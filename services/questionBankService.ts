@@ -13,7 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db, cleanData } from '../src/lib/firebase';
-import { bankRpc, bankSelect, BankRow } from '../src/lib/supabaseBank';
+import { bancoContar, bancoFaceta, bancoLinhas, bancoPorIds, bancoSortear, bancoSortearProva, BankRow, LinhaMeta } from '../src/lib/bancoQuestoes';
 import { PublishedQuestion, QuestionAlternative, QuestionDraft, QuestionImportBatch, QuestionType, QuizQuestion } from '../types';
 
 export const checkIsAdmin = async (uid: string): Promise<boolean> => {
@@ -124,21 +124,20 @@ const fromBankRow = (r: BankRow): PublishedQuestion => ({
   explanation: r.explanation,
   contentHash: r.content_hash,
   approvedAt: 0,
-  approvedBy: 'supabase',
+  approvedBy: 'd1',
   examBoard: r.exam_board,
   organization: r.organization,
   position: r.position,
   examYear: r.exam_year,
 });
 
-// The student-facing bank now lives on Supabase (functions in supabase-schema.sql). When it cannot answer, the old Firestore
-// read below still runs, so a question published there earlier stays reachable.
-const withBankFallback = async <T,>(viaSupabase: () => Promise<T>, viaFirestore: () => Promise<T>): Promise<T> => {
-  try { return await viaSupabase(); } catch (error) {
-    console.warn('[banco] Supabase indisponível, usando o Firestore:', error);
-    return viaFirestore();
-  }
-};
+// O banco que o aluno lê mora no D1 (`todahora-questoes`), atrás de /api/banco. Era o Supabase, e antes
+// dele a coleção `questions` do Firestore — que servia de reserva quando o Supabase não respondia.
+//
+// Essa reserva foi tirada em 2026-11-23, e não por limpeza: o Firestore do projeto está sem faturamento
+// desde outubro e devolve 403. Quando o Supabase pausou, cada consulta caía numa reserva morta e o erro
+// virava lista vazia — o aluno via uma tela sem questão nenhuma, sem nada dizendo o que havia acontecido.
+// Falhar na cara agora é melhor do que fingir que o banco está vazio.
 
 const mapBankQuestion = (q: PublishedQuestion): QuizQuestion => {
   const sortedAlternatives = [...q.alternatives].sort((a, b) => a.position - b.position);
@@ -179,40 +178,11 @@ export interface BankTopicFacets {
 // "Direito Penal", "Direito Constitucional" etc.
 // `area` filters the matérias to those that have questions in that área (supabase/areas-primeiro.sql); null = all.
 export const listBankImportSubjects = (area: string | null = null): Promise<BankFacetOption[]> =>
-  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_subjects', { p_area: area }), listBankImportSubjectsFirestore);
+  bancoFaceta('materias', { area });
 
 // Every área of the bank with its question count (Jurídica, Policial, Tribunais, Fiscal, Administrativa, Concursos gerais…).
 export const listBankAllAreas = (): Promise<BankFacetOption[]> =>
-  bankRpc<BankFacetOption[]>('bank_all_areas').catch(() => []);
-const listBankImportSubjectsFirestore = async (): Promise<BankFacetOption[]> => {
-  const snap = await getDocs(collection(db, 'questions'));
-  const counts = new Map<string, number>();
-  snap.docs.forEach(d => {
-    const subject = (d.data() as PublishedQuestion).importSubject;
-    if (subject) counts.set(subject, (counts.get(subject) ?? 0) + 1);
-  });
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
-};
-
-const buildBankConstraints = (importSubject: string, topic: string | null, area: string | null) => {
-  const constraints = [where('importSubject', '==', importSubject)];
-  if (topic) constraints.push(where('subjectRaw', '==', topic));
-  if (area) constraints.push(where('position', '==', area));
-  return constraints;
-};
-
-const countByField = <K extends 'subjectRaw' | 'position'>(docs: { data: () => unknown }[], field: K): BankFacetOption[] => {
-  const counts = new Map<string, number>();
-  docs.forEach(d => {
-    const value = (d.data() as PublishedQuestion)[field];
-    if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
-  });
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
-};
+  bancoFaceta('areas').catch(() => []);
 
 // Level 2: FC Concursos' own (finer) classification within that discipline
 // (subjectRaw) — only fetched once a level-1 matéria has been chosen.
@@ -221,20 +191,12 @@ const countByField = <K extends 'subjectRaw' | 'position'>(docs: { data: () => u
 // only required filter anywhere in this file — área here is an OPTIONAL
 // cross-filter: when set, assunto counts/options reflect just that área,
 // but leaving it unset never blocks fetching by matéria+assunto alone.
-export const listBankTopicsForSubject = (importSubject: string, area: string | null = null): Promise<BankTopicFacets> =>
-  withBankFallback(
-    async () => {
-      const [topics, total] = await Promise.all([
-        bankRpc<BankFacetOption[]>('bank_topics', { p_subject: importSubject, p_area: area }),
-        bankRpc<number>('bank_count', { p_subject: importSubject, p_topic: null, p_area: area }),
-      ]);
-      return { total: Number(total), topics };
-    },
-    () => listBankTopicsForSubjectFirestore(importSubject, area),
-  );
-const listBankTopicsForSubjectFirestore = async (importSubject: string, area: string | null = null): Promise<BankTopicFacets> => {
-  const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, null, area)));
-  return { total: snap.size, topics: countByField(snap.docs, 'subjectRaw') };
+export const listBankTopicsForSubject = async (importSubject: string, area: string | null = null): Promise<BankTopicFacets> => {
+  const [topics, total] = await Promise.all([
+    bancoFaceta('assuntos', { materia: importSubject, area }),
+    bancoContar({ materia: importSubject, area }),
+  ]);
+  return { total, topics };
 };
 
 // "Área" is a coarse tag independent of subjectRaw/topicRaw (e.g. "Policial"
@@ -246,11 +208,7 @@ const listBankTopicsForSubjectFirestore = async (importSubject: string, area: st
 // OPTIONAL cross-filter, symmetric with `area` above — assunto and área
 // never require each other, or matéria's own assunto/área picks, to work.
 export const listBankAreasForSubject = (importSubject: string, topic: string | null = null): Promise<BankFacetOption[]> =>
-  withBankFallback(() => bankRpc<BankFacetOption[]>('bank_areas', { p_subject: importSubject, p_topic: topic }), () => listBankAreasForSubjectFirestore(importSubject, topic));
-const listBankAreasForSubjectFirestore = async (importSubject: string, topic: string | null = null): Promise<BankFacetOption[]> => {
-  const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, topic, null)));
-  return countByField(snap.docs, 'position');
-};
+  bancoFaceta('areas-da-materia', { materia: importSubject, assunto: topic });
 
 // Live count for the exact matéria + assunto + área combination currently
 // selected — assunto and área are independent facets (each counted only
@@ -258,31 +216,12 @@ const listBankAreasForSubjectFirestore = async (importSubject: string, topic: st
 // listBankAreasForSubject above), so when both are set at once their real
 // overlap can only be known by asking Firestore directly.
 export const countBankQuestions = (importSubject: string, topic: string | null, area: string | null): Promise<number> =>
-  withBankFallback(async () => Number(await bankRpc<number>('bank_count', { p_subject: importSubject, p_topic: topic, p_area: area })), () => countBankQuestionsFirestore(importSubject, topic, area));
-const countBankQuestionsFirestore = async (importSubject: string, topic: string | null, area: string | null): Promise<number> => {
-  const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, topic, area)));
-  return snap.size;
-};
+  bancoContar({ materia: importSubject, assunto: topic, area });
 
-export const fetchBankQuestions = (importSubject: string, topic: string | null, area: string | null, count: number): Promise<QuizQuestion[]> =>
-  withBankFallback(async () => {
-    const rows = await bankRpc<BankRow[]>('bank_random', { p_subject: importSubject, p_topic: topic, p_area: area, p_count: count });
-    if (rows.length === 0) throw new Error('Nenhuma questão encontrada para essa matéria/assunto/área no nosso banco ainda.');
-    return rows.map(fromBankRow).map(mapBankQuestion);
-  }, () => fetchBankQuestionsFirestore(importSubject, topic, area, count));
-const fetchBankQuestionsFirestore = async (
-  importSubject: string,
-  topic: string | null,
-  area: string | null,
-  count: number
-): Promise<QuizQuestion[]> => {
-  const snap = await getDocs(query(collection(db, 'questions'), ...buildBankConstraints(importSubject, topic, area)));
-  const all = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<PublishedQuestion, 'id'>) }));
-  if (all.length === 0) {
-    throw new Error('Nenhuma questão encontrada para essa matéria/assunto/área no nosso banco ainda.');
-  }
-  const shuffled = [...all].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count).map(mapBankQuestion);
+export const fetchBankQuestions = async (importSubject: string, topic: string | null, area: string | null, count: number): Promise<QuizQuestion[]> => {
+  const rows = await bancoSortear({ materia: importSubject, assunto: topic, area, quantas: count });
+  if (rows.length === 0) throw new Error('Nenhuma questão encontrada para essa matéria/assunto/área no nosso banco ainda.');
+  return rows.map(fromBankRow).map(mapBankQuestion);
 };
 
 // --- Banco geral por prova oficial (banca / órgão / cargo / ano) ---
@@ -298,24 +237,18 @@ const fetchBankQuestionsFirestore = async (
 // facets above: fine at the bank's current size, revisit if it grows into
 // the thousands.
 
-const nonEmpty = (value: unknown): value is string | number => value !== null && value !== undefined && value !== '';
 
 // "Todas as bancas / órgãos / cargos / anos": o valor especial abaixo no lugar de um item da lista. As funções do banco (bank_exam_*) só aceitam
 // igualdade, então quando algum nível é "todos" as listas e a busca saem de uma leitura direta da tabela (só as 4 colunas, uma vez por sessão).
 export const EXAM_ALL = '__todas__';
 export const isExamAll = (value: string) => value === EXAM_ALL;
-export type ExamRow = { id: string; area: string | null; exam_board: string | null; organization: string | null; position: string | null; exam_year: number | null; import_subject: string | null; subject_raw: string | null };
+export type ExamRow = LinhaMeta;
 let examRowsPromise: Promise<ExamRow[]> | null = null;
 export const loadExamRows = (): Promise<ExamRow[]> => {
+  // Vinha em páginas de 1.000 porque o PostgREST não devolvia mais que isso de uma vez; /api/banco manda
+  // os metadados de tudo numa resposta, guardada na borda.
   if (!examRowsPromise) {
-    examRowsPromise = (async () => {
-      const rows: ExamRow[] = [];
-      for (let offset = 0; ; offset += 1000) {
-        const { data } = await bankSelect<ExamRow[]>(`questoes?select=id,area,exam_board,organization,position,exam_year,import_subject,subject_raw&order=id&offset=${offset}&limit=1000`);
-        rows.push(...data);
-        if (data.length < 1000) return rows;
-      }
-    })().catch((error) => { examRowsPromise = null; throw error; });
+    examRowsPromise = bancoLinhas().catch((error) => { examRowsPromise = null; throw error; });
   }
   return examRowsPromise;
 };
@@ -378,61 +311,25 @@ export const fetchExamQuestionsByFilter = async (f: ExamFilter, count: number): 
   const ids = filterExamRows(await loadExamRows(), f).map((r) => r.id);
   if (!ids.length) throw new Error('Nenhuma questão encontrada para esse filtro no nosso banco ainda.');
   const sorteadas = ids.sort(() => Math.random() - 0.5).slice(0, count);
-  const lista = sorteadas.map((id) => `"${id.replace(/"/g, '')}"`).join(',');
-  const { data } = await bankSelect<BankRow[]>(`questoes?select=*&id=in.(${encodeURIComponent(lista)})`);
-  return data.sort(() => Math.random() - 0.5).map(fromBankRow).map(mapBankQuestion);
+  const linhas = await bancoPorIds(sorteadas);
+  return linhas.sort(() => Math.random() - 0.5).map(fromBankRow).map(mapBankQuestion);
 };
 
 export const listExamBoards = async (): Promise<BankFacetOption[]> => {
-  const boards = await withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_boards'), listExamBoardsFirestore);
+  const boards = await bancoFaceta('bancas');
   // O total de "todas as bancas" inclui as questões sem banca informada.
   const total = await loadExamRows().then((rows) => rows.length).catch(() => undefined);
   return withAll(boards, 'Todas as bancas', total);
 };
-const listExamBoardsFirestore = async (): Promise<BankFacetOption[]> => {
-  const snap = await getDocs(collection(db, 'questions'));
-  const counts = new Map<string, number>();
-  snap.docs.forEach(d => {
-    const board = (d.data() as PublishedQuestion).examBoard;
-    if (nonEmpty(board)) counts.set(board, (counts.get(board) ?? 0) + 1);
-  });
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
-};
 
 export const listExamInstitutions = async (board: string): Promise<BankFacetOption[]> => {
   if (isExamAll(board)) return withAll(facetOf(await loadExamRows(), (r) => r.organization), 'Todos os órgãos', await totalOf(board));
-  return withAll(await withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_institutions', { p_board: board }), () => listExamInstitutionsFirestore(board)), 'Todos os órgãos', await totalOf(board));
-};
-const listExamInstitutionsFirestore = async (board: string): Promise<BankFacetOption[]> => {
-  const snap = await getDocs(query(collection(db, 'questions'), where('examBoard', '==', board)));
-  const counts = new Map<string, number>();
-  snap.docs.forEach(d => {
-    const institution = (d.data() as PublishedQuestion).organization;
-    if (nonEmpty(institution)) counts.set(institution, (counts.get(institution) ?? 0) + 1);
-  });
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
+  return withAll(await bancoFaceta('orgaos', { banca: board }), 'Todos os órgãos', await totalOf(board));
 };
 
 export const listExamPositions = async (board: string, institution: string): Promise<BankFacetOption[]> => {
   if (isExamAll(board) || isExamAll(institution)) return withAll(facetOf(matchRows(await loadExamRows(), board, institution), (r) => r.position), 'Todos os cargos', await totalOf(board, institution));
-  return withAll(await withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_positions', { p_board: board, p_institution: institution }), () => listExamPositionsFirestore(board, institution)), 'Todos os cargos', await totalOf(board, institution));
-};
-const listExamPositionsFirestore = async (board: string, institution: string): Promise<BankFacetOption[]> => {
-  const snap = await getDocs(
-    query(collection(db, 'questions'), where('examBoard', '==', board), where('organization', '==', institution))
-  );
-  const counts = new Map<string, number>();
-  snap.docs.forEach(d => {
-    const position = (d.data() as PublishedQuestion).position;
-    if (nonEmpty(position)) counts.set(position, (counts.get(position) ?? 0) + 1);
-  });
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR'));
+  return withAll(await bancoFaceta('cargos', { banca: board, orgao: institution }), 'Todos os cargos', await totalOf(board, institution));
 };
 
 // Level 4 (ano) doubles as "how many questions exist for this exact
@@ -440,69 +337,20 @@ const listExamPositionsFirestore = async (board: string, institution: string): P
 // bankTopicsTotal/bankAvailableCount play for the matéria path.
 export const listExamYears = async (board: string, institution: string, position: string): Promise<BankFacetOption[]> => {
   if (isExamAll(board) || isExamAll(institution) || isExamAll(position)) return withAll(facetOf(matchRows(await loadExamRows(), board, institution, position), (r) => r.exam_year, true), 'Todos os anos', await totalOf(board, institution, position));
-  return withAll(await withBankFallback(() => bankRpc<BankFacetOption[]>('bank_exam_years', { p_board: board, p_institution: institution, p_position: position }), () => listExamYearsFirestore(board, institution, position)), 'Todos os anos', await totalOf(board, institution, position));
+  return withAll(await bancoFaceta('anos', { banca: board, orgao: institution, cargo: position }), 'Todos os anos', await totalOf(board, institution, position));
 };
-const listExamYearsFirestore = async (board: string, institution: string, position: string): Promise<BankFacetOption[]> => {
-  const snap = await getDocs(
-    query(
-      collection(db, 'questions'),
-      where('examBoard', '==', board),
-      where('organization', '==', institution),
-      where('position', '==', position)
-    )
-  );
-  const counts = new Map<number, number>();
-  snap.docs.forEach(d => {
-    const year = (d.data() as PublishedQuestion).examYear;
-    if (nonEmpty(year)) counts.set(year, (counts.get(year) ?? 0) + 1);
+
+// Um nível em "todos" (EXAM_ALL) simplesmente não entra no filtro. No Supabase isto era bem mais torto:
+// como a função só aceitava igualdade nos quatro níveis, o caminho de "todos" tinha de contar o total,
+// pegar uma janela aleatória por offset e sortear dentro dela. O /api/banco sorteia no próprio banco.
+export const fetchExamQuestions = async (board: string, institution: string, position: string, year: number | string, count: number, subject: string = EXAM_ALL, topic: string = EXAM_ALL): Promise<QuizQuestion[]> => {
+  const semTodos = (v: string | number) => (isExamAll(String(v)) ? null : v);
+  const rows = await bancoSortearProva({
+    banca: semTodos(board), orgao: semTodos(institution), cargo: semTodos(position),
+    ano: semTodos(year), materia: semTodos(subject), assunto: semTodos(topic), quantas: count,
   });
-  return [...counts.entries()]
-    .map(([year, count]) => ({ value: String(year), count }))
-    .sort((a, b) => Number(b.value) - Number(a.value)); // most recent exam first
-};
-
-const fetchExamQuestionsAll = async (board: string, institution: string, position: string, year: number | string, count: number, subject: string = EXAM_ALL, topic: string = EXAM_ALL): Promise<QuizQuestion[]> => {
-  const filters = [['exam_board', board], ['organization', institution], ['position', position], ['exam_year', year], ['import_subject', subject], ['subject_raw', topic]]
-    .filter(([, v]) => !isExamAll(String(v))).map(([k, v]) => `${k}=eq.${encodeURIComponent(String(v))}`).join('&');
-  const base = `questoes?select=*${filters ? `&${filters}` : ''}&order=id`;
-  const head = await bankSelect<unknown[]>(`${base}&limit=1`, { Prefer: 'count=exact', Range: '0-0' });
-  const total = Number((head.response.headers.get('content-range') ?? '').split('/')[1]) || 0;
-  if (!total) throw new Error('Nenhuma questão encontrada para esse filtro no nosso banco ainda.');
-  const window = Math.max(count * 8, 80);
-  const from = Math.floor(Math.random() * Math.max(1, total - window + 1));
-  const { data } = await bankSelect<BankRow[]>(`${base}&offset=${from}&limit=${window}`);
-  return data.sort(() => Math.random() - 0.5).slice(0, count).map(fromBankRow).map(mapBankQuestion);
-};
-
-export const fetchExamQuestions = (board: string, institution: string, position: string, year: number | string, count: number, subject: string = EXAM_ALL, topic: string = EXAM_ALL): Promise<QuizQuestion[]> =>
-  [board, institution, position, String(year), subject, topic].some(isExamAll) ? fetchExamQuestionsAll(board, institution, position, year, count, subject, topic) :
-  withBankFallback(async () => {
-    const rows = await bankRpc<BankRow[]>('bank_exam_random', { p_board: board, p_institution: institution, p_position: position, p_year: year, p_count: count });
-    if (rows.length === 0) throw new Error('Nenhuma questão encontrada para essa banca/órgão/cargo/ano no nosso banco ainda.');
-    return rows.map(fromBankRow).map(mapBankQuestion);
-  }, () => fetchExamQuestionsFirestore(board, institution, position, Number(year), count));
-const fetchExamQuestionsFirestore = async (
-  board: string,
-  institution: string,
-  position: string,
-  year: number,
-  count: number
-): Promise<QuizQuestion[]> => {
-  const snap = await getDocs(
-    query(
-      collection(db, 'questions'),
-      where('examBoard', '==', board),
-      where('organization', '==', institution),
-      where('position', '==', position),
-      where('examYear', '==', year)
-    )
-  );
-  const all = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<PublishedQuestion, 'id'>) }));
-  if (all.length === 0) {
-    throw new Error('Nenhuma questão encontrada para essa banca/órgão/cargo/ano no nosso banco ainda.');
-  }
-  const shuffled = [...all].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count).map(mapBankQuestion);
+  if (rows.length === 0) throw new Error('Nenhuma questão encontrada para essa banca/órgão/cargo/ano no nosso banco ainda.');
+  return rows.map(fromBankRow).map(mapBankQuestion);
 };
 
 // --- Package publish (admin): a JSON package built outside the app (montar_banco_reais.py) goes straight to `questions`. ---

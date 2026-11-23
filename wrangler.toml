@@ -16,6 +16,13 @@ binding = "FONTES"
 database_name = "todahora-fontes"
 database_id = "f5dc2d0a-cbcc-4ff1-8b8f-acfb1648330c"
 
+# Banco de questões reais (scripts/banco-questoes/para-d1.mjs), lido por functions/api/banco.ts. Base
+# separada da FONTES de propósito: a FONTES já passa de 200 MB, e o plano grátis tem limite por base.
+[[d1_databases]]
+binding = "QUESTOES"
+database_name = "todahora-questoes"
+database_id = "3354c1dc-884e-4745-82a9-354a0dccd164"
+
 # IA da própria Cloudflare (10 mil neurônios/dia grátis). Cota separada do Groq e
 # da OpenRouter, e sem chave: o acesso é pelo binding, não por token.
 [ai]
