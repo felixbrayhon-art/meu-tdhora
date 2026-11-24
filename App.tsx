@@ -260,8 +260,15 @@ const App: React.FC = () => {
   useEffect(() => {
     try {
       if (livingLessonData) sessionStorage.setItem('living_lesson_request', JSON.stringify(livingLessonData));
+      else sessionStorage.removeItem('living_lesson_request');
     } catch { /* storage unavailable: lesson still works, just not after reload */ }
   }, [livingLessonData]);
+  // Sair da Aula Viva apaga o pedido. Sem isso ele ficava guardado para sempre: voltar à aba (ou abrir o
+  // app de novo na mesma sessão) mandava a IA gerar a MESMA aula outra vez, sem formulário e sem jeito de
+  // parar — a tela só dizia "montando sua Aula Viva". Era gasto de cota e um laço do qual não se saía.
+  useEffect(() => {
+    if (currentView !== 'LIVING_LESSON' && livingLessonData) setLivingLessonData(null);
+  }, [currentView, livingLessonData]);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>(() => {
     return safeJsonParse('focus_activities', []);

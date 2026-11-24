@@ -509,6 +509,16 @@ const LivingLessonView: React.FC<LivingLessonViewProps> = ({ subject, topic, pro
             {waitingLimit ? 'O provedor gratuito atingiu o limite. Tentando de novo em instantes...' : slow ? 'Ainda montando. A IA local pode levar alguns minutos, pode deixar aberto.' : 'Quadros, linha do tempo e revisão em 3 páginas'}
           </p>
         </div>
+        {/* Saída da espera. Antes esta tela não tinha botão nenhum: quem desistisse de esperar só podia
+            trocar de aba — e a aula voltava a ser gerada na próxima vez que entrasse aqui. */}
+        <button
+          type="button"
+          onClick={onBack}
+          className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition-colors hover:bg-[#f7f3ed] dark:hover:bg-white/5 ${MUTED}`}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Cancelar e escolher outro assunto
+        </button>
       </div>
     );
   }
