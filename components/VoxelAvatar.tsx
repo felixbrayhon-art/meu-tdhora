@@ -154,27 +154,48 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
   // Espetado: base curta e pontas puxadas para cima, cada uma inclinada para
   // fora, senão viram uma crista só e o penteado lê como moicano.
   espetado: (h, c) => {
-    B(h, 94, 18, 94, 0, -82, 0, c);
+    B(h, 94, 18, 94, 0, -82, 0, tom(c, 0.82));
     B(h, 94, 26, 14, 0, -60, -44, c);
     B(h, 12, 22, 78, -43, -66, -4, c); B(h, 12, 22, 78, 43, -66, -4, c);
     B(h, 92, 10, 16, 0, -72, 43, c);
-    ([[-31, -8], [0, 10], [31, -6], [-16, 26], [17, -26]] as const).forEach(([x, z], i) =>
-      B(h, 16, 26, 16, x, -100, z, tom(c, i % 2 ? 1.12 : 0.92), 1, ` rotateZ(${x < 0 ? -13 : 13}deg)`));
+    // Oito pontas de alturas diferentes: todas iguais viram escova, e as mais
+    // baixas no fundo dão a profundidade que uma fileira só não dá.
+    ([[-31, -8, 26], [0, 10, 30], [31, -6, 24], [-16, 26, 28], [17, -26, 22], [-34, 20, 18], [34, 18, 20], [0, -30, 17]] as const)
+      .forEach(([x, z, alt], i) => {
+        B(h, 15, alt, 15, x, -88 - alt / 2, z, tom(c, i % 2 ? 1.14 : 0.94), 1, ` rotateZ(${x < 0 ? -14 : 14}deg)`);
+        B(h, 9, 6, 9, x, -90 - alt, z, tom(c, 1.22), 1, ` rotateZ(${x < 0 ? -14 : 14}deg)`);
+      });
   },
   topete: (h, c) => {
     B(h, 94, 20, 94, 0, -80, 0, c);
     B(h, 94, 26, 14, 0, -58, -44, c);
-    B(h, 10, 20, 74, -44, -64, -6, tom(c, 0.86)); B(h, 10, 20, 74, 44, -64, -6, tom(c, 0.86));
-    B(h, 80, 36, 40, 0, -102, 26, c, 1, ' rotateX(-16deg)');
-    B(h, 66, 16, 26, 0, -120, 36, tom(c, 1.12), 1, ' rotateX(-24deg)');
+    // Lados na máquina, topo comprido: é o contraste que faz o topete.
+    B(h, 10, 24, 76, -44, -62, -6, tom(c, 0.62)); B(h, 10, 24, 76, 44, -62, -6, tom(c, 0.62));
+    B(h, 11, 5, 78, -43, -76, -6, tom(c, 0.8)); B(h, 11, 5, 78, 43, -76, -6, tom(c, 0.8));
+    // A onda sobe em degraus cada vez menores e mais à frente. Um bloco só,
+    // da largura da cabeça, lia como caixa em cima do boneco, não como cabelo.
+    B(h, 84, 18, 44, 0, -94, 16, c);
+    B(h, 68, 16, 36, 0, -108, 26, tom(c, 1.06), 1, ' rotateX(-14deg)');
+    B(h, 50, 13, 28, 0, -120, 34, tom(c, 1.12), 1, ' rotateX(-22deg)');
+    B(h, 30, 9, 20, 0, -129, 40, tom(c, 1.18), 1, ' rotateX(-30deg)');
+    // Mechas: três sulcos acompanhando a subida.
+    [-18, 0, 18].forEach((x) => B(h, 4, 9, 30, x, -107, 28, tom(c, 0.76), 1, ' rotateX(-16deg)'));
+    B(h, 76, 7, 12, 0, -88, 45, tom(c, 0.72));
   },
   // Raspado: os lados são o mesmo cabelo num tom bem mais escuro — é o degradê
   // da máquina, não outra cor de cabelo.
   raspado: (h, c) => {
-    B(h, 92, 22, 92, 0, -74, 0, tom(c, 0.58));
-    B(h, 94, 16, 14, 0, -64, -44, tom(c, 0.58));
-    B(h, 96, 14, 96, 0, -87, 0, c);
-    B(h, 90, 8, 16, 0, -82, 43, c);
+    B(h, 92, 22, 92, 0, -74, 0, tom(c, 0.5));
+    B(h, 94, 16, 14, 0, -64, -44, tom(c, 0.5));
+    // Degradê em dois degraus, não um corte seco: raspado, meio e topo.
+    B(h, 94, 8, 94, 0, -81, 0, tom(c, 0.72));
+    // O topo é mais estreito que a cabeça de propósito: é o que deixa o
+    // degradê aparecer de frente, em vez de virar um bloco só.
+    B(h, 84, 16, 88, 0, -90, -2, c);
+    B(h, 76, 6, 14, 0, -86, 42, c);
+    // O risco feito na navalha, de um lado só, como se usa.
+    B(h, 4, 14, 30, -46, -74, 10, tom(c, 0.3));
+    B(h, 78, 5, 84, 0, -98, -2, tom(c, 1.14));
   },
   dreads: (h, c) => {
     B(h, 96, 22, 96, 0, -80, 0, c);
@@ -184,19 +205,26 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
       B(h, 12, 54, 12, x, -46, -50, c);
       for (let i = 0; i < 4; i++) B(h, 13, 6, 13, x, -66 + i * 15, -50, tom(c, i % 2 ? 0.82 : 1.14));
     });
-    ([[-47, 16], [-45, -16], [47, 16], [45, -16]] as const).forEach(([x, z]) => {
-      B(h, 13, 50, 13, x, -50, z, c);
-      for (let i = 0; i < 3; i++) B(h, 14, 5, 14, x, -66 + i * 17, z, tom(c, i % 2 ? 0.84 : 1.12));
+    ([[-47, 16, 50], [-45, -16, 42], [47, 16, 46], [45, -16, 54]] as const).forEach(([x, z, comp]) => {
+      B(h, 13, comp, 13, x, -74 + comp / 2, z, c);
+      for (let i = 0; i < Math.round(comp / 17); i++) B(h, 14, 5, 14, x, -66 + i * 17, z, tom(c, i % 2 ? 0.84 : 1.12));
+      B(h, 11, 6, 11, x, -72 + comp, z, tom(c, 1.2));
     });
   },
   chiquinhas: (h, c) => {
     B(h, 94, 22, 94, 0, -80, 0, c);
     B(h, 94, 32, 16, 0, -56, -44, c);
-    B(h, 92, 12, 16, 0, -70, 43, c);
+    B(h, 92, 14, 18, 0, -71, 43, c);
+    // Risca no meio: é dela que as duas chiquinhas saem.
+    B(h, 5, 10, 40, 0, -88, 24, tom(c, 0.72));
     [-1, 1].forEach((lado) => {
-      B(h, 14, 10, 14, lado * 46, -62, -10, '#d7a947');
-      B(h, 24, 32, 24, lado * 51, -42, -12, c);
-      B(h, 18, 12, 18, lado * 53, -24, -12, tom(c, 1.12));
+      // O cabelo puxado da têmpora até o elástico, depois o laço e o rabo.
+      B(h, 16, 26, 60, lado * 42, -70, -4, c);
+      B(h, 15, 11, 15, lado * 47, -60, -10, '#d7a947');
+      B(h, 16, 5, 16, lado * 47, -64, -10, tom('#d7a947', 0.78));
+      B(h, 25, 30, 25, lado * 52, -42, -12, c);
+      B(h, 20, 14, 20, lado * 55, -24, -12, tom(c, 1.12));
+      B(h, 13, 9, 13, lado * 57, -13, -12, tom(c, 1.2));
     });
   },
   chanel: (h, c) => {
@@ -345,10 +373,14 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
         }
       } else if (cfg.calcadoEstudio === 'chinelo') {
         // Pé descoberto com sola fina e a tira em V por cima dos dedos.
-        B(L, 24, 3, 31, 0, yPe + 5, 4, detalhe);
-        B(L, 15, 3, 5, -3, yPe - 4, 12, detalhe, 1, ' rotateZ(26deg)');
-        B(L, 15, 3, 5, 3, yPe - 4, 12, detalhe, 1, ' rotateZ(-26deg)');
-        B(L, 4, 4, 4, 0, yPe - 3, 19, tom(detalhe, 0.82));
+        // Sola em duas camadas: palmilha clara sobre a borracha, como chinelo.
+        B(L, 24, 3, 31, 0, yPe + 5, 4, tom(detalhe, 0.6));
+        B(L, 23, 3, 30, 0, yPe + 2, 4, detalhe);
+        B(L, 15, 4, 5, -3, yPe - 4, 12, tom(detalhe, 0.75), 1, ' rotateZ(26deg)');
+        B(L, 15, 4, 5, 3, yPe - 4, 12, tom(detalhe, 0.75), 1, ' rotateZ(-26deg)');
+        B(L, 5, 5, 5, 0, yPe - 3, 19, tom(detalhe, 0.5));
+        // Dedos: três sulcos na ponta do pé, como no descalço da capivara.
+        [-6, 0, 6].forEach((x) => B(L, 3, 3, 3, x, yPe + 1, 19, tom(cfg.skin, 0.52)));
       } else if (cfg.calcadoEstudio === 'bota') {
         B(L, 20, 4, 21, 0, yPe - 7, 2, tom(cfg.sapato, 1.2));
         B(L, 7, 3, 3, 0, yPe - 2, 20, tom(cfg.sapato, 1.25));
@@ -474,33 +506,64 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
       // pé. Onde se cruzam o tom escurece sozinho, porque são dois blocos.
       [-44, -30, -16, -2].forEach((y) => B(corpo, 55, 4, 43, 0, y, 0, detalhe));
       [-21, -7, 7, 21].forEach((x) => B(corpo, 4, 50, 44, x, -26, 0, tom(detalhe, 0.86)));
+      // Fio fino entre as listras grossas: é o que separa um xadrez de uma
+      // grade. Vai em tom claro, no meio de cada vão.
+      [-37, -23, -9].forEach((y) => B(corpo, 56, 2, 44, 0, y, 0, tom(detalhe, 1.18)));
+      [-14, 0, 14].forEach((x) => B(corpo, 2, 50, 45, x, -26, 0, tom(detalhe, 1.18)));
+      // Colarinho aberto e carcela com dois botões: camisa, não pijama.
+      B(corpo, 16, 9, 6, -9, -47, 21, tom(detalhe, 0.7), 1, ' rotateZ(-20deg)');
+      B(corpo, 16, 9, 6, 9, -47, 21, tom(detalhe, 0.7), 1, ' rotateZ(20deg)');
+      B(corpo, 6, 40, 5, 0, -28, 23, tom(detalhe, 0.7));
+      [-36, -22].forEach((y) => B(corpo, 3, 3, 3, 0, y, 26, tom(detalhe, 1.3)));
     } else if (cfg.detalheRoupa === 'futebol') {
       B(corpo, 57, 7, 44, 0, -46, 0, detalhe);
       B(corpo, 57, 7, 44, 0, -10, 0, detalhe);
-      B(corpo, 22, 24, 4, 0, -29, 22, detalhe);
-      B(corpo, 6, 17, 3, -4, -29, 24, tom(cfg.torso, 0.5));
-      B(corpo, 5, 9, 3, 5, -33, 24, tom(cfg.torso, 0.5));
-      B(corpo, 15, 8, 5, -8, -48, 21, detalhe, 1, ' rotateZ(-26deg)');
-      B(corpo, 15, 8, 5, 8, -48, 21, detalhe, 1, ' rotateZ(26deg)');
+      // O número: painel claro com um "1" e um "0" recortados no tom do time.
+      B(corpo, 24, 26, 4, 0, -28, 22, detalhe);
+      B(corpo, 5, 18, 3, -6, -28, 24, tom(cfg.torso, 0.5));
+      B(corpo, 4, 5, 3, -9, -34, 24, tom(cfg.torso, 0.5));
+      B(corpo, 10, 18, 3, 6, -28, 24, tom(cfg.torso, 0.5));
+      B(corpo, 4, 10, 3, 6, -28, 25, detalhe);
+      // Gola em V, punho da manga e faixa lateral.
+      B(corpo, 16, 8, 5, -9, -48, 21, detalhe, 1, ' rotateZ(-26deg)');
+      B(corpo, 16, 8, 5, 9, -48, 21, detalhe, 1, ' rotateZ(26deg)');
+      B(corpo, 4, 6, 5, 0, -42, 23, detalhe);
+      [-1, 1].forEach((lado) => B(corpo, 4, 36, 45, lado * 26, -28, 0, tom(detalhe, 0.86)));
     } else if (cfg.detalheRoupa === 'farda') {
       B(corpo, 5, 46, 5, 0, -27, 22, tom(cfg.torso, 0.78));
       [-1, 1].forEach((lado) => {
+        // Dragona com o vinco no meio, bolso com pala e botão.
         B(corpo, 18, 7, 16, lado * 19, -47, 6, tom(detalhe, 0.95));
+        B(corpo, 4, 8, 16, lado * 19, -47, 6, tom(detalhe, 0.7));
         B(corpo, 18, 16, 4, lado * 14, -20, 22, tom(cfg.torso, 0.8));
         B(corpo, 19, 4, 5, lado * 14, -28, 23, detalhe);
+        B(corpo, 3, 3, 3, lado * 14, -25, 25, tom(detalhe, 0.6));
+        B(corpo, 14, 2, 4, lado * 14, -14, 23, tom(cfg.torso, 0.62));
       });
+      // Tarjeta do nome de um lado, distintivo do outro.
       B(corpo, 22, 6, 4, 0, -39, 23, detalhe);
+      [-8, 0, 8].forEach((x) => B(corpo, 3, 2, 3, x, -39, 25, tom(detalhe, 0.45)));
+      B(corpo, 10, 12, 4, -20, -38, 20, tom(detalhe, 0.8));
+      B(corpo, 6, 6, 3, -20, -38, 23, tom(detalhe, 1.2));
+      // Cinto com fivela.
       B(corpo, 57, 8, 44, 0, -6, 0, tom(cfg.torso, 0.62));
+      B(corpo, 12, 9, 5, 0, -6, 22, '#d9b25c');
+      B(corpo, 6, 5, 3, 0, -6, 25, tom('#d9b25c', 0.68));
     } else if (cfg.detalheRoupa === 'cardiga') {
       // Casaco aberto: duas bandas na frente e a barra embaixo. O meio fica
       // com a cor da camisa de baixo, que é o que faz ele parecer aberto.
       [-1, 1].forEach((lado) => {
         B(corpo, 16, 48, 7, lado * 21, -26, 20, detalhe);
         B(corpo, 4, 48, 8, lado * 13, -26, 21, tom(detalhe, 0.78));
-        B(corpo, 18, 9, 7, lado * 20, -49, 19, tom(detalhe, 1.1));
+        // Gola rolê e o bolso de baixo, um de cada lado.
+        B(corpo, 18, 9, 8, lado * 20, -49, 19, tom(detalhe, 1.1));
+        B(corpo, 12, 10, 4, lado * 21, -14, 24, tom(detalhe, 0.8));
+        // Canelado do tricô: sulcos em pé na frente de cada banda.
+        [-5, 0, 5].forEach((d) => B(corpo, 2, 44, 3, lado * 21 + d, -26, 24, tom(detalhe, 0.9)));
       });
+      // Barra e punhos canelados, no mesmo tom da gola.
       B(corpo, 56, 7, 45, 0, -3, 0, tom(detalhe, 0.88));
-      [-36, -24].forEach((y) => B(corpo, 4, 4, 4, 10, y, 25, tom(detalhe, 1.18)));
+      [-44, -32, -20].forEach((y) => B(corpo, 4, 4, 4, 10, y, 25, tom(detalhe, 1.25)));
     } else {
       B(corpo, 41, 10, 44, 0, -54, 0, detalhe);
       B(corpo, 41, 3, 45, 0, -55, 0, tom(detalhe, 0.8));
@@ -989,17 +1052,40 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     B(cabeca, 96, 11, 96, 0, -87, 0, cfg.viseira);
     B(cabeca, 92, 5, 93, 0, -80, 0, tom(cfg.viseira, 0.68));
     B(cabeca, 90, 6, 34, 0, -85, 60, tom(cfg.viseira, 0.8));
+    // Aba com a borda mais escura e um friso claro no meio da testeira.
+    B(cabeca, 84, 2, 3, 0, -87, 76, tom(cfg.viseira, 0.55));
+    B(cabeca, 20, 5, 3, 0, -87, 50, tom(cfg.viseira, 1.2));
+    // Regulador atrás, com a tira que sobra.
+    B(cabeca, 26, 9, 4, 0, -87, -50, tom(cfg.viseira, 0.62));
+    B(cabeca, 10, 6, 4, 12, -87, -52, tom(cfg.viseira, 0.9));
   }
   if (cfg.palha) {
     B(cabeca, 86, 24, 86, 0, -92, 0, cfg.palha);
+    B(cabeca, 82, 6, 82, 0, -104, 0, tom(cfg.palha, 1.14));
     B(cabeca, 128, 8, 128, 0, -76, 0, tom(cfg.palha, 1.1));
-    B(cabeca, 88, 7, 88, 0, -81, 0, tom(cfg.palha, 0.58));
+    // Trançado: faixas alternadas na aba e na copa, claro e escuro, que é o
+    // que distingue palha de um chapéu de feltro liso.
+    [-1, 1].forEach((lado) => {
+      B(cabeca, 130, 3, 26, 0, -74, lado * 40, tom(cfg.palha, 0.86));
+      B(cabeca, 26, 3, 130, lado * 40, -74, 0, tom(cfg.palha, 0.86));
+    });
+    B(cabeca, 132, 3, 132, 0, -71, 0, tom(cfg.palha, 0.72));
+    // Fita em volta da copa, com o nó de lado.
+    B(cabeca, 88, 7, 88, 0, -81, 0, tom(cfg.palha, 0.46));
+    B(cabeca, 14, 9, 12, -45, -81, 18, tom(cfg.palha, 0.34));
   }
   if (cfg.bandana) {
     B(cabeca, 98, 17, 98, 0, -84, 0, cfg.bandana);
     B(cabeca, 95, 5, 96, 0, -75, 0, tom(cfg.bandana, 0.8));
-    B(cabeca, 13, 24, 12, -40, -72, -42, tom(cfg.bandana, 0.92), 1, ' rotateZ(13deg)');
-    B(cabeca, 10, 15, 10, -45, -56, -47, tom(cfg.bandana, 1.1), 1, ' rotateZ(20deg)');
+    B(cabeca, 93, 4, 94, 0, -92, 0, tom(cfg.bandana, 1.12));
+    // Estampa: pontinhos claros espalhados pela frente e pelos lados.
+    ([[-28, 48], [0, 49], [28, 48], [-49, 24], [49, 24], [-49, -16], [49, -16]] as const)
+      .forEach(([x, z], i) => B(cabeca, 5, 5, 5, x, i % 2 ? -86 : -81, z, tom(cfg.bandana!, 1.35)));
+    // Nó atrás, com as duas pontas caindo.
+    B(cabeca, 16, 14, 14, -34, -78, -48, tom(cfg.bandana, 0.9));
+    B(cabeca, 13, 24, 12, -40, -70, -44, tom(cfg.bandana, 0.92), 1, ' rotateZ(13deg)');
+    B(cabeca, 10, 18, 10, -47, -54, -48, tom(cfg.bandana, 1.1), 1, ' rotateZ(22deg)');
+    B(cabeca, 9, 16, 9, -26, -62, -50, tom(cfg.bandana, 0.78), 1, ' rotateZ(-10deg)');
   }
   if (cfg.quepe) {
     B(cabeca, 94, 24, 94, 0, -82, 0, cfg.quepe); B(cabeca, 96, 10, 96, 0, -69, 0, '#2a2a30'); B(cabeca, 88, 8, 36, 0, -64, 58, '#2a2a30');
