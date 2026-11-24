@@ -121,6 +121,36 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
     B(h, 20, 54, 20, 0, -44, -58, c, 1, ' rotateX(-10deg)');
     B(h, 16, 16, 16, 0, -16, -62, tom(c, 1.12));
   },
+  trancas: (h, c) => {
+    B(h, 96, 25, 96, 0, -80, 0, c);
+    B(h, 96, 45, 18, 0, -52, -44, c);
+    B(h, 94, 12, 18, 0, -70, 42, c);
+    [-1, 1].forEach((lado) => {
+      B(h, 18, 60, 20, lado * 44, -47, 22, c);
+      for (let i = 0; i < 4; i++) {
+        B(h, 18, 8, 21, lado * 44, -64 + i * 14, 22, tom(c, i % 2 ? 0.82 : 1.14));
+      }
+      B(h, 19, 5, 21, lado * 44, -15, 22, '#d7a947');
+    });
+  },
+  ondulado: (h, c) => {
+    B(h, 96, 24, 96, 0, -80, 0, c);
+    B(h, 96, 62, 18, 0, -41, -44, c);
+    B(h, 94, 14, 18, 0, -69, 43, c);
+    [-1, 1].forEach((lado) => {
+      B(h, 17, 63, 72, lado * 44, -42, -3, c);
+      for (let i = 0; i < 3; i++) B(h, 16, 13, 18, lado * (45 + (i % 2) * 5), -57 + i * 20, 38, tom(c, i % 2 ? 0.9 : 1.12));
+    });
+  },
+  coques: (h, c) => {
+    B(h, 94, 22, 94, 0, -80, 0, c);
+    B(h, 94, 32, 16, 0, -56, -44, c);
+    B(h, 92, 12, 16, 0, -70, 43, c);
+    [-1, 1].forEach((lado) => {
+      B(h, 32, 29, 32, lado * 38, -99, -12, c);
+      B(h, 22, 9, 24, lado * 38, -116, -12, tom(c, 1.12));
+    });
+  },
   chanel: (h, c) => {
     B(h, 96, 24, 96, 0, -78, 0, c);
     B(h, 96, 56, 18, 0, -44, -44, c);
@@ -133,6 +163,9 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
 const ADERECO: Record<string, (a: Pai, cor?: string) => void> = {
   prancheta: (a, c) => { B(a, 31, 40, 6, -9, 34, 14, c || '#8a6a4f'); B(a, 31, 36, 4, -9, 34, 17, '#d8cdbb'); B(a, 13, 7, 6, -9, 14, 18, '#b9bec4'); },
   tablet: (a) => { B(a, 28, 36, 6, -8, 34, 14, '#2e2e33'); B(a, 24, 30, 4, -8, 34, 17, '#5d8fd0'); },
+  celular: (a) => { B(a, 17, 29, 5, 0, 44, 9, '#2b3039'); B(a, 13, 23, 3, 0, 43, 13, '#78a8bf'); B(a, 4, 2, 2, 0, 53, 15, '#d4d9dc'); },
+  garrafa: (a) => { B(a, 15, 26, 15, 0, 49, 7, '#4d9eae'); B(a, 11, 7, 11, 0, 32, 7, '#4d9eae'); B(a, 12, 4, 12, 0, 27, 7, '#e6ece5'); B(a, 15, 4, 16, 0, 49, 7, '#d2e7e6'); },
+  pincel: (a) => { B(a, 5, 31, 5, 0, 48, 7, '#9a663e', 1, ' rotateZ(-12deg)'); B(a, 7, 8, 7, -4, 29, 7, '#c8beb0', 1, ' rotateZ(-12deg)'); B(a, 6, 9, 6, -6, 21, 7, '#e58243', 1, ' rotateZ(-12deg)'); },
   caneta: (a) => { B(a, 5, 20, 5, 3, 54, 4, '#2f4fa8'); },
   vaso: (a) => {
     const p = J(a, 0, 56, 6);
@@ -188,6 +221,10 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
   const carameloOriginal = cfg.nome === 'Vira-Lata Caramelo' && varianteCaramelo === 1;
   const biomedicaOriginal = cfg.nome === 'Biomédica' && varianteBiomedica === 1;
   const gato = cfg.nome === 'Gato Estiloso';
+  const onca = cfg.bicho?.especie === 'onca';
+  const capivara = cfg.bicho?.especie === 'capivara';
+  const arara = cfg.bicho?.especie === 'arara';
+  const especie = cfg.bicho?.especie;
   // Mechas desenhadas à mão combinam com o cabelo de origem; se o aluno trocou
   // o penteado ou a cor no editor, elas saem e fica só o penteado da tabela.
   const cabeloProprio = !cfg.cabeloLivre;
@@ -219,8 +256,52 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     if (cfg.bainha) B(L, 22, 8, 22, 0, alturaPerna + 2, 0, cfg.bainha);
     if (cfg.meia) B(L, 18, 8, 18, 0, alturaPerna + 10, 0, cfg.meia);
     const yPe = alturaPerna + (cfg.bainha ? 12 : cfg.bermuda ? 10 : 6);
-    if (cfg.descalco) B(L, 21, 10, 28, 0, yPe, 4, cfg.skin);
+    if (cfg.descalco) {
+      B(L, 21, 10, 28, 0, yPe, 4, cfg.skin);
+      if (capivara) [-6, 0, 6].forEach((x) => B(L, 3, 3, 3, x, yPe + 2, 19, tom(cfg.skin, 0.48)));
+    }
     else B(L, 23, 12, 30, 0, yPe, 4, cfg.sapato);
+    if (cfg.parteBaixoEstudio) {
+      const costura = tom(cfg.parteBaixoEstudio === 'bermuda' ? (cfg.bermuda || cfg.pernas) : cfg.pernas, 0.78);
+      if (cfg.parteBaixoEstudio !== 'saia') {
+        B(L, 2, cfg.parteBaixoEstudio === 'bermuda' ? 12 : 23, 2, 7, cfg.parteBaixoEstudio === 'bermuda' ? 8 : 14, 10, costura);
+        B(L, 18, 2, 3, 0, cfg.parteBaixoEstudio === 'bermuda' ? 15 : 27, 10, tom(costura, 1.15));
+      }
+    }
+    if (cfg.calcadoEstudio && cfg.calcadoEstudio !== 'descalco') {
+      const sola = tom(cfg.sapato, 0.65);
+      B(L, 24, 3, 31, 0, yPe + 5, 4, sola);
+      const detalhe = cfg.detalheCalcadoEstudio || '#ede6d9';
+      if (['tenis', 'tenisCanoAlto', 'tenisEsportivo', 'tenisCasual'].includes(cfg.calcadoEstudio)) {
+        // O contorno e as peças acompanham cada pé quando ele anda.
+        B(L, 24, 3, 31, 0, yPe + 5, 4, detalhe);
+        B(L, 18, 4, 3, 0, yPe - 1, 20, detalhe);
+        if (cfg.calcadoEstudio === 'tenisCanoAlto') {
+          B(L, 21, 16, 21, 0, yPe - 10, 0, cfg.sapato);
+          B(L, 21, 3, 22, 0, yPe - 17, 0, detalhe);
+          [-12, -8, -4].forEach((y) => B(L, 9, 2, 3, 0, yPe + y, 12, detalhe));
+          B(L, 4, 5, 4, 11, yPe - 9, 0, detalhe);
+        } else if (cfg.calcadoEstudio === 'tenisEsportivo') {
+          B(L, 25, 3, 28, 0, yPe + 3, 3, tom(detalhe, 0.85));
+          [-1, 1].forEach((lado) => {
+            B(L, 3, 5, 15, lado * 12, yPe - 1, 3, detalhe, 1, ` rotateY(${lado * 12}deg)`);
+            B(L, 3, 3, 6, lado * 12, yPe + 2, 10, tom(cfg.sapato, 1.25));
+          });
+          [-5, -2].forEach((y) => B(L, 11, 2, 3, 0, yPe + y, 18, detalhe));
+        } else if (cfg.calcadoEstudio === 'tenisCasual') {
+          B(L, 20, 5, 4, 0, yPe - 1, 19, detalhe);
+          B(L, 13, 7, 4, 0, yPe - 5, 17, tom(cfg.sapato, 0.85));
+          B(L, 10, 2, 3, 0, yPe - 5, 20, detalhe);
+        } else {
+          [-5, -2].forEach((y) => B(L, 10, 2, 3, 0, yPe + y, 18, detalhe));
+        }
+      } else if (cfg.calcadoEstudio === 'bota') {
+        B(L, 20, 4, 21, 0, yPe - 7, 2, tom(cfg.sapato, 1.2));
+        B(L, 7, 3, 3, 0, yPe - 2, 20, tom(cfg.sapato, 1.25));
+      } else {
+        B(L, 16, 3, 3, 0, yPe - 3, 20, tom(cfg.sapato, 1.2));
+      }
+    }
     if (regataOriginal) {
       B(L, 20, 4, 21, 0, 15, 0, '#ca7081');
       B(L, 24, 4, 31, 0, yPe + 5, 4, '#eee4d4');
@@ -249,6 +330,43 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     B(corpo, 52, 50, 38, 0, -28, 0, cfg.skin);
     B(corpo, 16, 50, 40, -15, -28, 0, cfg.torso); B(corpo, 16, 50, 40, 15, -28, 0, cfg.torso); B(corpo, 52, 50, 12, 0, -28, -14, cfg.torso);
   } else B(corpo, 54, 50, 40, 0, -28, 0, cfg.torso);
+  if (cfg.roupaEstudio && cfg.roupaEstudio !== 'sem') {
+    const tecido = cfg.torso;
+    const sombra = tom(tecido, 0.76);
+    const luz = tom(tecido, 1.18);
+    // Acabamentos planos e de baixo relevo seguem o corpo sem cobrir a peça.
+    B(corpo, 50, 3, 3, 0, -5, 21, sombra);
+    if (['camiseta', 'listrada'].includes(cfg.roupaEstudio)) {
+      B(corpo, 24, 5, 4, 0, -49, 21, sombra);
+      B(corpo, 17, 2, 3, 0, -48, 24, luz);
+      B(corpo, 12, 9, 4, -16, -30, 21, tom(tecido, 0.92));
+      B(corpo, 12, 2, 3, -16, -35, 24, luz);
+    } else if (cfg.roupaEstudio === 'regata') {
+      B(corpo, 51, 3, 3, 0, -5, 21, sombra);
+      B(corpo, 14, 3, 3, -15, -49, 22, luz);
+      B(corpo, 14, 3, 3, 15, -49, 22, luz);
+    } else if (cfg.roupaEstudio === 'social' || cfg.roupaEstudio === 'jaleco' || cfg.roupaEstudio === 'terno') {
+      B(corpo, 13, 10, 4, -8, -47, 25, luz, 1, ' rotateZ(-18deg)');
+      B(corpo, 13, 10, 4, 8, -47, 25, luz, 1, ' rotateZ(18deg)');
+      if (cfg.roupaEstudio !== 'terno') {
+        B(corpo, 3, 40, 3, 0, -28, 26, sombra);
+        [-39, -28, -17].forEach((y) => B(corpo, 3, 3, 3, 0, y, 28, luz));
+      }
+      if (cfg.roupaEstudio === 'jaleco') {
+        [-1, 1].forEach((lado) => { B(corpo, 13, 11, 3, lado * 17, -16, 24, tom(tecido, 0.9)); B(corpo, 13, 2, 3, lado * 17, -22, 26, luz); });
+      }
+    } else if (cfg.roupaEstudio === 'moletom') {
+      B(corpo, 42, 3, 3, 0, -7, 26, luz);
+      B(corpo, 3, 13, 3, -19, -20, 27, sombra);
+      B(corpo, 3, 13, 3, 19, -20, 27, sombra);
+    } else if (cfg.roupaEstudio === 'colete') {
+      B(corpo, 4, 40, 3, 0, -29, 27, sombra);
+      [-39, -28, -17].forEach((y) => B(corpo, 3, 3, 3, 0, y, 29, luz));
+    } else if (cfg.roupaEstudio === 'toga') {
+      [-17, 0, 17].forEach((x) => B(corpo, 3, 38, 3, x, -25, 24, sombra));
+      B(corpo, 50, 3, 3, 0, -46, 24, luz);
+    }
+  }
   if (regataOriginal) {
     B(corpo, 52, 35, 4, 0, -22, 21, cfg.torso);
     B(corpo, 28, 5, 4, 0, -35, 21, '#69605a');
@@ -282,12 +400,36 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     B(corpo, 3, 7, 3, 0, -43, 21, '#e8d5ad');
     B(corpo, 5, 6, 3, 0, -39, 22, '#c49c5d');
   }
+  if (cfg.detalheRoupa) {
+    const detalhe = cfg.corDetalheRoupa || '#f3ece0';
+    if (cfg.detalheRoupa === 'polo') {
+      B(corpo, 15, 9, 5, -8, -47, 22, detalhe, 1, ' rotateZ(-18deg)');
+      B(corpo, 15, 9, 5, 8, -47, 22, detalhe, 1, ' rotateZ(18deg)');
+      B(corpo, 4, 16, 4, 0, -38, 23, detalhe);
+      B(corpo, 3, 3, 3, 0, -35, 26, tom(cfg.torso, 0.55));
+    } else if (cfg.detalheRoupa === 'jaqueta') {
+      B(corpo, 5, 46, 5, 0, -27, 22, detalhe);
+      [-1, 1].forEach((lado) => { B(corpo, 13, 9, 5, lado * 17, -20, 22, tom(cfg.torso, 0.85)); B(corpo, 14, 3, 4, lado * 17, -26, 25, detalhe); });
+      B(corpo, 52, 5, 5, 0, -3, 22, detalhe);
+    } else if (cfg.detalheRoupa === 'jardineira') {
+      B(corpo, 38, 29, 6, 0, -21, 22, detalhe);
+      [-1, 1].forEach((lado) => { B(corpo, 8, 32, 5, lado * 15, -41, 22, detalhe); B(corpo, 5, 5, 4, lado * 15, -34, 26, '#e4bd6e'); });
+      B(corpo, 18, 10, 4, 0, -17, 26, tom(detalhe, 0.82));
+    } else {
+      B(corpo, 41, 10, 44, 0, -54, 0, detalhe);
+      B(corpo, 41, 3, 45, 0, -55, 0, tom(detalhe, 0.8));
+    }
+  }
   // Saia: três degraus que alargam para baixo e passam do joelho, senão o
   // recorte fica na altura de uma bermuda e ninguém lê como saia.
   if (cfg.vestido) {
     B(corpo, 58, 12, 44, 0, -6, 0, cfg.vestido);
     B(corpo, 70, 14, 54, 0, 4, 0, cfg.vestido);
     B(corpo, 80, 16, 62, 0, 16, 0, tom(cfg.vestido, 1.07));
+    if (cfg.parteBaixoEstudio === 'saia') {
+      [-22, 0, 22].forEach((x) => B(corpo, 3, 14, 3, x, 16, 32, tom(cfg.vestido!, 0.8)));
+      B(corpo, 76, 2, 3, 0, 23, 32, tom(cfg.vestido, 0.82));
+    }
   }
   // Moletom: capuz caído atrás da cabeça, gola e bolso canguru na frente. O
   // capuz fica atrás do bloco da cabeça (que vai de z -46 a 46): mais para
@@ -430,10 +572,24 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
       B(corpo, 11, 11, 4, -18, -19, 26, '#faf8f1'); break;
   }
   let rabo: HTMLElement | undefined;
-  if (cfg.bicho?.rabo) {
+  if (cfg.bicho?.rabo.length) {
     rabo = J(corpo, raposaOriginal ? 32 : carameloOriginal || gato ? 25 : 0, -12, -19);
     const esc = raposaOriginal ? [27, 34, 36, 32] : pescador ? (variantePescador === 2 ? [36, 38, 35, 30] : [30, 32, 30, 26]) : [24, 22, 20, 18];
-    cfg.bicho.rabo.forEach((cor, i) => B(rabo as Pai, esc[i], esc[i], esc[i] + 2, 0, 2 - i * 13, -14 - i * 17, cor));
+    if (arara) {
+      // Penas compridas e afiladas: acompanham a junta que balança na animação.
+      [-1, 0, 1].forEach((lado) => {
+        B(rabo as Pai, 13, 58, 8, lado * 11, 14, -20, lado === 0 ? cfg.skin : '#247cac', 1, ` rotateX(-32deg) rotateZ(${lado * 9}deg)`);
+        B(rabo as Pai, 9, 30, 7, lado * 14, 46, -37, lado === 0 ? '#e6b83b' : '#175882', 1, ` rotateX(-32deg) rotateZ(${lado * 9}deg)`);
+      });
+    } else if (especie === 'coelho' || especie === 'urso') {
+      B(rabo, especie === 'coelho' ? 20 : 15, 16, 16, 0, 1, -15, cfg.bicho.rabo[0]);
+    } else if (especie === 'rato') {
+      cfg.bicho.rabo.forEach((_, i) => B(rabo as Pai, 7 - i, 7 - i, 18, 0, 3 - i * 4, -17 - i * 14, tom(cfg.skin, 1.2)));
+    } else if (especie === 'raposa') {
+      [24, 30, 34, 29].forEach((tamanho, i) => B(rabo as Pai, tamanho, tamanho, tamanho + 5, 0, 2 - i * 13, -14 - i * 17, cfg.bicho!.rabo[i]));
+    } else {
+      cfg.bicho.rabo.forEach((cor, i) => B(rabo as Pai, esc[i], esc[i], esc[i] + 2, 0, 2 - i * 13, -14 - i * 17, cor));
+    }
   }
   const manga = cfg.regata || cfg.semCamisa ? cfg.skin : cfg.torso;
   const bracoE = J(corpo, -34, -48, 0);
@@ -444,6 +600,10 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
   ([[bracoE, cfg.esq], [bracoD, cfg.dir]] as [HTMLElement, string | undefined][]).forEach(([a, prop]) => {
     B(a, 15, cfg.regata || cfg.semCamisa ? 34 : 30, 15, 0, 16, 0, manga);
     if (!(cfg.regata || cfg.semCamisa)) B(a, 16, 10, 16, 0, 34, 0, tom(manga, 1.1));
+    if (cfg.roupaEstudio && !cfg.regata && !cfg.semCamisa) {
+      B(a, 17, 3, 17, 0, 5, 0, tom(manga, 0.85));
+      B(a, 17, 2, 18, 0, 35, 0, tom(manga, 0.8));
+    }
     B(a, 17, 15, 17, 0, 44, 0, cfg.bicho ? tom(cfg.skin, 0.72) : cfg.skin);
     const g = J(a, 0, 0, 0);
     g.style.transition = 'opacity 220ms ease';
@@ -451,6 +611,14 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     naMao.push(g);
   });
   const [adEsq, adDir] = naMao;
+  if (arara) [bracoE, bracoD].forEach((braco, i) => {
+    const lado = i === 0 ? -1 : 1;
+    // As camadas ficam atrás da mão, deixando roupas e adereços utilizáveis.
+    B(braco, 25, 37, 8, lado * 5, 13, -10, cfg.skin, 1, ` rotateZ(${lado * 7}deg)`);
+    B(braco, 27, 11, 7, lado * 6, 27, -13, '#e6ba3a', 1, ` rotateZ(${lado * 7}deg)`);
+    B(braco, 24, 22, 8, lado * 7, 36, -15, '#247cac', 1, ` rotateZ(${lado * 9}deg)`);
+    [-1, 0, 1].forEach((pena) => B(braco, 7, 20, 7, lado * 7 + pena * 7, 47, -15, '#175882', 1, ` rotateZ(${lado * 9}deg)`));
+  });
   if (cfg.nome === 'Militar' && cfg.mascara) {
     B(bracoE, 17, 11, 18, 0, 13, 0, '#657351');
     B(bracoD, 17, 11, 18, 0, 13, 0, '#657351');
@@ -494,7 +662,18 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
 
   const cabeca = J(corpo, 0, -52, 0);
   let olhos: HTMLElement | undefined;
-  if (biomedicaOriginal) {
+  if (capivara) {
+    // A cabeça é baixa e comprida, com as laterais levemente arredondadas em degraus.
+    B(cabeca, 86, 68, 108, 0, -47, -8, cfg.skin);
+    B(cabeca, 102, 47, 96, 0, -44, -8, cfg.skin);
+    B(cabeca, 76, 8, 86, 0, -84, -12, tom(cfg.skin, 1.04));
+    // Pelagem discreta nas laterais, mantendo a cabeça maciça da capivara.
+    [-1, 1].forEach((lado) => {
+      B(cabeca, 3, 3, 18, lado * 52, -54, 7, tom(cfg.skin, 0.86));
+      B(cabeca, 3, 3, 13, lado * 52, -40, -8, tom(cfg.skin, 1.1));
+      B(cabeca, 3, 3, 14, lado * 52, -27, 10, tom(cfg.skin, 0.87));
+    });
+  } else if (biomedicaOriginal) {
     B(cabeca, 84, 80, 92, 0, -48, 0, cfg.skin);
     B(cabeca, 72, 14, 92, 0, -7, 0, cfg.skin);
   } else {
@@ -509,7 +688,23 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     // coelho quando o resto do corpo é o mesmo. Sem escolha, fica a orelha
     // padrão que os personagens prontos já usavam.
     const formato = cfg.bicho.orelhaTipo;
-    if (formato) {
+    if (arara) {
+      // Áreas claras de pele ao redor dos olhos, com as linhas finas da arara.
+      [-1, 1].forEach((lado) => {
+        B(cabeca, 34, 36, 4, lado * 25, -43, 47, '#f7ecda');
+        B(cabeca, 19, 2, 3, lado * 29, -61, 50, '#b5433a');
+        B(cabeca, 15, 2, 3, lado * 31, -56, 50, '#b5433a');
+        B(cabeca, 12, 2, 3, lado * 32, -29, 50, '#b5433a');
+      });
+      B(cabeca, 53, 8, 8, 0, -84, 7, tom(cfg.skin, 1.12));
+    } else if (capivara) {
+      // Orelhas pequenas e baixas, distintas das orelhas de urso.
+      [-1, 1].forEach((lado) => {
+        B(cabeca, 20, 14, 18, lado * 34, -90, 6, cfg.bicho!.orelha);
+        B(cabeca, 14, 6, 16, lado * 34, -99, 6, cfg.bicho!.orelha);
+        B(cabeca, 10, 6, 4, lado * 34, -91, 17, tom(cfg.skin, 0.64));
+      });
+    } else if (formato) {
       const orelha = cfg.bicho.orelha;
       const dentro = cfg.bicho.dentro;
       [-1, 1].forEach((lado) => {
@@ -534,6 +729,35 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     } else if (!carameloOriginal) {
       B(cabeca, larguraOrelha, alturaOrelha, 19, -orelhaX, -99, -4, cfg.bicho.orelha); B(cabeca, larguraOrelha, alturaOrelha, 19, orelhaX, -99, -4, cfg.bicho.orelha);
       B(cabeca, dentroOrelha, dentroOrelha, 11, -orelhaX, -97, 4, cfg.bicho.dentro); B(cabeca, dentroOrelha, dentroOrelha, 11, orelhaX, -97, 4, cfg.bicho.dentro);
+    }
+    if (especie === 'rato') {
+      // Orelhas maiores, arredondadas em degraus, visíveis acima da cabeça.
+      [-1, 1].forEach((lado) => {
+        B(cabeca, 36, 25, 13, lado * 37, -105, -2, cfg.bicho!.orelha);
+        B(cabeca, 23, 14, 8, lado * 37, -118, -2, cfg.bicho!.orelha);
+        B(cabeca, 22, 18, 5, lado * 37, -105, 7, tom(cfg.skin, 1.38));
+      });
+    }
+    if (especie === 'raposa') {
+      [-1, 1].forEach((lado) => {
+        B(cabeca, 24, 18, 5, lado * 33, -23, 47, cfg.bicho!.focinho);
+        B(cabeca, 15, 12, 4, lado * 39, -34, 47, cfg.bicho!.focinho);
+      });
+    }
+    if (onca) {
+      // Rosetas com centro dourado e manchas menores na testa e nas laterais.
+      [[-34, -71], [-13, -76], [13, -76], [34, -71], [-39, -30], [39, -30], [-31, -19], [31, -19]].forEach(([x, y]) => {
+        B(cabeca, 11, 10, 3, x, y, 47, '#56341f');
+        B(cabeca, 5, 4, 3, x, y, 49, tom(cfg.skin, 0.82));
+      });
+      [-1, 1].forEach((lado) => {
+        B(cabeca, 5, 7, 4, lado * 25, -63, 48, '#56341f');
+        B(cabeca, 4, 6, 4, lado * 6, -67, 48, '#56341f');
+        B(cabeca, 15, 12, 5, lado * 31, -22, 47, '#f4e4bf');
+        B(cabeca, 4, 12, 13, lado * 48, -56, 3, '#56341f');
+        B(cabeca, 4, 9, 10, lado * 48, -34, -16, '#56341f');
+        B(cabeca, 4, 5, 5, lado * 50, -56, 3, tom(cfg.skin, 0.82));
+      });
     }
     if (raposaOriginal) {
       B(cabeca, 15, 8, 20, -orelhaX, -120, -4, '#9c421e'); B(cabeca, 15, 8, 20, orelhaX, -120, -4, '#9c421e');
@@ -638,12 +862,41 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
       B(cabeca, 90, 11, 38, 0, -70, 60, cfg.boneAba || tom(cfg.bone, 0.78));
     }
   }
+  if (cfg.fivePanel) {
+    const tecido = cfg.fivePanel;
+    const costura = tom(tecido, 0.7);
+    // Copa baixa com painel frontal inteiro e faixas nas laterais e no topo.
+    B(cabeca, 96, 24, 94, 0, -99, 0, tecido);
+    B(cabeca, 92, 5, 90, 0, -113, 0, tom(tecido, 1.08));
+    B(cabeca, 96, 4, 95, 0, -87, 0, tom(tecido, 0.84));
+    B(cabeca, 70, 18, 3, 0, -99, 48, tom(tecido, 1.08));
+    [-1, 1].forEach((lado) => {
+      B(cabeca, 2, 18, 3, lado * 35, -99, 50, costura);
+      B(cabeca, 2, 3, 76, lado * 24, -116, -3, costura);
+      B(cabeca, 3, 3, 4, lado * 49, -101, 9, tom(tecido, 0.62));
+    });
+    // Aba plana projetada à frente, com uma costura na borda.
+    B(cabeca, 86, 6, 34, 0, -86, 60, tecido);
+    B(cabeca, 82, 2, 3, 0, -89, 75, costura);
+    B(cabeca, 18, 8, 3, 0, -100, 51, tom(tecido, 0.82));
+  }
   if (cfg.balde) {
     if (carameloOriginal) {
       B(cabeca, 80, 22, 82, 0, -98, 0, cfg.balde);
       B(cabeca, 94, 6, 94, 0, -87, 0, tom(cfg.balde, 0.92));
       B(cabeca, 80, 4, 83, 0, -91, 0, '#9bb4cf');
     } else { B(cabeca, 96, 26, 96, 0, -80, 0, cfg.balde); B(cabeca, 116, 10, 116, 0, -66, 0, tom(cfg.balde, 0.92)); }
+  }
+  if (cfg.touca) {
+    B(cabeca, 96, 25, 96, 0, -89, 0, cfg.touca);
+    B(cabeca, 100, 9, 100, 0, -77, 0, tom(cfg.touca, 0.82));
+    B(cabeca, 78, 9, 78, 0, -106, 0, cfg.touca);
+    B(cabeca, 19, 15, 19, 0, -119, 0, tom(cfg.touca, 1.12));
+  }
+  if (cfg.boina) {
+    B(cabeca, 105, 12, 96, 4, -87, 0, cfg.boina);
+    B(cabeca, 89, 12, 80, 7, -97, 0, cfg.boina);
+    B(cabeca, 9, 6, 9, 10, -106, 0, tom(cfg.boina, 0.8));
   }
   if (cfg.quepe) {
     B(cabeca, 94, 24, 94, 0, -82, 0, cfg.quepe); B(cabeca, 96, 10, 96, 0, -69, 0, '#2a2a30'); B(cabeca, 88, 8, 36, 0, -64, 58, '#2a2a30');
@@ -692,14 +945,23 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     B(cabeca, 54, 2, 3, 0, -4, 48, tom(cfg.mascara, 0.75));
   } else {
     const sobr = cfg.sobr || tom(cfg.cabelo, 0.9);
-    if (!pescador && !raposaOriginal && !nativoOriginal && !biomedicaOriginal) { B(cabeca, 26, 8, 6, -20, -58, 47, sobr); B(cabeca, 26, 8, 6, 20, -58, 47, sobr); }
+    if (!pescador && !raposaOriginal && !nativoOriginal && !biomedicaOriginal && !arara && !capivara && !onca) { B(cabeca, 26, 8, 6, -20, -58, 47, sobr); B(cabeca, 26, 8, 6, 20, -58, 47, sobr); }
     if (biomedicaOriginal) { B(cabeca, 21, 5, 6, -20, -58, 47, '#b99360'); B(cabeca, 21, 5, 6, 20, -58, 47, '#b99360'); }
     if (nativoOriginal) { B(cabeca, 21, 5, 6, -20, -58, 47, sobr); B(cabeca, 21, 5, 6, 20, -58, 47, sobr); }
     if (raposaOriginal) { B(cabeca, 22, 5, 6, -20, -59, 48, '#b65e24'); B(cabeca, 22, 5, 6, 20, -59, 48, '#b65e24'); }
     const base = cfg.bicho ? cfg.bicho.focinho : cfg.skin;
-    B(cabeca, 19, 17, 5, -20, -45, 47, '#fdfbf7'); B(cabeca, 19, 17, 5, 20, -45, 47, '#fdfbf7');
-    if (!pescador && !raposaOriginal && !nativoOriginal && !biomedicaOriginal) { B(cabeca, 19, 7, 6, -20, -51, 48, base); B(cabeca, 19, 7, 6, 20, -51, 48, base); }
-    B(cabeca, 10, 10, 4, -20, pescador ? -44 : -42, 50, cfg.iris || '#2a1f1a'); B(cabeca, 10, 10, 4, 20, pescador ? -44 : -42, 50, cfg.iris || '#2a1f1a');
+    if (capivara) {
+      // Olhos pequenos, escuros e posicionados no alto da cabeça; sem o branco humano.
+      [-1, 1].forEach((lado) => {
+        B(cabeca, 12, 10, 5, lado * 32, -65, 48, tom(cfg.skin, 0.68));
+        B(cabeca, 7, 7, 4, lado * 32, -65, 52, cfg.iris || '#241b16');
+        B(cabeca, 2, 2, 2, lado * 32 - 1, -67, 55, '#f7ead7');
+      });
+    } else {
+      B(cabeca, 19, 17, 5, -20, -45, 47, '#fdfbf7'); B(cabeca, 19, 17, 5, 20, -45, 47, '#fdfbf7');
+      if (!pescador && !raposaOriginal && !nativoOriginal && !biomedicaOriginal && !arara && !onca) { B(cabeca, 19, 7, 6, -20, -51, 48, base); B(cabeca, 19, 7, 6, 20, -51, 48, base); }
+      B(cabeca, 10, 10, 4, -20, pescador ? -44 : -42, 50, cfg.iris || '#2a1f1a'); B(cabeca, 10, 10, 4, 20, pescador ? -44 : -42, 50, cfg.iris || '#2a1f1a');
+    }
     if (pescador) { B(cabeca, 4, 4, 3, -22, -47, 53, '#fffaf2'); B(cabeca, 4, 4, 3, 18, -47, 53, '#fffaf2'); }
     if (nativoOriginal) { B(cabeca, 4, 4, 3, -22, -45, 53, '#fffaf2'); B(cabeca, 4, 4, 3, 18, -45, 53, '#fffaf2'); }
     if (rostoRefinado) { B(cabeca, 4, 4, 3, -22, -45, 53, '#fffaf2'); B(cabeca, 4, 4, 3, 18, -45, 53, '#fffaf2'); }
@@ -729,10 +991,77 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     olhos = J(cabeca, 0, 0, 0);
     olhos.style.display = 'none';
     const palpebra = cfg.bicho?.mascara || cfg.skin;
-    B(olhos, 21, 19, 4, -20, -45, 49, palpebra); B(olhos, 21, 19, 4, 20, -45, 49, palpebra);
-    B(olhos, 19, 3, 5, -20, -43, 51, tom(palpebra, 0.55)); B(olhos, 19, 3, 5, 20, -43, 51, tom(palpebra, 0.55));
-    if (cfg.bicho) {
-      B(cabeca, pescador || carameloOriginal ? 44 : raposaOriginal ? 42 : 36, 26, raposaOriginal || carameloOriginal ? 21 : 17, 0, -19, 48, cfg.bicho.focinho); B(cabeca, carameloOriginal ? 17 : 14, 11, 9, 0, -27, raposaOriginal || carameloOriginal ? 59 : 57, cfg.bicho.nariz);
+    if (capivara) {
+      [-1, 1].forEach((lado) => {
+        B(olhos, 14, 12, 5, lado * 32, -65, 54, palpebra);
+        B(olhos, 9, 2, 3, lado * 32, -64, 58, tom(palpebra, 0.55));
+      });
+    } else {
+      B(olhos, 21, 19, 4, -20, -45, 49, palpebra); B(olhos, 21, 19, 4, 20, -45, 49, palpebra);
+      B(olhos, 19, 3, 5, -20, -43, 51, tom(palpebra, 0.55)); B(olhos, 19, 3, 5, 20, -43, 51, tom(palpebra, 0.55));
+    }
+    if (arara) {
+      // Bico curvo em degraus: maxila clara com ponta escura voltada para baixo.
+      B(cabeca, 31, 23, 22, 0, -25, 51, '#e7d2ae');
+      B(cabeca, 27, 18, 24, 0, -17, 56, '#cfb68d');
+      B(cabeca, 21, 13, 20, 0, -8, 62, '#343636');
+      B(cabeca, 13, 11, 15, 0, 0, 65, '#202629');
+      B(cabeca, 4, 4, 3, -9, -29, 64, '#57483d');
+      B(cabeca, 4, 4, 3, 9, -29, 64, '#57483d');
+      B(cabeca, 13, 3, 3, 0, -28, 65, '#f3e6c9');
+    } else if (capivara && cfg.bicho) {
+      // Focinho pesado, arredondado em degraus e projetado à frente dos olhos.
+      B(cabeca, 76, 37, 31, 0, -25, 53, cfg.skin);
+      B(cabeca, 68, 33, 18, 0, -24, 69, tom(cfg.skin, 0.94));
+      B(cabeca, 58, 27, 8, 0, -24, 80, tom(cfg.skin, 0.87));
+      B(cabeca, 48, 8, 7, 0, -9, 77, tom(cfg.skin, 0.76));
+      // Nariz em camadas curtas; dois pontos indicam as narinas.
+      B(cabeca, 30, 8, 4, 0, -31, 85, tom(cfg.skin, 0.38));
+      B(cabeca, 22, 3, 3, 0, -35, 87, tom(cfg.skin, 0.48));
+      B(cabeca, 4, 3, 2, -9, -31, 88, tom(cfg.skin, 0.25));
+      B(cabeca, 4, 3, 2, 9, -31, 88, tom(cfg.skin, 0.25));
+      B(cabeca, 24, 2, 2, 0, -13, 85, tom(cfg.skin, 0.48));
+      [-1, 1].forEach((lado) => {
+        B(cabeca, 3, 3, 2, lado * 22, -22, 85, tom(cfg.skin, 0.58));
+        B(cabeca, 3, 3, 2, lado * 19, -17, 85, tom(cfg.skin, 0.58));
+      });
+    } else if (onca && cfg.bicho) {
+      // Focinho felino, nariz triangular em degraus e bigodes nos dois lados.
+      B(cabeca, 27, 19, 19, -12, -17, 51, '#f2dfb9');
+      B(cabeca, 27, 19, 19, 12, -17, 51, '#f2dfb9');
+      B(cabeca, 16, 8, 7, 0, -27, 63, '#39251d');
+      B(cabeca, 9, 5, 7, 0, -22, 64, '#39251d');
+      B(cabeca, 3, 8, 3, 0, -16, 64, '#5a3b29');
+      [-1, 1].forEach((lado) => {
+        B(cabeca, 13, 2, 3, lado * 24, -18, 63, '#634b35');
+        B(cabeca, 11, 2, 3, lado * 25, -13, 63, '#634b35');
+        B(cabeca, 3, 3, 3, lado * 12, -19, 63, '#634b35');
+      });
+    } else if (especie === 'gato' || especie === 'coelho' || especie === 'rato') {
+      // Bochechas separadas e bigodes realçam os focinhos pequenos.
+      const bochecha = cfg.bicho!.focinho;
+      B(cabeca, 22, 15, 13, -10, -18, 50, bochecha);
+      B(cabeca, 22, 15, 13, 10, -18, 50, bochecha);
+      B(cabeca, 10, 7, 6, 0, -26, 58, especie === 'gato' ? '#a96559' : cfg.bicho!.nariz);
+      B(cabeca, 3, 6, 3, 0, -19, 60, tom(cfg.skin, 0.45));
+      [-1, 1].forEach((lado) => {
+        B(cabeca, 16, 2, 3, lado * 24, -20, 59, tom(cfg.skin, 1.38));
+        B(cabeca, 13, 2, 3, lado * 24, -15, 59, tom(cfg.skin, 1.38));
+      });
+      if (especie === 'coelho') {
+        B(cabeca, 7, 8, 4, -4, -9, 60, '#f9f2df');
+        B(cabeca, 7, 8, 4, 4, -9, 60, '#f9f2df');
+      }
+    } else if (especie === 'cachorro' || especie === 'urso' || especie === 'raposa' || especie === 'guaxinim') {
+      const focinho = cfg.bicho!.focinho;
+      const largura = especie === 'urso' ? 44 : especie === 'cachorro' ? 42 : 34;
+      const profundidade = especie === 'raposa' ? 25 : 19;
+      B(cabeca, largura, 23, profundidade, 0, -20, 50, focinho);
+      B(cabeca, especie === 'urso' ? 18 : 14, 9, 7, 0, -27, 51 + profundidade / 2, cfg.bicho!.nariz);
+      B(cabeca, 3, 8, 3, 0, -19, 53 + profundidade / 2, tom(cfg.skin, 0.45));
+      B(cabeca, 13, 3, 3, 0, -13, 53 + profundidade / 2, tom(cfg.skin, 0.48));
+    } else if (cfg.bicho) {
+      B(cabeca, pescador || carameloOriginal || capivara ? 44 : raposaOriginal ? 42 : 36, 26, raposaOriginal || carameloOriginal ? 21 : 17, 0, -19, 48, cfg.bicho.focinho); B(cabeca, carameloOriginal ? 17 : 14, 11, 9, 0, -27, raposaOriginal || carameloOriginal ? 59 : 57, cfg.bicho.nariz);
       B(cabeca, 16, 5, 6, 0, -13, 56, tom(cfg.bicho.nariz, 1.6));
       if (carameloOriginal) {
         B(cabeca, 3, 8, 3, 0, -19, 61, '#5c3b2e');
@@ -773,18 +1102,35 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
   }
   if (cfg.pinta) B(cabeca, 5, 5, 4, 27, -28, 46, '#3a2a1d');
   if (cfg.oculos) {
+    const suporteOculos = capivara ? J(cabeca, 0, -20, 5) : cabeca;
+    if (capivara) suporteOculos.style.transform += ' scaleX(1.6)';
     if (roqueiroOriginal) {
-      B(cabeca, 27, 19, 5, -20, -45, 50, '#17181d'); B(cabeca, 27, 19, 5, 20, -45, 50, '#17181d');
-      B(cabeca, 21, 13, 3, -20, -45, 53, '#34404d'); B(cabeca, 21, 13, 3, 20, -45, 53, '#34404d');
-      B(cabeca, 10, 3, 2, -23, -49, 55, '#788995', 1, ' rotateZ(-18deg)');
-      B(cabeca, 10, 3, 2, 17, -49, 55, '#788995', 1, ' rotateZ(-18deg)');
-      B(cabeca, 12, 4, 4, 0, -46, 52, '#17181d');
+      B(suporteOculos, 27, 19, 5, -20, -45, 50, '#17181d'); B(suporteOculos, 27, 19, 5, 20, -45, 50, '#17181d');
+      B(suporteOculos, 21, 13, 3, -20, -45, 53, '#34404d'); B(suporteOculos, 21, 13, 3, 20, -45, 53, '#34404d');
+      B(suporteOculos, 10, 3, 2, -23, -49, 55, '#788995', 1, ' rotateZ(-18deg)');
+      B(suporteOculos, 10, 3, 2, 17, -49, 55, '#788995', 1, ' rotateZ(-18deg)');
+      B(suporteOculos, 12, 4, 4, 0, -46, 52, '#17181d');
+    } else if (cfg.oculosEstudio === 'redondo' || cfg.oculosEstudio === 'gatinho' || cfg.oculosEstudio === 'aviador') {
+      const modelo = cfg.oculosEstudio;
+      [-1, 1].forEach((lado) => {
+        const x = lado * 20;
+        // Molduras em segmentos deixam o olhar visível e criam uma borda em relevo.
+        if (modelo === 'aviador') B(suporteOculos, 19, 13, 2, x, -45, 52, cfg.lente || '#526779');
+        B(suporteOculos, modelo === 'gatinho' ? 23 : 17, 3, 3, x, -55, 54, cfg.oculos!);
+        B(suporteOculos, modelo === 'aviador' ? 13 : 17, 3, 3, x, -35, 54, cfg.oculos!);
+        B(suporteOculos, 3, 14, 3, x - 11, -45, 54, cfg.oculos!);
+        B(suporteOculos, 3, 14, 3, x + 11, -45, 54, cfg.oculos!);
+        if (modelo === 'gatinho') B(suporteOculos, 7, 6, 3, x + lado * 10, -57, 54, cfg.oculos!, 1, ` rotateZ(${lado * -18}deg)`);
+        if (modelo === 'aviador') B(suporteOculos, 7, 2, 2, x - 4, -50, 56, '#aabdc5', 1, ' rotateZ(-18deg)');
+      });
+      B(suporteOculos, 14, 3, 3, 0, -48, 54, cfg.oculos);
+      if (modelo === 'aviador') B(suporteOculos, 18, 2, 3, 0, -55, 54, cfg.oculos);
     } else {
-      B(cabeca, 24, 20, 4, -20, -45, 50, cfg.oculos); B(cabeca, 24, 20, 4, 20, -45, 50, cfg.oculos);
-      B(cabeca, 19, 15, 3, -20, -45, 52, cfg.lente || '#cfe9f5'); B(cabeca, 19, 15, 3, 20, -45, 52, cfg.lente || '#cfe9f5');
-      B(cabeca, 12, 4, 3, 0, -45, 51, cfg.oculos);
+      B(suporteOculos, 24, 20, 4, -20, -45, 50, cfg.oculos); B(suporteOculos, 24, 20, 4, 20, -45, 50, cfg.oculos);
+      B(suporteOculos, 19, 15, 3, -20, -45, 52, cfg.lente || '#cfe9f5'); B(suporteOculos, 19, 15, 3, 20, -45, 52, cfg.lente || '#cfe9f5');
+      B(suporteOculos, 12, 4, 3, 0, -45, 51, cfg.oculos);
     }
-    B(cabeca, 10, 4, 24, -42, -45, 38, cfg.oculos); B(cabeca, 10, 4, 24, 42, -45, 38, cfg.oculos);
+    B(suporteOculos, 10, 4, 24, -42, -45, 38, cfg.oculos); B(suporteOculos, 10, 4, 24, 42, -45, 38, cfg.oculos);
   }
   // O fone entra montado desde o começo e fica escondido: aparecer é só trocar o
   // display, sem remontar o boneco no meio da caminhada de volta.
@@ -794,7 +1140,7 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
   // sumia dentro dele. A concha ainda ganha um disco laranja virado para fora.
   const FONE = '#55504a';
   // Cabelo afro e capacete ocupam o alto da cabeça; o arco sobe para passar por cima.
-  const yArco = cfg.estilo === 'afro' ? -116 : cfg.capacete || cfg.balde ? -106 : -98;
+  const yArco = cfg.fivePanel ? -120 : cfg.estilo === 'afro' ? -116 : cfg.capacete || cfg.balde || cfg.touca || cfg.boina ? -106 : -98;
   B(fone, 106, 13, 27, 0, yArco, 0, FONE);
   B(fone, 94, 9, 23, 0, yArco + 10, 0, '#e8e2d6');
   [-50, 50].forEach((x) => {

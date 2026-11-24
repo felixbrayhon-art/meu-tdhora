@@ -20,12 +20,12 @@ import {
 } from './voxelCharacters';
 
 export type Sexo = 'menina' | 'menino' | 'neutro';
-export type EspecieId = 'pessoa' | 'cachorro' | 'gato' | 'raposa' | 'guaxinim' | 'urso' | 'coelho' | 'rato';
-export type CamisaId = 'camiseta' | 'listrada' | 'social' | 'regata' | 'moletom' | 'jaleco' | 'terno' | 'colete' | 'toga' | 'sem';
+export type EspecieId = 'pessoa' | 'cachorro' | 'gato' | 'raposa' | 'guaxinim' | 'urso' | 'coelho' | 'rato' | 'capivara' | 'onca' | 'arara';
+export type CamisaId = 'camiseta' | 'listrada' | 'social' | 'regata' | 'moletom' | 'jaleco' | 'terno' | 'colete' | 'toga' | 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta' | 'sem';
 export type CalcaId = 'comprida' | 'bermuda' | 'saia';
-export type CalcadoId = 'sapato' | 'tenis' | 'bota' | 'descalco';
-export type ChapeuId = 'nenhum' | 'bone' | 'quepe' | 'capacete' | 'balde';
-export type OculosId = 'nenhum' | 'armacao' | 'escuros';
+export type CalcadoId = 'sapato' | 'tenis' | 'tenisCanoAlto' | 'tenisEsportivo' | 'tenisCasual' | 'bota' | 'descalco';
+export type ChapeuId = 'nenhum' | 'bone' | 'fivePanel' | 'quepe' | 'capacete' | 'balde' | 'touca' | 'boina';
+export type OculosId = 'nenhum' | 'armacao' | 'escuros' | 'redondo' | 'aviador' | 'gatinho';
 export type PelosId = 'nada' | 'bigode' | 'barba' | 'cheia';
 
 export interface Mascote {
@@ -45,6 +45,8 @@ export interface Mascote {
   corDetalhe?: string;
   corCalca?: string;
   corCalcado?: string;
+  corDetalheCalcado?: string;
+  corOculos?: string;
   corChapeu?: string;
   // peças — só no modo 'criado'
   camisa?: CamisaId;
@@ -86,6 +88,9 @@ export const ESPECIES: { id: EspecieId; rotulo: string; orelha?: VoxelOrelha; ma
   { id: 'urso', rotulo: 'Urso', orelha: 'redonda', focinhoClaro: 1.2 },
   { id: 'coelho', rotulo: 'Coelho', orelha: 'comprida', focinhoClaro: 1.3 },
   { id: 'rato', rotulo: 'Rato', orelha: 'redonda', focinhoClaro: 1.28 },
+  { id: 'capivara', rotulo: 'Capivara', orelha: 'redonda', focinhoClaro: 1.12 },
+  { id: 'onca', rotulo: 'Onça-pintada', orelha: 'redonda', focinhoClaro: 1.25 },
+  { id: 'arara', rotulo: 'Arara-vermelha', orelha: 'redonda' },
 ];
 
 export const ESTILOS_CABELO: { id: VoxelCabelo; rotulo: string }[] = [
@@ -97,6 +102,9 @@ export const ESTILOS_CABELO: { id: VoxelCabelo; rotulo: string }[] = [
   { id: 'rabo', rotulo: 'Rabo de cavalo' },
   { id: 'coque', rotulo: 'Coque' },
   { id: 'moicano', rotulo: 'Moicano' },
+  { id: 'trancas', rotulo: 'Tranças' },
+  { id: 'ondulado', rotulo: 'Ondulado' },
+  { id: 'coques', rotulo: 'Dois coques' },
   { id: 'careca', rotulo: 'Careca' },
 ];
 
@@ -110,6 +118,10 @@ export const CAMISAS: { id: CamisaId; rotulo: string }[] = [
   { id: 'terno', rotulo: 'Terno' },
   { id: 'colete', rotulo: 'Colete' },
   { id: 'toga', rotulo: 'Toga' },
+  { id: 'polo', rotulo: 'Polo' },
+  { id: 'jaqueta', rotulo: 'Jaqueta' },
+  { id: 'jardineira', rotulo: 'Jardineira' },
+  { id: 'golaAlta', rotulo: 'Gola alta' },
   { id: 'sem', rotulo: 'Sem camisa' },
 ];
 
@@ -121,7 +133,10 @@ export const CALCAS: { id: CalcaId; rotulo: string }[] = [
 
 export const CALCADOS: { id: CalcadoId; rotulo: string }[] = [
   { id: 'sapato', rotulo: 'Sapato' },
-  { id: 'tenis', rotulo: 'Tênis' },
+  { id: 'tenis', rotulo: 'Tênis clássico' },
+  { id: 'tenisCanoAlto', rotulo: 'Tênis cano alto' },
+  { id: 'tenisEsportivo', rotulo: 'Tênis esportivo' },
+  { id: 'tenisCasual', rotulo: 'Tênis casual' },
   { id: 'bota', rotulo: 'Bota' },
   { id: 'descalco', rotulo: 'Descalço' },
 ];
@@ -129,15 +144,21 @@ export const CALCADOS: { id: CalcadoId; rotulo: string }[] = [
 export const CHAPEUS: { id: ChapeuId; rotulo: string }[] = [
   { id: 'nenhum', rotulo: 'Nenhum' },
   { id: 'bone', rotulo: 'Boné' },
+  { id: 'fivePanel', rotulo: 'Boné five panel' },
   { id: 'quepe', rotulo: 'Quepe' },
   { id: 'capacete', rotulo: 'Capacete' },
   { id: 'balde', rotulo: 'Chapéu de pescador' },
+  { id: 'touca', rotulo: 'Touca' },
+  { id: 'boina', rotulo: 'Boina' },
 ];
 
 export const OCULOS: { id: OculosId; rotulo: string }[] = [
   { id: 'nenhum', rotulo: 'Sem óculos' },
   { id: 'armacao', rotulo: 'De grau' },
   { id: 'escuros', rotulo: 'Escuros' },
+  { id: 'redondo', rotulo: 'Redondos' },
+  { id: 'aviador', rotulo: 'Aviador' },
+  { id: 'gatinho', rotulo: 'Gatinho' },
 ];
 
 export const PELOS: { id: PelosId; rotulo: string }[] = [
@@ -153,6 +174,9 @@ export const ADERECOS: { id: VoxelAdereco; rotulo: string }[] = [
   { id: 'caneta', rotulo: 'Caneta' },
   { id: 'livro', rotulo: 'Livro' },
   { id: 'tablet', rotulo: 'Tablet' },
+  { id: 'celular', rotulo: 'Celular' },
+  { id: 'garrafa', rotulo: 'Garrafa' },
+  { id: 'pincel', rotulo: 'Pincel' },
   { id: 'radio', rotulo: 'Rádio' },
   { id: 'vaso', rotulo: 'Vaso' },
   { id: 'violao', rotulo: 'Violão' },
@@ -166,7 +190,7 @@ export const ADERECOS: { id: VoxelAdereco; rotulo: string }[] = [
 ];
 
 export const CORES_PELE = ['#f7dcc0', '#f4d0a8', '#f0b080', '#f0a060', '#e08040', '#c07a42', '#a05030', '#7a4a2c', '#5c3a24', '#4a3326'];
-export const CORES_PELO = ['#d99443', '#f08010', '#c07a42', '#8a6a4f', '#5c4433', '#2f2a26', '#bdb3a8', '#8f8375', '#e8ddcc', '#fdfbf7'];
+export const CORES_PELO = ['#df3433', '#e5ae4b', '#a87550', '#d99443', '#f08010', '#c07a42', '#8a6a4f', '#5c4433', '#2f2a26', '#bdb3a8', '#8f8375', '#e8ddcc', '#fdfbf7'];
 export const CORES_CABELO = ['#2a1c14', '#402020', '#603020', '#8a5a2a', '#b05010', '#e9c46a', '#f0d090', '#d8d2c8', '#f3ece0', '#e04020', '#8a2be2', '#2f6fd0', '#2E4A54', '#8A9A7B'];
 export const CORES_OLHOS = ['#2a1f1a', '#4a2f1a', '#5a3a1f', '#4a8a3a', '#6a8a3a', '#2E4A54', '#2f6fd0', '#7D7A36', '#8f8375', '#b3422f'];
 export const CORES_ROUPA = ['#fdfbf7', '#f3ece0', '#e8ddcc', '#c9a87c', '#8a6a4f', '#e96f34', '#D8A53A', '#8A9A7B', '#7D7A36', '#2E4A54', '#2f6fd0', '#40a0a0', '#8a2be2', '#f04030', '#e88c9a', '#473c33', '#2a2a2e', '#303038'];
@@ -174,7 +198,7 @@ export const CORES_ROUPA = ['#fdfbf7', '#f3ece0', '#e8ddcc', '#c9a87c', '#8a6a4f
 // ------------------------------------------------------------------ guardar
 
 const COR = /^#[0-9a-f]{6}$/i;
-const PECAS_CHAPEU = ['bone', 'boneAba', 'balde', 'quepe', 'capacete'] as const;
+const PECAS_CHAPEU = ['bone', 'boneAba', 'fivePanel', 'balde', 'quepe', 'capacete', 'touca', 'boina'] as const;
 
 /** Multiplica o tom, como o VoxelAvatar faz para dar luz às faces. */
 const mult = (hex: string, k: number): string => {
@@ -214,7 +238,7 @@ export const limpar = (bruto: unknown): Mascote => {
   if (a.cilios === true) limpo.cilios = true;
   if (a.pinta === true) limpo.pinta = true;
   if (a.cinto === true) limpo.cinto = true;
-  (['pele', 'cabelo', 'olhos', 'corCamisa', 'corDetalhe', 'corCalca', 'corCalcado', 'corChapeu'] as const).forEach((campo) => {
+  (['pele', 'cabelo', 'olhos', 'corCamisa', 'corDetalhe', 'corCalca', 'corCalcado', 'corDetalheCalcado', 'corOculos', 'corChapeu'] as const).forEach((campo) => {
     const v = cor(a[campo]);
     if (v) limpo[campo] = v;
   });
@@ -254,9 +278,12 @@ export const gravar = (m: Mascote) => {
 const porChapeu = (cfg: VoxelConfig, chapeu: ChapeuId, cor: string) => {
   PECAS_CHAPEU.forEach((peca) => delete cfg[peca]);
   if (chapeu === 'bone') { cfg.bone = cor; cfg.boneAba = mult(cor, 0.78); }
+  if (chapeu === 'fivePanel') cfg.fivePanel = cor;
   if (chapeu === 'quepe') cfg.quepe = cor;
   if (chapeu === 'capacete') cfg.capacete = cor;
   if (chapeu === 'balde') cfg.balde = cor;
+  if (chapeu === 'touca') cfg.touca = cor;
+  if (chapeu === 'boina') cfg.boina = cor;
 };
 
 /** Modo 'pronto': a receita do personagem com os retoques de cor por cima. */
@@ -284,7 +311,7 @@ export const aplicarMascote = (base: VoxelConfig, m: Mascote): VoxelConfig => {
     }
   }
   // Sem escolha, fica o chapéu que o personagem já usava.
-  if (m.chapeu) porChapeu(cfg, m.chapeu, m.corChapeu || base.bone || base.quepe || base.capacete || base.balde || PADRAO.corChapeu);
+  if (m.chapeu) porChapeu(cfg, m.chapeu, m.corChapeu || base.bone || base.fivePanel || base.quepe || base.capacete || base.balde || PADRAO.corChapeu);
   return cfg;
 };
 
@@ -330,15 +357,20 @@ const doZero = (m: Mascote): VoxelConfig => {
     sapato: v.corCalcado,
     dir: v.dir,
     esq: v.esq,
+    roupaEstudio: v.camisa,
+    parteBaixoEstudio: v.calca,
+    calcadoEstudio: v.calcado,
+    detalheCalcadoEstudio: v.corDetalheCalcado || '#f3ece0',
   };
 
   if (especie.orelha) {
     cfg.bicho = {
+      especie: v.especie === 'pessoa' ? undefined : v.especie,
       orelha: mult(v.pele, 0.88),
       dentro: mult(v.pele, 1.28),
       focinho: mult(v.pele, especie.focinhoClaro || 1.25),
       nariz: mult(v.pele, 0.38),
-      rabo: [v.pele, mult(v.pele, 0.86), v.pele, mult(v.pele, 0.86)],
+      rabo: v.especie === 'capivara' ? [] : v.especie === 'arara' ? [v.pele, '#247cac', '#e7be3f', '#247cac'] : v.especie === 'coelho' || v.especie === 'urso' ? [mult(v.pele, 1.15)] : v.especie === 'raposa' ? [v.pele, v.pele, mult(v.pele, 0.9), mult(v.pele, 1.35)] : [v.pele, mult(v.pele, 0.72), v.pele, mult(v.pele, 0.72)],
       orelhaTipo: especie.orelha,
       ...(especie.mascara ? { mascara: mult(v.pele, 0.5) } : {}),
     };
@@ -356,6 +388,7 @@ const doZero = (m: Mascote): VoxelConfig => {
     case 'terno': cfg.lapela = mult(v.corCamisa, 1.12); cfg.gravata = v.corDetalhe; break;
     case 'colete': cfg.colete = v.corDetalhe; cfg.bolsosColete = true; break;
     case 'toga': cfg.toga = true; break;
+    case 'polo': case 'jaqueta': case 'jardineira': case 'golaAlta': cfg.detalheRoupa = v.camisa; cfg.corDetalheRoupa = v.corDetalhe; break;
     case 'sem': cfg.semCamisa = true; break;
     default: break;
   }
@@ -365,12 +398,12 @@ const doZero = (m: Mascote): VoxelConfig => {
   if (v.cinto) { cfg.cinto = mult(v.corCalca, 0.6); cfg.fivela = '#e9b949'; }
 
   if (v.calcado === 'descalco') cfg.descalco = true;
-  if (v.calcado === 'tenis') cfg.meia = '#fdfbf7';
+  if (['tenis', 'tenisCanoAlto', 'tenisEsportivo', 'tenisCasual'].includes(v.calcado)) cfg.meia = '#fdfbf7';
   if (v.calcado === 'bota') cfg.bainha = mult(v.corCalcado, 1.2);
 
   porChapeu(cfg, v.chapeu, v.corChapeu);
 
-  if (v.oculos !== 'nenhum') { cfg.oculos = '#2a2a2e'; if (v.oculos === 'escuros') cfg.lente = '#2a2a2e'; }
+  if (v.oculos !== 'nenhum') { cfg.oculos = v.corOculos || '#2a2a2e'; cfg.oculosEstudio = v.oculos; if (v.oculos === 'escuros') cfg.lente = '#2a2a2e'; if (v.oculos === 'aviador') cfg.lente = '#526779'; }
 
   // Pelo do rosto só em quem tem pele de pessoa: num bicho o focinho já ocupa
   // esse lugar e a barba virava uma mancha solta no meio da cara.
