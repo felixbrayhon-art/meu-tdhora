@@ -76,6 +76,7 @@ const Cores: React.FC<{ cores: string[]; valor?: string; nome: string; onEscolhe
         style={{ background: cor }}
       />
     ))}
+    <label className="flex h-9 items-center gap-1 rounded-full border border-[#d7c9b7] bg-white px-2 text-[10px] font-bold text-[#66584b]">Outra cor<input type="color" aria-label={`Escolher outra cor para ${nome}`} value={valor || cores[0]} onChange={(e) => onEscolher(e.target.value)} className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0" /></label>
   </div>
 );
 
@@ -112,6 +113,15 @@ const Marcar: React.FC<{ ligado: boolean; onMudar: (v: boolean) => void; childre
   </label>
 );
 
+type AbaMascote = 'quem' | 'rosto' | 'roupa' | 'extras';
+
+const ABAS: { id: AbaMascote; rotulo: string }[] = [
+  { id: 'quem', rotulo: 'Quem é' },
+  { id: 'rosto', rotulo: 'Rosto' },
+  { id: 'roupa', rotulo: 'Roupa' },
+  { id: 'extras', rotulo: 'Extras' },
+];
+
 const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onConfirmar, rotuloConfirmar = 'Confirmar mascote', rotuloVoltar = 'Voltar' }) => {
   const [mascote, setMascote] = useState<Mascote>(() => ler());
   // A animação não é mais só a amostra daqui: é a que o boneco faz no canto
@@ -124,6 +134,11 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
   // o padrão que precisa aparecer marcado nos botões.
   const v = { ...PADRAO, ...Object.fromEntries(Object.entries(mascote).filter(([, valor]) => valor !== undefined)) } as Mascote & typeof PADRAO;
   const bicho = !!cfg?.bicho;
+
+  // As escolhas vinham empilhadas numa coluna só: no modo "montar do zero" eram dez blocos, 204 controles e
+  // 3.255 px de rolagem numa janela de 757 — quatro telas para achar o chapéu. Agora são quatro grupos, um
+  // de cada vez, e cada um cabe quase inteiro na tela.
+  const [aba, setAba] = useState<AbaMascote>('quem');
 
   const mudar = (campo: Partial<Mascote>) => {
     const proximo = { ...mascote, ...campo };
@@ -153,29 +168,30 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
             <VoxelAvatar characterId={characterId} mascote={mascote} altura={240} pose={pose} />
           </div>
           <h2 className="mt-2 text-center text-xl font-black uppercase tracking-tight text-[#473c33] dark:text-[#f4ebdd]">{cfg?.nome || 'Mascote'}</h2>
-          <div className="mt-3">
-            <Rotulo>O que ele fica fazendo</Rotulo>
-            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="O que ele fica fazendo">
-              {POSES_ESCOLHIVEIS.map(({ pose: p, rotulo }) => (
-                <button
-                  key={p}
-                  type="button"
-                  role="radio"
-                  aria-checked={pose === p}
-                  onClick={() => mudar({ animacao: p })}
-                  className={`min-h-9 rounded-lg px-2 text-[9px] font-black uppercase tracking-wide transition-colors ${
-                    pose === p ? 'bg-[#e96f34] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
-                  }`}
-                >
-                  {rotulo}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <div className="space-y-4">
-          <Secao titulo="De onde partir">
+          {/* Barra de grupos: só o grupo aberto aparece abaixo. */}
+          <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-[#e9e0d4] bg-[#fdfbf7] p-1 dark:border-white/10 dark:bg-[#2d2e27] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Partes do mascote">
+            {ABAS.map(({ id, rotulo }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={aba === id}
+                onClick={() => setAba(id)}
+                /* A cor da aba aberta vem da regra de [role=tab][aria-selected=true] do index.css, a mesma
+                   das outras barras do app — pintar aqui só criaria uma segunda aparência de aba. */
+                className={`min-h-10 flex-1 shrink-0 rounded-xl px-3 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                  aba === id ? '' : 'text-[#8f8375] hover:text-[#473c33] dark:text-[#a89680]'
+                }`}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </div>
+
+          {aba === 'quem' && <Secao titulo="De onde partir">
             <Opcoes
               itens={[{ id: 'criado', rotulo: 'Montar do zero' }, { id: 'pronto', rotulo: 'Personagem pronto' }] as const}
               valor={mascote.modo}
@@ -194,9 +210,9 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
                 />
               </label>
             )}
-          </Secao>
+          </Secao>}
 
-          {!criado && (
+          {aba === 'quem' && !criado && (
             <Secao titulo="Qual personagem">
               <Opcoes
                 itens={PRONTOS.map((p) => ({ id: p.id, rotulo: p.nome }))}
@@ -210,7 +226,7 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
             </Secao>
           )}
 
-          {criado && (
+          {aba === 'quem' && criado && (
             <Secao titulo="Quem é ele">
               <div>
                 <Rotulo>Sexo</Rotulo>
@@ -225,14 +241,14 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
               </div>
               <div>
                 <Rotulo>Pessoa ou bicho</Rotulo>
-                <Opcoes itens={ESPECIES} valor={v.especie} nome="Pessoa ou bicho" onEscolher={(especie) => mudar({ especie })} />
+                <Opcoes itens={ESPECIES} valor={v.especie} nome="Pessoa ou bicho" onEscolher={(especie) => mudar({ especie, ...({ capivara: { pele: '#a87550' }, onca: { pele: '#e5ae4b' }, arara: { pele: '#df3433' } } as Partial<Record<typeof especie, Partial<Mascote>>>)[especie] })} />
               </div>
             </Secao>
           )}
 
-          <Secao titulo={bicho ? 'Pelo e olhos' : 'Pele, cabelo e olhos'}>
+          {aba === 'rosto' && <Secao titulo={bicho ? 'Pelo e olhos' : 'Pele, cabelo e olhos'}>
             <div>
-              <Rotulo>{bicho ? 'Cor do pelo' : 'Tom de pele'}</Rotulo>
+              <Rotulo>{v.especie === 'arara' && criado ? 'Cor das penas' : bicho ? 'Cor do pelo' : 'Tom de pele'}</Rotulo>
               <Cores cores={bicho ? CORES_PELO : CORES_PELE} valor={mascote.pele || (criado ? v.pele : cfg?.skin)} nome={bicho ? 'Cor do pelo' : 'Tom de pele'} onEscolher={(pele) => mudar({ pele })} />
             </div>
             {!bicho && (
@@ -251,17 +267,13 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
               <Rotulo>Cor dos olhos</Rotulo>
               <Cores cores={CORES_OLHOS} valor={mascote.olhos || cfg?.iris || PADRAO.olhos} nome="Cor dos olhos" onEscolher={(olhos) => mudar({ olhos })} />
             </div>
-          </Secao>
+          </Secao>}
 
-          {criado && !bicho && (
+          {aba === 'rosto' && criado && !bicho && (
             <Secao titulo="Rosto">
               <div>
                 <Rotulo>Barba e bigode</Rotulo>
                 <Opcoes itens={PELOS} valor={v.pelos} nome="Barba e bigode" onEscolher={(pelos) => mudar({ pelos })} />
-              </div>
-              <div>
-                <Rotulo>Óculos</Rotulo>
-                <Opcoes itens={OCULOS} valor={v.oculos} nome="Óculos" onEscolher={(oculos) => mudar({ oculos })} />
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Marcar ligado={mascote.cilios ?? v.sexo === 'menina'} onMudar={(cilios) => mudar({ cilios })}>Cílios</Marcar>
@@ -270,7 +282,12 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
             </Secao>
           )}
 
-          {criado ? (
+          {aba === 'rosto' && criado && <Secao titulo="Óculos">
+            <Opcoes itens={OCULOS} valor={v.oculos} nome="Óculos" onEscolher={(oculos) => mudar({ oculos })} />
+            {v.oculos !== 'nenhum' && <div><Rotulo>Cor da armação</Rotulo><Cores cores={CORES_ROUPA} valor={mascote.corOculos || '#2a2a2e'} nome="Cor da armação" onEscolher={(corOculos) => mudar({ corOculos })} /></div>}
+          </Secao>}
+
+          {aba === 'roupa' && (criado ? (
             <>
               <Secao titulo="Roupa de cima">
                 <Opcoes itens={CAMISAS} valor={v.camisa} nome="Roupa de cima" onEscolher={(camisa) => mudar({ camisa })} />
@@ -280,7 +297,7 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
                 </div>
                 {/* Listras, gravata, colete e a faixa da social saem desta cor:
                     sem ela a peça some dentro da camisa quando as duas batem. */}
-                {['listrada', 'social', 'terno', 'colete', 'jaleco'].includes(v.camisa) && (
+                {['listrada', 'social', 'terno', 'colete', 'jaleco', 'polo', 'jaqueta', 'jardineira', 'golaAlta'].includes(v.camisa) && (
                   <div>
                     <Rotulo>Cor do detalhe</Rotulo>
                     <Cores cores={CORES_ROUPA} valor={v.corDetalhe} nome="Cor do detalhe" onEscolher={(corDetalhe) => mudar({ corDetalhe })} />
@@ -299,6 +316,7 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
 
               <Secao titulo="Nos pés">
                 <Opcoes itens={CALCADOS} valor={v.calcado} nome="Nos pés" onEscolher={(calcado) => mudar({ calcado })} />
+                {['tenis', 'tenisCanoAlto', 'tenisEsportivo', 'tenisCasual'].includes(v.calcado) && <div><Rotulo>Cor dos detalhes</Rotulo><Cores cores={CORES_ROUPA} valor={mascote.corDetalheCalcado || '#f3ece0'} nome="Cor dos detalhes do tênis" onEscolher={(corDetalheCalcado) => mudar({ corDetalheCalcado })} /></div>}
                 {v.calcado !== 'descalco' && (
                   <div>
                     <Rotulo>Cor</Rotulo>
@@ -355,13 +373,13 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
               {mascote.chapeu && mascote.chapeu !== 'nenhum' && (
                 <div>
                   <Rotulo>Cor do chapéu</Rotulo>
-                  <Cores cores={CORES_ROUPA} valor={mascote.corChapeu || cfg?.bone || cfg?.quepe || cfg?.capacete || cfg?.balde} nome="Cor do chapéu" onEscolher={(corChapeu) => mudar({ corChapeu })} />
+                  <Cores cores={CORES_ROUPA} valor={mascote.corChapeu || cfg?.bone || cfg?.fivePanel || cfg?.quepe || cfg?.capacete || cfg?.balde || cfg?.touca || cfg?.boina} nome="Cor do chapéu" onEscolher={(corChapeu) => mudar({ corChapeu })} />
                 </div>
               )}
             </Secao>
-          )}
+          ))}
 
-          <Secao titulo="Nas mãos">
+          {aba === 'extras' && <Secao titulo="Nas mãos">
             <div>
               <Rotulo>Mão direita</Rotulo>
               <Opcoes itens={ADERECOS} valor={(mascote.dir || cfg?.dir || 'nada') as VoxelAdereco} nome="Mão direita" onEscolher={(dir) => mudar({ dir })} />
@@ -370,15 +388,36 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
               <Rotulo>Mão esquerda</Rotulo>
               <Opcoes itens={ADERECOS} valor={(mascote.esq || cfg?.esq || 'nada') as VoxelAdereco} nome="Mão esquerda" onEscolher={(esq) => mudar({ esq })} />
             </div>
-          </Secao>
+          </Secao>}
 
-          <button
+          {aba === 'extras' && (
+            <Secao titulo="O que ele fica fazendo">
+              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="O que ele fica fazendo">
+                {POSES_ESCOLHIVEIS.map(({ pose: p, rotulo }) => (
+                  <button
+                    key={p}
+                    type="button"
+                    role="radio"
+                    aria-checked={pose === p}
+                    onClick={() => mudar({ animacao: p })}
+                    className={`min-h-10 rounded-xl px-3 text-[10px] font-black uppercase tracking-wide transition-colors ${
+                      pose === p ? 'bg-[#e96f34] text-white' : 'bg-[#f0e8dc] text-[#8f8375] hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]'
+                    }`}
+                  >
+                    {rotulo}
+                  </button>
+                ))}
+              </div>
+            </Secao>
+          )}
+
+          {aba === 'extras' && <button
             type="button"
             onClick={() => { const limpo: Mascote = { modo: mascote.modo }; setMascote(limpo); gravar(limpo); }}
             className="min-h-12 w-full rounded-2xl bg-[#f0e8dc] text-xs font-black uppercase tracking-widest text-[#8f8375] transition-colors hover:text-[#473c33] dark:bg-white/5 dark:text-[#a89680]"
           >
             Começar de novo
-          </button>
+          </button>}
         </div>
       </div>
 

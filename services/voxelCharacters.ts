@@ -2,14 +2,15 @@
 // As cores saíram das próprias artes em public/character-assets/to-dahora-2d/
 // (amostradas por faixa de altura: cabelo, rosto, tronco, perna, pé), para o
 // boneco não divergir do desenho que o aluno escolheu no onboarding.
-export type VoxelCabelo = 'curto' | 'cacheado' | 'afro' | 'longo' | 'careca' | 'moicano' | 'coque' | 'rabo' | 'chanel';
+export type VoxelCabelo = 'curto' | 'cacheado' | 'afro' | 'longo' | 'careca' | 'moicano' | 'coque' | 'rabo' | 'chanel' | 'trancas' | 'ondulado' | 'coques';
 /** Formato da orelha do bicho. Sem valor, fica a orelha dos personagens prontos. */
 export type VoxelOrelha = 'ponta' | 'caida' | 'redonda' | 'comprida';
 export type VoxelAdereco =
   | 'prancheta' | 'tablet' | 'caneta' | 'vaso' | 'radio' | 'vara' | 'peixe'
-  | 'violao' | 'guitarra' | 'rifle' | 'chave' | 'livro' | 'martelo' | 'passaro' | 'nada';
+  | 'violao' | 'guitarra' | 'rifle' | 'chave' | 'livro' | 'martelo' | 'passaro' | 'celular' | 'garrafa' | 'pincel' | 'nada';
 
 export interface VoxelBicho {
+  especie?: 'cachorro' | 'gato' | 'raposa' | 'guaxinim' | 'urso' | 'coelho' | 'rato' | 'capivara' | 'onca' | 'arara';
   orelha: string;
   dentro: string;
   focinho: string;
@@ -35,10 +36,19 @@ export interface VoxelConfig {
   // chapelaria
   bone?: string;
   boneAba?: string;
+  fivePanel?: string;
   balde?: string;
   quepe?: string;
   capacete?: string;
+  touca?: string;
+  boina?: string;
   // roupa
+  roupaEstudio?: 'camiseta' | 'listrada' | 'social' | 'regata' | 'moletom' | 'jaleco' | 'terno' | 'colete' | 'toga' | 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta' | 'sem';
+  parteBaixoEstudio?: 'comprida' | 'bermuda' | 'saia';
+  calcadoEstudio?: 'sapato' | 'tenis' | 'tenisCanoAlto' | 'tenisEsportivo' | 'tenisCasual' | 'bota' | 'descalco';
+  detalheCalcadoEstudio?: string;
+  detalheRoupa?: 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta';
+  corDetalheRoupa?: string;
   jaleco?: boolean;
   lapela?: string;
   gravata?: string;
@@ -68,6 +78,7 @@ export interface VoxelConfig {
   bigode?: string;
   barba?: string;
   oculos?: string;
+  oculosEstudio?: 'armacao' | 'escuros' | 'redondo' | 'aviador' | 'gatinho';
   lente?: string;
   mascara?: string;
   pinta?: boolean;
