@@ -77,31 +77,70 @@ const J = (p: Pai, x: number, y: number, z: number): HTMLElement => {
 };
 
 const CABELO: Record<string, (h: Pai, c: string) => void> = {
-  curto: (h, c) => { B(h, 94, 20, 94, 0, -80, 0, c); B(h, 94, 30, 14, 0, -58, -44, c); B(h, 12, 26, 80, -43, -64, -4, c); B(h, 12, 26, 80, 43, -64, -4, c); B(h, 92, 12, 16, 0, -70, 43, c); },
+  curto: (h, c) => {
+    B(h, 94, 20, 94, 0, -80, 0, c); B(h, 94, 30, 14, 0, -58, -44, c);
+    B(h, 12, 26, 80, -43, -64, -4, c); B(h, 12, 26, 80, 43, -64, -4, c);
+    B(h, 92, 12, 16, 0, -70, 43, c);
+    // Risca de lado, costeletas e a ponta da franja mais clara: é o que separa
+    // um corte curto de uma touca lisa da cor do cabelo.
+    B(h, 5, 9, 60, -18, -86, 6, tom(c, 0.68));
+    B(h, 10, 12, 10, -43, -52, 18, tom(c, 0.86)); B(h, 10, 12, 10, 43, -52, 18, tom(c, 0.86));
+    B(h, 88, 4, 6, 0, -65, 47, tom(c, 1.16));
+    B(h, 90, 5, 86, 0, -89, 0, tom(c, 1.1));
+  },
   cacheado: (h, c) => {
     B(h, 96, 24, 96, 0, -78, 0, c); B(h, 94, 34, 16, 0, -54, -44, c);
     B(h, 22, 22, 22, -45, -58, 8, c); B(h, 20, 20, 20, -44, -54, -20, c);
     B(h, 22, 22, 22, 45, -58, 8, c); B(h, 20, 20, 20, 44, -54, -20, c);
     B(h, 38, 16, 38, -20, -92, 0, c); B(h, 32, 14, 32, 24, -94, -12, c); B(h, 90, 12, 16, 0, -66, 43, c);
+    // Cachos soltos de tamanhos diferentes por cima, em dois tons: cacho é
+    // volume irregular, e um bloco liso com dois caroços não lê como cacho.
+    ([[-34, 26, 20], [-6, 34, 16], [22, 28, 18], [36, -2, 17], [-40, -8, 15], [8, -6, 19], [-18, -30, 14], [28, -32, 16]] as const)
+      .forEach(([x, z, d], i) => B(h, d, d, d, x, -94 + (i % 3) * 5, z, tom(c, i % 2 ? 1.14 : 0.88)));
+    [-1, 1].forEach((lado) => B(h, 16, 16, 16, lado * 47, -72, 24, tom(c, 1.08)));
   },
   afro: (h, c) => {
     B(h, 112, 42, 108, 0, -80, 0, c); B(h, 96, 30, 96, 0, -56, -20, c);
     B(h, 40, 20, 40, -44, -62, 6, c); B(h, 40, 20, 40, 44, -62, 6, c);
     B(h, 46, 20, 46, -16, -100, -6, c); B(h, 40, 18, 40, 22, -100, 8, c); B(h, 90, 12, 16, 0, -64, 43, c);
+    // Textura: caroços claros e escuros na superfície da bola, e a linha do
+    // cabelo marcada na testa.
+    ([[-40, 34], [-10, 44], [24, 36], [46, 6], [-50, 4], [38, -28], [-34, -34], [4, -46]] as const)
+      .forEach(([x, z], i) => B(h, 18, 18, 18, x, -84 - (i % 3) * 9, z, tom(c, i % 2 ? 1.16 : 0.84)));
+    B(h, 86, 6, 10, 0, -58, 45, tom(c, 0.7));
+    B(h, 96, 6, 92, 0, -102, 0, tom(c, 1.12));
   },
   longo: (h, c) => {
     B(h, 98, 26, 98, 0, -78, 0, c); B(h, 98, 48, 18, 0, -48, -44, c);
     B(h, 18, 66, 86, -42, -50, -2, c); B(h, 18, 66, 86, 42, -50, -2, c); B(h, 96, 16, 20, 0, -68, 42, c);
     B(h, 40, 16, 40, -24, -92, 2, tom(c, 1.18)); B(h, 34, 14, 34, 26, -94, -10, tom(c, 1.18));
+    // Risca no meio e sulcos descendo pelas mechas; pontas mais claras.
+    B(h, 5, 10, 46, 0, -88, 16, tom(c, 0.7));
+    [-1, 1].forEach((lado) => {
+      [-8, 8].forEach((d) => B(h, 4, 60, 4, lado * 44, -50, d * 3, tom(c, 0.76)));
+      B(h, 19, 8, 88, lado * 42, -18, -2, tom(c, 1.14));
+    });
+    B(h, 99, 7, 20, 0, -16, -44, tom(c, 1.14));
   },
-  careca: (h, c) => { B(h, 92, 10, 92, 0, -84, 0, tom(c, 0.9)); },
+  careca: (h, c) => {
+    B(h, 92, 10, 92, 0, -84, 0, tom(c, 0.9));
+    // Brilho no alto e a sombra do cabelo que foi raspado nas laterais.
+    B(h, 44, 4, 40, -12, -88, 6, tom(c, 1.2));
+    [-1, 1].forEach((lado) => B(h, 5, 16, 62, lado * 45, -66, -6, tom(c, 0.82)));
+    B(h, 90, 10, 14, 0, -60, -44, tom(c, 0.84));
+  },
   // Penteados do estúdio. Seguem a mesma caixa dos outros: topo em -80, nuca
   // em -58 e franja encostando no rosto em z 43, para caberem sob os chapéus.
   moicano: (h, c) => {
-    B(h, 92, 12, 92, 0, -82, 0, tom(c, 0.55));
-    B(h, 26, 34, 92, 0, -98, 0, c);
-    B(h, 18, 14, 86, 0, -118, 2, tom(c, 1.12));
-    B(h, 90, 12, 16, 0, -66, -44, tom(c, 0.8));
+    B(h, 92, 12, 92, 0, -82, 0, tom(c, 0.45));
+    // Crista em três degraus, mais alta no meio, e as pontas separadas.
+    B(h, 26, 28, 92, 0, -96, 0, c);
+    B(h, 22, 16, 80, 0, -116, 0, tom(c, 1.08));
+    ([[-30, 14], [-10, 20], [10, 18], [30, 12]] as const).forEach(([z, alt], i) =>
+      B(h, 16, alt, 16, 0, -126 - alt / 2, z, tom(c, i % 2 ? 1.18 : 1.02)));
+    // Lateral raspada com cara de máquina, não de careca.
+    [-1, 1].forEach((lado) => B(h, 4, 14, 76, lado * 45, -76, -4, tom(c, 0.3)));
+    B(h, 90, 12, 16, 0, -66, -44, tom(c, 0.72));
   },
   coque: (h, c) => {
     B(h, 94, 22, 94, 0, -79, 0, c);
@@ -110,6 +149,11 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
     B(h, 92, 12, 16, 0, -70, 43, c);
     B(h, 40, 36, 36, 0, -102, -34, tom(c, 1.1));
     B(h, 14, 10, 14, 0, -84, -46, tom(c, 0.86));
+    // Mechas enroladas no coque, o elástico e um fio solto na frente.
+    [-1, 1].forEach((lado) => B(h, 12, 34, 12, lado * 16, -102, -40, tom(c, 0.82), 1, ` rotateZ(${lado * 24}deg)`));
+    B(h, 42, 7, 38, 0, -86, -34, tom(c, 0.66));
+    B(h, 6, 26, 6, -40, -58, 26, tom(c, 1.1), 1, ' rotateZ(8deg)');
+    B(h, 5, 10, 48, 14, -86, 10, tom(c, 0.72));
   },
   rabo: (h, c) => {
     B(h, 94, 22, 94, 0, -79, 0, c);
@@ -117,14 +161,24 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
     B(h, 12, 24, 78, -43, -62, -4, c); B(h, 12, 24, 78, 43, -62, -4, c);
     B(h, 92, 12, 16, 0, -70, 43, c);
     // O rabo de cavalo cai por trás, com uma leve inclinação.
-    B(h, 22, 20, 22, 0, -74, -52, tom(c, 1.08));
-    B(h, 20, 54, 20, 0, -44, -58, c, 1, ' rotateX(-10deg)');
-    B(h, 16, 16, 16, 0, -16, -62, tom(c, 1.12));
+    B(h, 24, 12, 24, 0, -76, -52, tom(c, 0.62));
+    B(h, 22, 20, 22, 0, -66, -54, tom(c, 1.08));
+    B(h, 20, 54, 20, 0, -42, -58, c, 1, ' rotateX(-10deg)');
+    [-24, -8, 8].forEach((y) => B(h, 21, 4, 21, 0, y - 20, -58, tom(c, 0.8)));
+    B(h, 16, 16, 16, 0, -12, -62, tom(c, 1.14));
+    // Fios puxados para trás no alto e o fiozinho solto da têmpora.
+    [-20, 0, 20].forEach((x) => B(h, 4, 9, 70, x, -86, -6, tom(c, 0.74)));
+    B(h, 5, 22, 5, -42, -58, 24, tom(c, 1.06), 1, ' rotateZ(10deg)');
   },
   trancas: (h, c) => {
     B(h, 96, 25, 96, 0, -80, 0, c);
     B(h, 96, 45, 18, 0, -52, -44, c);
     B(h, 94, 12, 18, 0, -70, 42, c);
+    // As tranças nascem no couro: cinco carreiras marcadas no alto da cabeça.
+    [-32, -16, 0, 16, 32].forEach((x) => {
+      B(h, 5, 9, 92, x, -88, -2, tom(c, 0.64));
+      B(h, 11, 8, 92, x + 8, -87, -2, tom(c, 1.1));
+    });
     [-1, 1].forEach((lado) => {
       B(h, 18, 60, 20, lado * 44, -47, 22, c);
       for (let i = 0; i < 4; i++) {
@@ -140,7 +194,11 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
     [-1, 1].forEach((lado) => {
       B(h, 17, 63, 72, lado * 44, -42, -3, c);
       for (let i = 0; i < 3; i++) B(h, 16, 13, 18, lado * (45 + (i % 2) * 5), -57 + i * 20, 38, tom(c, i % 2 ? 0.9 : 1.12));
+      // A onda continua atrás e nas pontas, senão só a frente ondula.
+      for (let i = 0; i < 3; i++) B(h, 16, 12, 18, lado * (44 + ((i + 1) % 2) * 5), -52 + i * 20, -40, tom(c, i % 2 ? 1.12 : 0.9));
+      B(h, 18, 10, 74, lado * 44, -10, -2, tom(c, 1.16));
     });
+    B(h, 5, 10, 44, -14, -88, 18, tom(c, 0.7));
   },
   coques: (h, c) => {
     B(h, 94, 22, 94, 0, -80, 0, c);
@@ -149,7 +207,12 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
     [-1, 1].forEach((lado) => {
       B(h, 32, 29, 32, lado * 38, -99, -12, c);
       B(h, 22, 9, 24, lado * 38, -116, -12, tom(c, 1.12));
+      // Base do coque, elástico e o fio solto que escapa de cada lado.
+      B(h, 20, 8, 20, lado * 36, -86, -12, tom(c, 0.66));
+      B(h, 34, 6, 34, lado * 38, -92, -12, tom(c, 0.8));
+      B(h, 5, 20, 5, lado * 46, -62, 22, tom(c, 1.08), 1, ` rotateZ(${lado * 10}deg)`);
     });
+    B(h, 5, 10, 46, 0, -88, 14, tom(c, 0.7));
   },
   // Espetado: base curta e pontas puxadas para cima, cada uma inclinada para
   // fora, senão viram uma crista só e o penteado lê como moicano.
@@ -233,6 +296,14 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
     B(h, 16, 56, 92, -44, -44, -2, c); B(h, 16, 56, 92, 44, -44, -2, c);
     B(h, 94, 14, 20, 0, -68, 42, tom(c, 1.1));
     B(h, 30, 10, 18, -26, -74, 42, tom(c, 1.16));
+    // Pontas viradas para dentro e brilho no alto: o chanel é o corte reto na
+    // ponta, e sem marcar a ponta ele vira capacete.
+    [-1, 1].forEach((lado) => {
+      B(h, 14, 10, 86, lado * 44, -16, 4, tom(c, 1.2), 1, ` rotateZ(${lado * 10}deg)`);
+      B(h, 4, 50, 5, lado * 46, -42, 32, tom(c, 0.76));
+    });
+    B(h, 88, 5, 84, 0, -88, 0, tom(c, 1.12));
+    B(h, 96, 5, 22, 0, -16, -44, tom(c, 1.2));
   },
 };
 
