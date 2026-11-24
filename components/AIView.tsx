@@ -166,6 +166,13 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
     );
   }
 
+  // Quatro peças de estilo em vez de repetir o mesmo ternário de isDark em cada elemento da tela de
+  // resultado — era assim que ela estava, e por isso qualquer ajuste virava uma caçada.
+  const caixa = isDark ? 'border-white/10 bg-white/5' : 'border-[#e9e0d4] bg-white';
+  const tinta = isDark ? 'text-[#f2efd2]' : 'text-[#473c33]';
+  const sutil = isDark ? 'text-slate-400' : 'text-[#6b5e50]';
+  const rotulo = isDark ? 'text-[#fecc73]' : 'text-[#bd5628]';
+
   return (
     <div className={`relative isolate w-full min-h-full min-w-0 rounded-[32px] selection:bg-amber-300/30 font-sans ${result && isDark ? 'bg-[#473c33] text-white' : 'bg-[#f7f3ed] text-[#473c33]'}`}>
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 xl:px-10 pt-6 sm:pt-10 pb-32 animate-in fade-in slide-in-from-bottom-10 duration-700">
@@ -274,152 +281,104 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
             </section>
           </div>
         ) : (
-          <div className="max-w-7xl mx-auto py-6">
-            <div className={isDark ? "flex justify-between items-center mb-16 backdrop-blur-xl p-8 rounded-[40px] border shadow-2xl bg-white/5 border-white/10" : "flex justify-between items-center mb-16 bg-white backdrop-blur-xl p-8 rounded-[40px] border border-[#e9e0d4] shadow-2xl"}>
-              <button onClick={() => setResult(null)} className={isDark ? "font-black uppercase text-[10px] tracking-[0.4em] flex items-center gap-3 transition-all group text-gray-500 hover:text-white" : "text-[#8f8375] font-black uppercase text-[10px] tracking-[0.4em] flex items-center gap-3 hover:text-[#473c33] transition-all group"}>
-                <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
-                </svg>
-                NOVA PESQUISA
+          <div className="mx-auto w-full max-w-6xl py-4">
+            {/* Barra de ações. Antes "praticar", "flashcards" e os mapas eram três cartões gigantes numa
+                coluna que só virava barra lateral a partir de 1536 px — abaixo disso iam todos para o fim da
+                página, depois da comparação, longe de quem acabou de ler. E salvar no caderno não tinha
+                botão nenhum: o modal e o handler existiam, mas nada chamava setShowSaveModal(true). */}
+            <div className={`sticky top-0 z-10 mb-6 flex flex-wrap items-center gap-2 rounded-2xl border px-3 py-2.5 backdrop-blur-xl ${caixa}`}>
+              <button onClick={() => setResult(null)} className={`inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-xl px-3 text-[10px] font-black uppercase tracking-widest transition-colors ${isDark ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-[#8f8375] hover:bg-[#f0e8dc] hover:text-[#473c33]'}`}>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
+                Nova pesquisa
               </button>
-              <div className="flex items-center gap-6">
-                <div className="hidden md:flex flex-col items-end">
-                  <span className={isDark ? "text-[10px] font-black tracking-[0.4em] uppercase mb-1 text-[#fecc73]" : "text-[#bd5628] text-[10px] font-black tracking-[0.4em] uppercase mb-1"}>Material pronto</span>
-                  <span className={isDark ? "font-black tracking-tighter uppercase text-white" : "text-[#473c33] font-black tracking-tighter uppercase"}>{temaGerado || topic}</span>
-                </div>
-                <button onClick={onBack} className={isDark ? "min-h-[44px] hover:text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-[0.4em] uppercase hover:bg-red-500 transition-all active:scale-95 bg-white/10 text-white" : "min-h-[44px] bg-stone-200 text-[#473c33] hover:text-white px-8 py-4 rounded-2xl font-black text-[10px] tracking-[0.4em] uppercase hover:bg-red-500 transition-all active:scale-95"}>
-                  SAIR
+
+              <p className={`min-w-0 flex-1 truncate text-[11px] font-black uppercase tracking-tight ${tinta}`}>{temaGerado || topic}</p>
+
+              {/* No celular as ações viram uma tira que rola de lado: em quatro linhas empilhadas a barra
+                  passava de 180 px e, sendo grudada no topo, comia um quarto da tela de leitura. */}
+              <div className="flex w-full items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] sm:w-auto sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden">
+                <button onClick={() => onPracticeTopic?.(temaGerado || topic)} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-xl bg-[#fec868] px-4 text-[10px] font-black uppercase tracking-widest text-[#473c33] transition-all hover:bg-[#ffb22a] active:scale-95">
+                  Praticar questões
+                </button>
+                <button onClick={handleGenerateFlashcards} disabled={generatingCards} className={`inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-xl border px-4 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 ${isDark ? 'border-white/15 text-white hover:bg-white/10' : 'border-[#e3d9ca] text-[#473c33] hover:bg-[#f0e8dc]'}`}>
+                  {generatingCards ? 'Criando...' : 'Criar flashcards'}
+                </button>
+                <button onClick={() => setShowSaveModal(true)} className={`inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-xl border px-4 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${saved ? 'border-[#b1c77b] text-[#5d7336]' : isDark ? 'border-white/15 text-white hover:bg-white/10' : 'border-[#e3d9ca] text-[#473c33] hover:bg-[#f0e8dc]'}`}>
+                  {saved ? 'Salvo no caderno' : 'Salvar no caderno'}
+                </button>
+                <button onClick={onBack} className={`inline-flex min-h-[40px] shrink-0 items-center rounded-xl px-3 text-[10px] font-black uppercase tracking-widest transition-colors ${isDark ? 'text-slate-500 hover:text-white' : 'text-[#a79c8e] hover:text-[#473c33]'}`}>
+                  Sair
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 2xl:grid-cols-12 gap-12 items-start pb-32">
-              <div className="2xl:col-span-8 space-y-12">
-                {/* RESUMO EXPANDIDO */}
-                <div className={isDark ? "rounded-[32px] sm:rounded-[60px] p-6 sm:p-12 md:p-20 border relative overflow-hidden backdrop-blur-2xl shadow-3xl bg-white/5 border-white/10" : "bg-white rounded-[32px] sm:rounded-[60px] p-6 sm:p-12 md:p-20 border border-[#e9e0d4] relative overflow-hidden backdrop-blur-2xl shadow-3xl"}>
-                  <div className="absolute top-0 left-0 w-3 h-full bg-[#fec868] opacity-50"></div>
-                  <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-16">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-[#fecc73] text-[#473c33] rounded-[18px] sm:rounded-[25px] flex items-center justify-center shadow-lg">
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0">
-                      <h2 className={isDark ? "font-black uppercase text-[10px] tracking-[0.4em] mb-2 text-[#fecc73]" : "text-[#bd5628] font-black uppercase text-[10px] tracking-[0.4em] mb-2"}>Resumo Executivo Expandido</h2>
-                      <h3 className={isDark ? "text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase leading-none text-white break-words" : "text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter uppercase text-[#473c33] leading-none break-words"}>{temaGerado || topic}</h3>
-                    </div>
+            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+              <div className="min-w-0 space-y-6">
+                {/* Resumo e ponto em destaque */}
+                <article className={`overflow-hidden rounded-3xl border ${caixa}`}>
+                  <div className={`border-b px-5 py-4 sm:px-7 ${isDark ? 'border-white/10' : 'border-[#efe6d6]'}`}>
+                    <p className={`text-[10px] font-black uppercase tracking-[0.28em] ${rotulo}`}>Resumo executivo</p>
+                    <h2 className={`mt-1.5 text-xl font-black uppercase leading-tight tracking-tight sm:text-2xl ${tinta}`}>{temaGerado || topic}</h2>
                   </div>
-
-                  <div className="max-w-none">
-                    <div className={isDark ? "text-2xl leading-[1.6] font-medium space-y-8 text-slate-100" : "text-[#473c33] text-2xl leading-[1.6] font-medium space-y-8"}>
+                  {/* Coluna de leitura: o texto vinha em corpo 24 numa largura de até 1280 px. */}
+                  <div className="px-5 py-5 sm:px-7 sm:py-6">
+                    <div className={`max-w-[46rem] text-[1.05rem] leading-[1.8] ${isDark ? 'text-slate-100' : 'text-[#40372f]'}`}>
                       <MarkdownContent content={result.executiveSummary} isDark={isDark} />
                     </div>
                   </div>
 
-                  <div className={isDark ? "mt-20 p-12 rounded-[50px] border shadow-inner bg-white/[0.03] border-white/10" : "mt-20 p-12 bg-white rounded-[50px] border border-[#e9e0d4] shadow-inner"}>
-                    <h4 className={isDark ? "text-[10px] font-black uppercase tracking-[0.4em] mb-8 flex items-center gap-3 text-[#fecc73]" : "text-[10px] font-black text-[#bd5628] uppercase tracking-[0.4em] mb-8 flex items-center gap-3"}>
-                      <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      Ponto em destaque
-                    </h4>
-                    <div className="max-w-none">
+                  <div className={`border-t px-5 py-5 sm:px-7 sm:py-6 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-[#efe6d6] bg-[#fdfbf7]'}`}>
+                    <p className={`mb-3 text-[10px] font-black uppercase tracking-[0.28em] ${rotulo}`}>Ponto em destaque</p>
+                    <div className={`max-w-[46rem] text-[1.05rem] leading-[1.8] ${isDark ? 'text-slate-100' : 'text-[#40372f]'}`}>
                       <MarkdownContent content={result.deepDive} isDark={isDark} />
                     </div>
                   </div>
-                </div>
+                </article>
 
-                {/* COMPARAÇÃO BIZURADA */}
+                {/* Comparação */}
                 {result.comparison && (
-                  <div className={isDark ? "backdrop-blur-xl rounded-[60px] border p-12 md:p-16 relative shadow-2xl overflow-hidden bg-white/5 border-white/10" : "bg-white backdrop-blur-xl rounded-[60px] border border-[#e9e0d4] p-12 md:p-16 relative shadow-2xl overflow-hidden"}>
-                    <div className={isDark ? "absolute left-1/2 top-0 bottom-0 border-l -translate-x-1/2 hidden md:block border-white/5" : "absolute left-1/2 top-0 bottom-0 border-l border-[#eee6d6] -translate-x-1/2 hidden md:block"}></div>
-                    <div className={isDark ? "absolute left-1/2 top-4 -translate-x-1/2 bg-[#fec868] text-[#473c33] w-14 h-14 rounded-full flex items-center justify-center font-black hidden md:flex text-2xl shadow-2xl ring-[#473c33]" : "absolute left-1/2 top-4 -translate-x-1/2 bg-[#fec868] text-[#473c33] w-14 h-14 rounded-full flex items-center justify-center font-black hidden md:flex text-2xl shadow-2xl ring-8 ring-[#f7f3ed]"}>VS</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-20 relative">
-                      <div className="space-y-8">
-                        <h4 className={isDark ? "text-4xl font-black uppercase tracking-tighter leading-none text-[#fdad74]" : "text-4xl font-black text-[#a2561f] uppercase tracking-tighter leading-none"}>{result.comparison.leftConcept}</h4>
-                        <div className="max-w-none">
-                          <MarkdownContent content={result.comparison.leftData?.desc || ''} isDark={isDark} />
-                        </div>
-                        {result.comparison.leftData?.example && (
-                          <div className={isDark ? "bg-[#fdad74]/10 p-8 rounded-[35px] text-lg border border-[#fdad74]/20 shadow-lg text-slate-100" : "bg-[#fdad74]/10 p-8 rounded-[35px] text-lg text-[#473c33] border border-[#fdad74]/20 shadow-lg"}>
-                            <span className={isDark ? "font-black block mb-2 uppercase tracking-widest text-xs text-[#fdad74]" : "font-black text-[#a2561f] block mb-2 uppercase tracking-widest text-xs"}>EXEMPLO PRÁTICO:</span>
-                            {result.comparison.leftData.example}
-                          </div>
-                        )}
-                      </div>
-                      <div className="space-y-8 md:text-right">
-                        <h4 className={isDark ? "text-4xl font-black uppercase tracking-tighter leading-none text-white" : "text-4xl font-black text-[#473c33] uppercase tracking-tighter leading-none"}>{result.comparison.rightConcept}</h4>
-                        <div className="max-w-none">
-                          <MarkdownContent content={result.comparison.rightData?.desc || ''} isDark={isDark} />
-                        </div>
-                        {result.comparison.rightData?.example && (
-                          <div className={isDark ? "p-8 rounded-[35px] text-lg border shadow-lg bg-white/5 text-slate-100 border-white/10" : "bg-white p-8 rounded-[35px] text-lg text-[#473c33] border border-[#e9e0d4] shadow-lg"}>
-                            <span className="font-black text-[#fecc73] block mb-2 uppercase tracking-widest text-xs ">EXEMPLO PRÁTICO:</span>
-                            {result.comparison.rightData.example}
-                          </div>
-                        )}
-                      </div>
+                  <article className={`overflow-hidden rounded-3xl border ${caixa}`}>
+                    <div className={`border-b px-5 py-4 sm:px-7 ${isDark ? 'border-white/10' : 'border-[#efe6d6]'}`}>
+                      <p className={`text-[10px] font-black uppercase tracking-[0.28em] ${rotulo}`}>Um ao lado do outro</p>
                     </div>
-                  </div>
+                    <div className="grid gap-px sm:grid-cols-2" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#efe6d6' }}>
+                      {[
+                        { nome: result.comparison.leftConcept, dados: result.comparison.leftData, cor: isDark ? 'text-[#fdad74]' : 'text-[#a2561f]' },
+                        { nome: result.comparison.rightConcept, dados: result.comparison.rightData, cor: tinta },
+                      ].map((lado, i) => (
+                        <div key={i} className={`space-y-3 px-5 py-5 sm:px-7 ${isDark ? 'bg-[#272019]' : 'bg-white'}`}>
+                          <h4 className={`text-lg font-black uppercase leading-tight tracking-tight ${lado.cor}`}>{lado.nome}</h4>
+                          <div className={`text-[0.98rem] leading-[1.75] ${isDark ? 'text-slate-200' : 'text-[#40372f]'}`}>
+                            <MarkdownContent content={lado.dados?.desc || ''} isDark={isDark} />
+                          </div>
+                          {lado.dados?.example && (
+                            <div className={`rounded-2xl border px-4 py-3 text-sm leading-relaxed ${isDark ? 'border-white/10 bg-white/5 text-slate-100' : 'border-[#efdbb9] bg-[#fff6e7] text-[#473c33]'}`}>
+                              <span className={`mb-1 block text-[9px] font-black uppercase tracking-widest ${rotulo}`}>Exemplo prático</span>
+                              {lado.dados.example}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </article>
                 )}
               </div>
 
-              <div className="2xl:col-span-4 2xl:sticky 2xl:top-24 space-y-12">
-                {/* MENU DE EXPLORAÇÃO DINÂMICA */}
-                <div className={isDark ? "backdrop-blur-2xl rounded-[50px] p-10 border shadow-3xl bg-white/5 border-white/10" : "bg-white backdrop-blur-2xl rounded-[50px] p-10 border border-[#e9e0d4] shadow-3xl"}>
-                  <h3 className={isDark ? "text-[10px] font-black uppercase tracking-[0.4em] mb-10 flex items-center gap-3 text-slate-500" : "text-[10px] font-black text-[#6b5e50] uppercase tracking-[0.4em] mb-10 flex items-center gap-3"}>
-                    <span className="w-2 h-2 rounded-full bg-[#fecc73] animate-pulse"></span>
-                    MAPAS DE CONEXÃO
-                  </h3>
-                  <div className="space-y-5">
-                    {result.explorationMenu?.map((item: any, idx: number) => (
-                      <button key={idx} onClick={() => handleGenerate(item.topic)} className={isDark ? "w-full text-left p-6 rounded-[30px] transition-all group border border-[#eee6d6] hover:border-[#e0cfae] active:scale-95 shadow-lg bg-white/5 hover:bg-amber-300 border-transparent" : "w-full text-left p-6 rounded-[30px] bg-[#f7f3ed] hover:bg-amber-300 transition-all group border border-[#eee6d6] hover:border-[#e0cfae] active:scale-95 shadow-lg"}>
-                        <p className={isDark ? "font-black text-sm uppercase tracking-tight mb-2 group-hover:text-[#473c33] transition-colors text-white" : "font-black text-sm uppercase tracking-tight mb-2 text-[#473c33] group-hover:text-[#473c33] transition-colors"}>{item.topic}</p>
-                        <p className={isDark ? "text-[11px] font-bold group-hover:text-[#473c33] leading-relaxed transition-colors line-clamp-2 text-slate-400" : "text-[11px] text-[#6b5e50] font-bold group-hover:text-[#473c33] leading-relaxed transition-colors line-clamp-2"}>{item.description}</p>
+              {/* Mapas de conexão: agora ao lado a partir de 1024 px, não só em telas de 1536. */}
+              {result.explorationMenu?.length > 0 && (
+                <aside className={`rounded-3xl border p-4 lg:sticky lg:top-20 ${caixa}`}>
+                  <h3 className={`mb-3 px-1 text-[10px] font-black uppercase tracking-[0.28em] ${sutil}`}>Mapas de conexão</h3>
+                  <div className="space-y-2">
+                    {result.explorationMenu.map((item: any, idx: number) => (
+                      <button key={idx} onClick={() => handleGenerate(item.topic)} className={`w-full rounded-2xl border p-3.5 text-left transition-all active:scale-[0.98] ${isDark ? 'border-white/10 bg-white/[0.04] hover:bg-white/10' : 'border-[#eee6d6] bg-[#fdfbf7] hover:bg-[#f0e8dc]'}`}>
+                        <p className={`mb-1 text-xs font-black uppercase tracking-tight ${tinta}`}>{item.topic}</p>
+                        <p className={`line-clamp-2 text-[11px] font-medium leading-relaxed ${sutil}`}>{item.description}</p>
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* PRATICAR O TEMA */}
-                <div className="bg-[#fec868] rounded-[32px] sm:rounded-[50px] p-6 sm:p-12 text-[#473c33] shadow-[0_35px_60px_-15px_rgba(37,99,235,0.3)] relative overflow-hidden group">
-                  <div className="absolute -top-32 -right-32 w-80 h-80 bg-white/10 blur-[80px] rounded-full group-hover:scale-110 transition-transform duration-1000"></div>
-                  <div className="relative z-10">
-                    <h3 className="text-2xl sm:text-3xl font-black mb-4 sm:mb-6 leading-none uppercase tracking-tighter break-words">
-                      Praticar <span className="text-[#8a4b00]">este tema</span>
-                    </h3>
-                    <p className="text-[#473c33] text-sm mb-8 sm:mb-12 font-bold leading-relaxed uppercase tracking-widest text-[10px] opacity-80">Leve o tema para o TDHQuestões e treine com questões conferidas</p>
-
-                    <button onClick={() => onPracticeTopic?.(temaGerado || topic)} className="w-full py-6 sm:py-8 rounded-[28px] sm:rounded-[35px] font-black text-base sm:text-lg flex items-center justify-center gap-4 transition-all shadow-xl bg-[#473c33] text-[#fdfbf7] hover:bg-[#2f2720]">
-                      IR PARA AS QUESTÕES
-                      <svg className="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7-7 7M3 12h18" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* GERAR FLASHCARDS */}
-                <div className={isDark ? "backdrop-blur-xl rounded-[50px] p-12 border shadow-2xl relative overflow-hidden group bg-white/[0.03] border-white/10" : "bg-white backdrop-blur-xl rounded-[50px] p-12 border border-[#e9e0d4] shadow-2xl relative overflow-hidden group"}>
-                  <div className="relative z-10">
-                    <h3 className={isDark ? "text-3xl font-black mb-6 leading-none uppercase tracking-tighter text-white" : "text-3xl font-black mb-6 leading-none uppercase text-[#473c33] tracking-tighter"}>
-                      Gerar <span className={isDark ? "text-[#fecc73]" : "text-[#bd5628]"}>flashcards</span>
-                    </h3>
-                    <p className={isDark ? "text-xs mb-10 leading-relaxed font-black uppercase tracking-[0.3em] text-slate-500" : "text-[#6b5e50] text-xs mb-10 leading-relaxed font-black uppercase tracking-[0.3em]"}>A IA identifica pontos importantes do material para ajudar você a revisar.</p>
-
-                    <button onClick={handleGenerateFlashcards} disabled={generatingCards} className={`w-full py-8 rounded-[35px] font-black text-lg flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-95 ${generatingCards ? (isDark ? 'bg-white/5 text-gray-500 border border-white/5' : 'bg-stone-100 text-[#8f8375] border border-[#eee6d6]') : (isDark ? 'bg-white/5 text-white hover:bg-white/10 border-2 border-white/10' : 'bg-white text-[#473c33] hover:bg-stone-100 border-2 border-[#e9e0d4]')}`}>
-                      {generatingCards ? 'CRIANDO...' : 'CRIAR FLASHCARDS'}
-                      {!generatingCards && (
-                        <svg className={isDark ? "w-8 h-8 text-[#fecc73]" : "w-8 h-8 text-[#bd5628]"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
+                </aside>
+              )}
             </div>
-
           </div>
         )}
       </div>
