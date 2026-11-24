@@ -2383,20 +2383,35 @@ const generateGuidedLessonBase = async (subject: string, topic: string, profile:
 
       OBJETIVO: Conduzir o aluno em um fluxo de aprendizado imersivo para TDAH, sem exigir interação constante, mas mantendo o cérebro ativo através de uma narrativa.
 
-      ESTRUTURA DA RESPOSTA (Sequência de Passos):
-      1. OPENING: Começa direto, engajando o aluno com uma pergunta ou fato curioso. Sem botões.
-      2. OVERVIEW: Um mapa mental rápido do que será visto.
+      ESTRUTURA DA RESPOSTA: de 11 a 14 passos, nesta ordem:
+      1. OPENING: Começa direto, engajando o aluno com uma pergunta ou fato curioso.
+      2. OVERVIEW: O mapa do que será visto, em tópicos.
       3. NARRATIVE: Desenvolve o tema através de uma história ou exemplo prático ("Imagina que...").
-      4. CONCEPT: Insere explicações técnicas dentro da narrativa.
-      5. QUESTION_PAUSE: Faz uma pergunta mental para ativar o recall ativo (ex: "Agora pense: o que acontece se...?"). A resposta NÃO deve estar neste bloco, mas no seguinte.
-      6. REINFORCEMENT: Responde a pergunta anterior e reforça o ponto chave.
-      7. ANALOGY: Usa uma associação forte (ex: VAR no futebol, receita de bolo).
-      8. CLOSING_APPLICATION: Mostra como esse tema cai na prova.
+      4. CONCEPT: A explicação técnica que a narrativa acabou de preparar — definição, requisitos, classificações.
+      5. NARRATIVE: Um segundo caso, mais difícil que o primeiro, que force a distinção.
+      6. CONCEPT: O que esse segundo caso ensina: exceções, limites, pegadinhas, o que confunde com temas vizinhos.
+      7. QUESTION_PAUSE: Uma pergunta mental para ativar o recall. A resposta NÃO entra neste bloco, e sim no seguinte.
+      8. REINFORCEMENT: Responde a pergunta e fecha o raciocínio.
+      9. ANALOGY: Uma associação forte (ex: VAR no futebol, receita de bolo).
+      10. CONCEPT: Os pontos que mais derrubam o candidato neste tema, um a um.
+      11. CLOSING_APPLICATION: Como o tema cai na prova, com os erros clássicos de alternativa.
+      Entre os passos 4 e 10 você pode acrescentar até 3 blocos NARRATIVE ou CONCEPT extras se o tema exigir.
 
       IMPORTANTE:
-      - Divida em blocos pequenos e impactantes.
-      - O fluxo deve ser lógico: História -> Conceito -> Pergunta -> Resposta -> Associação.
-      - Em cada passo, inclua "keyPoints": de 1 a 3 trechos curtos copiados literalmente do próprio "content", escolhendo definições, regras, relações de causa e efeito ou conclusões essenciais. Não reescreva os trechos; se não houver um destaque útil, retorne um array vazio.
+      - O campo "type" de cada passo é obrigatório e tem que ser EXATAMENTE um destes rótulos, em maiúsculas:
+        OPENING, OVERVIEW, NARRATIVE, CONCEPT, QUESTION_PAUSE, REINFORCEMENT, ANALOGY, CLOSING_APPLICATION.
+        Não marque tudo como NARRATIVE: cada passo recebe o tipo que corresponde ao seu papel na lista acima.
+      - PROFUNDIDADE (o ponto mais importante): esta é uma aula, não um resumo. OPENING, OVERVIEW e
+        QUESTION_PAUSE ficam entre 40 e 90 palavras. Todo bloco NARRATIVE, CONCEPT, REINFORCEMENT, ANALOGY e
+        CLOSING_APPLICATION tem de 130 a 220 palavras — com o porquê de cada regra, não só o enunciado dela.
+        A aula inteira precisa passar de 1.200 palavras. Uma aula de 400 palavras está errada.
+      - Explique o raciocínio: por que a regra é assim, o que acontece quando falta cada requisito, onde ela
+        se parece com um instituto vizinho e como diferenciar os dois.
+      - O fluxo deve ser lógico: História -> Conceito -> Caso difícil -> Pergunta -> Resposta -> Associação.
+      - Em cada passo, "keyPoints" é obrigatório: de 1 a 3 trechos copiados LITERALMENTE do próprio "content"
+        daquele passo, escolhendo definições, requisitos, relações de causa e efeito ou conclusões essenciais.
+        Copie caractere por caractere, sem reescrever nem resumir — eles são sublinhados na tela por busca
+        exata dentro do texto. Só em OPENING e QUESTION_PAUSE é aceitável devolver uma lista vazia.
       - Não use emojis.
 
       Retorne em JSON rigoroso.`;
@@ -2416,7 +2431,7 @@ const generateGuidedLessonBase = async (subject: string, topic: string, profile:
             keyPoints: { type: 'array', items: { type: 'string' } },
             pauseAfterMilliseconds: { type: 'number' },
           },
-          required: ['type', 'content'],
+          required: ['type', 'content', 'keyPoints'],
         },
       },
     },
@@ -2426,10 +2441,17 @@ const generateGuidedLessonBase = async (subject: string, topic: string, profile:
   // Guards against both known truncation shapes: Gemini stopping mid-JSON
   // once it hits its output cap, and a free OpenRouter model ending a step's
   // "content" mid-sentence despite valid JSON syntax (see looksTruncated).
+  // Além da truncagem, recusa a aula rasa. Uma geração real devolveu 8 passos somando 389 palavras, todos
+  // marcados como NARRATIVE e sem um único keyPoint: na tela de Destaques isso vira meia página sem nenhum
+  // trecho sublinhado. Os limites abaixo são folgados de propósito — barram o resumo, não a aula curta.
   const validateGuidedLesson = (parsed: any): boolean => {
     const steps = parsed?.steps;
-    if (!Array.isArray(steps) || steps.length < 6) return false;
-    return steps.every((step: any) => typeof step?.content === 'string' && !looksTruncated(step.content));
+    if (!Array.isArray(steps) || steps.length < 8) return false;
+    if (!steps.every((step: any) => typeof step?.content === 'string' && !looksTruncated(step.content))) return false;
+    const palavras = steps.reduce((total: number, step: any) => total + String(step.content).trim().split(/\s+/).length, 0);
+    if (palavras < 700) return false;
+    const tipos = new Set(steps.map((step: any) => String(step?.type || '').trim().toUpperCase()));
+    return tipos.size >= 3;
   };
 
   try {
@@ -2458,7 +2480,7 @@ const generateGuidedLessonBase = async (subject: string, topic: string, profile:
                   keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
                   pauseAfterMilliseconds: { type: Type.NUMBER }
                 },
-                required: ["type", "content"]
+                required: ["type", "content", "keyPoints"]
               }
             }
           },

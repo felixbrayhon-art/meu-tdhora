@@ -25,6 +25,28 @@ interface GuidedLessonViewProps {
   onModoEdital?: (ligado: boolean) => void;
 }
 
+// A ordem canônica dos passos, usada para repor o tipo quando o modelo manda tudo como NARRATIVE — era o
+// que acontecia: as oito etapas apareciam rotuladas "Explicação", e o sublinhado de fallback, que depende do
+// tipo, nunca entrava. Isso conserta também as aulas que já estão salvas no aparelho.
+const TIPOS_CANONICOS: GuidedLessonStep['type'][] = [
+  'OPENING', 'OVERVIEW', 'NARRATIVE', 'CONCEPT', 'NARRATIVE', 'CONCEPT',
+  'QUESTION_PAUSE', 'REINFORCEMENT', 'ANALOGY', 'CONCEPT', 'CLOSING_APPLICATION',
+];
+
+const comTiposCorrigidos = (passos: GuidedLessonStep[]): GuidedLessonStep[] => {
+  const normalizado = passos.map((passo) => ({ ...passo, type: String(passo?.type || '').trim().toUpperCase() as GuidedLessonStep['type'] }));
+  const distintos = new Set(normalizado.map((passo) => passo.type));
+  const conhecidos = new Set(TIPOS_CANONICOS);
+  // Só intervém quando o modelo claramente não diferenciou os passos. Uma aula com tipos variados fica como
+  // veio, mesmo que a ordem seja outra.
+  if (distintos.size > 2 && [...distintos].every((tipo) => conhecidos.has(tipo))) return normalizado;
+  return normalizado.map((passo, i) => ({
+    ...passo,
+    // O último passo é sempre o fechamento; os do meio seguem a ordem canônica e depois repetem CONCEPT.
+    type: i === normalizado.length - 1 ? 'CLOSING_APPLICATION' : TIPOS_CANONICOS[i] ?? 'CONCEPT',
+  }));
+};
+
 const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, profile, explanationStyle = 'TECNICA', onBack, onComplete, initialLesson, editalConfig, modoEdital, onModoEdital }) => {
   // Entering directly (e.g. from the sidebar, with no matéria/assunto chosen yet)
   // leaves subject/topic empty — activeSubject/activeTopic hold what's actually
@@ -34,7 +56,9 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
   const [activeTopic, setActiveTopic] = useState(topic);
   const [setupSubject, setSetupSubject] = useState('');
   const [setupTopic, setSetupTopic] = useState('');
-  const [lesson, setLesson] = useState<GuidedLesson | null>(initialLesson || null);
+  const [lesson, setLesson] = useState<GuidedLesson | null>(
+    initialLesson ? { ...initialLesson, steps: comTiposCorrigidos(initialLesson.steps || []) } : null,
+  );
   const [loading, setLoading] = useState(!initialLesson && Boolean(subject && topic));
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [displayedSteps, setDisplayedSteps] = useState<GuidedLessonStep[]>([]);
@@ -187,7 +211,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
       setLoading(true);
       setError(null);
       const data = await generateGuidedLesson(s, t, profile, explanationStyle);
-      setLesson(data);
+      setLesson({ ...data, steps: comTiposCorrigidos(data.steps || []) });
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar a aula guiada.');
     } finally {
@@ -242,9 +266,10 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
     const exactPoints = (step.keyPoints || []).filter((point) => typeof point === 'string' && point.trim() && step.content.includes(point));
     if (exactPoints.length) return exactPoints;
 
-    // Older offline lessons predate keyPoints. For those, underline the first
-    // complete sentence in concept, reinforcement, and application steps.
-    if (['CONCEPT', 'REINFORCEMENT', 'CLOSING_APPLICATION'].includes(step.type)) {
+    // Aulas antigas não tinham keyPoints, e modelos fracos devolvem a lista vazia. Nesses casos sublinha a
+    // primeira frase dos passos explicativos — a tela promete trechos marcados, e vir nenhum é pior do que
+    // vir um por bloco. OPENING e QUESTION_PAUSE ficam de fora: lá não há o que guardar.
+    if (['NARRATIVE', 'CONCEPT', 'REINFORCEMENT', 'ANALOGY', 'CLOSING_APPLICATION'].includes(step.type)) {
       const firstSentence = step.content.match(/[^.!?]+[.!?]?/)?.[0]?.trim();
       return firstSentence ? [firstSentence] : [];
     }
