@@ -2,7 +2,7 @@
 // As cores saíram das próprias artes em public/character-assets/to-dahora-2d/
 // (amostradas por faixa de altura: cabelo, rosto, tronco, perna, pé), para o
 // boneco não divergir do desenho que o aluno escolheu no onboarding.
-export type VoxelCabelo = 'curto' | 'cacheado' | 'afro' | 'longo' | 'careca' | 'moicano' | 'coque' | 'rabo' | 'chanel' | 'trancas' | 'ondulado' | 'coques';
+export type VoxelCabelo = 'curto' | 'cacheado' | 'afro' | 'longo' | 'careca' | 'moicano' | 'coque' | 'rabo' | 'chanel' | 'trancas' | 'ondulado' | 'coques' | 'espetado' | 'topete' | 'raspado' | 'dreads' | 'chiquinhas';
 /** Formato da orelha do bicho. Sem valor, fica a orelha dos personagens prontos. */
 export type VoxelOrelha = 'ponta' | 'caida' | 'redonda' | 'comprida';
 export type VoxelAdereco =
@@ -42,12 +42,15 @@ export interface VoxelConfig {
   capacete?: string;
   touca?: string;
   boina?: string;
+  viseira?: string;
+  palha?: string;
+  bandana?: string;
   // roupa
-  roupaEstudio?: 'camiseta' | 'listrada' | 'social' | 'regata' | 'moletom' | 'jaleco' | 'terno' | 'colete' | 'toga' | 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta' | 'sem';
+  roupaEstudio?: 'camiseta' | 'listrada' | 'social' | 'regata' | 'moletom' | 'jaleco' | 'terno' | 'colete' | 'toga' | 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta' | 'xadrez' | 'futebol' | 'farda' | 'cardiga' | 'sem';
   parteBaixoEstudio?: 'comprida' | 'bermuda' | 'saia';
-  calcadoEstudio?: 'sapato' | 'tenis' | 'tenisCanoAlto' | 'tenisEsportivo' | 'tenisCasual' | 'bota' | 'descalco';
+  calcadoEstudio?: 'sapato' | 'tenis' | 'tenisCanoAlto' | 'tenisEsportivo' | 'tenisCasual' | 'bota' | 'chinelo' | 'descalco';
   detalheCalcadoEstudio?: string;
-  detalheRoupa?: 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta';
+  detalheRoupa?: 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta' | 'xadrez' | 'futebol' | 'farda' | 'cardiga';
   corDetalheRoupa?: string;
   jaleco?: boolean;
   lapela?: string;

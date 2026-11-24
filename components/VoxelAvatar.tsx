@@ -151,6 +151,54 @@ const CABELO: Record<string, (h: Pai, c: string) => void> = {
       B(h, 22, 9, 24, lado * 38, -116, -12, tom(c, 1.12));
     });
   },
+  // Espetado: base curta e pontas puxadas para cima, cada uma inclinada para
+  // fora, senão viram uma crista só e o penteado lê como moicano.
+  espetado: (h, c) => {
+    B(h, 94, 18, 94, 0, -82, 0, c);
+    B(h, 94, 26, 14, 0, -60, -44, c);
+    B(h, 12, 22, 78, -43, -66, -4, c); B(h, 12, 22, 78, 43, -66, -4, c);
+    B(h, 92, 10, 16, 0, -72, 43, c);
+    ([[-31, -8], [0, 10], [31, -6], [-16, 26], [17, -26]] as const).forEach(([x, z], i) =>
+      B(h, 16, 26, 16, x, -100, z, tom(c, i % 2 ? 1.12 : 0.92), 1, ` rotateZ(${x < 0 ? -13 : 13}deg)`));
+  },
+  topete: (h, c) => {
+    B(h, 94, 20, 94, 0, -80, 0, c);
+    B(h, 94, 26, 14, 0, -58, -44, c);
+    B(h, 10, 20, 74, -44, -64, -6, tom(c, 0.86)); B(h, 10, 20, 74, 44, -64, -6, tom(c, 0.86));
+    B(h, 80, 36, 40, 0, -102, 26, c, 1, ' rotateX(-16deg)');
+    B(h, 66, 16, 26, 0, -120, 36, tom(c, 1.12), 1, ' rotateX(-24deg)');
+  },
+  // Raspado: os lados são o mesmo cabelo num tom bem mais escuro — é o degradê
+  // da máquina, não outra cor de cabelo.
+  raspado: (h, c) => {
+    B(h, 92, 22, 92, 0, -74, 0, tom(c, 0.58));
+    B(h, 94, 16, 14, 0, -64, -44, tom(c, 0.58));
+    B(h, 96, 14, 96, 0, -87, 0, c);
+    B(h, 90, 8, 16, 0, -82, 43, c);
+  },
+  dreads: (h, c) => {
+    B(h, 96, 22, 96, 0, -80, 0, c);
+    B(h, 96, 28, 16, 0, -59, -44, c);
+    B(h, 92, 12, 16, 0, -70, 43, c);
+    [-36, -12, 12, 36].forEach((x) => {
+      B(h, 12, 54, 12, x, -46, -50, c);
+      for (let i = 0; i < 4; i++) B(h, 13, 6, 13, x, -66 + i * 15, -50, tom(c, i % 2 ? 0.82 : 1.14));
+    });
+    ([[-47, 16], [-45, -16], [47, 16], [45, -16]] as const).forEach(([x, z]) => {
+      B(h, 13, 50, 13, x, -50, z, c);
+      for (let i = 0; i < 3; i++) B(h, 14, 5, 14, x, -66 + i * 17, z, tom(c, i % 2 ? 0.84 : 1.12));
+    });
+  },
+  chiquinhas: (h, c) => {
+    B(h, 94, 22, 94, 0, -80, 0, c);
+    B(h, 94, 32, 16, 0, -56, -44, c);
+    B(h, 92, 12, 16, 0, -70, 43, c);
+    [-1, 1].forEach((lado) => {
+      B(h, 14, 10, 14, lado * 46, -62, -10, '#d7a947');
+      B(h, 24, 32, 24, lado * 51, -42, -12, c);
+      B(h, 18, 12, 18, lado * 53, -24, -12, tom(c, 1.12));
+    });
+  },
   chanel: (h, c) => {
     B(h, 96, 24, 96, 0, -78, 0, c);
     B(h, 96, 56, 18, 0, -44, -44, c);
@@ -256,7 +304,7 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     if (cfg.bainha) B(L, 22, 8, 22, 0, alturaPerna + 2, 0, cfg.bainha);
     if (cfg.meia) B(L, 18, 8, 18, 0, alturaPerna + 10, 0, cfg.meia);
     const yPe = alturaPerna + (cfg.bainha ? 12 : cfg.bermuda ? 10 : 6);
-    if (cfg.descalco) {
+    if (cfg.descalco || cfg.calcadoEstudio === 'chinelo') {
       B(L, 21, 10, 28, 0, yPe, 4, cfg.skin);
       if (capivara) [-6, 0, 6].forEach((x) => B(L, 3, 3, 3, x, yPe + 2, 19, tom(cfg.skin, 0.48)));
     }
@@ -295,6 +343,12 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
         } else {
           [-5, -2].forEach((y) => B(L, 10, 2, 3, 0, yPe + y, 18, detalhe));
         }
+      } else if (cfg.calcadoEstudio === 'chinelo') {
+        // Pé descoberto com sola fina e a tira em V por cima dos dedos.
+        B(L, 24, 3, 31, 0, yPe + 5, 4, detalhe);
+        B(L, 15, 3, 5, -3, yPe - 4, 12, detalhe, 1, ' rotateZ(26deg)');
+        B(L, 15, 3, 5, 3, yPe - 4, 12, detalhe, 1, ' rotateZ(-26deg)');
+        B(L, 4, 4, 4, 0, yPe - 3, 19, tom(detalhe, 0.82));
       } else if (cfg.calcadoEstudio === 'bota') {
         B(L, 20, 4, 21, 0, yPe - 7, 2, tom(cfg.sapato, 1.2));
         B(L, 7, 3, 3, 0, yPe - 2, 20, tom(cfg.sapato, 1.25));
@@ -415,6 +469,38 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
       B(corpo, 38, 29, 6, 0, -21, 22, detalhe);
       [-1, 1].forEach((lado) => { B(corpo, 8, 32, 5, lado * 15, -41, 22, detalhe); B(corpo, 5, 5, 4, lado * 15, -34, 26, '#e4bd6e'); });
       B(corpo, 18, 10, 4, 0, -17, 26, tom(detalhe, 0.82));
+    } else if (cfg.detalheRoupa === 'xadrez') {
+      // Xadrez é só isto: as mesmas listras duas vezes, uma deitada e outra em
+      // pé. Onde se cruzam o tom escurece sozinho, porque são dois blocos.
+      [-44, -30, -16, -2].forEach((y) => B(corpo, 55, 4, 43, 0, y, 0, detalhe));
+      [-21, -7, 7, 21].forEach((x) => B(corpo, 4, 50, 44, x, -26, 0, tom(detalhe, 0.86)));
+    } else if (cfg.detalheRoupa === 'futebol') {
+      B(corpo, 57, 7, 44, 0, -46, 0, detalhe);
+      B(corpo, 57, 7, 44, 0, -10, 0, detalhe);
+      B(corpo, 22, 24, 4, 0, -29, 22, detalhe);
+      B(corpo, 6, 17, 3, -4, -29, 24, tom(cfg.torso, 0.5));
+      B(corpo, 5, 9, 3, 5, -33, 24, tom(cfg.torso, 0.5));
+      B(corpo, 15, 8, 5, -8, -48, 21, detalhe, 1, ' rotateZ(-26deg)');
+      B(corpo, 15, 8, 5, 8, -48, 21, detalhe, 1, ' rotateZ(26deg)');
+    } else if (cfg.detalheRoupa === 'farda') {
+      B(corpo, 5, 46, 5, 0, -27, 22, tom(cfg.torso, 0.78));
+      [-1, 1].forEach((lado) => {
+        B(corpo, 18, 7, 16, lado * 19, -47, 6, tom(detalhe, 0.95));
+        B(corpo, 18, 16, 4, lado * 14, -20, 22, tom(cfg.torso, 0.8));
+        B(corpo, 19, 4, 5, lado * 14, -28, 23, detalhe);
+      });
+      B(corpo, 22, 6, 4, 0, -39, 23, detalhe);
+      B(corpo, 57, 8, 44, 0, -6, 0, tom(cfg.torso, 0.62));
+    } else if (cfg.detalheRoupa === 'cardiga') {
+      // Casaco aberto: duas bandas na frente e a barra embaixo. O meio fica
+      // com a cor da camisa de baixo, que é o que faz ele parecer aberto.
+      [-1, 1].forEach((lado) => {
+        B(corpo, 16, 48, 7, lado * 21, -26, 20, detalhe);
+        B(corpo, 4, 48, 8, lado * 13, -26, 21, tom(detalhe, 0.78));
+        B(corpo, 18, 9, 7, lado * 20, -49, 19, tom(detalhe, 1.1));
+      });
+      B(corpo, 56, 7, 45, 0, -3, 0, tom(detalhe, 0.88));
+      [-36, -24].forEach((y) => B(corpo, 4, 4, 4, 10, y, 25, tom(detalhe, 1.18)));
     } else {
       B(corpo, 41, 10, 44, 0, -54, 0, detalhe);
       B(corpo, 41, 3, 45, 0, -55, 0, tom(detalhe, 0.8));
@@ -898,6 +984,23 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
     B(cabeca, 89, 12, 80, 7, -97, 0, cfg.boina);
     B(cabeca, 9, 6, 9, 10, -106, 0, tom(cfg.boina, 0.8));
   }
+  if (cfg.viseira) {
+    // Viseira: aro e aba, sem copa — o cabelo passa por cima e aparece.
+    B(cabeca, 96, 11, 96, 0, -87, 0, cfg.viseira);
+    B(cabeca, 92, 5, 93, 0, -80, 0, tom(cfg.viseira, 0.68));
+    B(cabeca, 90, 6, 34, 0, -85, 60, tom(cfg.viseira, 0.8));
+  }
+  if (cfg.palha) {
+    B(cabeca, 86, 24, 86, 0, -92, 0, cfg.palha);
+    B(cabeca, 128, 8, 128, 0, -76, 0, tom(cfg.palha, 1.1));
+    B(cabeca, 88, 7, 88, 0, -81, 0, tom(cfg.palha, 0.58));
+  }
+  if (cfg.bandana) {
+    B(cabeca, 98, 17, 98, 0, -84, 0, cfg.bandana);
+    B(cabeca, 95, 5, 96, 0, -75, 0, tom(cfg.bandana, 0.8));
+    B(cabeca, 13, 24, 12, -40, -72, -42, tom(cfg.bandana, 0.92), 1, ' rotateZ(13deg)');
+    B(cabeca, 10, 15, 10, -45, -56, -47, tom(cfg.bandana, 1.1), 1, ' rotateZ(20deg)');
+  }
   if (cfg.quepe) {
     B(cabeca, 94, 24, 94, 0, -82, 0, cfg.quepe); B(cabeca, 96, 10, 96, 0, -69, 0, '#2a2a30'); B(cabeca, 88, 8, 36, 0, -64, 58, '#2a2a30');
     if (cfg.nome === 'Policial' && variantePolicial === 1) {
@@ -1140,7 +1243,7 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
   // sumia dentro dele. A concha ainda ganha um disco laranja virado para fora.
   const FONE = '#55504a';
   // Cabelo afro e capacete ocupam o alto da cabeça; o arco sobe para passar por cima.
-  const yArco = cfg.fivePanel ? -120 : cfg.estilo === 'afro' ? -116 : cfg.capacete || cfg.balde || cfg.touca || cfg.boina ? -106 : -98;
+  const yArco = cfg.fivePanel ? -120 : cfg.estilo === 'afro' ? -116 : cfg.capacete || cfg.balde || cfg.touca || cfg.boina || cfg.palha ? -106 : -98;
   B(fone, 106, 13, 27, 0, yArco, 0, FONE);
   B(fone, 94, 9, 23, 0, yArco + 10, 0, '#e8e2d6');
   [-50, 50].forEach((x) => {
