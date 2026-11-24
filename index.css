@@ -992,6 +992,12 @@ html.dark .glass-card {
     -webkit-box-decoration-break: clone;
 }
 
+/* Na imersão não há a animação do GSAP que pinta o sublinhado (ela só roda no modo Destaques), então o
+   trecho-chave ficava com sublinhado transparente, ou seja, invisível. Aqui ele já nasce marcado. */
+.guided-immersive .guided-key-point {
+    text-decoration-color: rgba(254, 200, 104, 0.85);
+}
+
 /* Maintain readable ink and cohesive surfaces when the app's dark theme is on. */
 html.dark .guided-highlight-view {
     background-color: #24251f !important;
@@ -1025,6 +1031,27 @@ html.dark .guided-highlight-count {
     background-color: #3a3b32 !important;
     border-color: rgba(242, 239, 210, 0.16) !important;
     color: #f2efd2 !important;
+}
+
+/* As variantes de bloco continuam distintas no tema escuro: sem isto a regra acima pinta pergunta, bizu e
+   aplicação com a mesma superfície do conceito, e a hierarquia que existe no claro some. */
+html.dark .guided-highlight-card--pergunta {
+    background-color: #38321f !important;
+    border-color: rgba(254, 200, 104, 0.3) !important;
+}
+
+html.dark .guided-highlight-card--bizu {
+    background-color: #3a2c22 !important;
+    border-color: rgba(233, 111, 52, 0.32) !important;
+}
+
+html.dark .guided-highlight-card--prova {
+    background-color: #2f3727 !important;
+    border-color: rgba(177, 199, 123, 0.28) !important;
+}
+
+html.dark .guided-highlight-card--roteiro {
+    background-color: #2b2c24 !important;
 }
 
 html.dark .guided-highlight-finish {

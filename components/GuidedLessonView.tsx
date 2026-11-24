@@ -47,6 +47,28 @@ const comTiposCorrigidos = (passos: GuidedLessonStep[]): GuidedLessonStep[] => {
   }));
 };
 
+// Como cada tipo de passo se apresenta no modo Destaques. Antes eram onze cartões brancos idênticos: a
+// história, a regra técnica, a pergunta e o "como cai na prova" tinham exatamente o mesmo peso, e o olho não
+// achava onde parar. Agora o conceito é um cartão com barra laranja, a narrativa é texto corrido com um filete
+// discreto, e pergunta, bizu e aplicação têm cor própria.
+//
+// Blocos com `cartao: false` ficam fora da classe .guided-highlight-card de propósito — é ela que o tema
+// escuro pinta de superfície sólida (index.css), e texto corrido não deve virar caixa.
+type Apresentacao = { cartao: boolean; caixa: string; texto: string };
+
+const APRESENTACAO: Record<string, Apresentacao> = {
+  OPENING: { cartao: false, caixa: 'border-0 bg-transparent p-0 shadow-none', texto: 'text-[1.5rem] font-black leading-[1.35] tracking-tight sm:text-[1.7rem]' },
+  OVERVIEW: { cartao: true, caixa: 'guided-highlight-card--roteiro border-[#e3d9ca] bg-[#fbf6ee] px-5 py-5 sm:px-6', texto: 'text-[1rem] font-semibold leading-[1.8]' },
+  NARRATIVE: { cartao: false, caixa: 'rounded-none border-0 border-l-[3px] border-[#e8d6bd] bg-transparent py-1 pl-5 pr-0 shadow-none sm:pl-6', texto: 'text-[1.05rem] leading-[1.85]' },
+  CONCEPT: { cartao: true, caixa: 'border-[#e6ddcf] border-l-[5px] border-l-[#e96f34] bg-white px-5 py-5 sm:px-6', texto: 'text-[1.05rem] leading-[1.85]' },
+  QUESTION_PAUSE: { cartao: true, caixa: 'guided-highlight-card--pergunta border-[#ead5a9] bg-[#fff8e9] px-5 py-5 sm:px-6', texto: 'text-[1.15rem] font-bold leading-[1.6]' },
+  REINFORCEMENT: { cartao: true, caixa: 'guided-highlight-card--resposta border-[#ead5a9] bg-white px-5 py-5 sm:px-6', texto: 'text-[1.05rem] leading-[1.85]' },
+  ANALOGY: { cartao: true, caixa: 'guided-highlight-card--bizu border-[#edc9b3] bg-[#fff4ed] px-5 py-5 sm:px-6', texto: 'text-[1.05rem] leading-[1.85]' },
+  CLOSING_APPLICATION: { cartao: true, caixa: 'guided-highlight-card--prova border-[#cfddb5] bg-[#f3f7ec] px-5 py-5 sm:px-6', texto: 'text-[1.05rem] leading-[1.85]' },
+};
+
+const apresentacaoDe = (tipo: string): Apresentacao => APRESENTACAO[tipo] ?? APRESENTACAO.NARRATIVE;
+
 const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, profile, explanationStyle = 'TECNICA', onBack, onComplete, initialLesson, editalConfig, modoEdital, onModoEdital }) => {
   // Entering directly (e.g. from the sidebar, with no matéria/assunto chosen yet)
   // leaves subject/topic empty — activeSubject/activeTopic hold what's actually
@@ -483,7 +505,7 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
         </div>
       </header>
 
-      {studyView === 'immersive' ? <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-20 space-y-20 scrollbar-none" style={{ scrollBehavior: 'smooth' }}>
+      {studyView === 'immersive' ? <div ref={scrollRef} className="guided-immersive flex-1 overflow-y-auto px-6 py-20 space-y-20 scrollbar-none" style={{ scrollBehavior: 'smooth' }}>
         <AnimatePresence initial={false}>
           {displayedSteps.map((step, idx) => (
             <motion.div key={`${step.type}-${idx}`} initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className={`max-w-2xl mx-auto relative ${step.type === 'QUESTION_PAUSE' ? 'bg-amber-300/5 border-2 border-amber-300/20 p-10 rounded-[40px] shadow-2xl' : step.type === 'ANALOGY' ? 'bg-orange-300/5 border-2 border-orange-300/20 p-10 rounded-[40px] shadow-2xl shadow-[#ac4800]/20' : ''}`}>
@@ -498,6 +520,12 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
                 </div>
               )}
 
+              {/* Diz que papel o bloco cumpre. Na imersão só a pausa e o bizu tinham marcação, então conceito,
+                  fixação e aplicação chegavam como mais um parágrafo igual aos outros. */}
+              {!['OPENING', 'QUESTION_PAUSE', 'ANALOGY'].includes(step.type) && (
+                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-amber-200/55">{stepLabels[step.type] || 'Explicação'}</p>
+              )}
+
               <p
                 className={`
  ${step.type === 'OPENING' ? 'text-4xl font-black leading-none text-white tracking-tighter' : ''}
@@ -508,7 +536,9 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
  ${!['OPENING', 'OVERVIEW', 'QUESTION_PAUSE', 'CONCEPT', 'REINFORCEMENT'].includes(step.type) ? 'text-xl leading-relaxed text-slate-300' : ''}
  `}
               >
-                {step.content}
+                {/* Mesmo sublinhado do modo Destaques: os pontos-chave eram marcados só lá, e quem ficava na
+                    imersão não via destaque nenhum. */}
+                {renderStepContent(step)}
               </p>
             </motion.div>
           ))}
@@ -554,34 +584,40 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
           const available = element.scrollHeight - element.clientHeight;
           setHighlightProgress(available > 0 ? (element.scrollTop / available) * 100 : 100);
         }}>
-          <div className="mx-auto max-w-5xl">
-            <div className="guided-highlight-intro mb-6 rounded-3xl border border-[#e5d9c8] bg-white p-5 shadow-[0_8px_24px_rgba(71,60,51,0.07)] sm:mb-8 sm:p-7">
-              <div className="flex flex-wrap items-end justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#bd5628]">Resumo visual da aula</p>
-                  <h2 className="mt-2 text-2xl font-black tracking-tight text-[#473c33] sm:text-3xl">Pontos importantes</h2>
-                  <p className="guided-highlight-description mt-2 max-w-2xl text-sm leading-relaxed text-[#76695b] sm:text-base">Acompanhe a explicação completa. Os trechos sublinhados marcam conceitos, regras e ideias para guardar.</p>
-                  <ConsensoBadge consenso={lesson?.consenso} className="mt-3" />
-                </div>
+          {/* Coluna estreita de propósito: a 966 px e 18 px a linha passava de 120 caracteres, quase o dobro
+              do que se lê sem perder a linha. A 46rem fica em torno de 70. */}
+          <div className="mx-auto w-full max-w-[46rem]">
+            <div className="guided-highlight-intro mb-7 rounded-3xl border border-[#e5d9c8] bg-white p-5 shadow-[0_8px_24px_rgba(71,60,51,0.07)] sm:mb-9 sm:p-7">
+              <p className="guided-highlight-label text-[10px] font-black uppercase tracking-[0.28em] text-[#bd5628]">{activeSubject}</p>
+              <h2 className="mt-2 text-2xl font-black leading-tight tracking-tight text-[#473c33] sm:text-[1.9rem]">{activeTopic}</h2>
+              <p className="guided-highlight-description mt-2.5 text-sm leading-relaxed text-[#76695b]">A aula inteira para ler no seu ritmo. Os trechos sublinhados marcam o que vale guardar.</p>
+              <div className="mt-4 flex flex-wrap items-center gap-2.5">
                 <span className="guided-highlight-count rounded-full border border-[#efdbb9] bg-[#fff6e7] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#80531b]">{lessonSteps.length} etapas</span>
+                <ConsensoBadge consenso={lesson?.consenso} />
               </div>
             </div>
 
-            <div className="space-y-4 sm:space-y-5">
-              {lessonSteps.map((step, index) => (
-                <article key={`${step.type}-${index}`} className={`guided-highlight-card rounded-3xl border p-5 shadow-[0_5px_16px_rgba(71,60,51,0.06)] sm:p-7 ${step.type === 'QUESTION_PAUSE' ? 'border-[#ead5a9] bg-[#fff8e9]' : step.type === 'ANALOGY' ? 'border-[#edc9b3] bg-[#fff4ed]' : 'border-[#e6ddcf] bg-white'}`}>
-                  <div className="mb-4 flex items-center gap-3">
-                    <span className="guided-highlight-badge flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f4ecdf] text-xs font-black text-[#80531b]">{String(index + 1).padStart(2, '0')}</span>
-                    <div className="min-w-0">
+            <div className="space-y-5 sm:space-y-6">
+              {lessonSteps.map((step, index) => {
+                const estilo = apresentacaoDe(step.type);
+                const pontos = getKeyPoints(step).length;
+                return (
+                  <article key={`${step.type}-${index}`} className={`${estilo.cartao ? 'guided-highlight-card shadow-[0_4px_14px_rgba(71,60,51,0.05)]' : ''} rounded-3xl border ${estilo.caixa}`}>
+                    <div className="mb-2.5 flex items-center gap-2.5">
+                      <span className="guided-highlight-badge inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-lg bg-[#f4ecdf] px-1.5 text-[10px] font-black tabular-nums text-[#80531b]">{index + 1}</span>
                       <p className="guided-highlight-label text-[10px] font-black uppercase tracking-[0.22em] text-[#b64f26]">{stepLabels[step.type] || 'Explicação'}</p>
-                      {getKeyPoints(step).length > 0 && <p className="guided-highlight-description mt-1 text-[9px] font-bold uppercase tracking-wider text-[#867968]">{getKeyPoints(step).length} {getKeyPoints(step).length === 1 ? 'ponto-chave' : 'pontos-chave'}</p>}
+                      {pontos > 0 && (
+                        <span className="guided-highlight-description text-[9px] font-bold uppercase tracking-wider text-[#a2978a]">
+                          · {pontos} {pontos === 1 ? 'ponto-chave' : 'pontos-chave'}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                  <p className={`guided-highlight-copy whitespace-pre-line leading-[1.8] text-[#40372f] ${step.type === 'OPENING' ? 'text-xl font-bold sm:text-2xl' : step.type === 'CONCEPT' || step.type === 'REINFORCEMENT' ? 'text-lg font-medium sm:text-xl' : 'text-base sm:text-lg'}`}>
-                    {renderStepContent(step)}
-                  </p>
-                </article>
-              ))}
+                    <p className={`guided-highlight-copy whitespace-pre-line text-[#40372f] ${estilo.texto}`}>
+                      {renderStepContent(step)}
+                    </p>
+                  </article>
+                );
+              })}
             </div>
 
             <div className="guided-highlight-finish my-8 flex flex-col items-center gap-4 rounded-3xl border border-[#cfddb5] bg-[#f1f6e9] px-6 py-8 text-center sm:my-10">
