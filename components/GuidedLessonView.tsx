@@ -474,36 +474,46 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
 
   return (
     <div className="absolute inset-0 z-[200] flex flex-col h-full bg-[#473c33] text-slate-100 font-sans selection:bg-amber-300/30 overflow-hidden">
-      {/* Header Imersivo */}
-      <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-white/5 bg-[#473c33]/40 px-3 py-2 backdrop-blur-2xl sm:flex-nowrap sm:px-5 sm:py-3">
-        <button onClick={onBack} className="group shrink-0 rounded-xl p-2 transition-colors hover:bg-white/10 active:scale-95" aria-label="Voltar">
+      {/* Uma faixa só, de altura fixa. Antes o cabeçalho quebrava em três linhas no celular e ocupava 111 px
+          — mais de um sétimo da tela — porque o título, o seletor e os botões disputavam a mesma linha e a
+          faixa tinha ainda um rótulo ("PONTOS-CHAVE") que só repetia qual aba estava ativa. */}
+      <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b border-white/5 bg-[#473c33]/70 px-2 backdrop-blur-2xl sm:h-14 sm:gap-3 sm:px-4">
+        <button onClick={onBack} className="group shrink-0 rounded-lg p-1.5 transition-colors hover:bg-white/10 active:scale-95" aria-label="Voltar">
           <ChevronLeft className="h-5 w-5 text-white/60 group-hover:text-white" />
         </button>
-        <div className="order-3 flex w-full min-w-0 flex-none items-center justify-center gap-3 sm:order-none sm:w-auto sm:flex-1">
-          <div className="min-w-0 text-center sm:text-left">
-            <div className="mb-0.5 flex items-center justify-center gap-2 sm:justify-start">
-              <span className={`h-2 w-2 rounded-full bg-amber-300 ${studyView === 'immersive' ? 'animate-pulse' : ''}`}></span>
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-200 sm:text-[10px] sm:tracking-[0.3em]">{studyView === 'immersive' ? 'IMERSÃO ATIVA' : 'PONTOS-CHAVE'}</span>
-            </div>
-            <h1 className="max-w-full truncate text-xs font-black uppercase tracking-tight text-white sm:text-sm">{activeSubject} • {activeTopic}</h1>
-          </div>
-          <div className="inline-flex shrink-0 rounded-xl border border-white/10 bg-black/10 p-0.5" role="group" aria-label="Visualização da aula">
-            <button type="button" aria-pressed={studyView === 'immersive'} onClick={() => setStudyView('immersive')} className={`rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-wider transition-colors sm:px-3 sm:text-[9px] ${studyView === 'immersive' ? 'bg-amber-300 text-stone-900' : 'text-white/70 hover:text-white'}`}>Imersão</button>
-            <button type="button" aria-pressed={studyView === 'highlights'} onClick={() => setStudyView('highlights')} className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-wider transition-colors sm:px-3 sm:text-[9px] ${studyView === 'highlights' ? 'bg-amber-300 text-stone-900' : 'text-white/70 hover:text-white'}`}><BookOpen className="h-3 w-3" /> Destaques</button>
-          </div>
+
+        <h1 className="min-w-0 flex-1 truncate text-[11px] font-black uppercase tracking-tight text-white sm:text-sm">
+          {/* No celular a matéria sai da frente: com as duas, o assunto virava "C..." em 375 px. */}
+          <span className="hidden text-amber-200/70 sm:inline">{activeSubject}</span>
+          <span className="hidden px-1.5 text-white/25 sm:inline">/</span>
+          {activeTopic}
+        </h1>
+
+        <div className="inline-flex shrink-0 rounded-lg border border-white/10 bg-black/15 p-0.5" role="group" aria-label="Visualização da aula">
+          <button type="button" aria-pressed={studyView === 'immersive'} onClick={() => setStudyView('immersive')} className={`rounded-md px-2 py-1 text-[8px] font-black uppercase tracking-wider transition-colors sm:px-2.5 sm:text-[9px] ${studyView === 'immersive' ? 'bg-amber-300 text-stone-900' : 'text-white/70 hover:text-white'}`}>Imersão</button>
+          <button type="button" aria-pressed={studyView === 'highlights'} onClick={() => setStudyView('highlights')} className={`rounded-md px-2 py-1 text-[8px] font-black uppercase tracking-wider transition-colors sm:px-2.5 sm:text-[9px] ${studyView === 'highlights' ? 'bg-amber-300 text-stone-900' : 'text-white/70 hover:text-white'}`}>Destaques</button>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <button onClick={toggleSaveLesson} className={`rounded-xl p-2 transition-all active:scale-90 ${isSaved ? 'bg-amber-300 text-[#2b1810]' : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/20'}`} title={isSaved ? 'Salvo no App' : 'Salvar no App (Offline)'} aria-label={isSaved ? 'Aula salva' : 'Salvar aula'}>
-            {isSaved ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
+
+        <div className="flex shrink-0 items-center gap-1">
+          {studyView === 'immersive' && (
+            <button onClick={() => setIsPaused(!isPaused)} aria-label={isPaused ? 'Retomar aula automática' : 'Pausar aula automática'} title={isPaused ? 'Retomar aula' : 'Pausar aula'} className={`rounded-lg p-1.5 transition-all active:scale-90 ${isPaused ? 'bg-orange-300 text-[#2b1810]' : 'text-white/55 hover:bg-white/10 hover:text-white'}`}>
+              {isPaused ? <Play className="h-[18px] w-[18px]" /> : <Pause className="h-[18px] w-[18px]" />}
+            </button>
+          )}
+          <button onClick={toggleSaveLesson} className={`rounded-lg p-1.5 transition-all active:scale-90 ${isSaved ? 'text-amber-300' : 'text-white/55 hover:bg-white/10 hover:text-white'}`} title={isSaved ? 'Salvo no App' : 'Salvar no App (Offline)'} aria-label={isSaved ? 'Aula salva' : 'Salvar aula'}>
+            {isSaved ? <BookmarkCheck className="h-[18px] w-[18px]" /> : <Bookmark className="h-[18px] w-[18px]" />}
           </button>
-          <button onClick={downloadPDF} className="rounded-xl bg-white/10 p-2 text-white/60 transition-all hover:bg-white/20 hover:text-white active:scale-90" title="Baixar em PDF" aria-label="Baixar aula em PDF">
-            <Download className="h-5 w-5" />
+          <button onClick={downloadPDF} className="rounded-lg p-1.5 text-white/55 transition-all hover:bg-white/10 hover:text-white active:scale-90" title="Baixar em PDF" aria-label="Baixar aula em PDF">
+            <Download className="h-[18px] w-[18px]" />
           </button>
-          {studyView === 'immersive' && <button onClick={() => setIsPaused(!isPaused)} aria-label={isPaused ? 'Retomar aula automática' : 'Pausar aula automática'} title={isPaused ? 'Retomar aula' : 'Pausar aula'} className={`rounded-xl p-2 transition-all shadow-xl active:scale-90 ${isPaused ? 'bg-orange-300 text-[#2b1810] animate-pulse' : 'bg-white/10 text-white/60 hover:text-white'}`}>
-            {isPaused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
-          </button>}
         </div>
       </header>
+
+      {/* O progresso virou um fio de 3 px colado no cabeçalho. Era uma faixa inteira no rodapé, com rótulo e
+          porcentagem, comendo mais 56 px de aula para dizer o que uma linha diz. */}
+      <div className="h-[3px] w-full shrink-0 bg-white/5" role="progressbar" aria-valuenow={Math.round(lessonProgress)} aria-valuemin={0} aria-valuemax={100} aria-label={studyView === 'immersive' ? 'Progresso da aula' : 'Leitura dos pontos-chave'}>
+        <motion.div className="h-full bg-amber-300" initial={{ width: 0 }} animate={{ width: `${lessonProgress}%` }} transition={{ duration: 0.5 }} />
+      </div>
 
       {studyView === 'immersive' ? <div ref={scrollRef} className="guided-immersive flex-1 overflow-y-auto px-6 py-20 space-y-20 scrollbar-none" style={{ scrollBehavior: 'smooth' }}>
         <AnimatePresence initial={false}>
@@ -587,14 +597,13 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
           {/* Coluna estreita de propósito: a 966 px e 18 px a linha passava de 120 caracteres, quase o dobro
               do que se lê sem perder a linha. A 46rem fica em torno de 70. */}
           <div className="mx-auto w-full max-w-[46rem]">
-            <div className="guided-highlight-intro mb-7 rounded-3xl border border-[#e5d9c8] bg-white p-5 shadow-[0_8px_24px_rgba(71,60,51,0.07)] sm:mb-9 sm:p-7">
-              <p className="guided-highlight-label text-[10px] font-black uppercase tracking-[0.28em] text-[#bd5628]">{activeSubject}</p>
-              <h2 className="mt-2 text-2xl font-black leading-tight tracking-tight text-[#473c33] sm:text-[1.9rem]">{activeTopic}</h2>
-              <p className="guided-highlight-description mt-2.5 text-sm leading-relaxed text-[#76695b]">A aula inteira para ler no seu ritmo. Os trechos sublinhados marcam o que vale guardar.</p>
-              <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                <span className="guided-highlight-count rounded-full border border-[#efdbb9] bg-[#fff6e7] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#80531b]">{lessonSteps.length} etapas</span>
-                <ConsensoBadge consenso={lesson?.consenso} />
-              </div>
+            {/* O cabeçalho já diz qual é o assunto, então aqui não se repete o título: ficam só a matéria
+                (que some do topo no celular), o que esperar da leitura e o selo das fontes. */}
+            <div className="guided-highlight-intro mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-[#e5d9c8] bg-white px-4 py-3 shadow-[0_6px_18px_rgba(71,60,51,0.06)] sm:mb-7">
+              <p className="guided-highlight-label text-[10px] font-black uppercase tracking-[0.24em] text-[#bd5628]">{activeSubject}</p>
+              <span className="guided-highlight-count rounded-full border border-[#efdbb9] bg-[#fff6e7] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-[#80531b]">{lessonSteps.length} etapas</span>
+              <ConsensoBadge consenso={lesson?.consenso} />
+              <p className="guided-highlight-description w-full text-[11px] leading-relaxed text-[#8a7d6e]">Os trechos sublinhados marcam o que vale guardar.</p>
             </div>
 
             <div className="space-y-5 sm:space-y-6">
@@ -632,25 +641,6 @@ const GuidedLessonView: React.FC<GuidedLessonViewProps> = ({ subject, topic, pro
         </main>
       )}
 
-      {/* Indicador de Progresso Inferior */}
-      <div className="border-t border-white/5 bg-[#473c33]/60 px-5 py-3 backdrop-blur-2xl sm:px-6">
-        <div className="mx-auto max-w-2xl space-y-2">
-          <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
-            <span>{studyView === 'immersive' ? 'PROGRESSO DA AULA' : 'LEITURA DOS PONTOS-CHAVE'}</span>
-            <span className="text-amber-300">{Math.round(lessonProgress)}%</span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full border border-white/5 bg-white/5 p-px">
-            <motion.div
-              className="h-full bg-gradient-to-r from-amber-300 to-amber-300 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]"
-              initial={{ width: 0 }}
-              animate={{
-                width: `${lessonProgress}%`,
-              }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
