@@ -177,12 +177,15 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
     <div className={`relative isolate w-full min-h-full min-w-0 rounded-[32px] selection:bg-amber-300/30 font-sans ${result && isDark ? 'bg-[#473c33] text-white' : 'bg-[#f7f3ed] text-[#473c33]'}`}>
       {/* A folga de baixo é a do material gerado, que é longo. Na tela de
           começar ela só criava barra de rolagem num cartão que já cabia. */}
-      <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 xl:px-10 animate-in fade-in slide-in-from-bottom-10 duration-700 ${result ? 'pt-6 sm:pt-10 pb-32' : 'pt-2 pb-2'}`}>
+      <div className={`w-full mx-auto animate-in fade-in slide-in-from-bottom-10 duration-700 ${result ? 'max-w-7xl px-4 sm:px-6 xl:px-10 pt-6 sm:pt-10 pb-32' : 'px-1 sm:px-4 pt-2 pb-2'}`}>
         {!result ? (
-          /* Esta tela cabe inteira: nada aqui exige rolagem, e rolar para achar
-             o botão de gerar era o começo de toda sessão de estudo. */
-          <div className="w-full max-w-6xl mx-auto">
-            <section className="overflow-hidden rounded-[32px] border border-[#e9e0d4] bg-white shadow-[0_18px_48px_rgba(71,60,51,0.14)]">
+          /* Mesma caixa da Aula Guiada e da Aula Viva: max-w-5xl, centrada no
+             espaço que sobra. Aqui era max-w-6xl dentro de um max-w-7xl com
+             px-10, e o cartão saía maior que o das outras duas telas de começo.
+             A tela também cabe inteira: rolar para achar o botão de gerar era o
+             começo de toda sessão de estudo. */
+          <div className="mx-auto flex min-h-full w-full max-w-5xl items-center justify-center">
+            <section className="w-full overflow-hidden rounded-[32px] border border-[#e9e0d4] bg-white shadow-[0_18px_48px_rgba(71,60,51,0.14)]">
               <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eee6d6] px-5 py-2 sm:px-7">
                 <button onClick={onBack} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
@@ -194,7 +197,9 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                 </div>
               </header>
 
-              <div className="grid lg:grid-cols-[1.02fr_0.98fr]">
+              {/* Duas colunas já a partir de 900px: entre 900 e 1024 a tela
+                  empilhava e passava a pedir rolagem de novo. */}
+              <div className="grid min-[900px]:grid-cols-[1.02fr_0.98fr]">
                 <div className="flex flex-col justify-center bg-[#abc270] px-6 py-6 text-[#473c33] sm:px-10 sm:py-8">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#fecc73] text-[#473c33] shadow-lg shadow-black/10">
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18.5 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
@@ -255,7 +260,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                     /* Matéria e assunto lado a lado, como já era no modo
                        edital: empilhados custavam 70px de altura por nada — são
                        dois campos curtos. */
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                       <label className="block">
                         <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Matéria <span className="font-bold normal-case tracking-normal text-[#a79c8e]">(opcional)</span></span>
                         <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ex.: Direito Penal" className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-3 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" onKeyDown={(e) => e.key === 'Enter' && canGenerate && handleGenerate()} />
