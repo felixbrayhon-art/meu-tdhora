@@ -21,11 +21,13 @@ import {
 
 export type Sexo = 'menina' | 'menino' | 'neutro';
 export type EspecieId = 'pessoa' | 'cachorro' | 'gato' | 'raposa' | 'guaxinim' | 'urso' | 'coelho' | 'rato' | 'capivara' | 'onca' | 'arara';
-export type CamisaId = 'camiseta' | 'listrada' | 'social' | 'regata' | 'moletom' | 'jaleco' | 'terno' | 'colete' | 'toga' | 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta' | 'xadrez' | 'futebol' | 'farda' | 'cardiga' | 'sem';
+export type CamisaId = 'camiseta' | 'listrada' | 'social' | 'regata' | 'moletom' | 'jaleco' | 'terno' | 'colete' | 'toga' | 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta' | 'xadrez' | 'futebol' | 'farda' | 'cardiga' | 'estampada' | 'jaquetaCapuz' | 'vestido' | 'esportiva' | 'armadura' | 'sem';
 export type CalcaId = 'comprida' | 'bermuda' | 'saia';
 export type CalcadoId = 'sapato' | 'tenis' | 'tenisCanoAlto' | 'tenisEsportivo' | 'tenisCasual' | 'bota' | 'chinelo' | 'descalco';
-export type ChapeuId = 'nenhum' | 'bone' | 'fivePanel' | 'quepe' | 'capacete' | 'balde' | 'touca' | 'boina' | 'viseira' | 'palha' | 'bandana';
+export type ChapeuId = 'nenhum' | 'bone' | 'fivePanel' | 'elmoMedieval' | 'boneTras' | 'faixaCabeca' | 'lacoCabeca' | 'quepe' | 'capacete' | 'balde' | 'touca' | 'boina' | 'viseira' | 'palha' | 'bandana';
 export type OculosId = 'nenhum' | 'armacao' | 'escuros' | 'redondo' | 'aviador' | 'gatinho';
+export type SobrancelhaId = 'natural' | 'fina' | 'marcada' | 'arqueada';
+export type AcessorioAnimalId = 'nenhum' | 'coleira' | 'bandana' | 'placa';
 export type PelosId = 'nada' | 'bigode' | 'barba' | 'cheia';
 
 export interface Mascote {
@@ -47,6 +49,7 @@ export interface Mascote {
   corCalcado?: string;
   corDetalheCalcado?: string;
   corOculos?: string;
+  corAcessorioAnimal?: string;
   corChapeu?: string;
   // peças — só no modo 'criado'
   camisa?: CamisaId;
@@ -57,10 +60,17 @@ export interface Mascote {
   pelos?: PelosId;
   cilios?: boolean;
   pinta?: boolean;
+  sardas?: boolean;
+  covinhas?: boolean;
+  aparelho?: boolean;
+  sobrancelha?: SobrancelhaId;
+  acessorioAnimal?: AcessorioAnimalId;
   cinto?: boolean;
 
   dir?: VoxelAdereco;
   esq?: VoxelAdereco;
+  /** Escolhas anteriores ao conjunto medieval, para recuperá-las ao trocar de roupa. */
+  antesArmadura?: { chapeu?: ChapeuId; calcado?: CalcadoId; corCamisa?: string; corChapeu?: string; corCalcado?: string; corDetalhe?: string };
   /** A animação que o boneco faz parado na tela. */
   animacao?: VoxelPose;
 }
@@ -131,6 +141,11 @@ export const CAMISAS: { id: CamisaId; rotulo: string }[] = [
   { id: 'futebol', rotulo: 'Camisa de time' },
   { id: 'farda', rotulo: 'Operacional' },
   { id: 'cardiga', rotulo: 'Cardigã' },
+  { id: 'estampada', rotulo: 'Camiseta estampada' },
+  { id: 'jaquetaCapuz', rotulo: 'Jaqueta com capuz' },
+  { id: 'vestido', rotulo: 'Vestido' },
+  { id: 'esportiva', rotulo: 'Uniforme esportivo' },
+  { id: 'armadura', rotulo: 'Armadura medieval' },
   { id: 'sem', rotulo: 'Sem camisa' },
 ];
 
@@ -155,6 +170,10 @@ export const CHAPEUS: { id: ChapeuId; rotulo: string }[] = [
   { id: 'nenhum', rotulo: 'Nenhum' },
   { id: 'bone', rotulo: 'Boné' },
   { id: 'fivePanel', rotulo: 'Boné five panel' },
+  { id: 'elmoMedieval', rotulo: 'Elmo medieval' },
+  { id: 'boneTras', rotulo: 'Boné para trás' },
+  { id: 'faixaCabeca', rotulo: 'Faixa' },
+  { id: 'lacoCabeca', rotulo: 'Laço' },
   { id: 'quepe', rotulo: 'Quepe' },
   { id: 'capacete', rotulo: 'Capacete' },
   { id: 'balde', rotulo: 'Chapéu de pescador' },
@@ -174,6 +193,12 @@ export const OCULOS: { id: OculosId; rotulo: string }[] = [
   { id: 'gatinho', rotulo: 'Gatinho' },
 ];
 
+export const SOBRANCELHAS: { id: SobrancelhaId; rotulo: string }[] = [
+  { id: 'natural', rotulo: 'Natural' }, { id: 'fina', rotulo: 'Fina' }, { id: 'marcada', rotulo: 'Marcada' }, { id: 'arqueada', rotulo: 'Arqueada' },
+];
+export const ACESSORIOS_ANIMAIS: { id: AcessorioAnimalId; rotulo: string }[] = [
+  { id: 'nenhum', rotulo: 'Nenhum' }, { id: 'coleira', rotulo: 'Coleira' }, { id: 'bandana', rotulo: 'Bandana no pescoço' }, { id: 'placa', rotulo: 'Coleira com plaquinha' },
+];
 export const PELOS: { id: PelosId; rotulo: string }[] = [
   { id: 'nada', rotulo: 'Nada' },
   { id: 'bigode', rotulo: 'Bigode' },
@@ -211,7 +236,7 @@ export const CORES_ROUPA = ['#fdfbf7', '#f3ece0', '#e8ddcc', '#c9a87c', '#8a6a4f
 // ------------------------------------------------------------------ guardar
 
 const COR = /^#[0-9a-f]{6}$/i;
-const PECAS_CHAPEU = ['bone', 'boneAba', 'fivePanel', 'balde', 'quepe', 'capacete', 'touca', 'boina', 'viseira', 'palha', 'bandana'] as const;
+const PECAS_CHAPEU = ['bone', 'boneAba', 'fivePanel', 'elmoMedieval', 'boneTras', 'faixaCabeca', 'lacoCabeca', 'balde', 'quepe', 'capacete', 'touca', 'boina', 'viseira', 'palha', 'bandana'] as const;
 
 /** Multiplica o tom, como o VoxelAvatar faz para dar luz às faces. */
 const mult = (hex: string, k: number): string => {
@@ -245,17 +270,56 @@ export const limpar = (bruto: unknown): Mascote => {
   limpo.chapeu = um(a.chapeu, CHAPEUS);
   limpo.oculos = um(a.oculos, OCULOS);
   limpo.pelos = um(a.pelos, PELOS);
+  limpo.sobrancelha = um(a.sobrancelha, SOBRANCELHAS);
+  limpo.acessorioAnimal = um(a.acessorioAnimal, ACESSORIOS_ANIMAIS);
   limpo.dir = um(a.dir, ADERECOS);
   if (POSES_ESCOLHIVEIS.some((p) => p.pose === a.animacao)) limpo.animacao = a.animacao as VoxelPose;
   limpo.esq = um(a.esq, ADERECOS);
   if (a.cilios === true) limpo.cilios = true;
   if (a.pinta === true) limpo.pinta = true;
+  if (a.sardas === true) limpo.sardas = true;
+  if (a.covinhas === true) limpo.covinhas = true;
+  if (a.aparelho === true) limpo.aparelho = true;
   if (a.cinto === true) limpo.cinto = true;
-  (['pele', 'cabelo', 'olhos', 'corCamisa', 'corDetalhe', 'corCalca', 'corCalcado', 'corDetalheCalcado', 'corOculos', 'corChapeu'] as const).forEach((campo) => {
+  (['pele', 'cabelo', 'olhos', 'corCamisa', 'corDetalhe', 'corCalca', 'corCalcado', 'corDetalheCalcado', 'corOculos', 'corAcessorioAnimal', 'corChapeu'] as const).forEach((campo) => {
     const v = cor(a[campo]);
     if (v) limpo[campo] = v;
   });
+  if (a.antesArmadura && typeof a.antesArmadura === 'object' && !Array.isArray(a.antesArmadura)) {
+    const anterior = a.antesArmadura as Record<string, unknown>;
+    limpo.antesArmadura = {
+      chapeu: um(anterior.chapeu, CHAPEUS), calcado: um(anterior.calcado, CALCADOS),
+      corCamisa: cor(anterior.corCamisa), corChapeu: cor(anterior.corChapeu),
+      corCalcado: cor(anterior.corCalcado), corDetalhe: cor(anterior.corDetalhe),
+    };
+  }
   return limpo;
+};
+
+/** Equipa o conjunto sem fazer com que suas peças e cores contaminem outras roupas. */
+export const trocarCamisa = (m: Mascote, camisa: CamisaId): Partial<Mascote> => {
+  if (camisa === 'armadura' && m.camisa !== 'armadura') {
+    const antesArmadura = {
+      chapeu: m.chapeu, calcado: m.calcado, corCamisa: m.corCamisa,
+      corChapeu: m.corChapeu, corCalcado: m.corCalcado, corDetalhe: m.corDetalhe,
+    };
+    return { camisa, antesArmadura, chapeu: 'elmoMedieval', calcado: 'bota', corCamisa: '#a0a8ac', corChapeu: '#a0a8ac', corCalcado: '#7b858c', corDetalhe: '#963c3c' };
+  }
+  if (m.camisa === 'armadura' && camisa !== 'armadura') {
+    const antes = m.antesArmadura || {};
+    // Só desfaz os valores que ainda são os colocados automaticamente; quem
+    // alterou uma peça ou cor após vestir a armadura mantém essa escolha.
+    return {
+      camisa, antesArmadura: undefined,
+      chapeu: m.chapeu === 'elmoMedieval' ? antes.chapeu : m.chapeu,
+      calcado: m.calcado === 'bota' ? antes.calcado : m.calcado,
+      corCamisa: m.corCamisa?.toLowerCase() === '#a0a8ac' ? antes.corCamisa : m.corCamisa,
+      corChapeu: m.corChapeu?.toLowerCase() === '#a0a8ac' ? antes.corChapeu : m.corChapeu,
+      corCalcado: m.corCalcado?.toLowerCase() === '#7b858c' ? antes.corCalcado : m.corCalcado,
+      corDetalhe: m.corDetalhe?.toLowerCase() === '#963c3c' ? antes.corDetalhe : m.corDetalhe,
+    };
+  }
+  return { camisa };
 };
 
 export const ler = (): Mascote => {
@@ -292,6 +356,10 @@ const porChapeu = (cfg: VoxelConfig, chapeu: ChapeuId, cor: string) => {
   PECAS_CHAPEU.forEach((peca) => delete cfg[peca]);
   if (chapeu === 'bone') { cfg.bone = cor; cfg.boneAba = mult(cor, 0.78); }
   if (chapeu === 'fivePanel') cfg.fivePanel = cor;
+  if (chapeu === 'elmoMedieval') cfg.elmoMedieval = cor;
+  if (chapeu === 'boneTras') cfg.boneTras = cor;
+  if (chapeu === 'faixaCabeca') cfg.faixaCabeca = cor;
+  if (chapeu === 'lacoCabeca') cfg.lacoCabeca = cor;
   if (chapeu === 'quepe') cfg.quepe = cor;
   if (chapeu === 'capacete') cfg.capacete = cor;
   if (chapeu === 'balde') cfg.balde = cor;
@@ -317,6 +385,7 @@ export const aplicarMascote = (base: VoxelConfig, m: Mascote): VoxelConfig => {
   if (m.corCalcado) cfg.sapato = m.corCalcado;
   if (m.dir) cfg.dir = m.dir;
   if (m.esq) cfg.esq = m.esq;
+  if (cfg.bicho && m.acessorioAnimal) { cfg.acessorioAnimal = m.acessorioAnimal; cfg.corAcessorioAnimal = m.corAcessorioAnimal || '#d77a3d'; }
   if (m.pele) {
     cfg.skin = m.pele;
     // Nos bichos a "pele" é o pelo: orelha, rabo e a touca de cima saem da mesma
@@ -397,7 +466,7 @@ const doZero = (m: Mascote): VoxelConfig => {
 
   switch (v.camisa) {
     case 'listrada': cfg.listrasT = v.corDetalhe; break;
-    case 'social': cfg.faixa = v.corDetalhe; break;
+    case 'social': cfg.corDetalheRoupa = v.corDetalhe; break;
     case 'regata': cfg.regata = true; break;
     case 'moletom': cfg.capuz = v.corCamisa; break;
     case 'jaleco': cfg.jaleco = true; cfg.bolso = true; cfg.faixa = v.corDetalhe; break;
@@ -407,12 +476,16 @@ const doZero = (m: Mascote): VoxelConfig => {
     case 'polo': case 'jaqueta': case 'jardineira': case 'golaAlta':
     case 'xadrez': case 'futebol': case 'farda': case 'cardiga':
       cfg.detalheRoupa = v.camisa; cfg.corDetalheRoupa = v.corDetalhe; break;
+    case 'estampada': case 'jaquetaCapuz': case 'vestido': case 'esportiva': case 'armadura': cfg.corDetalheRoupa = v.corDetalhe; break;
     case 'sem': cfg.semCamisa = true; break;
     default: break;
   }
 
   if (v.calca === 'bermuda') { cfg.curto = true; cfg.bermuda = v.corCalca; }
   if (v.calca === 'saia') cfg.vestido = v.corCalca;
+  if (v.camisa === 'vestido') cfg.vestido = v.corCamisa;
+  if (v.camisa === 'jaquetaCapuz') cfg.capuz = v.corCamisa;
+  if (cfg.bicho && v.acessorioAnimal) { cfg.acessorioAnimal = v.acessorioAnimal; cfg.corAcessorioAnimal = v.corAcessorioAnimal || '#d77a3d'; }
   if (v.cinto) { cfg.cinto = mult(v.corCalca, 0.6); cfg.fivela = '#e9b949'; }
 
   if (v.calcado === 'descalco') cfg.descalco = true;
@@ -431,6 +504,10 @@ const doZero = (m: Mascote): VoxelConfig => {
     if (v.pelos === 'barba' || v.pelos === 'cheia') cfg.barba = v.cabelo;
     if (v.cilios ?? v.sexo === 'menina') cfg.cilios = mult(v.cabelo, 0.85);
     if (v.pinta) cfg.pinta = true;
+    if (v.sardas) cfg.sardas = true;
+    if (v.covinhas) cfg.covinhas = true;
+    if (v.aparelho) cfg.aparelho = true;
+    if (v.sobrancelha) cfg.sobrancelhaEstudio = v.sobrancelha;
   }
   return cfg;
 };

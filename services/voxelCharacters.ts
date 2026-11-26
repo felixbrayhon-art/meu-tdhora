@@ -37,6 +37,10 @@ export interface VoxelConfig {
   bone?: string;
   boneAba?: string;
   fivePanel?: string;
+  elmoMedieval?: string;
+  boneTras?: string;
+  faixaCabeca?: string;
+  lacoCabeca?: string;
   balde?: string;
   quepe?: string;
   capacete?: string;
@@ -46,7 +50,7 @@ export interface VoxelConfig {
   palha?: string;
   bandana?: string;
   // roupa
-  roupaEstudio?: 'camiseta' | 'listrada' | 'social' | 'regata' | 'moletom' | 'jaleco' | 'terno' | 'colete' | 'toga' | 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta' | 'xadrez' | 'futebol' | 'farda' | 'cardiga' | 'sem';
+  roupaEstudio?: 'camiseta' | 'listrada' | 'social' | 'regata' | 'moletom' | 'jaleco' | 'terno' | 'colete' | 'toga' | 'polo' | 'jaqueta' | 'jardineira' | 'golaAlta' | 'xadrez' | 'futebol' | 'farda' | 'cardiga' | 'estampada' | 'jaquetaCapuz' | 'vestido' | 'esportiva' | 'armadura' | 'sem';
   parteBaixoEstudio?: 'comprida' | 'bermuda' | 'saia';
   calcadoEstudio?: 'sapato' | 'tenis' | 'tenisCanoAlto' | 'tenisEsportivo' | 'tenisCasual' | 'bota' | 'chinelo' | 'descalco';
   detalheCalcadoEstudio?: string;
@@ -85,6 +89,12 @@ export interface VoxelConfig {
   lente?: string;
   mascara?: string;
   pinta?: boolean;
+  sardas?: boolean;
+  covinhas?: boolean;
+  aparelho?: boolean;
+  sobrancelhaEstudio?: 'natural' | 'fina' | 'marcada' | 'arqueada';
+  acessorioAnimal?: 'nenhum' | 'coleira' | 'bandana' | 'placa';
+  corAcessorioAnimal?: string;
   /** Cílios: traço por cima do olho e pontinho no canto de fora. */
   cilios?: string;
   // extras

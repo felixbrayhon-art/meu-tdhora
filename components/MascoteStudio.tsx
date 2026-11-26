@@ -3,6 +3,8 @@ import VoxelAvatar, { POSES_ESCOLHIVEIS, VoxelPose } from './VoxelAvatar';
 import { VoxelAdereco, VoxelCabelo } from '../services/voxelCharacters';
 import {
   ADERECOS,
+  ACESSORIOS_ANIMAIS,
+  SOBRANCELHAS,
   CALCADOS,
   CALCAS,
   CAMISAS,
@@ -22,6 +24,7 @@ import {
   PRONTOS,
   SEXOS,
   configDoMascote,
+  trocarCamisa,
   gravar,
   ler,
 } from '../services/mascote';
@@ -196,7 +199,7 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
               itens={[{ id: 'criado', rotulo: 'Montar do zero' }, { id: 'pronto', rotulo: 'Personagem pronto' }] as const}
               valor={mascote.modo}
               nome="De onde partir"
-              onEscolher={(modo) => mudar({ modo })}
+              onEscolher={(modo) => mudar(modo === 'pronto' && mascote.modo === 'criado' && mascote.camisa === 'armadura' ? { ...trocarCamisa(mascote, 'camiseta'), modo } : { modo })}
             />
             {criado && (
               <label className="block">
@@ -221,7 +224,7 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
                 /* Trocar de personagem recomeça do zero: cada receita tem a sua
                    paleta, e levar o cabelo roxo do anterior para um cachorro
                    devolvia um boneco que ninguém pediu. */
-                onEscolher={(base) => mudar({ modo: 'pronto', base, pele: undefined, cabelo: undefined, estilo: undefined, olhos: undefined, corCamisa: undefined, corCalca: undefined, corCalcado: undefined, dir: undefined, esq: undefined, chapeu: undefined, corChapeu: undefined })}
+                onEscolher={(base) => mudar({ modo: 'pronto', base, pele: undefined, cabelo: undefined, estilo: undefined, olhos: undefined, corCamisa: undefined, corCalca: undefined, corCalcado: undefined, dir: undefined, esq: undefined, chapeu: undefined, corChapeu: undefined, antesArmadura: undefined })}
               />
             </Secao>
           )}
@@ -275,12 +278,22 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
                 <Rotulo>Barba e bigode</Rotulo>
                 <Opcoes itens={PELOS} valor={v.pelos} nome="Barba e bigode" onEscolher={(pelos) => mudar({ pelos })} />
               </div>
+              <div><Rotulo>Sobrancelhas</Rotulo><Opcoes itens={SOBRANCELHAS} valor={mascote.sobrancelha || 'natural'} nome="Sobrancelhas" onEscolher={(sobrancelha) => mudar({ sobrancelha })} /></div>
               <div className="grid gap-2 sm:grid-cols-2">
+                <Marcar ligado={!!mascote.sardas} onMudar={(sardas) => mudar({ sardas })}>Sardas</Marcar>
+                <Marcar ligado={!!mascote.covinhas} onMudar={(covinhas) => mudar({ covinhas })}>Covinhas</Marcar>
+                <Marcar ligado={!!mascote.aparelho} onMudar={(aparelho) => mudar({ aparelho })}>Aparelho nos dentes</Marcar>
                 <Marcar ligado={mascote.cilios ?? v.sexo === 'menina'} onMudar={(cilios) => mudar({ cilios })}>Cílios</Marcar>
                 <Marcar ligado={!!mascote.pinta} onMudar={(pinta) => mudar({ pinta })}>Pintinha no rosto</Marcar>
               </div>
             </Secao>
           )}
+
+          {aba === 'roupa' && bicho && <Secao titulo="Acessórios do animal">
+            <Opcoes itens={ACESSORIOS_ANIMAIS} valor={mascote.acessorioAnimal || 'nenhum'} nome="Acessórios do animal" onEscolher={(acessorioAnimal) => mudar({ acessorioAnimal })} />
+            {mascote.acessorioAnimal && mascote.acessorioAnimal !== 'nenhum' && <div><Rotulo>Cor do acessório</Rotulo><Cores cores={CORES_ROUPA} valor={mascote.corAcessorioAnimal || '#d77a3d'} nome="Cor do acessório do animal" onEscolher={(corAcessorioAnimal) => mudar({ corAcessorioAnimal })} /></div>}
+            {mascote.acessorioAnimal === 'placa' && <p className="text-xs text-[#806e60] dark:text-[#c6b9a6]">A plaquinha mostra o nome do mascote.</p>}
+          </Secao>}
 
           {aba === 'rosto' && criado && <Secao titulo="Óculos">
             <Opcoes itens={OCULOS} valor={v.oculos} nome="Óculos" onEscolher={(oculos) => mudar({ oculos })} />
@@ -290,14 +303,15 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
           {aba === 'roupa' && (criado ? (
             <>
               <Secao titulo="Roupa de cima">
-                <Opcoes itens={CAMISAS} valor={v.camisa} nome="Roupa de cima" onEscolher={(camisa) => mudar({ camisa })} />
+                <Opcoes itens={CAMISAS} valor={v.camisa} nome="Roupa de cima" onEscolher={(camisa) => mudar(trocarCamisa(mascote, camisa))} />
+                {v.camisa === 'armadura' && <p className="text-xs text-[#806e60] dark:text-[#c6b9a6]">O conjunto inclui elmo e botas. Você pode trocar cada peça abaixo.</p>}
                 <div>
                   <Rotulo>Cor</Rotulo>
                   <Cores cores={CORES_ROUPA} valor={v.corCamisa} nome="Cor da roupa de cima" onEscolher={(corCamisa) => mudar({ corCamisa })} />
                 </div>
                 {/* Listras, gravata, colete e a faixa da social saem desta cor:
                     sem ela a peça some dentro da camisa quando as duas batem. */}
-                {['listrada', 'social', 'terno', 'colete', 'jaleco', 'polo', 'jaqueta', 'jardineira', 'golaAlta'].includes(v.camisa) && (
+                {['listrada', 'social', 'terno', 'colete', 'jaleco', 'polo', 'jaqueta', 'jardineira', 'golaAlta', 'xadrez', 'futebol', 'farda', 'cardiga', 'estampada', 'jaquetaCapuz', 'vestido', 'esportiva', 'armadura'].includes(v.camisa) && (
                   <div>
                     <Rotulo>Cor do detalhe</Rotulo>
                     <Cores cores={CORES_ROUPA} valor={v.corDetalhe} nome="Cor do detalhe" onEscolher={(corDetalhe) => mudar({ corDetalhe })} />
@@ -373,7 +387,7 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
               {mascote.chapeu && mascote.chapeu !== 'nenhum' && (
                 <div>
                   <Rotulo>Cor do chapéu</Rotulo>
-                  <Cores cores={CORES_ROUPA} valor={mascote.corChapeu || cfg?.bone || cfg?.fivePanel || cfg?.quepe || cfg?.capacete || cfg?.balde || cfg?.touca || cfg?.boina} nome="Cor do chapéu" onEscolher={(corChapeu) => mudar({ corChapeu })} />
+                  <Cores cores={CORES_ROUPA} valor={mascote.corChapeu || cfg?.bone || cfg?.fivePanel || cfg?.elmoMedieval || cfg?.boneTras || cfg?.faixaCabeca || cfg?.lacoCabeca || cfg?.quepe || cfg?.capacete || cfg?.balde || cfg?.touca || cfg?.boina} nome="Cor do chapéu" onEscolher={(corChapeu) => mudar({ corChapeu })} />
                 </div>
               )}
             </Secao>
