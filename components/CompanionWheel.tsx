@@ -11,8 +11,9 @@ export interface ItemRoda {
   rotulo: string;
   cor: string;
   texto: string;
-  /** Quantas fatias o item ocupa. O item principal ocupa duas. */
-  peso?: number;
+  /** O que está acontecendo nesta função agora: o canal tocando, o tempo que
+   *  falta. Vai numa segunda linha, menor, só quando há o que dizer. */
+  detalhe?: string;
   /** Desenha como opção escolhida de um grupo (muda o papel ARIA). */
   marcado?: boolean;
   acao: () => void;
@@ -63,14 +64,16 @@ interface CompanionWheelProps {
 }
 
 const CompanionWheel: React.FC<CompanionWheelProps> = ({ itens, rotulo }) => {
-  const pesoTotal = itens.reduce((s, i) => s + (i.peso || 1), 0);
-  const fatia = 360 / pesoTotal;
-  // O item principal nasce centrado no topo, e a leitura segue no sentido horário.
-  let cursor = -90 - (fatia * (itens[0]?.peso || 1)) / 2;
+  // Todas as peças do mesmo tamanho. A principal era dupla, e uma peça com o
+  // dobro da largura das outras fazia o anel parecer torto em vez de hierárquico
+  // — a primazia dela se diz pela cor e pelo lugar (topo), que bastam.
+  const fatia = 360 / itens.length;
+  // A primeira peça nasce centrada no topo, e a leitura segue no sentido horário.
+  let cursor = -90 - fatia / 2;
 
   const pecas = itens.map((item) => {
     const g0 = cursor;
-    const g1 = cursor + fatia * (item.peso || 1);
+    const g1 = cursor + fatia;
     cursor = g1;
     const meio = rad((g0 + g1) / 2);
     const [cxr, cyr] = ponto((RAIO_INTERNO + RAIO_EXTERNO) / 2, meio);
@@ -102,14 +105,26 @@ const CompanionWheel: React.FC<CompanionWheelProps> = ({ itens, rotulo }) => {
             <path d={d} fill={item.cor} strokeWidth={9} className="stroke-transparent group-focus-visible:stroke-[#2a1f18]" />
           </svg>
           <span
-            // Palavra comprida ("CRONÔMETRO") encosta na borda curva do setor e
-            // é cortada pelo recorte: nesses rótulos a fonte diminui um ponto.
-            className={`absolute w-[80px] -translate-x-1/2 -translate-y-1/2 text-center font-black uppercase leading-[1.15] tracking-wide ${
-              item.rotulo.split(' ').some((palavra) => palavra.length > 9) ? 'text-[9px] tracking-normal' : 'text-[10px]'
-            }`}
+            // 70px e não 86: rótulo de duas palavras tem de quebrar em duas
+            // linhas, senão a segunda passa da borda curva e o recorte a come.
+            className="absolute w-[70px] -translate-x-1/2 -translate-y-1/2 text-center"
             style={{ left: cx, top: cy, color: item.texto }}
           >
-            {item.rotulo}
+            <span
+              // Palavra comprida ("CRONÔMETRO") encosta na borda curva do setor
+              // e é cortada pelo recorte: nesses rótulos a fonte diminui um ponto.
+              className={`block font-black uppercase leading-[1.15] tracking-wide ${
+                item.rotulo.split(' ').some((palavra) => palavra.length > 9) ? 'text-[9px] tracking-normal' : 'text-[10px]'
+              }`}
+            >
+              {item.rotulo}
+            </span>
+            {item.detalhe && (
+              /* O estado fica na peça: sem isso "Som" e "Cronômetro" só mudavam
+                 de cor, e a roda não dizia o que estava tocando nem quanto
+                 faltava — era preciso abrir cada painel para descobrir. */
+              <span className="mt-0.5 block text-[9px] font-bold leading-[1.1] opacity-80">{item.detalhe}</span>
+            )}
           </span>
         </button>
       ))}

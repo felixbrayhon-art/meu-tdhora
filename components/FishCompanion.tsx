@@ -141,7 +141,6 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const scrollRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const mascoteRef = useRef<HTMLButtonElement>(null);
-  const trocarLadoRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const registrar = () => { ultimaAtividadeRef.current = Date.now(); };
@@ -208,7 +207,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') fecharTudo(); };
     const fora = (e: PointerEvent) => {
       const alvo = e.target as Node;
-      if (!menuRef.current?.contains(alvo) && !mascoteRef.current?.contains(alvo) && !trocarLadoRef.current?.contains(alvo)) fecharTudo();
+      if (!menuRef.current?.contains(alvo) && !mascoteRef.current?.contains(alvo)) fecharTudo();
     };
     window.addEventListener('keydown', tecla);
     window.addEventListener('pointerdown', fora);
@@ -410,13 +409,33 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
 
   // Paleta terrosa do app: laranja para a ação principal, mostarda quando a
   // música está no ar, café para a animação escolhida e areia para o resto.
+  // A roda está em ordem de assunto, no sentido horário a partir do topo:
+  // primeiro falar com ele, depois as duas coisas que ficam ligadas enquanto
+  // você estuda (tempo e som), depois a motivação, e por último as três que são
+  // sobre o próprio boneco — como ele é, de que lado fica e sair.
+  //
+  // "Mudar de lado" era um comprimido solto no rodapé, fora da roda e com outra
+  // aparência: é uma função do boneco como as outras e agora mora junto delas.
+  const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const canalNoAr = activeChannel === 'MPB' ? 'MPB' : activeChannel === 'RELAX' ? 'Relax' : isPlayingRain ? 'Chuva' : undefined;
   const itensRoda: ItemRoda[] = [
-    { id: 'falar', rotulo: `Falar com ${companionName}`, peso: 2, cor: '#e96f34', texto: '#fffaf4', acao: () => { setMenuAberto(false); setIsOpen(true); } },
+    { id: 'falar', rotulo: 'Falar', detalhe: companionName, cor: '#e96f34', texto: '#fffaf4', acao: () => { setMenuAberto(false); setIsOpen(true); } },
+    {
+      // Ligar, parar e ajustar os minutos eram três coisas em duas fatias;
+      // é um assunto só, e o painel já dava conta das três.
+      id: 'cronometro',
+      rotulo: 'Cronômetro',
+      detalhe: timerAtivo ? mmss(timerSegundos) : undefined,
+      cor: timerAtivo ? '#7D7A36' : '#F4EBDD',
+      texto: timerAtivo ? '#f7f3ed' : '#6b5a49',
+      acao: () => setPainelTempo(true),
+    },
     {
       id: 'som',
       rotulo: 'Som',
-      cor: activeChannel || isPlayingRain ? '#D8A53A' : '#F4EBDD',
-      texto: activeChannel || isPlayingRain ? '#3a2a1d' : '#6b5a49',
+      detalhe: canalNoAr,
+      cor: canalNoAr ? '#D8A53A' : '#F4EBDD',
+      texto: canalNoAr ? '#3a2a1d' : '#6b5a49',
       acao: () => setPainelSom(true),
     },
     {
@@ -426,15 +445,6 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       texto: '#fffaf4',
       acao: () => setPainelMotivacao(true),
     },
-    {
-      // Ligar, parar e ajustar os minutos eram três coisas em duas fatias;
-      // é um assunto só, e o painel já dava conta das três.
-      id: 'cronometro',
-      rotulo: 'Cronômetro',
-      cor: timerAtivo ? '#7D7A36' : '#F4EBDD',
-      texto: timerAtivo ? '#f7f3ed' : '#6b5a49',
-      acao: () => setPainelTempo(true),
-    },
     ...(onAbrirEstudio ? [{
       id: 'aparencia',
       rotulo: 'Aparência',
@@ -442,7 +452,17 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       texto: '#2f2721',
       acao: () => { fecharTudo(); onAbrirEstudio(); },
     }] : []),
-    { id: 'sair', rotulo: 'Sair da tela', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
+    {
+      id: 'lado',
+      // Duas palavras, e não três: "mudar de lado" numa linha só passava da
+      // borda curva do setor e o recorte comia o começo.
+      rotulo: 'Trocar lado',
+      detalhe: lado === 'direita' ? 'Está à direita' : 'Está à esquerda',
+      cor: '#C8B6A0',
+      texto: '#2f2721',
+      acao: () => trocarLado(),
+    },
+    { id: 'sair', rotulo: 'Sair', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
   ];
   const emCena = presenca === 'aqui' && !isOpen;
   const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && emCena;
@@ -505,11 +525,6 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
       /* Escurece o fundo porque o boneco sai do canto e passa por cima do
          conteúdo: sem isso a roda disputaria leitura com a tela inteira. */
       <div className={`fixed inset-0 ${camadaEditor ? 'z-[1400]' : sobreAula ? 'z-[249]' : 'z-[55]'} bg-[#2a1f18]/40 backdrop-blur-[2px] animate-in fade-in duration-200`} onClick={fecharTudo} aria-hidden="true" />
-    )}
-    {aberto && (
-      <button ref={trocarLadoRef} type="button" onClick={trocarLado} className={`fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 rounded-full bg-[#473c33] px-4 py-3 text-xs font-bold text-white shadow-lg ${camadaEditor ? 'z-[1402]' : sobreAula ? 'z-[252]' : 'z-[62]'}`}>
-        Mover mascote para a {lado === 'direita' ? 'esquerda' : 'direita'}
-      </button>
     )}
     <div
       className={`fixed ${lado === 'direita' ? 'right-3 lg:right-6 items-end' : 'items-start'} ${camadaEditor ? 'z-[1401]' : sobreAula ? 'z-[250]' : 'z-[60]'} flex flex-col pointer-events-none [&>*]:pointer-events-auto motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out`}
