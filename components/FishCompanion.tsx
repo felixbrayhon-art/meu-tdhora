@@ -7,6 +7,7 @@ import VoxelAvatar, { VoxelPose } from './VoxelAvatar';
 import { nomeDoMascote } from '../services/mascote';
 import { useMascote } from '../contexts/CharacterContext';
 import CompanionWheel, { ItemRoda } from './CompanionWheel';
+import { ArrowLeft, ArrowRight, Heart, LogOut, MessageSquarePlus, Shirt, Timer, Volume2 } from './icons';
 import { getVoxelConfig } from '../services/voxelCharacters';
 
 interface FishCompanionProps {
@@ -419,12 +420,13 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
   const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   const canalNoAr = activeChannel === 'MPB' ? 'MPB' : activeChannel === 'RELAX' ? 'Relax' : isPlayingRain ? 'Chuva' : undefined;
   const itensRoda: ItemRoda[] = [
-    { id: 'falar', rotulo: 'Falar', detalhe: companionName, cor: '#e96f34', texto: '#fffaf4', acao: () => { setMenuAberto(false); setIsOpen(true); } },
+    { id: 'falar', rotulo: `Falar com ${companionName}`, icone: MessageSquarePlus, detalhe: companionName, cor: '#e96f34', texto: '#fffaf4', acao: () => { setMenuAberto(false); setIsOpen(true); } },
     {
       // Ligar, parar e ajustar os minutos eram três coisas em duas fatias;
       // é um assunto só, e o painel já dava conta das três.
       id: 'cronometro',
       rotulo: 'Cronômetro',
+      icone: Timer,
       detalhe: timerAtivo ? mmss(timerSegundos) : undefined,
       cor: timerAtivo ? '#7D7A36' : '#F4EBDD',
       texto: timerAtivo ? '#f7f3ed' : '#6b5a49',
@@ -433,6 +435,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     {
       id: 'som',
       rotulo: 'Som',
+      icone: Volume2,
       detalhe: canalNoAr,
       cor: canalNoAr ? '#D8A53A' : '#F4EBDD',
       texto: canalNoAr ? '#3a2a1d' : '#6b5a49',
@@ -441,6 +444,7 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     {
       id: 'motivacao',
       rotulo: 'Motivação',
+      icone: Heart,
       cor: '#8A9A7B',
       texto: '#fffaf4',
       acao: () => setPainelMotivacao(true),
@@ -448,21 +452,22 @@ const FishCompanion: React.FC<FishCompanionProps> = ({ studyProfile, characterId
     ...(onAbrirEstudio ? [{
       id: 'aparencia',
       rotulo: 'Aparência',
+      icone: Shirt,
       cor: '#C8B6A0',
       texto: '#2f2721',
       acao: () => { fecharTudo(); onAbrirEstudio(); },
     }] : []),
     {
       id: 'lado',
-      // Duas palavras, e não três: "mudar de lado" numa linha só passava da
-      // borda curva do setor e o recorte comia o começo.
-      rotulo: 'Trocar lado',
+      rotulo: lado === 'direita' ? 'Mover para a esquerda' : 'Mover para a direita',
+      // A seta aponta para onde ele vai, não para onde está.
+      icone: lado === 'direita' ? ArrowLeft : ArrowRight,
       detalhe: lado === 'direita' ? 'Está à direita' : 'Está à esquerda',
       cor: '#C8B6A0',
       texto: '#2f2721',
       acao: () => trocarLado(),
     },
-    { id: 'sair', rotulo: 'Sair', cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
+    { id: 'sair', rotulo: 'Sair da tela', icone: LogOut, cor: '#8f8375', texto: '#fffaf4', acao: () => { setMenuAberto(false); missaoRef.current = 'sair'; setPresenca('despedindo'); } },
   ];
   const emCena = presenca === 'aqui' && !isOpen;
   const rodaAberta = menuAberto && !painelTempo && !painelSom && !painelMotivacao && emCena;

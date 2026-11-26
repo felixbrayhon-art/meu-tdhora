@@ -1,4 +1,5 @@
 import React from 'react';
+import { IconProps } from './icons';
 
 // Menu em roda: as funções do companheiro viram setores de um anel em volta dele,
 // em vez de uma lista empilhada num canto. Cada setor é desenhado uma vez só e o
@@ -8,7 +9,10 @@ import React from 'react';
 
 export interface ItemRoda {
   id: string;
+  /** O nome da função. Não aparece escrito na peça: vai no title e no rótulo
+   *  acessível, que é o que o leitor de tela e o toque demorado dizem. */
   rotulo: string;
+  icone: React.ComponentType<IconProps>;
   cor: string;
   texto: string;
   /** O que está acontecendo nesta função agora: o canal tocando, o tempo que
@@ -98,6 +102,8 @@ const CompanionWheel: React.FC<CompanionWheelProps> = ({ itens, rotulo }) => {
           role={item.marcado === undefined ? 'menuitem' : 'menuitemradio'}
           aria-checked={item.marcado === undefined ? undefined : item.marcado}
           onClick={item.acao}
+          aria-label={item.rotulo}
+          title={item.rotulo}
           className="group absolute inset-0 outline-none transition-[filter] duration-150 hover:brightness-[0.93] active:brightness-90"
           style={{ clipPath: `path('${d}')` }}
         >
@@ -105,25 +111,19 @@ const CompanionWheel: React.FC<CompanionWheelProps> = ({ itens, rotulo }) => {
             <path d={d} fill={item.cor} strokeWidth={9} className="stroke-transparent group-focus-visible:stroke-[#2a1f18]" />
           </svg>
           <span
-            // 70px e não 86: rótulo de duas palavras tem de quebrar em duas
-            // linhas, senão a segunda passa da borda curva e o recorte a come.
-            className="absolute w-[70px] -translate-x-1/2 -translate-y-1/2 text-center"
+            className="absolute flex w-[74px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5"
             style={{ left: cx, top: cy, color: item.texto }}
           >
-            <span
-              // Palavra comprida ("CRONÔMETRO") encosta na borda curva do setor
-              // e é cortada pelo recorte: nesses rótulos a fonte diminui um ponto.
-              className={`block font-black uppercase leading-[1.15] tracking-wide ${
-                item.rotulo.split(' ').some((palavra) => palavra.length > 9) ? 'text-[9px] tracking-normal' : 'text-[10px]'
-              }`}
-            >
-              {item.rotulo}
-            </span>
+            {/* Desenho no lugar da palavra: sete rótulos escritos em volta de um
+                anel de 344px brigavam pela curva, e os de duas palavras tinham
+                de quebrar para não serem comidos pela borda. O nome continua
+                existindo no title e no aria-label. */}
+            <item.icone size={22} aria-hidden="true" />
             {item.detalhe && (
               /* O estado fica na peça: sem isso "Som" e "Cronômetro" só mudavam
                  de cor, e a roda não dizia o que estava tocando nem quanto
                  faltava — era preciso abrir cada painel para descobrir. */
-              <span className="mt-0.5 block text-[9px] font-bold leading-[1.1] opacity-80">{item.detalhe}</span>
+              <span className="block text-[9px] font-bold leading-[1.1] opacity-80">{item.detalhe}</span>
             )}
           </span>
         </button>
