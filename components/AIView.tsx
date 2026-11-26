@@ -175,11 +175,15 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
 
   return (
     <div className={`relative isolate w-full min-h-full min-w-0 rounded-[32px] selection:bg-amber-300/30 font-sans ${result && isDark ? 'bg-[#473c33] text-white' : 'bg-[#f7f3ed] text-[#473c33]'}`}>
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 xl:px-10 pt-6 sm:pt-10 pb-32 animate-in fade-in slide-in-from-bottom-10 duration-700">
+      {/* A folga de baixo é a do material gerado, que é longo. Na tela de
+          começar ela só criava barra de rolagem num cartão que já cabia. */}
+      <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 xl:px-10 animate-in fade-in slide-in-from-bottom-10 duration-700 ${result ? 'pt-6 sm:pt-10 pb-32' : 'pt-2 pb-2'}`}>
         {!result ? (
-          <div className="w-full max-w-6xl mx-auto py-2 md:py-4">
+          /* Esta tela cabe inteira: nada aqui exige rolagem, e rolar para achar
+             o botão de gerar era o começo de toda sessão de estudo. */
+          <div className="w-full max-w-6xl mx-auto">
             <section className="overflow-hidden rounded-[32px] border border-[#e9e0d4] bg-white shadow-[0_18px_48px_rgba(71,60,51,0.14)]">
-              <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#eee6d6] px-5 py-4 sm:px-7">
+              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eee6d6] px-5 py-2 sm:px-7">
                 <button onClick={onBack} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#8f8375] transition-colors hover:bg-[#f7f3ed] hover:text-[#473c33]">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
                   Voltar
@@ -191,33 +195,29 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
               </header>
 
               <div className="grid lg:grid-cols-[1.02fr_0.98fr]">
-                <div className="bg-[#abc270] px-6 py-8 text-[#473c33] sm:px-10 sm:py-12">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fecc73] text-[#473c33] shadow-lg shadow-black/10">
-                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18.5 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                <div className="flex flex-col justify-center bg-[#abc270] px-6 py-6 text-[#473c33] sm:px-10 sm:py-8">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#fecc73] text-[#473c33] shadow-lg shadow-black/10">
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18.5 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                   </div>
-                  <p className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-[#596b2a]">Material de estudo</p>
-                  <h1 className="mt-3 max-w-md text-3xl font-black uppercase leading-[0.98] tracking-tight text-[#473c33] sm:text-4xl">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Estudo pela grade' : 'Estudo pelo edital') : 'Estudo por tema'}</h1>
-                  <p className="mt-5 max-w-md text-sm font-semibold leading-relaxed text-[#473c33]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Escolha uma disciplina da sua grade e um assunto para montar o material.' : 'Escolha uma matéria do seu edital e um assunto para montar o material.') : `Informe um tema para criar um material de estudo para ${studyProfile.toLowerCase()}, com resumo, análise e bizu de memória.`}</p>
-                  <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                    <div className="rounded-2xl border border-[#f4f7ec]/70 bg-[#f4f7ec]/35 p-4">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#596b2a]">01</p>
-                      <p className="mt-2 text-sm font-black text-[#473c33]">Escolha o foco</p>
+                  <p className="mt-5 text-[10px] font-black uppercase tracking-[0.3em] text-[#596b2a]">Material de estudo</p>
+                  <h1 className="mt-2 max-w-md text-3xl font-black uppercase leading-[0.98] tracking-tight text-[#473c33]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Estudo pela grade' : 'Estudo pelo edital') : 'Estudo por tema'}</h1>
+                  <p className="mt-3 max-w-md text-sm font-semibold leading-relaxed text-[#473c33]">{strategicMode ? (studyProfile === 'FACULDADE' ? 'Escolha uma disciplina da sua grade e um assunto para montar o material.' : 'Escolha uma matéria do seu edital e um assunto para montar o material.') : `Informe um tema para criar um material de estudo para ${studyProfile.toLowerCase()}, com resumo, análise e bizu de memória.`}</p>
+                  {/* Os dois passos são orientação, não comando: numa janela
+                      baixa eles saem para o formulário caber sem rolagem. */}
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2 [@media(max-height:780px)]:hidden">
+                    <div className="rounded-2xl border border-[#f4f7ec]/70 bg-[#f4f7ec]/35 px-4 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[#596b2a]">01 · Escolha o foco</p>
                       <p className="mt-1 text-xs font-medium text-[#596b2a]">Defina o tema ou selecione no edital.</p>
                     </div>
-                    <div className="rounded-2xl border border-[#f4f7ec]/70 bg-[#f4f7ec]/35 p-4">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#596b2a]">02</p>
-                      <p className="mt-2 text-sm font-black text-[#473c33]">Crie seu material</p>
-                      <p className="mt-1 text-xs font-medium text-[#596b2a]">Receba resumo, análise e bizu de memória.</p>
+                    <div className="rounded-2xl border border-[#f4f7ec]/70 bg-[#f4f7ec]/35 px-4 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[#596b2a]">02 · Crie seu material</p>
+                      <p className="mt-1 text-xs font-medium text-[#596b2a]">Resumo, análise e bizu de memória.</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="px-6 py-8 sm:px-10 sm:py-12">
-                  <div className="mb-7">
-                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#a79c8e]">Vamos começar</p>
-                    <h2 className="mt-2 text-2xl font-black tracking-tight text-[#473c33]">Escolha o que vai estudar</h2>
-                    <p className="mt-2 text-sm font-medium leading-relaxed text-[#8f8375]">Ajuste o tema e o estilo da explicação.</p>
-                  </div>
+                <div className="flex flex-col justify-center px-6 py-6 sm:px-10 sm:py-8">
+                  <h2 className="mb-4 text-2xl font-black tracking-tight text-[#473c33]">Escolha o que vai estudar</h2>
 
                   {loadError && (
                     <div role="alert" className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">
@@ -226,7 +226,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                     </div>
                   )}
 
-                  <EditalToggle editalConfig={editalConfig} modoEdital={!!strategicMode} onModoEdital={onModoEdital} studyProfile={studyProfile} className="mb-4" />
+                  <EditalToggle editalConfig={editalConfig} modoEdital={!!strategicMode} onModoEdital={onModoEdital} studyProfile={studyProfile} className="mb-3" />
                   {strategicMode && editalConfig?.isActive ? (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <label className="block">
@@ -237,7 +237,7 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                             setSelectedSubject(e.target.value);
                             setSelectedTopic('');
                           }}
-                          className="w-full appearance-none rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15"
+                          className="w-full appearance-none rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-3 text-sm font-semibold text-[#473c33] outline-none transition-all focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15"
                         >
                           <option value="">Selecionar matéria...</option>
                           {editalConfig.subjects.map((s, i) => <option key={i} value={s.name}>{s.name}</option>)}
@@ -245,34 +245,35 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
                       </label>
                       <label className="block">
                         <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Assunto específico</span>
-                        <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)} disabled={!selectedSubject} className="w-full appearance-none rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15 disabled:cursor-not-allowed disabled:opacity-50">
+                        <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)} disabled={!selectedSubject} className="w-full appearance-none rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-3 text-sm font-semibold text-[#473c33] outline-none transition-all focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15 disabled:cursor-not-allowed disabled:opacity-50">
                           <option value="">Selecionar assunto...</option>
                           {editalConfig.subjects.find((s) => s.name === selectedSubject)?.topics.map((t, i) => <option key={i} value={t}>{t}</option>)}
                         </select>
                       </label>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    /* Matéria e assunto lado a lado, como já era no modo
+                       edital: empilhados custavam 70px de altura por nada — são
+                       dois campos curtos. */
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <label className="block">
                         <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Matéria <span className="font-bold normal-case tracking-normal text-[#a79c8e]">(opcional)</span></span>
-                        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ex.: Direito Penal" className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" onKeyDown={(e) => e.key === 'Enter' && canGenerate && handleGenerate()} />
+                        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ex.: Direito Penal" className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-3 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" onKeyDown={(e) => e.key === 'Enter' && canGenerate && handleGenerate()} />
                       </label>
                       <label className="block">
                         <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Assunto</span>
-                        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Ex.: Legítima defesa" className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" onKeyDown={(e) => e.key === 'Enter' && canGenerate && handleGenerate()} />
-                        <span className="mt-2 block text-[10px] font-medium text-[#a79c8e]">A matéria ajuda a IA a achar o material certo no seu acervo.</span>
+                        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Ex.: Legítima defesa" className="w-full rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-3 text-sm font-semibold text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" onKeyDown={(e) => e.key === 'Enter' && canGenerate && handleGenerate()} />
                       </label>
                     </div>
                   )}
 
 
-                  <label className="group mt-5 block">
+                  <label className="group mt-4 block">
                     <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#725442]">Estilo da explicação</span>
-                    <textarea value={explanationStyle} onChange={(e) => setExplanationStyle(e.target.value)} placeholder="Ex.: Explique de forma simples, técnica e analítica." className="min-h-[104px] w-full resize-none rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-4 text-sm font-medium text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" />
-                    <span className="mt-2 block text-[10px] font-medium text-[#a79c8e]">Uma orientação objetiva ajuda a IA a adaptar o material.</span>
+                    <textarea value={explanationStyle} onChange={(e) => setExplanationStyle(e.target.value)} placeholder="Ex.: Explique de forma simples, técnica e analítica." className="min-h-[64px] w-full resize-none rounded-2xl border border-[#e3d9ca] bg-[#fdfbf7] px-4 py-3 text-sm font-medium text-[#473c33] outline-none transition-all placeholder:text-[#b7ac9e] focus:border-[#f5b84b] focus:ring-4 focus:ring-[#f5b84b]/15" />
                   </label>
 
-                  <button onClick={() => handleGenerate()} disabled={!canGenerate} className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#473c33] px-5 py-4 text-xs font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_20px_rgba(71,60,51,0.18)] transition-all hover:bg-[#5a493f] disabled:cursor-not-allowed disabled:bg-[#d9d0c4] disabled:text-[#a79c8e] disabled:shadow-none">
+                  <button onClick={() => handleGenerate()} disabled={!canGenerate} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#473c33] px-5 py-3.5 text-xs font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_20px_rgba(71,60,51,0.18)] transition-all hover:bg-[#5a493f] disabled:cursor-not-allowed disabled:bg-[#d9d0c4] disabled:text-[#a79c8e] disabled:shadow-none">
                     Gerar material
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                   </button>
