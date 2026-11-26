@@ -204,9 +204,12 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
             {/* Parado enquanto se escolhem as peças, andando só quando a
                 escolha é justamente a animação. Mexendo, cada quadro reescreve
                 a transformação de centenas de cubos, e a tela andava aos
-                trancos a cada clique; parado, o boneco ainda deixa de desenhar
-                as três faces de cada cubo que a câmera não vê. */}
-            <VoxelAvatar characterId={characterId} mascote={mascote} altura={240} pose={pose} angulo={angulo} estatico={secao !== 'fazendo'} />
+                trancos a cada clique.
+
+                `parado` e não `estatico`: o estático também corta as faces que
+                a câmera não veria em repouso, e aqui a pose gira as juntas —
+                o Guaxinim Pescador, que segura vara e peixe, saía desmontado. */}
+            <VoxelAvatar characterId={characterId} mascote={mascote} altura={240} pose={pose} angulo={angulo} parado={secao !== 'fazendo'} />
           </div>
           <h2 className="mt-2 text-center text-xl font-black uppercase tracking-tight text-[#473c33] dark:text-[#f4ebdd]">{cfg?.nome || 'Mascote'}</h2>
           <div className="mt-3 flex gap-1 rounded-2xl bg-[#ece2d2] p-1 dark:bg-white/5" role="radiogroup" aria-label="De que lado ver o mascote">

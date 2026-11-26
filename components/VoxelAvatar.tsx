@@ -1803,14 +1803,20 @@ interface VoxelAvatarProps {
   mascote?: Mascote;
   /** 'rosto' mostra só a cabeça, enquadrada: é o avatar redondo pequeno. */
   recorte?: 'inteiro' | 'rosto';
-  /** Monta, posiciona e para. Para listas com muitos bonecos na tela de uma vez. */
+  /** Monta, posiciona e para, e ainda deixa de criar as três faces de cada
+   *  cubo que a câmera não vê. Só vale com o boneco em repouso: com uma pose
+   *  que gire as juntas, a face que faltava é justamente a que aparece, e o
+   *  boneco sai vazado. Para listas com muitos bonecos na tela de uma vez. */
   estatico?: boolean;
+  /** Para a animação sem cortar face nenhuma: o boneco fica igual, só não se
+   *  mexe. É o que serve quando a pose não é de repouso. */
+  parado?: boolean;
   /** Giro de descanso em graus: 0 de frente, -90 de perfil, 180 de costas. */
   angulo?: number;
   className?: string;
 }
 
-const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, mascote, recorte = 'inteiro', estatico = false, angulo, className = '' }) => {
+const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, pose = 'estudando', fone = false, cronometro = false, alarme = false, onSaiuDaTela, onChegou, mascote, recorte = 'inteiro', estatico = false, parado = false, angulo, className = '' }) => {
   // No modo 'criado' não existe personagem de origem: a receita sai inteira das
   // peças que o aluno escolheu no estúdio.
   const criado = mascote?.modo === 'criado';
@@ -2111,14 +2117,14 @@ const VoxelAvatar: React.FC<VoxelAvatarProps> = ({ characterId, altura = 132, po
         desloc = 0;
         palco.style.transform = '';
       }
-      if (!estatico) quadro = requestAnimationFrame(desenhar);
+      if (!estatico && !parado) quadro = requestAnimationFrame(desenhar);
     };
     quadro = requestAnimationFrame(desenhar);
     return () => { cancelAnimationFrame(quadro); palco.textContent = ''; palco.style.transform = ''; };
     // `chaveAjustes` entra como dependência no lugar do objeto: a cada render o
     // pai cria um objeto novo, e comparar por identidade remontaria o boneco
     // inteiro sem nada ter mudado.
-  }, [idBase, criado, altura, chaveMascote, recorte, estatico, angulo]);
+  }, [idBase, criado, altura, chaveMascote, recorte, estatico, parado, angulo]);
 
   if (!criado && !getVoxelConfig(idBase)) return null;
   return (
