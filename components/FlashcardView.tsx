@@ -5,7 +5,7 @@ import { generateStudyContent } from '../services/geminiService';
 import LoadingFish from './LoadingFish';
 import ReactMarkdown from 'react-markdown';
 import { RichTextEditor } from './RichTextEditor';
-import { ChevronLeft, Brain, Plus, Trash2, FolderPlus, Sparkles, Check, X, RotateCcw, HelpCircle, Layers, Maximize2, Minimize2, Pencil } from './icons';
+import { ChevronLeft, Brain, Plus, Trash2, FolderPlus, Check, X, RotateCcw, HelpCircle, Layers, Maximize2, Minimize2, Pencil } from './icons';
 import FlashcardDeck3D from './FlashcardDeck3D';
 import StudyBook3D from './StudyBook3D';
 import CustomColorField from './CustomColorField';
@@ -408,7 +408,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
                 <div className="lg:col-span-2 space-y-8">
                   <button onClick={() => setShowAIModal(true)} className="w-full bg-white/5 border-2 border-dashed border-white/10 p-12 rounded-[50px] hover:border-orange-300/50 hover:bg-orange-300/5 transition-all group flex flex-col items-center justify-center gap-6">
                     <div className="w-20 h-20 bg-orange-300/10 text-orange-300 rounded-[30px] flex items-center justify-center group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
-                      <Sparkles className="w-10 h-10" />
+                      <Brain className="w-10 h-10" />
                     </div>
                     <div className="text-center">
                       <h4 className="text-2xl font-black uppercase tracking-tight mb-2">Gerar com IA</h4>
@@ -764,7 +764,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards, setFlashcards
               <div className="absolute top-0 left-0 w-full h-2 bg-orange-300 shadow-[0_0_20px_rgba(249,115,22,0.5)]"></div>
 
               <div className="w-20 h-20 bg-orange-300/10 text-orange-300 rounded-[30px] flex items-center justify-center mb-10 shadow-xl mx-auto">
-                <Sparkles className="w-12 h-12" />
+                <Brain className="w-12 h-12" />
               </div>
 
               <h3 className="text-4xl font-black mb-4 uppercase tracking-tighter text-center">

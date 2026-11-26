@@ -3,7 +3,7 @@ import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../src/lib/firebase';
 import { getQuickExplanation } from '../services/geminiService';
 import { StudyProfile } from '../types';
-import { FolderOpen, Search, Loader2, ArrowLeft, BookOpen, Sparkles, Clock, Volume2, VolumeX, Play, Pause, RotateCcw, FileText, Download, Plus, ArrowRight, HelpCircle, Maximize2, FileIcon, Check, Upload, Trash2, Share2, Database, Cloud, Laptop } from './icons';
+import { FolderOpen, Search, Loader2, ArrowLeft, BookOpen, Clock, Volume2, VolumeX, Play, Pause, RotateCcw, FileText, Download, Plus, ArrowRight, HelpCircle, Maximize2, FileIcon, Check, Upload, Trash2, Share2, Database, Cloud, Laptop } from './icons';
 
 // Realtime Database (shared library) base URL + auth helper.
 // The DB rules require auth != null — every REST call must carry the signed-in
@@ -1161,7 +1161,6 @@ export const DriveReader: React.FC<DriveReaderProps> = ({ onBack, studyProfile =
 
                     {filteredFiles.length === 0 && !firebaseSyncLoading && (
                       <button onClick={handleInitializeSampleFirebase} className="text-[#fecc73] hover:text-[#ffb22a] text-[9px] font-black uppercase tracking-widest flex items-center gap-1 bg-[#fff6e8] px-2.5 py-1.5 rounded-xl transition-all" title="Escreve livros de amostra diretamente no seu banco para teste instantâneo!">
-                        <Sparkles className="w-3 h-3 text-[#fecc73]" />
                         Sem Dados? Inicializar com Livros USP/TDAH
                       </button>
                     )}
@@ -1286,7 +1285,6 @@ export const DriveReader: React.FC<DriveReaderProps> = ({ onBack, studyProfile =
                 {/* Mode Selector Tabs inside the viewer */}
                 <div className="flex bg-gray-950/80 p-1 rounded-xl border border-white/5 self-start sm:self-auto shrink-0">
                   <button onClick={() => setViewerMode('IMAGE_PAGES')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1 ${viewerMode === 'IMAGE_PAGES' ? 'bg-[#fec868] text-white' : 'text-gray-400 hover:text-white'}`}>
-                    <Sparkles className="w-3 h-3" />
                     Leitor Seguro (Páginas/Prints 📸)
                   </button>
                   <button onClick={() => setViewerMode('IFRAME_PDF')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1 ${viewerMode === 'IFRAME_PDF' ? 'bg-[#fec868] text-white' : 'text-gray-400 hover:text-white'}`}>
@@ -1442,7 +1440,6 @@ export const DriveReader: React.FC<DriveReaderProps> = ({ onBack, studyProfile =
                   Foco / Ambient
                 </button>
                 <button onClick={() => setSidebarTab('AI')} className={`flex-1 py-3 px-1 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${sidebarTab === 'AI' ? 'bg-white text-[#fec868] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-                  <Sparkles className="w-3.5 h-3.5" />
                   Bizu IA
                 </button>
               </div>
@@ -1571,7 +1568,6 @@ Use este espaço-rascunho para registrar fórmulas, conceitos críticos, ideias 
                 {sidebarTab === 'AI' && (
                   <div className="flex-1 flex flex-col min-h-0 space-y-4">
                     <div className="bg-gradient-to-br from-[#fff6e8] to-[#fff6e8]/50 rounded-2xl p-4 border border-[#fff0d5]/50 flex gap-3">
-                      <Sparkles className="w-5 h-5 text-[#fecc73] shrink-0 mt-0.5 animate-bounce" />
                       <div>
                         <h6 className="font-extrabold text-[#ac6e00] text-[10px] uppercase tracking-widest">RASCUNHO RÁPIDO DO BIZU</h6>
                         <p className="text-[10px] text-gray-500 leading-relaxed font-semibold mt-1">Cole parágrafos complexos do PDF abaixo para o Bizu traduzir instantaneamente com analogias para mentes com TDAH.</p>

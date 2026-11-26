@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, Briefcase, GraduationCap, Sparkles } from './icons';
+import { ArrowLeft, ArrowRight, BookOpen, Briefcase, GraduationCap } from './icons';
 import FishLogo from './FishLogo';
 import { RestoreBackupLink } from './BackupControls';
 import { StudyProfile } from '../types';
@@ -130,7 +130,6 @@ const ProfileSelection: React.FC<ProfileSelectionProps> = ({ initialName, onNext
 
                 <div className="relative z-10 py-4 pl-2 md:py-8">
                   <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#c9773e]/20 bg-white/55 px-3.5 py-2 text-[9px] font-black uppercase tracking-[.18em] text-[#a65c2f] dark:border-[#fec868]/20 dark:bg-white/[.06] dark:text-[#fed386]">
-                    <Sparkles className="h-3.5 w-3.5" />
                     Vamos começar
                   </div>
                   <h1 id="profile-title" className="max-w-md font-logo text-[clamp(2rem,4vw,3.35rem)] uppercase leading-[.98] tracking-tight text-[#473c33] dark:text-[#f2efd2]">

@@ -5,7 +5,7 @@ import LoadingFish from './LoadingFish';
 import { scrollMainToTop } from '../utils/scrollTop';
 import CharacterTip from './CharacterTip';
 import { MEDICINA_CURRICULUM, MedicinaPeriod } from '../services/medicinaCurriculum';
-import { BookOpen, Sparkles, Plus, Trash2, HelpCircle, Calendar, Clock, SkipForward } from './icons';
+import { BookOpen, Plus, Trash2, HelpCircle, Calendar, Clock, SkipForward } from './icons';
 import { topicosDoConteudo } from '../utils/editalTopicos';
 
 interface EditalSetupProps {
@@ -389,7 +389,7 @@ const EditalSetup: React.FC<EditalSetupProps> = ({ studyProfile = 'VESTIBULAR', 
                 {/* Medicina Pre-loaded course toggle */}
                 <div className="curriculum-template flex flex-col gap-3 rounded-2xl border border-[#eadfcf] bg-[#fbf7f0] p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#fff0d5] text-[#b65f2e]"><Sparkles className="h-4 w-4" /></span>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#fff0d5] text-[#b65f2e]"><BookOpen className="h-4 w-4" /></span>
                     <div className="space-y-0.5">
                       <h3 className="text-xs font-black uppercase tracking-wide text-[#473c33]">Matriz pronta · Medicina Multivix</h3>
                       <p className="text-xs leading-relaxed text-gray-500">Preencha a grade modelo automaticamente ou continue digitando sua própria grade.</p>

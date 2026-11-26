@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, Compass, Zap, HelpCircle, Clock, Book, Trophy, Sparkles, AlertCircle, FileText } from './icons';
+import { Target, Compass, Zap, HelpCircle, Clock, Book, Trophy, AlertCircle, FileText } from './icons';
 
 interface FishInfo {
   id: string;
@@ -73,7 +73,7 @@ const FISHES: FishInfo[] = [
     source: 'Do Perfil',
     colorClass: 'text-[#fdb887]',
     bgClass: 'bg-[#fff1e8] border-[#fed6ba]',
-    icon: <Sparkles className="w-10 h-10" />,
+    icon: <Compass className="w-10 h-10" />,
   },
   {
     id: 'elite',
@@ -91,7 +91,7 @@ const FISHES: FishInfo[] = [
     source: 'Da Aula Direta e Icons',
     colorClass: 'text-[#fec868]',
     bgClass: 'bg-[#fff6e8] border-[#fedda1]',
-    icon: <Sparkles className="w-10 h-10" />,
+    icon: <Zap className="w-10 h-10" />,
   },
   {
     id: 'foco',
@@ -114,7 +114,6 @@ const FishCatalog: React.FC<FishCatalogProps> = ({ onBack }) => {
       <div className="bg-white px-8 py-8 md:py-10 shadow-sm border-b border-gray-100 flex-shrink-0 flex items-center justify-between sticky top-0 z-30">
         <div>
           <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase flex items-center gap-3">
-            <Sparkles className="w-8 h-8 text-[#fdad74]" />
             Catálogo de Peixes
           </h2>
           <p className="text-gray-500 mt-1 font-medium tracking-wide uppercase text-sm">TDAH Ora Study</p>
