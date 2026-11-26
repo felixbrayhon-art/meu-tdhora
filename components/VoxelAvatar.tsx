@@ -1030,6 +1030,13 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
       cfg.bicho.rabo.forEach((_, i) => B(rabo as Pai, 7 - i, 7 - i, 18, 0, 3 - i * 4, -17 - i * 14, tom(cfg.skin, 1.2)));
     } else if (especie === 'raposa') {
       [24, 30, 34, 29].forEach((tamanho, i) => B(rabo as Pai, tamanho, tamanho, tamanho + 5, 0, 2 - i * 13, -14 - i * 17, cfg.bicho!.rabo[i]));
+    } else if (especie === 'guaxinim') {
+      // Rabo grosso e comprido, com os anéis bem marcados e a ponta escura.
+      // Os gomos quase não afinam: é um rabo de guaxinim, não de raposa.
+      // Gomos encostados um no outro: com folga entre eles o rabo virava uma
+      // corrente de caixas soltas no ar atrás do boneco.
+      [27, 26, 25, 23, 20].forEach((tamanho, i) =>
+        B(rabo as Pai, tamanho, tamanho, tamanho + 2, 0, 4 - i * 6, -12 - i * 13, cfg.bicho!.rabo[i] || cfg.bicho!.rabo[0], 1, ' rotateX(-12deg)'));
     } else {
       cfg.bicho.rabo.forEach((cor, i) => B(rabo as Pai, esc[i], esc[i], esc[i] + 2, 0, 2 - i * 13, -14 - i * 17, cor));
     }
@@ -1209,6 +1216,8 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
         } else if (formato === 'redonda') {
           B(cabeca, 30, 26, 18, x, -100, -4, orelha);
           B(cabeca, 17, 15, 11, x, -98, 5, dentro);
+          // No guaxinim a orelha é debruada de branco na borda de cima.
+          if (especie === 'guaxinim') B(cabeca, 26, 5, 14, x, -111, -2, tom(cfg.skin, 1.34));
         } else {
           // comprida: a orelha de coelho, levemente aberta para fora.
           B(cabeca, 18, 54, 16, x + lado * 4, -116, -4, orelha, 1, ` rotateZ(${lado * 7}deg)`);
@@ -1268,7 +1277,24 @@ const montar = (cfg: VoxelConfig, cena: Pai, variantePescador: 1 | 2 | 3 = 3, va
       B(cabeca, 13, 7, 19, -orelhaX, -117, -4, '#c55d17'); B(cabeca, 13, 7, 19, orelhaX, -117, -4, '#c55d17');
       B(cabeca, 12, 4, 4, -31, -22, 48, '#f8e6c8'); B(cabeca, 12, 4, 4, 31, -22, 48, '#f8e6c8');
     }
-    if (cfg.bicho.mascara) {
+    if (cfg.bicho.mascara && especie === 'guaxinim') {
+      // A máscara do guaxinim não é uma faixa de ponta a ponta: são duas
+      // manchas, uma em volta de cada olho, separadas por uma listra clara que
+      // desce da testa até o focinho. Sem essa listra ele vira um bandido de
+      // antifaz; com ela, guaxinim.
+      const escuro = cfg.bicho.mascara;
+      const claro = tom(cfg.skin, 1.3);
+      [-1, 1].forEach((lado) => {
+        B(cabeca, 34, 30, 10, lado * 24, -48, 44, escuro);
+        B(cabeca, 16, 14, 9, lado * 38, -62, 45, escuro, 1, ` rotateZ(${lado * 18}deg)`);
+        B(cabeca, 30, 7, 8, lado * 24, -66, 46, claro);
+        B(cabeca, 20, 6, 8, lado * 28, -31, 46, escuro);
+      });
+      B(cabeca, 13, 46, 9, 0, -46, 45, claro);
+      // Touca escura entre as orelhas, que é por onde o cinza do guaxinim
+      // escurece antes de virar máscara.
+      B(cabeca, 92, 12, 90, 0, -84, 0, tom(cfg.skin, 0.7));
+    } else if (cfg.bicho.mascara) {
       B(cabeca, 94, 28, 10, 0, -46, 44, cfg.bicho.mascara);
       B(cabeca, 30, 20, 8, -21, -62, 45, cfg.bicho.mascara); B(cabeca, 30, 20, 8, 21, -62, 45, cfg.bicho.mascara);
       if (pescador) {

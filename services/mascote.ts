@@ -94,7 +94,9 @@ export const ESPECIES: { id: EspecieId; rotulo: string; orelha?: VoxelOrelha; ma
   { id: 'cachorro', rotulo: 'Cachorro', orelha: 'caida', focinhoClaro: 1.3 },
   { id: 'gato', rotulo: 'Gato', orelha: 'ponta', focinhoClaro: 1.25 },
   { id: 'raposa', rotulo: 'Raposa', orelha: 'ponta', focinhoClaro: 1.35 },
-  { id: 'guaxinim', rotulo: 'Guaxinim', orelha: 'ponta', mascara: true, focinhoClaro: 1.3 },
+  // Orelha do guaxinim é pequena e redonda, não de ponta: de ponta ele saía
+  // igual a uma raposa cinzenta de máscara.
+  { id: 'guaxinim', rotulo: 'Guaxinim', orelha: 'redonda', mascara: true, focinhoClaro: 1.3 },
   { id: 'urso', rotulo: 'Urso', orelha: 'redonda', focinhoClaro: 1.2 },
   { id: 'coelho', rotulo: 'Coelho', orelha: 'comprida', focinhoClaro: 1.3 },
   { id: 'rato', rotulo: 'Rato', orelha: 'redonda', focinhoClaro: 1.28 },
@@ -455,7 +457,10 @@ const doZero = (m: Mascote): VoxelConfig => {
       dentro: mult(v.pele, 1.28),
       focinho: mult(v.pele, especie.focinhoClaro || 1.25),
       nariz: mult(v.pele, 0.38),
-      rabo: v.especie === 'capivara' ? [] : v.especie === 'arara' ? [v.pele, '#247cac', '#e7be3f', '#247cac'] : v.especie === 'coelho' || v.especie === 'urso' ? [mult(v.pele, 1.15)] : v.especie === 'raposa' ? [v.pele, v.pele, mult(v.pele, 0.9), mult(v.pele, 1.35)] : [v.pele, mult(v.pele, 0.72), v.pele, mult(v.pele, 0.72)],
+      // O rabo do guaxinim é o traço que todo mundo reconhece: cinco anéis
+      // alternados, começando claro e terminando escuro na ponta.
+      rabo: v.especie === 'guaxinim' ? [mult(v.pele, 1.12), mult(v.pele, 0.42), mult(v.pele, 1.12), mult(v.pele, 0.42), mult(v.pele, 0.3)]
+        : v.especie === 'capivara' ? [] : v.especie === 'arara' ? [v.pele, '#247cac', '#e7be3f', '#247cac'] : v.especie === 'coelho' || v.especie === 'urso' ? [mult(v.pele, 1.15)] : v.especie === 'raposa' ? [v.pele, v.pele, mult(v.pele, 0.9), mult(v.pele, 1.35)] : [v.pele, mult(v.pele, 0.72), v.pele, mult(v.pele, 0.72)],
       orelhaTipo: especie.orelha,
       ...(especie.mascara ? { mascara: mult(v.pele, 0.5) } : {}),
     };

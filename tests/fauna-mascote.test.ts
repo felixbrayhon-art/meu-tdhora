@@ -15,6 +15,15 @@ describe('animais brasileiros no estúdio', () => {
     const mascote = limpar({ modo: 'criado', especie, pele: '#a87550' });
     expect(configDoMascote(undefined, mascote)?.bicho?.especie).toBe(especie);
   });
+  it('dá ao guaxinim orelha redonda e o rabo de cinco anéis alternados', () => {
+    const cfg = configDoMascote(undefined, limpar({ modo: 'criado', especie: 'guaxinim', pele: '#bdb3a8' }));
+    expect(cfg?.bicho?.orelhaTipo).toBe('redonda');
+    expect(cfg?.bicho?.mascara).toBeTruthy();
+    const rabo = cfg?.bicho?.rabo || [];
+    expect(rabo).toHaveLength(5);
+    // Claro, escuro, claro, escuro, ponta: dois anéis seguidos nunca repetem.
+    expect(rabo.filter((cor, i) => i > 0 && cor === rabo[i - 1])).toHaveLength(0);
+  });
   it('não adiciona cauda longa à capivara', () => {
     expect(configDoMascote(undefined, { modo: 'criado', especie: 'capivara' })?.bicho?.rabo).toEqual([]);
   });
