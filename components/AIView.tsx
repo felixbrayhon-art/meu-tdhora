@@ -200,7 +200,11 @@ const AIView: React.FC<AIViewProps> = ({ onBack, onNewContent, onSaveToNotebook,
               {/* Duas colunas já a partir de 900px: entre 900 e 1024 a tela
                   empilhava e passava a pedir rolagem de novo. */}
               <div className="grid min-[900px]:grid-cols-[1.02fr_0.98fr]">
-                <div className="flex flex-col justify-center bg-[#abc270] px-6 py-6 text-[#473c33] sm:px-10 sm:py-8">
+                {/* Janela estreita e baixa ao mesmo tempo (o cartão empilha e
+                    não há altura para os dois blocos): a coluna de apresentação
+                    sai e fica só o formulário, que é o que a tela faz. O
+                    cabeçalho acima já diz de que tela se trata. */}
+                <div className="flex flex-col justify-center bg-[#abc270] px-6 py-6 text-[#473c33] sm:px-10 sm:py-8 [@media(max-width:899px)_and_(max-height:820px)]:hidden">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#fecc73] text-[#473c33] shadow-lg shadow-black/10">
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18.5 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                   </div>
