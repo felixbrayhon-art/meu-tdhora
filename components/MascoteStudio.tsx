@@ -162,6 +162,17 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
   // ela nunca aparecer só com cabeçalhos fechados.
   const PRIMEIRA: Record<AbaMascote, string> = { quem: 'partir', rosto: 'pele', roupa: criado ? 'cima' : 'prontoRoupa', extras: 'maos' };
   const [secao, setSecao] = useState<string>('partir');
+  // De que lado o boneco é visto. Metade das peças mora atrás da cabeça — o
+  // capuz do moletom, o nó da bandana, o rabo de cavalo, as tranças, o elmo, a
+  // coleira — e até aqui o estúdio só mostrava a frente: dava para escolher o
+  // que nunca se veria. -20 é o descanso que o VoxelAvatar usa sozinho.
+  const [angulo, setAngulo] = useState(-20);
+  const ANGULOS: { valor: number; rotulo: string }[] = [
+    { valor: -20, rotulo: 'Frente' },
+    { valor: -90, rotulo: 'Perfil' },
+    { valor: 180, rotulo: 'Costas' },
+    { valor: 90, rotulo: 'Outro lado' },
+  ];
   const abrirAba = (id: AbaMascote) => { setAba(id); setSecao(PRIMEIRA[id]); };
   const dobra = (id: string) => ({ aberta: secao === id, onAbrir: () => setSecao(secao === id ? '' : id) });
 
@@ -190,9 +201,25 @@ const MascoteStudio: React.FC<MascoteStudioProps> = ({ characterId, onBack, onCo
             continua à vista e a escolha pode ser julgada sem subir de novo. */}
         <div className="rounded-[32px] border border-[#e9e0d4] bg-[#f7f1e6] p-5 dark:border-white/10 dark:bg-[#24251f] lg:sticky lg:top-4">
           <div className="flex justify-center">
-            <VoxelAvatar characterId={characterId} mascote={mascote} altura={240} pose={pose} />
+            <VoxelAvatar characterId={characterId} mascote={mascote} altura={240} pose={pose} angulo={angulo} />
           </div>
           <h2 className="mt-2 text-center text-xl font-black uppercase tracking-tight text-[#473c33] dark:text-[#f4ebdd]">{cfg?.nome || 'Mascote'}</h2>
+          <div className="mt-3 flex gap-1 rounded-2xl bg-[#ece2d2] p-1 dark:bg-white/5" role="radiogroup" aria-label="De que lado ver o mascote">
+            {ANGULOS.map(({ valor, rotulo }) => (
+              <button
+                key={valor}
+                type="button"
+                role="radio"
+                aria-checked={angulo === valor}
+                onClick={() => setAngulo(valor)}
+                className={`min-h-9 flex-1 rounded-xl px-1 text-[9px] font-black uppercase tracking-widest transition-colors ${
+                  angulo === valor ? 'bg-[#473c33] text-white dark:bg-[#f0e89f] dark:text-[#2a2a20]' : 'text-[#8f8375] hover:text-[#473c33] dark:text-[#a89680]'
+                }`}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-4">

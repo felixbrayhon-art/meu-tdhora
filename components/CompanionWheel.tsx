@@ -68,6 +68,11 @@ interface CompanionWheelProps {
 }
 
 const CompanionWheel: React.FC<CompanionWheelProps> = ({ itens, rotulo }) => {
+  // Qual peça está sob o ponteiro ou com o foco. O desenho sozinho não diz o
+  // nome da função, e o `title` do navegador demora e não existe no toque:
+  // esta tarja aparece embaixo do anel assim que a peça é apontada.
+  const [apontada, setApontada] = React.useState<string | null>(null);
+  const nomeApontado = itens.find((i) => i.id === apontada)?.rotulo;
   // Todas as peças do mesmo tamanho. A principal era dupla, e uma peça com o
   // dobro da largura das outras fazia o anel parecer torto em vez de hierárquico
   // — a primazia dela se diz pela cor e pelo lugar (topo), que bastam.
@@ -102,6 +107,10 @@ const CompanionWheel: React.FC<CompanionWheelProps> = ({ itens, rotulo }) => {
           role={item.marcado === undefined ? 'menuitem' : 'menuitemradio'}
           aria-checked={item.marcado === undefined ? undefined : item.marcado}
           onClick={item.acao}
+          onMouseEnter={() => setApontada(item.id)}
+          onMouseLeave={() => setApontada((atual) => (atual === item.id ? null : atual))}
+          onFocus={() => setApontada(item.id)}
+          onBlur={() => setApontada((atual) => (atual === item.id ? null : atual))}
           aria-label={item.rotulo}
           title={item.rotulo}
           className="group absolute inset-0 outline-none transition-[filter] duration-150 hover:brightness-[0.93] active:brightness-90"
@@ -128,6 +137,14 @@ const CompanionWheel: React.FC<CompanionWheelProps> = ({ itens, rotulo }) => {
           </span>
         </button>
       ))}
+      {nomeApontado && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 -translate-y-3 whitespace-nowrap rounded-full bg-[#2a1f18] px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#f7f1e6] shadow-lg"
+        >
+          {nomeApontado}
+        </span>
+      )}
     </div>
   );
 };
